@@ -1251,6 +1251,14 @@ body.scr-quiz .screen,body.scr-mathplay .screen,body.scr-engplay .screen{padding
 .easy{display:inline-block;margin-left:6px;background:#E6DED2;color:#65554A;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:800}
 .chalNote{background:#FFF1E8;border:2px solid #FFB48F;border-radius:14px;padding:6px 12px;font-weight:800;font-size:14px;margin:6px 0;color:#B34A1C}
 @media (max-width:600px){ .qPic{height:120px} }
+/* ===== v1.3 ===== */
+#townMapWrap{position:relative;z-index:1;isolation:isolate}
+#townTray,#homeTray{z-index:45!important}
+#sLvTabs{margin:0 0 6px;display:flex;flex-wrap:wrap}
+#sLvTabs button{font-size:16px;padding:8px 16px}
+.bonusTag{display:inline-block;background:linear-gradient(90deg,#FFE58A,#F2B91E);color:#6B4A00;border-radius:999px;padding:2px 10px;font-weight:900;font-size:13px}
+.bonusGot{margin-top:6px;font-size:20px;font-weight:900;color:#C88F0C;animation:bump .6s}
+.mCard.bonusCard,.epCard.bonusCard{box-shadow:0 0 0 5px #FFE58A,0 0 26px rgba(242,185,30,.7)!important;background:linear-gradient(180deg,#FFFBEA,#fff 45%)!important}
 </style>
 </head>
 <body class="scr-home">
@@ -1679,7 +1687,7 @@ body.scr-quiz .screen,body.scr-mathplay .screen,body.scr-engplay .screen{padding
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -6240,7 +6248,7 @@ renderReqPanel = function(){
         <div class="reqT"><b>${esc(r.name)}</b>「${esc(speak(r, reqText(q)))}」<div class="misBar"><i style="width:${a/b*100}%"></i></div><small>${a} / ${b}　ごほうび +${q.pt}pt</small></div>
         ${done ? `<button class="btn small gold" data-reqdone="${q.rid}">🎁 ほうこく</button>` : `<span class="reqIt">${reqPic(q)}</span>`}</div>`; }).join('');
 };
-document.addEventListener('click', e => { const row = e.target.closest('[data-reqrow]'); if(row && !e.target.closest('[data-reqdone]')) talkTo(row.dataset.reqrow); }, true);
+document.addEventListener('click', e => { const row = e.target.closest('[data-reqrow]'); if(row && !e.target.closest('[data-reqdone],[data-reqtalk]')) talkTo(row.dataset.reqrow); }, true);
 const _completeReq = completeReq;
 completeReq = async function(q){
   if(!q || !reqDone(q)) return;
@@ -6717,6 +6725,335 @@ BADGES.push(
   {id:'world', i:'🌏', n:'せかいはかせ', f:()=>['w_loc','w_flag','w_cap','w_cont'].reduce((a,k)=>a+((save.math?.stats||{})[k]?.c||0),0) >= 50},
   {id:'chal',  i:'🔥', n:'チャレンジャー', f:()=>(save.chalCnt||0) >= 30}
 );
+
+
+/* =====================================================================
+   v1.3：しゃかい 大ぞうりょう（レベル別・偉人）・こたえ かぶり防止・
+         ボーナス問題（ぜんぶの 教科）・おねがいは 話しかけて かなえる・もようがえ表示
+   ===================================================================== */
+const uniq = a => [...new Set(a)];
+function optsFrom(ans, pool, n=4){ return shuffle([ans, ...shuffle(uniq(pool).filter(x => x && x!==ans)).slice(0, n-1)]); }
+
+/* ---------- 日本の 偉人 [名前, したこと, 時代] ---------- */
+const JP_PEOPLE = [
+ ['卑弥呼','邪馬台国の 女王として 国を おさめた','弥生'],['小野妹子','遣隋使として 中国に わたった','飛鳥'],['聖徳太子','十七条の 憲法を 定めた','飛鳥'],
+ ['中大兄皇子','大化の改新を 始めた','飛鳥'],['聖武天皇','東大寺に 大仏を つくらせた','奈良'],['行基','人々と 大仏づくりに 協力した 僧','奈良'],
+ ['鑑真','唐から 来日して 唐招提寺を 開いた','奈良'],['菅原道真','遣唐使の 廃止を 提案した','平安'],['空海','真言宗を 開いた','平安'],['最澄','天台宗を 開いた','平安'],
+ ['藤原道長','摂関政治で 大きな 力を もった','平安'],['紫式部','源氏物語を 書いた','平安'],['清少納言','枕草子を 書いた','平安'],
+ ['平清盛','武士で 初めて 太政大臣に なった','平安'],['源頼朝','鎌倉幕府を 開いた','鎌倉'],['北条政子','承久の乱で 御家人を まとめた','鎌倉'],
+ ['北条時宗','元の 襲来（元寇）と 戦った 執権','鎌倉'],['法然','浄土宗を 開いた','鎌倉'],['親鸞','浄土真宗を 開いた','鎌倉'],['日蓮','日蓮宗を 開いた','鎌倉'],
+ ['運慶','東大寺の 金剛力士像を つくった','鎌倉'],['足利義満','金閣を 建てた','室町'],['足利義政','銀閣を 建てた','室町'],['雪舟','水墨画を 大成した','室町'],
+ ['織田信長','楽市・楽座を 行った','安土桃山'],['豊臣秀吉','検地と 刀狩を 行い 全国を 統一した','安土桃山'],['千利休','わび茶を 大成した','安土桃山'],
+ ['徳川家康','江戸幕府を 開いた','江戸'],['徳川家光','参勤交代を 制度に した','江戸'],['天草四郎','島原・天草一揆の 中心人物','江戸'],
+ ['徳川吉宗','享保の改革を 行った','江戸'],['近松門左衛門','人形浄瑠璃の 脚本を 書いた','江戸'],['松尾芭蕉','奥の細道を あらわした 俳人','江戸'],
+ ['葛飾北斎','富嶽三十六景を えがいた','江戸'],['歌川広重','東海道五十三次を えがいた','江戸'],['本居宣長','古事記伝を あらわし 国学を 大成した','江戸'],
+ ['杉田玄白','解体新書を 出版した','江戸'],['伊能忠敬','歩いて 正確な 日本地図を つくった','江戸'],['吉田松陰','松下村塾で 多くの 人を 育てた','江戸'],
+ ['坂本龍馬','薩長同盟を 仲立ちした','江戸'],['勝海舟','咸臨丸で 太平洋を わたった','江戸'],['西郷隆盛','江戸城の 無血開城を 実現した','江戸'],
+ ['大久保利通','廃藩置県を 進めた 明治政府の 中心人物','明治'],['木戸孝允','五箇条の御誓文の 作成に かかわった','明治'],['福沢諭吉','学問のすゝめを 書いた','明治'],
+ ['伊藤博文','初代 内閣総理大臣に なった','明治'],['板垣退助','自由民権運動を 進めた','明治'],['大隈重信','早稲田大学を つくった','明治'],
+ ['陸奥宗光','領事裁判権を なくした 外務大臣','明治'],['小村寿太郎','関税自主権を 回復した','明治'],['東郷平八郎','日本海海戦で 勝利した','明治'],
+ ['北里柴三郎','破傷風の 治療法を 発見した','明治'],['樋口一葉','たけくらべを 書いた 女性作家','明治'],['夏目漱石','吾輩は猫であるを 書いた','明治'],
+ ['与謝野晶子','君死にたまふことなかれを よんだ','明治'],['津田梅子','女子英学塾を つくった','明治'],['渋沢栄一','多くの 会社を つくり 日本経済の父と よばれる','明治'],
+ ['野口英世','黄熱病の 研究を した','大正'],['平塚らいてう','女性の 地位向上を 目指した','大正'],['新渡戸稲造','国際連盟の 事務次長を つとめた','大正'],
+ ['宮沢賢治','銀河鉄道の夜を 書いた','大正'],['湯川秀樹','日本人で 初めて ノーベル賞を うけた','昭和'],['手塚治虫','鉄腕アトムを えがいた 漫画家','昭和']
+];
+const ERAS = ['弥生','古墳','飛鳥','奈良','平安','鎌倉','室町','安土桃山','江戸','明治','大正','昭和'];
+/* ---------- 世界の 偉人 [名前, したこと, 国] ---------- */
+const W_PEOPLE = [
+ ['エジソン','電球を 実用化した','アメリカ'],['ライト兄弟','動力飛行機で 初めて 空を 飛んだ','アメリカ'],['ニュートン','万有引力を 発見した','イギリス'],
+ ['アインシュタイン','相対性理論を 発表した','ドイツ'],['ガリレオ・ガリレイ','望遠鏡で 木星の 衛星を 発見した','イタリア'],['ダーウィン','進化論を となえた','イギリス'],
+ ['キュリー夫人','ラジウムを 発見した',''],['ナイチンゲール','看護の 母と よばれる','イギリス'],['ベートーベン','交響曲第9番を 作曲した','ドイツ'],
+ ['モーツァルト','魔笛を 作曲した','オーストリア'],['バッハ','音楽の 父と よばれる','ドイツ'],['ショパン','ピアノの 詩人と よばれる 作曲家','ポーランド'],
+ ['レオナルド・ダ・ヴィンチ','モナ・リザを えがいた','イタリア'],['ゴッホ','ひまわりを えがいた','オランダ'],['ピカソ','ゲルニカを えがいた','スペイン'],
+ ['シェイクスピア','ロミオとジュリエットを 書いた','イギリス'],['アンデルセン','人魚姫などの 童話を 書いた','デンマーク'],['グリム兄弟','白雪姫などの 昔話を 集めた','ドイツ'],
+ ['ファーブル','昆虫記を 書いた','フランス'],['ヘレン・ケラー','障がいを のりこえ 福祉に つくした','アメリカ'],['リンカーン','奴隷解放宣言を 出した','アメリカ'],
+ ['ワシントン','アメリカの 初代大統領に なった','アメリカ'],['ナポレオン','フランスの 皇帝に なった','フランス'],['ジャンヌ・ダルク','百年戦争で フランスを すくった','フランス'],
+ ['ガンディー','非暴力で インド独立運動を 指導した','インド'],['マザー・テレサ','インドで まずしい 人々を たすけた',''],['キング牧師','アメリカで 公民権運動を 指導した','アメリカ'],
+ ['マンデラ','南アフリカで アパルトヘイトと 戦った','南アフリカ'],['ザビエル','日本に キリスト教を 伝えた','スペイン'],['ペリー','黒船で 浦賀に 来航した','アメリカ'],
+ ['マルコ・ポーロ','東方見聞録で 日本を 黄金の国と しょうかいした','イタリア'],['マゼラン','船隊が 初めて 世界一周を なしとげた','ポルトガル'],
+ ['ベル','電話を 発明した',''],['ノーベル','ダイナマイトを 発明した','スウェーデン'],['パスツール','狂犬病の ワクチンを つくった','フランス'],
+ ['フレミング','ペニシリンを 発見した','イギリス'],['アームストロング','初めて 月面を 歩いた','アメリカ'],['ガガーリン','初めて 宇宙飛行を した',''],
+ ['孔子','儒教を おこした','中国'],['始皇帝','中国を 初めて 統一した','中国'],['チンギス・ハン','モンゴル帝国を つくった','モンゴル'],
+ ['ルター','宗教改革を 始めた','ドイツ'],['メンデル','遺伝の 法則を 発見した',''],['ウォルト・ディズニー','ミッキーマウスを 生み出した','アメリカ'],
+ ['スティーブ・ジョブズ','iPhoneを 生み出した','アメリカ'],['コロンブス','大西洋を わたり アメリカ大陸に 到達した',''],['ゲーテ','ファウストを 書いた','ドイツ']
+];
+/* ---------- 日本の 歴史 [できごと, 時代, 年] ---------- */
+const J_EVENTS = [
+ ['米づくりが 広まる','弥生',0],['大きな 古墳が つくられる','古墳',0],['法隆寺が 建てられる','飛鳥',607],['大化の改新','飛鳥',645],['大宝律令が できる','飛鳥',701],
+ ['平城京に 都を うつす','奈良',710],['東大寺の 大仏が 完成','奈良',752],['平安京に 都を うつす','平安',794],['遣唐使の 廃止','平安',894],['壇ノ浦の戦い','平安',1185],
+ ['元寇（文永の役）','鎌倉',1274],['室町幕府が 開かれる','室町',1338],['応仁の乱','室町',1467],['鉄砲が 伝わる','室町',1543],['キリスト教が 伝わる','室町',1549],
+ ['長篠の戦い','安土桃山',1575],['本能寺の変','安土桃山',1582],['関ヶ原の戦い','安土桃山',1600],['江戸幕府が 開かれる','江戸',1603],['島原・天草一揆','江戸',1637],
+ ['ペリーが 来航','江戸',1853],['大政奉還','江戸',1867],['五箇条の御誓文','明治',1868],['廃藩置県','明治',1871],['大日本帝国憲法の 発布','明治',1889],
+ ['日清戦争','明治',1894],['日露戦争','明治',1904],['第一次世界大戦','大正',1914],['関東大震災','大正',1923],['普通選挙法','大正',1925],
+ ['太平洋戦争が 始まる','昭和',1941],['戦争が 終わる（終戦）','昭和',1945],['日本国憲法の 公布','昭和',1946],['東京オリンピック（1回目）','昭和',1964]
+];
+/* ---------- 問題バンク [問題, 正解, ちがう こたえ×3] ---------- */
+const BANK = {
+ jgeo:[ // 日本の 地理（小5・6）
+  ['日本で いちばん 広い 平野は？','関東平野','石狩平野','越後平野','濃尾平野'],['日本で いちばん 流域面積が 広い 川は？','利根川','信濃川','石狩川','木曽川'],
+  ['「日本の 屋根」と よばれる 山脈の あつまりは？','日本アルプス','奥羽山脈','中国山地','四国山地'],['東北地方を 南北に はしる 山脈は？','奥羽山脈','日高山脈','飛騨山脈','鈴鹿山脈'],
+  ['日本の 最も 北に ある 島は？','択捉島','与那国島','沖ノ鳥島','南鳥島'],['日本の 最も 西に ある 島は？','与那国島','択捉島','沖ノ鳥島','南鳥島'],
+  ['日本の 最も 南に ある 島は？','沖ノ鳥島','与那国島','択捉島','南鳥島'],['日本の 最も 東に ある 島は？','南鳥島','択捉島','与那国島','沖ノ鳥島'],
+  ['日本海側の 冬に 多い 天気は？','雪が 多い','雨が 少ない','とても あつい','台風が 多い'],['太平洋側の 冬の 天気の とくちょうは？','かんそうして 晴れが 多い','雪が とても 多い','毎日 雨','台風が 多い'],
+  ['夏から 秋に 沖縄や 九州に 多く くる ものは？','台風','流氷','黄砂','やませ'],['北海道の オホーツク海に 冬に やってくる ものは？','流氷','台風','黄砂','梅雨前線'],
+  ['米の 生産量が 多い 地方は？','東北地方','四国地方','近畿地方','沖縄県'],['りんごの 生産量 日本一の 県は？','青森県','長野県','山形県','岩手県'],
+  ['みかんの 生産量が 多い 県は？','和歌山県','青森県','北海道','新潟県'],['茶の 生産量が 多い 県は？','静岡県','青森県','北海道','新潟県'],
+  ['自動車の 生産が さかんな 工業地帯は？','中京工業地帯','北九州工業地帯','京葉工業地域','北陸工業地域'],['日本最大の 工業地帯（出荷額）は？','中京工業地帯','阪神工業地帯','京浜工業地帯','北九州工業地帯'],
+  ['太平洋ベルトに ふくまれない 地域は？','北海道の 内陸','東海','瀬戸内','阪神'],['冬でも あたたかく ビニールハウスで 野菜を つくる 方法は？','促成栽培','抑制栽培','二毛作','輪作'],
+  ['夏でも すずしい 高原で レタスなどを つくる 方法は？','抑制栽培','促成栽培','養殖','二期作'],['魚や 貝を 育てて とる 漁業は？','養殖業','遠洋漁業','沖合漁業','沿岸漁業'],
+  ['たまごから 育てた 稚魚を 川や 海に 放す 漁業は？','栽培漁業','遠洋漁業','養殖業','沖合漁業'],['日本で いちばん 人口が 多い 都道府県は？','東京都','大阪府','神奈川県','愛知県'],
+  ['日本で いちばん 人口が 少ない 都道府県は？','鳥取県','島根県','高知県','徳島県'],['日本の 人口は おおよそ 何人？','約1億2千万人','約5千万人','約3億人','約8千万人'],
+  ['世界遺産 白神山地が ある 地方は？','東北地方','九州地方','中国地方','四国地方'],['世界遺産 屋久島が ある 県は？','鹿児島県','沖縄県','宮崎県','長崎県'],
+  ['原爆ドームが ある 県は？','広島県','長崎県','岡山県','山口県'],['日本で いちばん 深い 湖は？','田沢湖','琵琶湖','摩周湖','霞ヶ浦'],
+  ['日本三景に ふくまれる ものは？','天橋立','富士山','琵琶湖','阿蘇山'],['火山の 熱を 利用する 発電は？','地熱発電','火力発電','原子力発電','水力発電'],
+  ['ダムの 水の 力で 電気を つくる 発電は？','水力発電','火力発電','地熱発電','風力発電'],['日本の 発電で いちばん 多い 方法は？','火力発電','水力発電','風力発電','地熱発電'],
+  ['日本が 多く 輸入している 燃料は？','原油','米','木材だけ','たまご'],['日本の 輸出品で 多い ものは？','自動車','原油','石炭','鉄鉱石'],
+  ['海に かこまれた 日本の まわりの 浅い 海底を 何という？','大陸だな','海溝','カルデラ','扇状地'],['川が 山から 平地に 出る ところに できる 地形は？','扇状地','三角州','カルデラ','リアス海岸'],
+  ['川の 河口に できる 三角形の 地形は？','三角州','扇状地','台地','盆地'],['入り組んだ 海岸線で 三陸海岸などに 見られる 地形は？','リアス海岸','砂浜海岸','扇状地','三角州'],
+  ['まわりを 山に かこまれた 平らな 土地は？','盆地','平野','台地','半島'],['北海道で 牛を 育て 牛乳を つくる 農業は？','酪農','稲作','果樹栽培','養蚕'],
+  ['日本の 国土の 約何割が 森林？','約7割','約3割','約1割','約9割'],['日本の 標準時子午線が 通る 市は？','明石市','東京都','大阪市','札幌市']
+ ],
+ civ1:[ // くらしと 政治（小5・6）
+  ['日本国憲法の 三つの 原則に ふくまれる ものは？','平和主義','天皇主権','鎖国','身分制度'],['国の 政治の 主人公は 国民で あるという 考えは？','国民主権','平和主義','三権分立','地方自治'],
+  ['日本国憲法が 施行された 日（5月3日）は 何の 日？','憲法記念日','文化の日','こどもの日','みどりの日'],['日本国憲法が 公布された 日（11月3日）は 今の 何の 日？','文化の日','憲法記念日','建国記念の日','勤労感謝の日'],
+  ['国の 法律を つくる ところは？','国会','内閣','裁判所','市役所'],['国の 政治を 実際に 行う ところは？','内閣','国会','裁判所','警察'],
+  ['争いごとや 犯罪を 法律に もとづいて 判断する ところは？','裁判所','国会','内閣','税務署'],['国会・内閣・裁判所に 国の 力を 分ける しくみは？','三権分立','国民主権','地方自治','議院内閣制'],
+  ['内閣の 長は？','内閣総理大臣','天皇','最高裁判所長官','衆議院議長'],['国会に ある 2つの 議院は 衆議院と？','参議院','貴族院','市議会','県議会'],
+  ['選挙で 投票できる 年れいは？','18さい以上','20さい以上','16さい以上','25さい以上'],['税金の うち 買い物の ときに はらう 税は？','消費税','所得税','住民税','法人税'],
+  ['市や 町が 住民の ために 行う 政治は？','地方自治','三権分立','国際連合','鎖国'],['天皇は 日本国の 何と 定められている？','象徴','元首','首相','国王'],
+  ['憲法で 子どもに 教育を 受けさせる ことは 国民の？','義務','権利だけ','自由','趣味'],['国民の 三大義務に ふくまれない ものは？','選挙に 行く 義務','納税の 義務','勤労の 義務','教育を 受けさせる 義務'],
+  ['世界の 平和を 守るために つくられた 国際機関は？','国際連合','国際連盟','NATO','EU'],['国際連合の 本部が ある 都市は？','ニューヨーク','ジュネーブ','パリ','東京'],
+  ['子どもの 権利を 守る 国際的な 約束は？','子どもの権利条約','日米安保条約','ポツダム宣言','下関条約'],['ユニセフ（UNICEF）は 何を する 機関？','子どもを 守る','お金を 貸す','スポーツを する','宇宙を 調べる'],
+  ['ごみを へらす 3Rに ふくまれる ものは？','リデュース','リターン','リセット','リメイク'],['地球の 気温が 上がる 問題は？','地球温暖化','酸性雨だけ','オゾン層の 増加','流氷の 増加'],
+  ['温室効果ガスの 代表は？','二酸化炭素','酸素','ちっ素','水素'],['災害の ときに 危険な 場所を しめした 地図は？','ハザードマップ','観光マップ','路線図','天気図'],
+  ['地震の あとに 海から おしよせる 大波は？','津波','高潮','台風','竜巻'],['災害の ときに 地域で 助け合うことを 何という？','共助','自助','公助','互換'],
+  ['食料の うち 国内で つくられる 割合を 何という？','食料自給率','人口密度','出生率','失業率'],['日本の 食料自給率（カロリー）は およそ？','約4割','約8割','約1割','約10割']
+ ],
+ civ2:[ // 公民（中学）
+  ['日本国憲法の 基本原理に ふくまれない ものは？','天皇主権','国民主権','基本的人権の尊重','平和主義'],['憲法 第9条に 定められている ことは？','戦争の 放棄','納税の 義務','選挙権','表現の 自由'],
+  ['国会で 予算を 先に 審議する 議院は？','衆議院','参議院','どちらでも よい','最高裁判所'],['衆議院議員の 任期は？','4年','6年','3年','2年'],
+  ['参議院議員の 任期は？','6年','4年','3年','5年'],['内閣が 国会に 対して 責任を もつ しくみは？','議院内閣制','大統領制','三審制','地方自治'],
+  ['裁判を 3回まで 受けられる しくみは？','三審制','三権分立','議院内閣制','陪審制'],['国民が 裁判に 参加する 日本の 制度は？','裁判員制度','陪審員制度','国民審査','直接請求'],
+  ['最高裁判所の 裁判官を 国民が 審査する しくみは？','国民審査','国民投票','弾劾裁判','住民投票'],['憲法改正に 必要な 国民の 手続きは？','国民投票','国民審査','住民投票','世論調査'],
+  ['法律が 憲法に 違反して いないかを 判断する 権限は？','違憲審査権','弾劾裁判','国政調査権','条例制定権'],['地方公共団体が 定める きまりは？','条例','法律','政令','条約'],
+  ['住民が 首長の 解職を 求める ことを 何という？','リコール','イニシアティブ','レファレンダム','ロビー活動'],['国の 収入と 支出の 計画は？','予算','決算','税制','条例'],
+  ['所得が 多いほど 税率が 高くなる しくみは？','累進課税','消費税','間接税','関税'],['日本の 中央銀行は？','日本銀行','ゆうちょ銀行','国際通貨基金','世界銀行'],
+  ['物価が 上がり続ける 現象は？','インフレーション','デフレーション','バブル','リセッション'],['物価が 下がり続ける 現象は？','デフレーション','インフレーション','好景気','円安'],
+  ['円の 価値が 上がる ことを 何という？','円高','円安','インフレ','デフレ'],['需要が 供給より 多いと 価格は ふつう どうなる？','上がる','下がる','変わらない','なくなる'],
+  ['働く 人の 権利を 守る 法律で 労働時間などを 定めたものは？','労働基準法','独占禁止法','製造物責任法','消費者契約法'],['企業どうしの 不公正な 競争を ふせぐ 法律は？','独占禁止法','労働基準法','民法','刑法'],
+  ['商品の 欠陥で けがを したとき 製造者に 責任を 問える 法律は？','製造物責任法','独占禁止法','労働組合法','消費税法'],['訪問販売などで 一定期間 契約を 解除できる 制度は？','クーリング・オフ','リコール','セーフガード','インフォームド・コンセント'],
+  ['国連の 安全保障理事会で 常任理事国が もつ 権限は？','拒否権','選挙権','請願権','黙秘権'],['安全保障理事会の 常任理事国に ふくまれない 国は？','日本','アメリカ','中国','フランス'],
+  ['ヨーロッパの 国々が つくる 共同体は？','EU','ASEAN','APEC','NAFTA'],['東南アジアの 国々の 協力組織は？','ASEAN','EU','OPEC','NATO'],
+  ['持続可能な 開発目標の 略称は？','SDGs','ODA','NGO','PKO'],['政府の 開発援助の 略称は？','ODA','NGO','PKO','WHO'],
+  ['新しい 人権に ふくまれる ものは？','環境権','選挙権','請願権','財産権'],['自分の 情報を 守る 権利は？','プライバシーの権利','知る権利','参政権','労働基本権'],
+  ['すべての 国民に 健康で 文化的な 最低限度の 生活を 保障する 権利は？','生存権','自由権','参政権','請求権'],['社会保障の 4つの 柱に ふくまれない ものは？','防衛','社会保険','公的扶助','公衆衛生']
+ ],
+ wgeo:[ // 世界の 地理（中学）
+  ['世界で いちばん 長い 川は？','ナイル川','アマゾン川','長江','ミシシッピ川'],['世界で いちばん 流域面積が 広い 川は？','アマゾン川','ナイル川','長江','ボルガ川'],
+  ['世界で いちばん 高い 山は？','エベレスト','キリマンジャロ','マッキンリー','富士山'],['世界で いちばん 面積が 大きい 国は？','ロシア','カナダ','中国','アメリカ'],
+  ['世界で いちばん 面積が 小さい 国は？','バチカン市国','モナコ','シンガポール','ルクセンブルク'],['世界で いちばん 人口が 多い 国（2023年〜）は？','インド','中国','アメリカ','インドネシア'],
+  ['世界で いちばん 大きな 砂漠は（極地を のぞく）？','サハラ砂漠','ゴビ砂漠','アタカマ砂漠','カラハリ砂漠'],['世界で いちばん 大きな 大陸は？','ユーラシア大陸','アフリカ大陸','北アメリカ大陸','南極大陸'],
+  ['世界で いちばん 小さな 大陸は？','オーストラリア大陸','南極大陸','南アメリカ大陸','アフリカ大陸'],['世界で いちばん 広い 海洋は？','太平洋','大西洋','インド洋','北極海'],
+  ['赤道が 通らない 国は？','日本','ブラジル','ケニア','インドネシア'],['本初子午線が 通る 都市は？','ロンドン','パリ','東京','ニューヨーク'],
+  ['日本と 時差が 約14時間ある 都市は？','ニューヨーク','北京','ロンドン','シドニー'],['経度 15度で 何時間の 時差？','1時間','2時間','15時間','30分'],
+  ['インドで 多くの 人が 信仰する 宗教は？','ヒンドゥー教','仏教','キリスト教','神道'],['イスラム教の 聖地が ある 国は？','サウジアラビア','インド','イタリア','タイ'],
+  ['アメリカで 大規模に 行われる 農業の 特色は？','適地適作','焼畑農業','二期作だけ','遊牧'],['オーストラリアで 多く 産出し 日本が 輸入する 資源は？','鉄鉱石','原油','米','綿花'],
+  ['南アメリカで 多く 話される 言語は？','スペイン語','英語','中国語','ロシア語'],['ブラジルで 主に 話される 言語は？','ポルトガル語','スペイン語','英語','フランス語'],
+  ['アフリカで 多く 産出する レアメタルなどの 鉱産資源を 何という？','レアメタル','原油','石灰石','米'],['中国で 外国企業を まねくために つくった 地区は？','経済特区','保護区','自治区','特別区'],
+  ['ヨーロッパで 多く 使われる 共通通貨は？','ユーロ','ドル','ポンド','元'],['北極に 近い 地域で 見られる 白夜とは？','夏に 夜も 暗くならない','冬に 雨が 多い','一日中 暑い','雪が ふらない']
+ ]
+};
+/* ---------- 問題を つくる ---------- */
+const mk = (q, ans, opts, extra={}) => Object.assign({type:'choice', q, ans, opts, hint:''}, extra);
+function bankGen(key, art){ return function(){ const r = choice(BANK[key]); return mk(r[0], r[1], shuffle(r.slice(1)), {disp: art ? PIC(art) : '', sub:r[0]}); }; }
+Object.assign(MATH_UNITS, {
+  j_person:{n:'日本の 偉人（だれ？）', g:'soc', lv:2, art:'sq_worker', gen(){ const p = choice(JP_PEOPLE);
+    return mk(`<b>${p[1]}</b> 人物は？`, p[0], optsFrom(p[0], JP_PEOPLE.map(x=>x[0])), {hint:`${p[2]}時代の 人だよ`, sub:p[0]}); }},
+  j_person2:{n:'日本の 偉人（何を した？）', g:'soc', lv:3, art:'sq_worker', gen(){ const p = choice(JP_PEOPLE), k = ri(0,1);
+    if(k===0) return mk(`<b>${p[0]}</b> が したことは？`, p[1], optsFrom(p[1], JP_PEOPLE.map(x=>x[1])), {hint:`${p[2]}時代の 人`, sub:p[0]});
+    return mk(`<b>${p[0]}</b> が 活やくした 時代は？`, p[2], optsFrom(p[2], ERAS), {sub:p[0]}); }},
+  w_person:{n:'世界の 偉人', g:'soc', lv:2, art:'sq_fireman', gen(){ const p = choice(W_PEOPLE), k = ri(0,2);
+    if(k===0) return mk(`<b>${p[1]}</b> 人物は？`, p[0], optsFrom(p[0], W_PEOPLE.map(x=>x[0])), {sub:p[0]});
+    if(k===1 || !p[2]) return mk(`<b>${p[0]}</b> が したことは？`, p[1], optsFrom(p[1], W_PEOPLE.map(x=>x[1])), {sub:p[0]});
+    return mk(`<b>${p[0]}</b> は どこの 国の 人？`, p[2], optsFrom(p[2], W_PEOPLE.map(x=>x[2])), {sub:p[0]}); }},
+  j_era:{n:'歴史の できごと（時代）', g:'soc', lv:2, art:'sq_oldiron', gen(){ const e = choice(J_EVENTS);
+    return mk(`<b>${e[0]}</b> は 何時代の できごと？`, e[1], optsFrom(e[1], ERAS), {sub:e[0]}); }},
+  j_year:{n:'歴史の 年号', g:'soc', lv:3, art:'sq_oldiron', gen(){ const ev = J_EVENTS.filter(x => x[2]), e = choice(ev);
+    return mk(`<b>${e[0]}</b> は 何年？`, e[2]+'年', optsFrom(e[2]+'年', ev.map(x => x[2]+'年')), {hint:`${e[1]}時代の できごと`, sub:e[0]}); }},
+  j_order:{n:'歴史の じゅんばん', g:'soc', lv:3, art:'sq_oldiron', gen(){
+    const ev = J_EVENTS.filter(x => x[2]); let a, b; do{ a = choice(ev); b = choice(ev); }while(a===b || a[2]===b[2]);
+    const first = a[2] < b[2] ? a : b;
+    return mk(`<b>${a[0]}</b> と <b>${b[0]}</b>、先に 起きたのは？`, first[0], shuffle([a[0], b[0]]), {sub:a[0]+b[0]}); }},
+  j_geo:{n:'日本の 地理（くわしく）', g:'soc', lv:2, art:'so_factory', gen:bankGen('jgeo', null)},
+  civ1:{n:'くらしと 政治', g:'soc', lv:2, art:'so_firepol', gen:bankGen('civ1', null)},
+  civ2:{n:'公民（政治・経済）', g:'soc', lv:3, art:'ui_building', gen:bankGen('civ2', null)},
+  w_geo:{n:'世界の 地理', g:'soc', lv:3, art:'so_compass', gen:bankGen('wgeo', null)}
+});
+/* 地理の 問題に 地図を つける */
+const _jg = MATH_UNITS.j_geo.gen; MATH_UNITS.j_geo.gen = function(){ const p = _jg(); p.disp = `<svg class="jpMap sm" viewBox="0 0 400 440">${jpBase()}</svg>`; return p; };
+const _wg = MATH_UNITS.w_geo.gen; MATH_UNITS.w_geo.gen = function(){ const p = _wg(); p.disp = worldSVG(null, {}); return p; };
+/* レベル */
+const SOC_LV = {s_sym:1, s_dir:1, s_life:1, s_old:1, s_loc:1, s_region:1, s_food:1, w_flag:1,
+  s_cap:2, s_jp:2, j_geo:2, j_era:2, j_person:2, w_person:2, civ1:2, w_loc:2, w_cont:2,
+  j_year:3, j_order:3, j_person2:3, civ2:3, w_cap:3, w_geo:3};
+Object.entries(SOC_LV).forEach(([k,l]) => { if(MATH_UNITS[k]) MATH_UNITS[k].lv = l; });
+const SOC_LEVELS = [[1,'小学3・4年'],[2,'小学5・6年'],[3,'中学生']];
+const SOC_CAT = {s_loc:'🗾 都道府県', s_region:'🗾 都道府県', s_food:'🗾 都道府県', s_cap:'🗾 都道府県', s_sym:'🧭 地図', s_dir:'🧭 地図',
+  s_life:'🏘 くらし', s_old:'🏘 くらし', s_jp:'🏔 日本の 地理', j_geo:'🏔 日本の 地理', j_era:'📜 歴史', j_year:'📜 歴史', j_order:'📜 歴史',
+  j_person:'👤 日本の 偉人', j_person2:'👤 日本の 偉人', w_person:'🌍 世界の 偉人', civ1:'⚖️ 政治', civ2:'⚖️ 政治', w_loc:'🌏 世界', w_flag:'🌏 世界', w_cont:'🌏 世界', w_cap:'🌏 世界', w_geo:'🌏 世界'};
+renderSoc = function(){
+  const M = mSave(); if(M.socSel && !SS.loaded){ SS.loaded = 1; SS.units = M.socSel.filter(k => MATH_UNITS[k]); } if(!SS.units.length) SS.units = ['s_loc'];
+  const lv = M.socLv || 1;
+  const ks = Object.keys(SOC_LV).filter(k => SOC_LV[k]===lv && MATH_UNITS[k]);
+  const cats = uniq(ks.map(k => SOC_CAT[k]));
+  $('#sUnits').innerHTML = `<div class="miniSeg" id="sLvTabs">${SOC_LEVELS.map(([l,n]) => `<button data-sl="${l}" class="${l===lv?'on':''}">${n}</button>`).join('')}</div>` +
+    cats.map(c => `<h4 class="sGrp">${c}</h4><div class="sGrid">${ks.filter(k => SOC_CAT[k]===c).map(k => { const u = MATH_UNITS[k], s = M.stats[k] || {n:0, c:0}, rate = s.n ? Math.round(s.c/s.n*100) : null;
+      return `<button class="mUnit soc ${SS.units.includes(k)?'on':''}" data-su="${k}"><img class="mIco" src="${esc(artSrc(u.art))}" alt=""><span class="mTxt"><b>${u.n}</b><small>${s.n ? `${s.c}/${s.n} せいかい` : 'まだ やってない'}</small>${rate!=null?`<i class="mBar"><i style="width:${rate}%"></i></i>`:''}</span>${SS.units.includes(k)?'<span class="mChk">✓</span>':''}</button>`; }).join('')}</div>`).join('') +
+    `<div class="note" style="margin-top:8px">えらんだ たんげん：${SS.units.map(k => MATH_UNITS[k]?.n).filter(Boolean).join('・')}</div>`;
+  syncSeg('sCount', SS.count); M.socSel = SS.units.slice(); persist();
+};
+document.addEventListener('click', e => { const b = e.target.closest('[data-sl]'); if(!b) return; mSave().socLv = +b.dataset.sl; persist(); renderSoc(); });
+
+/* ---------- こたえ かぶり防止 ---------- */
+buildSet = function(units, count){
+  const list = [], seenQ = new Set(), seenA = new Set(), seenS = new Set();
+  for(let i=0;i<count;i++){
+    let p = null, best = null;
+    for(let t=0;t<60;t++){
+      const k = choice(units), c = {u:k, ...MATH_UNITS[k].gen()};
+      const kq = qKeyOf(c), ka = c.u.startsWith('s_')||c.u.startsWith('w_')||c.u.startsWith('j_')||c.u.startsWith('civ') ? 'A:'+c.ans : null, ks = c.sub ? 'S:'+c.sub : null;
+      if(seenQ.has(kq)) continue;
+      if(!best) best = c;
+      if((ka && seenA.has(ka)) || (ks && seenS.has(ks))) continue;
+      p = c; break;
+    }
+    p = p || best || {u:units[0], ...MATH_UNITS[units[0]].gen()};
+    seenQ.add(qKeyOf(p)); if(p.sub) seenS.add('S:'+p.sub); seenA.add('A:'+p.ans); list.push(p);
+  }
+  return list;
+};
+/* 都道府県・国の 問題にも「何の 話題か」を つける（同じ 県・国が 2回 出ない） */
+['s_loc','s_cap','s_food','s_region','w_loc','w_flag','w_cap','w_cont'].forEach(k => { const g = MATH_UNITS[k].gen; MATH_UNITS[k].gen = function(){ const p = g();
+  const bm = (p.q.match(/<b>(.*?)<\/b>/)||[])[1] || '';
+  p.sub = /[都道府県]$/.test(bm) || ((k==='w_cap') && bm) ? bm : p.ans;
+  const m = bm.match(/（(.+?)）/); if(m) p.sub = m[1];
+  return p; }; });
+
+/* =====================================================================
+   ボーナス問題（さんすう・しゃかい・えいご）：にがて＆むずかしい 問題
+   ===================================================================== */
+function hardUnits(units, soc){
+  if(soc){ const lv = Math.max(...units.map(k => MATH_UNITS[k].lv || 1)); const up = Math.min(3, lv + 1);
+    const ks = Object.keys(SOC_LV).filter(k => SOC_LV[k]===up && MATH_UNITS[k]); return ks.length ? ks : units; }
+  const gs = units.map(k => MATH_UNITS[k].g).filter(g => typeof g==='number'), g = gs.length ? Math.max(...gs) : 3;
+  const up = Object.keys(MATH_UNITS).filter(k => MATH_UNITS[k].g === Math.min(5, g+1));
+  return up.length ? up : units;
+}
+function pickHardQ(units, soc){
+  const H = qh(), used = new Set(MQ.list.map(qKeyOf));
+  const weak = Object.entries(H).filter(([k,r]) => r.w > 0 && r.s === 0).map(([k]) => k.split(':')[0]);
+  const pool = uniq(hardUnits(units, soc).concat(units.filter(u => weak.includes(u))));
+  let best = null, bs = -1;
+  for(let t=0;t<16;t++){
+    const k = choice(pool), c = {u:k, ...MATH_UNITS[k].gen()}; if(used.has(qKeyOf(c))) continue;
+    const r = H[qKeyOf(c)], sc = (r ? r.w*3 : 1) + (hardUnits(units, soc).includes(k) ? 2 : 0) + Math.random();
+    if(sc > bs){ bs = sc; best = c; }
+  }
+  return best;
+}
+const BONUS_PT = 50;
+const _mJudge13 = mJudge;
+mJudge = function(v){
+  const was = MQ && MQ.done, p = MQ.list[MQ.i];
+  const out = _mJudge13(v);
+  if(was) return out;
+  const ok = MQ.res[MQ.res.length-1]?.ok;
+  if(p.bonus){
+    if(ok){ const b = givePts(Math.round(BONUS_PT*bonusBoost()), 'ボーナス問題 せいかい'); MQ.pts += b; save.counters.bonus++; persist();
+      $('#mFb').insertAdjacentHTML('beforeend', `<div class="bonusGot">⭐ ボーナス +${b}pt！</div>`); }
+    MQ.bonusOn = false;
+  } else if(ok && save.settings.bonus && !MQ.bonusOn && (MQ.bonusN||0) < 2 && MQ.combo >= 3 && MQ.i - (MQ.lastB ?? -9) >= 3 && Math.random() < Math.min(.9, .4*bonusBoost())){
+    const units = window.MQSOC ? SS.units : MS.units, q = pickHardQ(units, !!window.MQSOC);
+    if(q){ q.bonus = true; MQ.list.splice(MQ.i+1, 0, q); MQ.bonusN = (MQ.bonusN||0)+1; MQ.lastB = MQ.i; MQ.bonusOn = true; $('#mNext').textContent = '⭐ ボーナスへ ▶'; }
+  }
+  return out;
+};
+const _mRender13 = mRender;
+mRender = function(){
+  const p = MQ.list[MQ.i];
+  if(p && p.bonus && !p.intro){
+    p.intro = 1;
+    $('#bonusTitle').textContent = '⭐ ボーナスもんだい！';
+    $('#bonusDesc').innerHTML = `にがてな 問題・むずかしい 問題だよ！<br>せいかいで <b>+${BONUS_PT}pt</b>`;
+    $('#bonusIntro').classList.add('show'); sound('fan'); confetti(1200);
+    $('#bonusGo').onclick = () => { $('#bonusIntro').classList.remove('show'); mRender(); };
+    return;
+  }
+  _mRender13();
+  $('.mCard').classList.toggle('bonusCard', !!(p && p.bonus));
+  document.body.classList.toggle('bonusMode', !!(p && p.bonus));
+  if(p && p.bonus) $('#mTag').insertAdjacentHTML('afterbegin', '<span class="bonusTag">⭐ ボーナス</span> ');
+  $('#mProg').textContent = `${MQ.list.slice(0, MQ.i+1).filter(x => !x.bonus).length} / ${MQ.list.filter(x => !x.bonus).length}`;
+};
+/* かんじの ボンボーナスの もとの ボタンを もどす */
+const _bonusGoKanji = $('#bonusGo').onclick;
+const _openBonus13 = openBonus;
+openBonus = function(){ $('#bonusGo').onclick = _bonusGoKanji; $('#bonusDesc').innerHTML = ''; _openBonus13(); $('#bonusDesc').insertAdjacentHTML('afterbegin', 'にがてな 漢字に チャレンジ！<br>'); };
+/* かんじ：テスト モード いがい ぜんぶで ボーナス・にがて優先 */
+pickBonusQ = function(){
+  const used = new Set(S.list.map(q=>q.id)), k = S.kind==='write' ? 'w' : 'r';
+  let pool = poolFor(S.kind, 'all').filter(q => !used.has(q.id)); if(!pool.length) pool = poolFor(S.kind, 'all');
+  const score = q => { const s = save.stats[q.id]; const w = s ? s[k][1] : 0, c = s ? s[k][0] : 0;
+    return w*4 - c*0.5 + kanjiOf(q.word).length*1.5 + (q.grade > 3 ? 3 : 0) + Math.random()*2; };
+  pool.sort((a,b) => score(b)-score(a));
+  return pool[Math.random()*Math.min(5,pool.length)|0];
+};
+
+/* えいご：ボーナス（にがてな 文） */
+const _engJudge13 = engJudge;
+engJudge = function(r){
+  if(ES.phase!=='judge') return;
+  const q = ES.qs[ES.i];
+  const res = _engJudge13(r);
+  if(q.bonus && r==='o'){ const b = givePts(30, 'えいご ボーナス せいかい'); toast(`⭐ ボーナス +${b}pt！`); save.counters.bonus++; persist(); }
+  const last = ES.res.slice(-3);
+  if(!q.bonus && E.set.pts && (ES.bn||0) < 2 && last.length===3 && last.every(x => x.res==='o') && Math.random() < .35 && ES.i < ES.qs.length){
+    const used = new Set(ES.qs.map(x => x.id)), cnt = {};
+    E.hist.forEach(h => { if(h.res!=='o') cnt[h.qid] = (cnt[h.qid]||0) + 1; });
+    const cand = E.qs.filter(x => !used.has(x.id) && cnt[x.id]).sort((a,b) => cnt[b.id]-cnt[a.id]);
+    const pick = cand[0] || choice(E.qs.filter(x => !used.has(x.id) && wcount(x.en) >= 8));
+    if(pick){ ES.qs.splice(ES.i, 0, {...pick, bonus:true}); ES.bn = (ES.bn||0) + 1; if(ES.phase==='ask'){ engNext(); } }
+  }
+  return res;
+};
+const _engNext13 = engNext;
+engNext = function(){
+  _engNext13();
+  const q = ES.qs[ES.i];
+  $('.epCard').classList.toggle('bonusCard', !!q.bonus);
+  if(q.bonus){ $('#epNo').insertAdjacentHTML('afterbegin', '<span class="bonusTag">⭐ ボーナス（にがてな 文）+30pt</span> '); sound('fan'); }
+};
+
+/* =====================================================================
+   住民の おねがい：話しかけて かなえる
+   ===================================================================== */
+const _reqProg13 = reqProg;
+reqProg = function(q){ if(q.kind==='fur') return [(q.given || (ensureHome().inv[q.id]||0) > 0 || ensureHome().items.some(i => i.id===q.id)) ? 1 : 0, 1]; return _reqProg13(q); };
+completeReq = async function(q){
+  if(!q || !reqDone(q)) return;
+  if(q.kind==='fur' && !q.given){
+    const H = ensureHome();
+    if((H.inv[q.id]||0) > 0){ H.inv[q.id]--; if(!H.inv[q.id]) delete H.inv[q.id]; } else { const i = H.items.findIndex(x => x.id===q.id); if(i>=0) H.items.splice(i,1); }
+    q.given = true; persist();
+  }
+  return _completeReq(q);
+};
+const _renderReqPanel13 = renderReqPanel;
+renderReqPanel = function(){
+  _renderReqPanel13();
+  $$('#reqPanel [data-reqdone]').forEach(b => { const rid = b.dataset.reqdone; b.outerHTML = `<button class="btn small gold" data-reqtalk="${rid}">💬 はなしかける</button>`; });
+};
+document.addEventListener('click', e => { const b = e.target.closest('[data-reqtalk]'); if(!b) return; e.stopImmediatePropagation(); e.stopPropagation(); talkTo(b.dataset.reqtalk); }, true);
 
 /* =====================================================================
    起動
