@@ -1581,6 +1581,97 @@ body{background:transparent!important}
 .rd .curb.l{top:0;bottom:0;left:6%;width:2px}.rd .curb.r{top:0;bottom:0;right:6%;width:2px}
 .rd .lnh,.rd .lnv{display:none!important}
 .car2{transition:left .68s linear,top .68s linear!important}
+/* ===== v2.0 ===== */
+.tourBtn{background:linear-gradient(90deg,#8E44D8,#F2557E)!important;color:#fff!important}
+#tour{z-index:120;background:#1D1630;flex-direction:column}
+#tour.show{display:flex}
+#tourView{position:relative;flex:1;overflow:hidden;perspective:620px;perspective-origin:50% 45%;touch-action:none;cursor:grab;background:linear-gradient(#2A2244,#1D1630)}
+#tourWorld{position:absolute;left:50%;top:45%;width:0;height:0;transform-style:preserve-3d}
+#tourWorld > *{position:absolute;transform-style:preserve-3d;backface-visibility:visible}
+.t3floor{box-shadow:inset 0 0 120px rgba(0,0,0,.25)}
+.t3fShade{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(255,240,210,.25),rgba(0,0,0,.18) 80%)}
+.t3ceil{background:#FFF8EE;box-shadow:inset 0 0 120px rgba(150,120,80,.35)}
+.t3wall{background-size:90px 90px}
+.t3wall::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(255,255,255,.12),rgba(0,0,0,.1))}
+.t3wall.dk::after{background:rgba(60,40,20,.12)}.t3wall.dk2::after{background:rgba(60,40,20,.2)}
+.t3win{position:absolute;top:22%;width:22%;height:42%;background:linear-gradient(#BFE6FF,#EAF7FF);border:8px solid #fff;border-radius:10px;z-index:1;box-shadow:0 0 30px rgba(255,255,220,.6)}
+.t3win::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:6px;background:#fff;transform:translateX(-50%)}
+.t3door{position:absolute;left:40%;bottom:12px;width:22%;height:72%;background:linear-gradient(#C99A63,#A5764A);border-radius:10px 10px 0 0;z-index:1;box-shadow:inset 0 0 0 6px #B88555}
+.t3door::after{content:"";position:absolute;right:12px;top:52%;width:10px;height:10px;border-radius:50%;background:#F2C94C}
+.t3pic{position:absolute;left:38%;top:24%;width:24%;height:28%;background:linear-gradient(135deg,#BFE6FF,#FFE3EA);border:8px solid #C99A63;z-index:1}
+.t3base{position:absolute;left:0;right:0;bottom:0;height:12px;background:#B88555;z-index:1}
+.t3bb{top:0;transform-origin:50% 0;height:0}
+.t3bb img,.t3bb .rpic{position:absolute;left:0;bottom:0;width:100%;height:auto;display:block;filter:drop-shadow(0 6px 6px rgba(0,0,0,.25))}
+.t3bb img.flip{transform:scaleX(-1)}
+.t3bb .rpic>img.rb{position:static;width:100%;height:auto}
+.t3sh{position:absolute;left:10%;width:80%;height:24px;bottom:-12px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);transform:rotateX(90deg)}
+.t3flat{position:absolute}
+.tourTop{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding:max(10px,env(safe-area-inset-top)) 12px 10px;z-index:5;pointer-events:none}
+.tourTop > *{pointer-events:auto}
+.tourTop b{color:#fff;font-size:18px;text-shadow:0 2px 4px rgba(0,0,0,.5)}
+#tourPad{position:absolute;left:14px;bottom:max(18px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);gap:6px;z-index:5}
+#tourPad button{border:none;border-radius:16px;background:rgba(255,255,255,.85);font-size:26px;box-shadow:0 4px 0 rgba(0,0,0,.25);touch-action:none}
+#tourPad button.on{background:#FFE58A;transform:translateY(3px);box-shadow:none}
+#tourPad [data-t3="f"]{grid-column:2}#tourPad [data-t3="l"]{grid-column:1;grid-row:2}#tourPad [data-t3="b"]{grid-column:2;grid-row:2}#tourPad [data-t3="r"]{grid-column:3;grid-row:2}
+.tourSide{position:absolute;right:14px;bottom:max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;z-index:5}
+#tour.flash::after{content:"";position:fixed;inset:0;background:#fff;animation:fadeOut .3s forwards;z-index:9}
+/* お店 */
+.cell.shopClosed .bimg{filter:grayscale(.65) brightness(.85) drop-shadow(0 4px 3px rgba(0,0,0,.18))!important}
+.shopSign{position:absolute;left:50%;top:2px;transform:translateX(-50%);z-index:7;font-size:9px;font-weight:900;border-radius:6px;padding:1px 5px;pointer-events:none;letter-spacing:.05em;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.shopSign.open{background:#36A85C;color:#fff}.shopSign.closed{background:#5A5A5A;color:#eee}
+.shopWorker{position:absolute;right:-4%;bottom:4%;height:46%;z-index:6;pointer-events:none;animation:bob 2.4s ease-in-out infinite}
+.shopWorker .rpic{height:100%}.shopWorker .rpic>img.rb{height:100%;width:auto}
+.dlgCard.shopDlg{width:min(96vw,620px)!important}
+.shopIn .siTop{display:flex;align-items:flex-end;gap:8px;margin-bottom:8px}
+.siWorker .rpic{height:96px}.siWorker{flex:none}
+.shopIn .talkBubble{flex:1;font-size:15px}.shopIn .talkBubble::before{display:none}
+.siGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px}
+.siIt{position:relative;background:#fff;border:2px solid var(--line);border-radius:14px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.siIt img{height:60px;max-width:100%;object-fit:contain}.siIt b{font-size:12px}.siIt small{font-size:10px;color:var(--sub);font-weight:800}
+.siIt.only{border-color:#F2B91E;background:linear-gradient(180deg,#FFF6D6,#fff)}
+.siOnly{position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:#F2B91E;color:#5A3A00;font-size:9px;font-weight:900;border-radius:99px;padding:1px 6px;white-space:nowrap}
+.siIt.bought{animation:bump .5s}
+.pickW{border:2px solid var(--line);background:#fff;border-radius:12px;padding:4px}
+.onlyNote{background:linear-gradient(180deg,#FFF6D6,#fff)!important;border:2px dashed #F2B91E!important}
+.onlyNote .sImg .emo{font-size:44px}
+@media (max-width:600px){ .siGrid{grid-template-columns:repeat(3,1fr)} .siIt img{height:46px} #tourPad{grid-template-columns:repeat(3,50px);grid-template-rows:repeat(2,50px)} }
+/* ===== v2.1 ===== */
+.t3solid{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d}
+.t3body{position:absolute;bottom:0;height:0;transform-style:preserve-3d}
+.t3body .sl{position:absolute;left:0;bottom:0;width:100%;height:auto;backface-visibility:visible;transform-origin:50% 100%;pointer-events:none}
+.t3body .sl.ed{filter:drop-shadow(0 0 1px rgba(0,0,0,.25))}
+.t3shadow{position:absolute;border-radius:40%;background:radial-gradient(ellipse,rgba(40,25,10,.35),rgba(40,25,10,0) 70%);transform:rotateX(90deg) translateZ(1px)}
+/* こくご：ぶんしょうの ボタンを そろえる */
+#bunView .bunBig{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;align-items:stretch}
+#bunView .bunMode{height:100%;min-height:120px;justify-content:center}
+.sGrid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));grid-auto-rows:1fr;gap:10px!important;align-items:stretch}
+.sGrid > .mUnit{height:100%;margin:0!important;display:grid!important;grid-template-columns:56px minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:10px;row-gap:4px;align-items:center;align-content:start;padding:10px 12px!important;text-align:left;position:relative}
+.sGrid > .mUnit .mIco{grid-row:1/3;grid-column:1;width:56px!important;height:56px!important;align-self:center}
+.sGrid > .mUnit .mTxt{grid-column:2;min-width:0}
+.sGrid > .mUnit .mTxt b{display:block;font-size:14px;line-height:1.3;word-break:keep-all;overflow-wrap:anywhere}
+.sGrid > .mUnit .mMast{grid-column:2;margin:0}
+.sGrid > .mUnit .mChk{position:absolute;top:6px;right:8px}
+@media (max-width:600px){
+  .sGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .sGrid > .mUnit{grid-template-columns:40px minmax(0,1fr);padding:8px!important;column-gap:6px}
+  .sGrid > .mUnit .mIco{width:40px!important;height:40px!important}
+  .sGrid > .mUnit .mTxt b{font-size:12px}
+  #bunView .bunMode{min-height:96px}
+}
+/* ===== v2.2 ===== */
+.modeBtns{display:grid!important;grid-template-columns:1fr!important;gap:12px!important;width:100%}
+.modeBtns > .modeBtn{width:100%!important;min-height:96px;box-sizing:border-box;margin:0!important;display:flex!important;align-items:center}
+.modeBtns > .modeBtn img{width:72px!important;height:72px!important;flex:none;object-fit:contain}
+.modeBtns > .modeBtn > div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.modeBtns > .modeBtn span{white-space:normal!important}
+.modeBtn.yellow{background:linear-gradient(90deg,#FFF1C2,#FFFBEA);color:#9A6B00}
+.modeBtn.yellow b{color:#9A6B00}.modeBtn.yellow span{color:#B5841A}
+@media (max-width:600px){ .modeBtns > .modeBtn{min-height:80px} .modeBtns > .modeBtn img{width:56px!important;height:56px!important} }
+.mdl{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.mdl .fc{position:absolute;display:block;backface-visibility:visible;pointer-events:none}
+
+/* ===== v2.3：3Dルームツアー 廃止 ===== */
+#viewSeg [data-v="tour"],.tourBtn,#tour{display:none!important}
 </style>
 </head>
 <body class="scr-home">
@@ -1643,9 +1734,10 @@ body{background:transparent!important}
       </div>
       <div>
         <div class="modeBtns">
-          <button class="modeBtn pink" data-go="write"><img data-art="icon_write" alt=""><div><b>書き問題</b><span>□に 漢字を 書こう</span><button class="modeBtn" id="goBun" style="background:linear-gradient(90deg,#FFF1C2,#FFFBEA);color:#9A6B00"><img data-art="icon_write" alt=""><div><b>ぶんしょう</b><span>作文・ならべかえ・日記で 書く力を のばそう</span></div></button></div></button>
+          <button class="modeBtn pink" data-go="write"><img data-art="icon_write" alt=""><div><b>書き問題</b><span>□に 漢字を 書こう</span></div></button>
           <button class="modeBtn blue" data-go="read"><img data-art="icon_read" alt=""><div><b>読み問題</b><span>漢字の 読みがなを 答えよう</span></div></button>
           <button class="modeBtn green" data-go="test"><img data-art="icon_test" alt=""><div><b>テストモード</b><span>漢字を えらんで テストしよう</span></div></button>
+          <button class="modeBtn yellow" id="goBun"><img data-art="ri_loupe" alt=""><div><b>ぶんしょう</b><span>作文・ならべかえ・日記で 書く力を のばそう</span></div></button>
         </div>
         <div class="cornerBuddy"><div class="buddy"><div class="bubble">コツコツ つづけて<br>できることを ふやそう！</div><img data-art="bird_thumb" alt=""></div></div>
       </div>
@@ -2037,6 +2129,10 @@ body{background:transparent!important}
   <button id="goMyHome"><img data-art="ui_myhome" alt=""><span>わたしの家</span></button><button id="goRecord"><img data-art="ui_record" alt=""><span>きろく</span></button><button id="goZukan"><img data-art="ui_zukan" alt=""><span>ずかん</span></button>
 </nav>
 <div id="evFx"></div>
+<div id="tour" class="modal"><div id="tourView"><div id="tourWorld"></div></div>
+  <div class="tourTop"><b>🎥 わたしの家 ルームツアー</b><button class="btn small white" id="tourClose">✕ とじる</button></div>
+  <div id="tourPad"><button data-t3="f">⬆</button><button data-t3="l">↺</button><button data-t3="b">⬇</button><button data-t3="r">↻</button></div>
+  <div class="tourSide"><button class="btn small gold" id="tourAuto">🔄 ぐるっと</button><button class="btn small white" id="tourShot">📸 パシャ</button></div></div>
 <div id="toast"></div>
 <script>
 'use strict';
@@ -2048,7 +2144,7 @@ body{background:transparent!important}
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '2.3.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -9262,6 +9358,294 @@ roadHTML = function(x, y){
   return h.replace(/<\/div>$/, lane + '</div>');
 };
 
+
+/* =====================================================================
+   v2.0：かべがみ・ゆかの 白い バグ修正・3Dルームツアー・はたらく お店
+   ===================================================================== */
+/* ---------- かべがみ・ゆか：HTMLの "" と ぶつかって 白く なっていた ---------- */
+function fixCss(css){ return String(css).replace(/url\("([^"]*)"\)/g, (m,u) => `url(${u.replace(/'/g,'%27').replace(/ /g,'%20').replace(/"/g,'%22')})`); }
+WALLS.concat(FLOORS).forEach(w => { w.css = fixCss(w.css); });
+
+/* =====================================================================
+   3Dルームツアー
+   ===================================================================== */
+const T3 = {on:false, yaw:0, pitch:-6, x:0, z:300, raf:0, keys:{}, drag:null, P:620, C:100, H:300, auto:false};
+function tourOpen(){
+  const H = ensureHome(), Wl = WALLS.find(w=>w.id===H.wall) || WALLS[0], Fl = FLOORS.find(f=>f.id===H.floor) || FLOORS[0];
+  const C = T3.C, R = ROOM.cols*C/2, Hh = T3.H;
+  let items = '';
+  H.items.forEach((it,i) => {
+    const f = FUR(it.id); if(!f) return; const [w,h] = fpOf(it.id, it.r);
+    const cx = (it.x + w/2)*C - R, cz = (it.y + h/2)*C - R;
+    if(f.floor){ const [w0,h0] = FOOT[it.id] || [1,1];
+      items += `<img class="t3flat" src="${esc(artSrc('ft_'+it.id) || artSrc(f.art))}" style="width:${w0*C*.94}px;height:${h0*C*.94}px;left:${-w0*C*.47}px;top:${-h0*C*.47}px;transform:translate3d(${cx}px,-1px,${cz}px) rotateX(90deg) rotateZ(${-(it.r||0)*90}deg)" alt="">`; return; }
+    const sw = (SIDE_W[it.id]||1)*C*1.05;
+    items += `<div class="t3bb" data-x="${cx}" data-z="${cz}" style="width:${sw}px;left:${-sw/2}px"><img class="${it.r===3?'flip':''}" src="${esc(artSrc('fs_'+it.id) || artSrc(f.art))}" alt=""><i class="t3sh"></i></div>`;
+  });
+  const v = H.visit && save.town.res.find(x => x.id===H.visit.id);
+  if(v){ const cx = (H.visit.x+.5)*C - R, cz = (H.visit.y+.5)*C - R; items += `<div class="t3bb t3res" data-x="${cx}" data-z="${cz}" style="width:${C*.9}px;left:${-C*.45}px">${resPic(v)}<i class="t3sh"></i></div>`; }
+  const wallCss = Wl.css, floorCss = Fl.css;
+  $('#tourWorld').innerHTML = `
+    <div class="t3floor" style="width:${2*R}px;height:${2*R}px;left:${-R}px;top:${-R}px;background:${floorCss};transform:rotateX(90deg)"><i class="t3fShade"></i></div>
+    <div class="t3ceil" style="width:${2*R}px;height:${2*R}px;left:${-R}px;top:${-R}px;transform:translateY(${-Hh}px) rotateX(90deg)"></div>
+    <div class="t3wall" style="width:${2*R}px;height:${Hh}px;left:${-R}px;top:${-Hh}px;background:${wallCss};transform:translateZ(${-R}px)"><i class="t3win" style="left:18%"></i><i class="t3win" style="right:18%"></i><i class="t3base"></i></div>
+    <div class="t3wall dk" style="width:${2*R}px;height:${Hh}px;left:${-R}px;top:${-Hh}px;background:${wallCss};transform:translateX(${-R}px) rotateY(90deg)"><i class="t3door"></i><i class="t3base"></i></div>
+    <div class="t3wall dk" style="width:${2*R}px;height:${Hh}px;left:${-R}px;top:${-Hh}px;background:${wallCss};transform:translateX(${R}px) rotateY(-90deg)"><i class="t3pic"></i><i class="t3base"></i></div>
+    <div class="t3wall dk2" style="width:${2*R}px;height:${Hh}px;left:${-R}px;top:${-Hh}px;background:${wallCss};transform:translateZ(${R}px) rotateY(180deg)"><i class="t3win" style="left:40%"></i><i class="t3base"></i></div>
+    ${items}`;
+  T3.bbs = $$('#tourWorld .t3bb');
+  T3.P = Math.round(clamp(innerWidth*0.5, 200, 480)); $('#tourView').style.perspective = T3.P+'px'; T3.on = true; T3.x = 0; T3.z = R - 30; T3.yaw = 0; T3.pitch = -8; T3.auto = false;
+  $('#tour').classList.add('show'); document.body.classList.add('noscroll');
+  t3Frame(); cancelAnimationFrame(T3.raf); T3.last = performance.now(); T3.raf = requestAnimationFrame(t3Loop);
+  setTimeout(() => toast('👆 ゆびで ドラッグして 見まわそう。やじるしで あるけるよ'), 400);
+}
+function tourClose(){ T3.on = false; cancelAnimationFrame(T3.raf); $('#tour').classList.remove('show'); document.body.classList.remove('noscroll'); $('#tourWorld').innerHTML = ''; }
+function t3Frame(){
+  const eye = 135, P = T3.P;
+  $('#tourWorld').style.transform = `translateZ(${P*0.98}px) rotateX(${T3.pitch}deg) rotateY(${T3.yaw}deg) translate3d(${-T3.x}px,${eye}px,${-T3.z}px)`;
+  (T3.bbs||[]).forEach(el => { el.style.transform = `translate3d(${el.dataset.x}px,0px,${el.dataset.z}px) rotateY(${-T3.yaw}deg)`; });
+}
+function t3Loop(t){
+  if(!T3.on) return;
+  const dt = Math.min(.05, (t - T3.last)/1000); T3.last = t;
+  const K = T3.keys, R = ROOM.cols*T3.C/2 - 40;
+  let mv = (K.f?1:0) - (K.b?1:0), tr = (K.r?1:0) - (K.l?1:0);
+  if(T3.auto){ tr = 0.35; }
+  T3.yaw += tr*80*dt;
+  if(mv){ const a = T3.yaw*Math.PI/180, sp = 220*dt*mv; T3.x = clamp(T3.x + Math.sin(a)*sp, -R, R); T3.z = clamp(T3.z - Math.cos(a)*sp, -R, R); }
+  t3Frame(); T3.raf = requestAnimationFrame(t3Loop);
+}
+(function(){
+  const v = $('#tourView');
+  v.addEventListener('pointerdown', e => { if(e.target.closest('button')) return; T3.drag = {x:e.clientX, y:e.clientY, yaw:T3.yaw, pitch:T3.pitch}; T3.auto = false; try{ v.setPointerCapture(e.pointerId); }catch(_){} });
+  v.addEventListener('pointermove', e => { if(!T3.drag) return; T3.yaw = T3.drag.yaw - (e.clientX - T3.drag.x)*0.35; T3.pitch = clamp(T3.drag.pitch + (e.clientY - T3.drag.y)*0.2, -35, 25); });
+  const up = () => { T3.drag = null; }; v.addEventListener('pointerup', up); v.addEventListener('pointercancel', up);
+  $$('#tourPad [data-t3]').forEach(b => {
+    const k = b.dataset.t3;
+    const on = e => { e.preventDefault(); T3.keys[k] = true; T3.auto = false; b.classList.add('on'); }, off = () => { T3.keys[k] = false; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+  });
+  document.addEventListener('keydown', e => { if(!T3.on) return; const m = {ArrowUp:'f',ArrowDown:'b',ArrowLeft:'l',ArrowRight:'r',w:'f',s:'b',a:'l',d:'r'}[e.key]; if(m){ T3.keys[m] = true; e.preventDefault(); } if(e.key==='Escape') tourClose(); });
+  document.addEventListener('keyup', e => { const m = {ArrowUp:'f',ArrowDown:'b',ArrowLeft:'l',ArrowRight:'r',w:'f',s:'b',a:'l',d:'r'}[e.key]; if(m) T3.keys[m] = false; });
+  $('#tourClose').onclick = tourClose;
+  $('#tourAuto').onclick = () => { T3.auto = !T3.auto; T3.x = 0; T3.z = 0; };
+  $('#tourShot').onclick = () => { $('#tour').classList.add('flash'); sound('ok'); setTimeout(() => $('#tour').classList.remove('flash'), 300); toast('📸 パシャ！ スクリーンショットで 思い出に のこそう'); };
+})();
+const _renderMyHome20 = renderMyHome;
+renderMyHome = function(){
+  _renderMyHome20();
+  if(!$('#viewSeg [data-v="tour"]')) $('#viewSeg').insertAdjacentHTML('beforeend', '<button data-v="tour" class="tourBtn">🎥 3Dルームツアー</button>');
+};
+document.addEventListener('click', e => { const b = e.target.closest('#viewSeg [data-v="tour"]'); if(!b) return; e.stopImmediatePropagation(); tourOpen(); }, true);
+
+/* =====================================================================
+   はたらく お店（住民が はたらく・店で 買いもの）
+   ===================================================================== */
+const SHOPS = {
+  bakery:  {n:'パン屋', i:'🍞', greet:['いらっしゃいませ！ やきたてだよ〜','きょうの おすすめは メロンパン！'], fur:['coffee','popcorn','cottoncandy','ricecooker','kitchen','oven','microwave','fridge'], only:['coffee','popcorn','cottoncandy','ricecooker']},
+  market:  {n:'八百屋', i:'🍎', greet:['しんせんな やさい あるよ！','いらっしゃい！ 草花も そだててるよ'], fur:['bonsai','terrarium','hangflower','cactus','plant','goldfish'], only:['bonsai','terrarium','hangflower']},
+  dept:    {n:'デパート', i:'🏬', greet:['いらっしゃいませ。ごゆっくり どうぞ','おもちゃ売り場は 3かいです！'], fur:['arcade','jukebox','bigteddy','robot','unicorn','dollhouse','dresser','wardrobe','mirror','armchair','gametv','toybox'], only:['arcade','jukebox','bigteddy','robot','unicorn']},
+  library: {n:'図書館', i:'📚', greet:['しずかに たのしんでね','本の すきな 家具も あるよ'], fur:['telescope','globe','wdesk','shelf','desk','rocking'], only:['telescope','globe']},
+  post:    {n:'ゆうびん局', i:'📮', greet:['お手紙 だしますか？','レターが ちょっと おトクだよ！'], use:['letter','goldletter','ticket'], disc:0.1},
+  dealer:  {n:'くるまやさん', i:'🚗', greet:['ピカピカの 車が そろってるよ！','いい 車 あるよ〜'], veh:['convert','beetle','sports','limo','ev'], only:['convert','beetle']},
+  hotel:   {n:'ホテル', i:'🏨', greet:['ようこそ！ ゆっくりして いってね','すてきな 家具を おいてあります'], fur:['throne','canopybed','crystal','fireplace','grandpiano'], only:['throne','canopybed']}
+};
+const SHOP_ONLY = {}; Object.entries(SHOPS).forEach(([b,S]) => (S.only||[]).forEach(id => SHOP_ONLY[id] = b));
+const isShopB = id => !!SHOPS[id];
+function workers(){ const t = save.town; return t.workers || (t.workers = {}); }
+function workerOf(key){ const rid = workers()[key]; const r = rid && save.town.res.find(x => x.id===rid); return r && !SP(r.sp).human ? r : null; }
+const isWorking = r => Object.values(workers()).includes(r.id);
+function shopOpen(key){ const r = workerOf(key); return !!r && r.id !== ghosted(); }
+function autoAssign(){
+  const t = save.town, W = workers(); let ch = false;
+  Object.keys(W).forEach(k => { if(!isShopB(t.cells[k]) || !workerOf(k)){ delete W[k]; ch = true; } });
+  Object.entries(t.cells).forEach(([k,id]) => {
+    if(!isShopB(id) || W[k]) return;
+    const free = t.res.filter(r => !SP(r.sp).human && !isWorking(r));
+    if(!free.length) return;
+    const pref = free.filter(r => SP(r.sp).bias==='biz' || SP(r.sp).bias==='work');
+    W[k] = (pref.length ? choice(pref) : choice(free)).id; ch = true;
+  });
+  if(ch) persist();
+}
+/* うりあげは あいている お店だけ */
+const _townCalc20 = townCalc;
+townCalc = function(){
+  const c = _townCalc20(), t = save.town; let lost = 0;
+  Object.entries(t.cells).forEach(([k,id]) => { if(isShopB(id) && !shopOpen(k)) lost += ITEM(id)?.income||0; });
+  if(lost){ const ratio = c.income ? Math.max(0, (c.income - lost)/c.income) : 1; c.income = Math.max(0, c.income - lost); c.harvest = Math.round(c.harvest*ratio); }
+  return c;
+};
+/* まちの 上の 表示 */
+const _renderMap20 = renderMap;
+renderMap = function(){
+  autoAssign(); _renderMap20();
+  Object.entries(save.town.cells).forEach(([k,id]) => {
+    if(!isShopB(id)) return; const [x,y] = k.split(','), c = $(`#townMap .cell[data-x="${x}"][data-y="${y}"]`); if(!c) return;
+    const r = workerOf(k), open = shopOpen(k);
+    c.classList.toggle('shopClosed', !open);
+    c.insertAdjacentHTML('beforeend', open ? `<span class="shopSign open">OPEN</span><span class="shopWorker">${resPic(r)}</span>` : `<span class="shopSign closed">CLOSED</span>`);
+  });
+};
+/* はたらいている 住民は お店の 中 */
+const _walkTick20 = walkTick;
+walkTick = function(){
+  const ids = new Set(Object.values(workers()));
+  WK.st.forEach((s,id) => { if(ids.has(id) && s.el){ s.inside = 99; s.path = []; s.el.classList.add('inside'); } });
+  return _walkTick20();
+};
+const _buildWalkers20 = buildWalkers;
+buildWalkers = function(cs, L){ _buildWalkers20(cs, L); const ids = new Set(Object.values(workers())); WK.st.forEach((s,id) => { if(ids.has(id) && s.el){ s.inside = 99; s.el.classList.add('inside'); } }); };
+/* ショップ画面から お店限定の ものを はずす */
+const _shopList20 = shopList;
+shopList = function(){ return _shopList20().filter(it => !SHOP_ONLY[it.id]); };
+const _renderShop20 = renderShop;
+renderShop = function(){
+  _renderShop20();
+  const only = Object.entries(SHOP_ONLY).filter(([id]) => { const it = FUR(id) || ITEM(id); return it && (shopTab==='fur' ? it.type==='fur' : shopTab==='veh' ? it.type==='veh' : false); });
+  if(only.length) $('#shopGrid').insertAdjacentHTML('beforeend', `<div class="shopCard onlyNote"><div class="sImg"><span class="emo">🏪</span></div><div class="sName">お店 げんてい</div><div class="sEff">${uniq(only.map(([,b]) => SHOPS[b].n)).join('・')}で しか かえない ものが あるよ！ まちの お店に 入ってみよう</div></div>`);
+};
+/* お店に 入る */
+function catalog(b){
+  const S = SHOPS[b], out = [];
+  (S.fur||[]).forEach(id => { const f = FUR(id); if(f) out.push({id, kind:'fur', name:f.name, art:f.art, price:f.price, only:SHOP_ONLY[id]===b}); });
+  (S.use||[]).forEach(id => { const it = ITEM(id); if(it) out.push({id, kind:'use', name:it.name, art:it.art, price:Math.round(priceOf(it)*(1-(S.disc||0))/10)*10, only:false}); });
+  (S.veh||[]).forEach(id => { const it = ITEM(id); if(it) out.push({id, kind:'veh', name:it.name, art:it.art, price:it.price, only:SHOP_ONLY[id]===b}); });
+  return out;
+}
+async function openShop(key){
+  const t = save.town, b = t.cells[key], S = SHOPS[b], it = ITEM(b);
+  if(!shopOpen(key)){
+    const free = t.res.filter(r => !SP(r.sp).human && !isWorking(r) && r.id!==ghosted());
+    const v = await dialog(`<div class="dlgArt"><img src="${esc(artSrc(it.art))}" alt="" style="filter:grayscale(.6) brightness(.85)"></div><h2 class="dlgT">${S.i} ${S.n}は しまっています…</h2>
+      <p class="dlgP">はたらく 住民が いないよ。<br>${free.length ? 'だれかに おねがいして みよう！' : 'あたらしい 住民を まねくか、ほかの お店から きてもらおう'}</p>
+      <div class="whoRow">${free.slice(0,8).map(r => `<button class="whoIt pickW" data-pw="${r.id}">${resPic(r)}<span>${esc(r.name)}</span></button>`).join('')}</div>`,
+      [{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', cls:'white', v:null}], 'wide');
+    if(v==='grade') openBuilding(key);
+    return;
+  }
+  const r = workerOf(key);
+  const draw = () => `<div class="shopIn"><div class="siTop"><span class="siWorker">${resPic(r)}</span><div class="talkBubble"><b>${esc(r.name)}（${S.n}の 店員）</b>${esc(speak(r, choice(S.greet)))}</div></div>
+    <div class="siGrid">${catalog(b).map(c => { const owned = c.kind==='fur' ? (ensureHome().inv[c.id]||0) + ensureHome().items.filter(i=>i.id===c.id).length : c.kind==='use' ? (t.bag[c.id]||0) : t.veh.concat(garage()).filter(x=>x===c.id).length;
+      return `<div class="siIt ${c.only?'only':''}">${c.only?'<span class="siOnly">お店げんてい</span>':''}<img src="${esc(artSrc(c.art))}" alt=""><b>${esc(c.name)}</b><small>もっている ${owned}</small>
+      <button class="btn small ${save.points.bal>=c.price?'orange':'white'}" data-sbuy="${c.kind}:${c.id}:${c.price}" ${save.points.bal>=c.price?'':'disabled'}><span class="coin sm">P</span> ${nf(c.price)}</button></div>`; }).join('')}</div></div>`;
+  const v = await dialog(draw(), [{label:'💬 はなす', cls:'white', v:'talk'}, {label:'🔄 店員を かえる', cls:'white', v:'swap'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'おみせを 出る', cls:'', v:null}], 'wide shopDlg');
+  if(v==='talk') talkTo(r.id);
+  if(v==='grade') openBuilding(key);
+  if(v==='swap'){ delete workers()[key]; persist(); renderTown(); openShop(key); }
+}
+document.addEventListener('click', async e => {
+  const pw = e.target.closest('[data-pw]');
+  if(pw){ e.stopImmediatePropagation(); const key = SHOP_KEY; workers()[key] = pw.dataset.pw; persist(); $('#dlg').classList.remove('show'); sound('fan'); toast('🏪 お店が あいたよ！'); renderTown(); openShop(key); return; }
+  const sb = e.target.closest('[data-sbuy]');
+  if(sb){ e.stopImmediatePropagation(); const [kind,id,price] = sb.dataset.sbuy.split(':'), p = +price, t = save.town;
+    if(save.points.bal < p){ toast('ポイントが たりないよ'); return; }
+    if(kind==='veh'){ const it = ITEM(id); if(t.veh.length >= townCalc().vehCap){ garage().push(id); toast(`${it.name}は しゃこに 入れたよ`); } else t.veh.push(id); }
+    else if(kind==='use') t.bag[id] = (t.bag[id]||0) + 1;
+    else { const H = ensureHome(); H.inv[id] = (H.inv[id]||0) + 1; }
+    givePts(-p, `${SHOPS[t.cells[SHOP_KEY]]?.n||'お店'}で ${(FUR(id)||ITEM(id)).name}を かった`); discover(id); persist(); sound('ok'); confetti(900);
+    sb.closest('.siIt').classList.add('bought'); sb.closest('.siIt').querySelector('small').textContent = 'かったよ！'; checkBadges(); return; }
+}, true);
+let SHOP_KEY = null;
+document.addEventListener('click', e => {
+  if(townEdit || curScreen!=='town' || e.target.closest('.walker')) return;
+  const c = e.target.closest('#townMap .cell'); if(!c) return;
+  const key = `${c.dataset.x},${c.dataset.y}`, id = save.town.cells[key];
+  if(!isShopB(id)) return;
+  e.stopImmediatePropagation(); SHOP_KEY = key; openShop(key);
+}, true);
+BADGES.push({id:'shop3', i:'🏪', n:'お店 3けん オープン', f:()=>Object.keys(save.town?.workers||{}).length>=3});
+
+
+/* =====================================================================
+   v2.1：3Dルームツアーの 家具を 立体に（スライスで あつみを 出す）
+   ===================================================================== */
+const FUR_DEPTH = {bed:1.7, sofa:.8, table:.9, chair:.8, shelf:.45, desk:.7, tv:.5, plant:.7, piano:.6, wardrobe:.6, kitchen:.7, fridge:.75, clock:.4,
+  aquarium:.5, teddy:.6, globe:.6, painting:.35, toybox:.7, lamp:.5, trainset:.9, dollhouse:.7, bunkbed:1.7, futon:1.7, canopybed:1.8, grandpiano:1.6, bathtub:.9, kotatsu:1.4, hammock:.9};
+function solidHTML(it, f, C){
+  const [w0,h0] = FOOT[it.id] || [1,1], sw = (SIDE_W[it.id]||w0)*C*1.0;
+  const dep = Math.round((FUR_DEPTH[it.id] ?? Math.min(h0, 1)*0.7) * C * (h0 > 1 && !FUR_DEPTH[it.id] ? h0 : 1));
+  const n = clamp(Math.round(dep/2.4), 10, 44), src = esc(artSrc('fs_'+it.id) || artSrc(f.art));
+  let s = '';
+  for(let i=0;i<n;i++){
+    const z = -dep/2 + dep*i/(n-1), edge = i===0 || i===n-1, br = edge ? 1 : 0.78 + 0.1*Math.sin(i/n*Math.PI);
+    s += `<img class="sl${edge?' ed':''}" src="${src}" style="transform:translateZ(${z.toFixed(1)}px)${i===0?' rotateY(180deg)':''};${edge?'':`filter:brightness(${br.toFixed(2)}) saturate(.9)`}" alt="">`;
+  }
+  return {html:s, w:sw, dep};
+}
+const _tourOpen21 = tourOpen;
+tourOpen = function(){
+  _tourOpen21();
+  const H = ensureHome(), C = T3.C, R = ROOM.cols*C/2, W = $('#tourWorld');
+  W.querySelectorAll('.t3bb:not(.t3res)').forEach(e => e.remove());
+  let html = '';
+  H.items.forEach(it => {
+    const f = FUR(it.id); if(!f || f.floor) return; const [w,h] = fpOf(it.id, it.r);
+    const cx = (it.x + w/2)*C - R, cz = (it.y + h/2)*C - R;
+    const S = solidHTML(it, f, C), rot = -(it.r||0)*90;
+    html += `<div class="t3solid" style="transform:translate3d(${cx}px,0,${cz}px) rotateY(${rot}deg)"><div class="t3body" style="width:${S.w}px;left:${-S.w/2}px">${S.html}</div>
+      <i class="t3shadow" style="width:${S.w*1.05}px;height:${S.dep*1.1}px;left:${-S.w*0.525}px;top:${-S.dep*0.55}px"></i></div>`;
+  });
+  W.insertAdjacentHTML('beforeend', html);
+  T3.bbs = $$('#tourWorld .t3bb');
+};
+
+
+/* =====================================================================
+   v2.2：3D家具を はこ型モデルに（前・うしろ・よこ・上に 絵を はる）
+   ===================================================================== */
+const IMG_AR = {};
+function imgAR(src){ return IMG_AR[src] ? Promise.resolve(IMG_AR[src]) : new Promise(r => { const i = new Image(); i.onload = () => { IMG_AR[src] = i.naturalHeight / i.naturalWidth; r(IMG_AR[src]); }; i.onerror = () => r(1); i.src = src; }); }
+const COL = {};
+function avgColor(src){
+  if(COL[src]) return COL[src];
+  try{ const i = new Image(); i.src = src; const c = document.createElement('canvas'); c.width = c.height = 16; const x = c.getContext('2d'); x.drawImage(i, 0, 0, 16, 16);
+    const d = x.getImageData(0,0,16,16).data; let r=0,g=0,b=0,n=0; for(let k=0;k<d.length;k+=4){ if(d[k+3]>200){ r+=d[k]; g+=d[k+1]; b+=d[k+2]; n++; } }
+    COL[src] = n ? `rgb(${r/n|0},${g/n|0},${b/n|0})` : '#C99A63'; }catch(e){ COL[src] = '#C99A63'; }
+  return COL[src];
+}
+/* 上の 面を はる 家具（上から 見ると たいらな もの） */
+const TOP_SOLID = new Set(['bed','sofa','table','desk','shelf','wardrobe','fridge','kitchen','piano','tv','drawers','cabinet','bathtub','kotatsu','chabudai','futon','wdesk','pcdesk',
+  'bunkbed','canopybed','grandpiano','toybox','aquarium','trainset','dresser','tansu','washer','oven','microwave','ricecooker','gametv','stereo','arcade','jukebox','fireplace','treasure','workbench','sewing','benchin','shoerack','armchair','beanbag','throne','dogbed','hina','dollhouse']);
+function face(cls, w, h, tf, bg, extra=''){ return `<i class="fc ${cls}" style="width:${w}px;height:${h}px;left:${-w/2}px;top:${-h/2}px;transform:${tf};${bg}${extra}"></i>`; }
+async function modelHTML(it, f, C){
+  const side = artSrc('fs_'+it.id) || artSrc(f.art), top = artSrc('ft_'+it.id);
+  const [w0,h0] = FOOT[it.id] || [1,1];
+  const W = (SIDE_W[it.id] || w0) * C * 0.98, ar = await imgAR(side), H = W * ar;
+  const D = Math.max(18, Math.round((FUR_DEPTH[it.id] ?? Math.min(h0,1)*0.75) * C * (h0 > 1 && !FUR_DEPTH[it.id] ? h0 : 1)));
+  const col = avgColor(side), sImg = `background:url(${side}) center bottom/100% 100% no-repeat;`;
+  let s = '';
+  s += face('fr', W, H, `translateZ(${D/2}px)`, sImg);
+  s += face('bk', W, H, `rotateY(180deg) translateZ(${D/2}px)`, sImg, 'filter:brightness(.82);');
+  s += face('sd', D, H, `rotateY(90deg) translateZ(${W/2}px)`, sImg, 'filter:brightness(.72);');
+  s += face('sd', D, H, `rotateY(-90deg) translateZ(${W/2}px)`, sImg, 'filter:brightness(.72);');
+  const n = Math.max(2, Math.min(10, Math.round(D/14)));
+  for(let k=1;k<n;k++){ const z = -D/2 + D*k/n; s += face('sl2', W, H, `translateZ(${z.toFixed(1)}px)`, sImg, `filter:brightness(${(0.7+0.12*Math.sin(k/n*Math.PI)).toFixed(2)});`); }
+  if(top && TOP_SOLID.has(it.id)){
+    const tw = W, td = D, tH = H * (['bed','bunkbed','canopybed','sofa','armchair','throne','piano','grandpiano','fireplace','hina','dollhouse'].includes(it.id) ? 0.55 : 0.98);
+    s += `<i class="fc tp" style="width:${tw}px;height:${td}px;left:${-tw/2}px;top:${-td/2}px;transform:translateY(${H/2 - tH}px) rotateX(90deg);background:url(${top}) center/100% 100% no-repeat,${col};border-radius:6px"></i>`;
+  }
+  return {html:`<div class="mdl" style="transform:translateY(${-H/2}px)">${s}</div>`, W, D, H};
+}
+tourOpen = async function(){
+  _tourOpen21();
+  const H = ensureHome(), C = T3.C, R = ROOM.cols*C/2, Wd = $('#tourWorld');
+  Wd.querySelectorAll('.t3bb:not(.t3res), .t3solid').forEach(e => e.remove());
+  let html = '';
+  for(const it of H.items){
+    const f = FUR(it.id); if(!f || f.floor) continue; const [w,h] = fpOf(it.id, it.r);
+    const cx = (it.x + w/2)*C - R, cz = (it.y + h/2)*C - R, M = await modelHTML(it, f, C);
+    html += `<div class="t3solid" style="transform:translate3d(${cx}px,0,${cz}px) rotateY(${-(it.r||0)*90}deg)">${M.html}
+      <i class="t3shadow" style="width:${M.W*1.1}px;height:${M.D*1.2+20}px;left:${-M.W*0.55}px;top:${-(M.D*1.2+20)/2}px"></i></div>`;
+  }
+  Wd.insertAdjacentHTML('beforeend', html);
+  T3.bbs = $$('#tourWorld .t3bb');
+};
+
+
+/* v2.3：3Dルームツアー 廃止 */
+tourOpen = function(){};
+{ const _rmh23 = renderMyHome; renderMyHome = function(){ _rmh23(); $$('#viewSeg [data-v="tour"]').forEach(b => b.remove()); }; }
 /* =====================================================================
    起動
    ===================================================================== */
