@@ -1565,6 +1565,22 @@ body.scr-home .homeHero{background:none!important;border:none!important;box-shad
 .subjM>i{display:block;height:7px;background:#F1E9DC;border-radius:99px;overflow:hidden;margin-top:2px}.subjM>i>i{display:block;height:100%;background:linear-gradient(90deg,#FFD36B,#F28F1C)}
 @media (max-width:600px){ .bunBig{grid-template-columns:1fr 1fr 1fr} .bunMode span{font-size:24px} .bunMode b{font-size:12px} .bunMode small{display:none} .wRow{grid-template-columns:90px 1fr} .wCheck{grid-template-columns:1fr} .subjM{grid-column:1/-1} }
 body{background:transparent!important}
+/* ===== v1.9：2しゃせんの みち ===== */
+.rd .c{left:6%!important;top:6%!important;width:88%!important;height:88%!important;border-radius:4px}
+.rd .n{left:6%!important;width:88%!important}.rd .s{left:6%!important;width:88%!important}
+.rd .w{top:6%!important;height:88%!important}.rd .e{top:6%!important;height:88%!important}
+.rd i.x-n,.rd i.x-s{left:6%!important;width:88%!important}.rd i.x-w,.rd i.x-e{top:6%!important;height:88%!important}
+.cell.road .rd i.c{--pl:.06!important;--pt:.06!important}.cell.road .rd i.n{--pl:.06!important}.cell.road .rd i.s{--pl:.06!important}
+.cell.road .rd i.w{--pt:.06!important}.cell.road .rd i.e{--pt:.06!important}
+.cell.road .rd i.x-n,.cell.road .rd i.x-s{--pl:.06!important}.cell.road .rd i.x-w,.cell.road .rd i.x-e{--pt:.06!important}
+.rd .lane{position:absolute;pointer-events:none;z-index:2}
+.rd .lane.h{left:0;right:0;top:calc(50% - 1.5px);height:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.85) 0 9px,transparent 9px 18px)}
+.rd .lane.v{top:0;bottom:0;left:calc(50% - 1.5px);width:3px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.85) 0 9px,transparent 9px 18px)}
+.rd .curb{position:absolute;pointer-events:none;z-index:2;background:rgba(255,255,255,.55)}
+.rd .curb.t{left:0;right:0;top:6%;height:2px}.rd .curb.b{left:0;right:0;bottom:6%;height:2px}
+.rd .curb.l{top:0;bottom:0;left:6%;width:2px}.rd .curb.r{top:0;bottom:0;right:6%;width:2px}
+.rd .lnh,.rd .lnv{display:none!important}
+.car2{transition:left .68s linear,top .68s linear!important}
 </style>
 </head>
 <body class="scr-home">
@@ -2032,7 +2048,7 @@ body{background:transparent!important}
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -9151,6 +9167,100 @@ $('#goBun') && ($('#goBun').onclick = () => show('bun'));
 const _hardUnits18 = hardUnits;
 hardUnits = function(units, soc){ if(window.MQBUN) return Object.keys(BUN_LV).filter(k => BUN_LV[k] >= Math.max(...units.map(u => BUN_LV[u]||1))); return _hardUnits18(units, soc); };
 syncHeader();
+
+
+/* =====================================================================
+   v1.9：2しゃせんの みち・車と 住民が かさならない
+   ===================================================================== */
+const LANE_CAR = 0.15, LANE_PED = 0.36;
+const roadAt = (x,y) => isRoadId(save.town.cells[`${x},${y}`]);
+function roadAxis(x, y){ const h = roadAt(x-1,y) || roadAt(x+1,y), v = roadAt(x,y-1) || roadAt(x,y+1); return h && !v ? 'h' : v && !h ? 'v' : h && v ? 'x' : 'h'; }
+/* ---------- 車：むきで しゃせんを わける（ひだり がわ つうこう） ---------- */
+const laneKey = (x,y,dx,dy) => `${x},${y},${dy===0 ? (dx>0?'E':'W') : (dy>0?'S':'N')}`;
+placeCar = function(c, instant){
+  const cs = CAR.cs, el = c.el; if(!el) return;
+  let lx = c.x*cs + cs/2, ly = c.y*cs + cs*0.5;
+  if(c.dy===0) ly += (c.dx>0 ? LANE_CAR : -LANE_CAR)*cs + cs*0.12; else lx += (c.dy>0 ? -LANE_CAR : LANE_CAR)*cs, ly += cs*0.12;
+  if(instant) el.style.transition = 'none';
+  el.style.left = lx + 'px'; el.style.top = ly + 'px';
+  el.style.zIndex = Math.max(c.y, c.py ?? c.y)*10 + 4;
+  el.classList.toggle('flip', c.flip); el.classList.toggle('vert', c.dy!==0);
+  if(instant){ void el.offsetWidth; el.style.transition = ''; }
+};
+moveCars = function(){
+  const cells = save.town.cells, occ = new Set(CAR.list.map(c => laneKey(c.x,c.y,c.dx,c.dy)));
+  shuffle(CAR.list.slice()).forEach(c => {
+    if(c.wait > 0){ c.wait--; return; }
+    const opts = [[1,0],[-1,0],[0,1],[0,-1]].filter(([dx,dy]) => isRoadId(cells[`${c.x+dx},${c.y+dy}`]));
+    if(!opts.length) return;
+    let ch = opts.filter(([dx,dy]) => !(dx===-c.dx && dy===-c.dy)); if(!ch.length) ch = opts;
+    const free = ch.filter(([dx,dy]) => !occ.has(laneKey(c.x+dx, c.y+dy, dx, dy)));
+    if(!free.length){ c.block = (c.block||0) + 1; if(c.block < 3) return; ch = opts.filter(([dx,dy]) => !occ.has(laneKey(c.x+dx, c.y+dy, dx, dy))); if(!ch.length) return; }
+    else ch = free;
+    c.block = 0;
+    const straight = ch.find(([dx,dy]) => dx===c.dx && dy===c.dy);
+    const [dx,dy] = (straight && Math.random() < 0.7) ? straight : ch[Math.random()*ch.length|0];
+    occ.delete(laneKey(c.x,c.y,c.dx,c.dy));
+    c.py = c.y; c.x += dx; c.y += dy; c.dx = dx; c.dy = dy; if(dx) c.flip = dx < 0;
+    occ.add(laneKey(c.x,c.y,dx,dy)); placeCar(c);
+    if(Math.random() < 0.02) c.wait = 1;
+  });
+};
+const _buildCars19 = buildCars;
+buildCars = function(cs){
+  _buildCars19(cs);
+  const used = new Set(), rc = roadCells();
+  CAR.list.forEach((c,i) => {
+    const ax = roadAxis(c.x, c.y); if(ax==='v'){ c.dx = 0; c.dy = i%2 ? 1 : -1; } else { c.dx = i%2 ? 1 : -1; c.dy = 0; }
+    let k = laneKey(c.x,c.y,c.dx,c.dy), t = 0;
+    while(used.has(k) && t++ < rc.length){ const [x,y] = rc[(i*5+t) % rc.length]; c.x = x; c.y = y; k = laneKey(x,y,c.dx,c.dy); }
+    used.add(k); c.flip = c.dx < 0; placeCar(c, true);
+  });
+};
+/* ---------- 住民：マスの 中で ばしょを わけあう ---------- */
+const SLOTS = [[-0.22,-0.16],[0.22,-0.16],[-0.22,0.14],[0.22,0.14],[0,0]];
+function pedSlot(s, id){
+  const taken = new Set(); WK.st.forEach((o, oid) => { if(oid!==id && !o.inside && o.x===s.x && o.y===s.y && o.slot!=null) taken.add(o.slot); });
+  if(roadAt(s.x, s.y)){ // みちの はしっこ（ほどう）を あるく
+    const ax = roadAxis(s.x, s.y), side = s.side ?? (Math.random()<.5 ? 0 : 1);
+    const cand = [side, 1-side, side+2, 3-side].filter(k => !taken.has(k));
+    s.side = side; return cand.length ? cand[0] : side;
+  }
+  const cand = [0,1,2,3,4].filter(k => !taken.has(k));
+  if(s.slot!=null && !taken.has(s.slot)) return s.slot;
+  return cand.length ? choice(cand) : rint(0,4);
+}
+walkPos = function(s){
+  const cs = WK.cs, W = cs*0.62; let ox = 0, oy = 0;
+  if(roadAt(s.x, s.y)){
+    const ax = roadAxis(s.x, s.y), k = s.slot ?? 0, sgn = k%2 ? 1 : -1, along = k >= 2 ? 0.2 : -0.12;
+    if(ax==='v'){ ox = sgn*LANE_PED; oy = along*0.6; } else { oy = sgn*LANE_PED*0.85; ox = along; }
+  } else { const sl = SLOTS[s.slot ?? 4]; ox = sl[0]; oy = sl[1]; }
+  return {left: s.x*cs + (cs-W)/2 + ox*cs, top: s.y*cs + cs*0.5 - W*1.12 + cs*0.42 + oy*cs, z:(s.zy ?? s.y)*10 + 5};
+};
+const _place19 = place;
+place = function(s, instant){
+  let id = null; WK.st.forEach((o,k) => { if(o===s) id = k; });
+  const key = s.x+','+s.y;
+  if(s.slotAt !== key){ s.slotAt = key; s.slot = pedSlot(s, id); }
+  return _place19(s, instant);
+};
+/* 目的地が かさなる ときは となりの マスを えらぶ */
+const _chooseGoal19 = chooseGoal;
+chooseGoal = function(s, r){
+  _chooseGoal19(s, r);
+  if(!s.path.length) return;
+  const [gx,gy] = s.path[s.path.length-1]; let n = 0;
+  WK.st.forEach(o => { if(o!==s && !o.inside){ const t = o.path.length ? o.path[o.path.length-1] : [o.x,o.y]; if(t[0]===gx && t[1]===gy) n++; } });
+  if(n >= 2){ const alt = [[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy]) => [gx+dx, gy+dy]).find(([x,y]) => isWalk(x,y));
+    if(alt){ const p = bfs(s.x, s.y, (x,y) => x===alt[0] && y===alt[1]); if(p) s.path = p; } }
+};
+const _roadHTML19 = roadHTML;
+roadHTML = function(x, y){
+  let h = _roadHTML19(x, y); const ax = roadAxis(x, y);
+  const lane = ax==='h' ? '<i class="lane h"></i><i class="curb t"></i><i class="curb b"></i>' : ax==='v' ? '<i class="lane v"></i><i class="curb l"></i><i class="curb r"></i>' : '';
+  return h.replace(/<\/div>$/, lane + '</div>');
+};
 
 /* =====================================================================
    起動
