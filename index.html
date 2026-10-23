@@ -1744,6 +1744,10 @@ body.scr-quiz #cheerBox,body.scr-mathplay #cheerBox,body.scr-engplay #cheerBox{b
 .rbRoom.rlock{opacity:.55;background:#F4EFE7}.rbRoom.rcan{opacity:1;border-style:dashed;border-color:#F2B91E;background:#FFFBEA;animation:almostP 1.6s ease-in-out infinite}
 .rmNow{font-size:13px;font-weight:900;color:var(--sub);background:#F3ECE1;border-radius:99px;padding:1px 8px}
 .roomBig{font-size:90px;line-height:1.2}
+
+/* ===== v2.6：下ナビの 位置を 画面の 見えている 部分に 合わせる ===== */
+#bnav{position:fixed!important;transform:none!important;box-sizing:border-box;max-width:none!important;margin:0!important}
+html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
 </style>
 </head>
 <body class="scr-home">
@@ -2216,7 +2220,7 @@ body.scr-quiz #cheerBox,body.scr-mathplay #cheerBox,body.scr-engplay #cheerBox{b
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -10036,6 +10040,25 @@ const _placeVisitor25 = placeVisitor;
 placeVisitor = function(a){ const H = roomData(); if(H.roomCur !== 'living'){ stopVisitor(); $$('#room .visitor').forEach(e => e.remove()); return; } return _placeVisitor25(a); };
 BADGES.push({id:'room3', i:'🏠', n:'3つの へや', f:()=>(save.myhome?.roomOpen||[]).length>=3}, {id:'floor2', i:'🏡', n:'2かいだて', f:()=>(save.myhome?.roomOpen||[]).some(id => ROOMS.find(x=>x.id===id)?.fl>=2)});
 
+
+/* v2.6：下ナビは 見えている 画面（visualViewport）の いちばん下に 置く */
+navFix = function(){
+  const n = $('#bnav'); if(!n) return;
+  const vv = window.visualViewport;
+  const vh = vv ? vv.height : window.innerHeight, top0 = vv ? vv.offsetTop : 0, left0 = vv ? vv.offsetLeft : 0, vw = vv ? vv.width : document.documentElement.clientWidth;
+  const S = (k,v) => n.style.setProperty(k, v, 'important');
+  S('transform','none'); S('left', left0+'px'); S('right','auto'); S('width', vw+'px'); S('bottom','auto');
+  S('top', Math.round(top0 + vh - n.offsetHeight) + 'px');
+};
+function navFixSoon(){ navFix(); requestAnimationFrame(navFix); [80,250,500,900,1500].forEach(t => setTimeout(navFix, t)); }
+window.addEventListener('orientationchange', navFixSoon);
+window.addEventListener('resize', navFixSoon);
+window.addEventListener('pageshow', navFixSoon);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) navFixSoon(); });
+if(window.visualViewport){ visualViewport.addEventListener('resize', navFix); visualViewport.addEventListener('scroll', navFix); }
+window.addEventListener('scroll', navFix, {passive:true});
+if(window.ResizeObserver) new ResizeObserver(navFix).observe(document.documentElement);
+navFixSoon();
 /* =====================================================================
    起動
    ===================================================================== */
