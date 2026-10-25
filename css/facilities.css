@@ -1,0 +1,34 @@
+/* v4.2 たてものの きのう */
+.facOv{position:absolute;z-index:8;pointer-events:none}
+.facOv.badge{right:2px;bottom:2px;background:rgba(255,255,255,.94);border-radius:10px;padding:1px 6px;font-size:11px;font-weight:900;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.25);white-space:nowrap}
+.facOv.sprout{left:50%;top:42%;transform:translate(-50%,-50%);font-size:calc(var(--cell,60px)*.34);filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.facOv.crop{left:50%;top:40%;width:48%;transform:translate(-50%,-50%);animation:facBob 1.1s ease-in-out infinite;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.facOv.ready{right:3px;top:3px;min-width:18px;height:18px;padding:0 3px;background:#FF7A45;color:#fff;border-radius:999px;display:grid;place-items:center;font-size:11px;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,.3);animation:facPulse 1s ease-in-out infinite}
+.facOv.car{left:50%;top:60%;width:64%;transform:translate(-50%,-50%);filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+.walker .facHurt{position:absolute;right:-4px;top:4%;font-size:16px;font-style:normal;z-index:3;animation:facPulse 1.2s ease-in-out infinite;pointer-events:none}
+.walker.facHurtW .wimg{filter:saturate(.75) brightness(.97)}
+.facHead{display:flex;align-items:center;justify-content:center;gap:10px;text-align:left;margin-bottom:4px}
+.facHead img{height:64px;width:64px;object-fit:contain;flex:none}
+.facHead .dlgT{margin:0}
+.facHead small{display:block;font-size:13px;color:var(--sub,#8A7B6C);font-weight:700;line-height:1.5}
+.facGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px;margin:8px 0 4px}
+.facCard{background:#FFF9EE;border:2px solid #F0DDBB;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;font-weight:800;font-size:13px;color:inherit;cursor:pointer;line-height:1.35;transition:transform .12s}
+.facCard:active{transform:scale(.96)}
+.facCard img{width:58px;height:58px;object-fit:contain}
+.facCard .rpic{height:64px}
+.facCard small{font-size:11px;color:#8A7B6C;font-weight:700}
+.facCard[disabled]{opacity:.45;cursor:default}
+.facCard.on{border-color:#36A85C;background:#EAF8EE}
+.facNote{font-size:13px!important;line-height:1.7}
+.facBar{height:14px;border-radius:8px;background:#EEE6D8;overflow:hidden;margin:10px auto;max-width:260px}
+.facBar i{display:block;height:100%;background:linear-gradient(90deg,#9BE0A5,#36A85C);border-radius:8px}
+.facHearts{color:#FF6FA0;letter-spacing:1px;font-size:12px}
+.facBook{display:flex;align-items:center;gap:12px;justify-content:center;text-align:left}
+.facBook img{height:84px;width:auto}
+.facBook b{display:block;font-size:17px}
+.facBook small{color:#8A7B6C;font-weight:700}
+.facTip{background:#FFFDF5;border:2px dashed #F6C744;border-radius:14px;padding:14px;font-size:16px;font-weight:700;line-height:1.9;text-align:left;margin-top:10px}
+.whoIt small{font-size:11px;color:#8A7B6C}
+@keyframes facBob{50%{transform:translate(-50%,-62%)}}
+@keyframes facPulse{50%{transform:scale(1.15)}}
+@media (max-width:520px){.facGrid{grid-template-columns:repeat(3,1fr)}.facCard img{width:48px;height:48px}.facCard .rpic{height:54px}.facHead img{height:52px;width:52px}}
