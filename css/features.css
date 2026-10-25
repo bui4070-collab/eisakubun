@@ -146,3 +146,37 @@
 .twTime em{position:absolute;right:6px;top:0;font-style:normal;font-weight:900;font-size:12px;line-height:16px}
 .twQuit{font-size:12px!important}
 @media(max-width:520px){.twBig{height:240px}.twInfo h2{font-size:17px}.twRule{grid-template-columns:1fr}}
+/* ===== v5.0 ===== */
+/* のうひん：かずを 大きく */
+.mat50{display:grid!important;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;transition:background .3s}
+.mat50.flash50{background:#FFF3C4!important;border-color:#F2B91E!important}
+.mat50 .mName50 b{display:block;font-size:13px;margin-bottom:2px}
+.cnt50{display:flex;align-items:center;gap:5px}
+.cnt50>i{font-style:normal;color:#D49A3A;font-size:12px}
+.cnt50 span{position:relative;display:flex;flex-direction:column;align-items:center;min-width:52px;border-radius:10px;padding:2px 6px;line-height:1.1}
+.cnt50 .hv50{background:#F2F4F7;border:2px solid #DDE2E8}
+.cnt50 .st50{background:#FFF1DA;border:2px solid #F0B866}
+.cnt50 small{font-size:9px;font-weight:800;color:#7A6A55}
+.cnt50 em{font-style:normal;font-weight:900;font-size:22px;color:#333}
+.cnt50 .st50 em{color:#C0641E}
+.cnt50 .pop50 em{animation:pop50 .55s ease}
+@keyframes pop50{0%{transform:scale(1)}35%{transform:scale(1.55)}100%{transform:scale(1)}}
+.plus50,.minus50{position:absolute;top:-6px;right:-6px;font-size:13px;font-weight:900;border-radius:9px;padding:0 5px;pointer-events:none;animation:up50 1s ease forwards}
+.plus50{background:#36A85C;color:#fff}.minus50{background:#9AA3AD;color:#fff}
+@keyframes up50{0%{opacity:0;transform:translateY(6px)}20%{opacity:1;transform:translateY(0)}75%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
+.mBtn50{display:flex;flex-direction:column;gap:4px}
+.mBtn50 button{min-width:56px;font-size:13px!important;padding:5px 8px!important}
+@media(max-width:400px){.cnt50 span{min-width:44px}.cnt50 em{font-size:19px}}
+/* カフェの かいほう */
+#btnCafe46.lk50{filter:grayscale(.6);opacity:.8}
+.need50{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.need50 span{display:flex;flex-direction:column;align-items:center;width:88px;background:#F6F6F6;border:2px solid #DDD;border-radius:12px;padding:4px;opacity:.75}
+.need50 span.ok{background:#EAF8EE;border-color:#7CCB92;opacity:1}
+.need50 img{width:58px;height:50px;object-fit:contain}.need50 b{font-size:12px}.need50 small{font-size:10px;color:#7A6A55}
+.ann50{display:flex;align-items:center;gap:8px;text-align:left}
+.ann50>img,.ann50>.emo{width:80px;height:80px;object-fit:contain;flex:none}
+.annSteps50{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 4px}
+.annSteps50>div{position:relative;display:flex;flex-direction:column;align-items:center;background:#FFF8EC;border:2px solid #F0D7A8;border-radius:12px;padding:8px 3px 6px}
+.annSteps50 i{position:absolute;left:-4px;top:-6px;width:22px;height:22px;border-radius:50%;background:#E8833A;color:#fff;font-style:normal;font-weight:900;display:grid;place-items:center;font-size:13px}
+.annSteps50 img{width:52px;height:48px;object-fit:contain}.annSteps50 span{font-size:10px;font-weight:800;line-height:1.4;text-align:center}
+.hl50{color:#D2622A;font-weight:900}
