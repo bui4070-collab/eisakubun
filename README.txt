@@ -1,36 +1,38 @@
-まなびタウン v4.6 UPDATE（v4.5 からの差分）
+まなびタウン v4.6 統合版
 
-アップロードするファイル:
+今後の追加機能ファイルは、次の2つだけです。
+- js/features.js  : v43.js / v44.js / v45.js / v46.js を統合
+- css/features.css: v43.css / v44.css / v45.css / v46.css を統合
+
+今回アップロードするファイル:
+- index.html
+- js/features.js
+- css/features.css
+
+GitHubで削除してよい旧ファイル:
+- js/v43.js
+- js/v44.js
+- js/v45.js
+- js/v46.js
+- css/v43.css
+- css/v44.css
+- css/v45.css
+- css/v46.css
+
+削除しないファイル:
+- js/app.js
+- js/facilities.js
+- js/eng_more.js
+- css/style.css
+- css/facilities.css
+- assets 以下の画像
+
+次に改造を依頼するときは、基本的に次を添付してください。
 - index.html
 - js/app.js
 - js/facilities.js
-- js/v43.js
-- js/v45.js
-- js/v46.js（新規）
-- css/v46.css（新規）
-
-内容:
-1. タワー
-- 誤答・時間切れで1階へ戻る（最高記録は保持）
-- 難易度は1～25階、26～50階、51～75階、76～100階の4段階
-- 制限時間は30秒、27秒、24秒、21秒、18秒と段階的に短縮
-- 25階ごとの報酬を強化、100階で超レア確定レター
-
-2. 信号
-- 十字路4基、T字路3基、横断歩道2基を自動配置
-- それ以外には置けない。過去の不正位置にある信号はトレイへ自動返却
-
-3. 車・ホテル
-- 車の移動を約2倍ゆっくりにし、踏切でも同じ速度
-- ホテル1棟につき基本1人、グレードごとに+1人（最大4人/棟）
-
-4. おうちカフェ
-- わたしの家から500ptで開業
-- Lv1～4、4人掛け1～4卓（最大16席）
-- 机・家具の雰囲気5種
-- 通常メニュー30種＋季節イベントメニュー
-- 畑の野菜・果物と、追加された牧場の肉・卵・ミルクを使用
-- 動物のお客様、売上ポイント、会話によるレター来訪率アップ
-- 牧場はまちLv5から。1日1回素材を回収、グレードで収穫数増加
-
-既存の v43.css / v44.css / v45.css、v44.js、eng_more.js などは削除せず残してください。
+- js/eng_more.js
+- js/features.js
+- css/style.css
+- css/facilities.css
+- css/features.css
