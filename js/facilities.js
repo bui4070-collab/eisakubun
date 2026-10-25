@@ -437,7 +437,7 @@ function ovHTML(k, id){
   if(id==='field'){ const p = f.farm[k]; if(!p) return '';
     const c = CROP(p.c), pr = farmProg(p);
     return pr >= 1 ? `<img class="facOv crop" src="${esc(artSrc(cropArt(c)))}" alt=""><span class="facOv ready">!</span>` : `<span class="facOv sprout">${pr < 0.5 ? '🌱' : '🌿'}</span>`; }
-  if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it ? `<img class="facOv car" src="${esc(artSrc(it.art))}" alt="">${p.paid ? '' : '<span class="facOv ready">🪙</span>'}` : ''; }
+  if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it && !p.paid ? '<span class="facOv ready">🪙</span>' : ''; }   // 車は v43.js で 上から 見た パーキングに かく
   if(id==='park' && f.park.ids.length) return `<span class="facOv badge">${f.park.game ? f.park.game[1] : '🎵'}${f.park.ids.length}</span>`;
   if(id==='school' && f.school.day===dayKey() && f.school.ids.length) return `<span class="facOv badge">✏️${f.school.ids.length}</span>`;
   if(id==='hotel' && f.tour.length) return `<span class="facOv badge">🧳${f.tour.length}</span>`;

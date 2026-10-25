@@ -1,0 +1,21 @@
+/* v4.3 しんごうき・パーキング／ガソリンスタンド（上から） */
+.sigWrap{position:absolute;z-index:4;pointer-events:none;left:50%;bottom:4%;width:58%;transform:translateX(-50%);filter:drop-shadow(0 3px 2px rgba(0,0,0,.25))}
+.sigWrap.onRoad{left:2%;bottom:auto;top:-22%;width:44%;transform:none;z-index:6}
+.sigWrap.d2{transform:translateX(-50%) scaleX(-1)}
+.sigWrap.onRoad.d2{transform:scaleX(-1)}
+.sigSvg{display:block;width:100%;height:auto;overflow:visible}
+.sigSvg .lG{fill:#173b2c}.sigSvg .lY{fill:#3d3a22}.sigSvg .lR{fill:#3f2020}.sigSvg .lS{fill:#333}
+#townMap[data-sv="g"] .fv .lG{fill:#19d48a;filter:drop-shadow(0 0 4px #19d48a)}
+#townMap[data-sv="y"] .fv .lY{fill:#ffc61a;filter:drop-shadow(0 0 4px #ffc61a)}
+#townMap[data-sv="r"] .fv .lR{fill:#ff3b30;filter:drop-shadow(0 0 4px #ff3b30)}
+#townMap[data-sh="g"] .fh .lS{fill:#19d48a;filter:drop-shadow(0 0 3px #19d48a)}
+#townMap[data-sh="y"] .fh .lS{fill:#ffc61a;filter:drop-shadow(0 0 3px #ffc61a)}
+#townMap[data-sh="r"] .fh .lS{fill:#ff3b30;filter:drop-shadow(0 0 3px #ff3b30)}
+.cell.lotTop .bimg{left:0;top:0;bottom:auto;width:100%;height:100%;object-fit:cover;filter:none;border-radius:4px}
+.lotCar{position:absolute;z-index:5;height:34%;width:auto;transform:translate(-50%,-62%);pointer-events:none;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}
+.lotCar.b{transform:translate(-50%,-62%) scaleX(-1)}
+.lotCar.emo{font-size:calc(var(--cell,60px)*.3);height:auto}
+.lotCar.coin{height:auto;transform:none}
+/* えいご：絵文字の 絵 */
+.ekPic .ekEmo{display:block;font-size:84px;line-height:1.1;text-align:center;filter:drop-shadow(0 3px 3px rgba(0,0,0,.15))}
+.ekOptEmo{display:block;font-size:46px;line-height:1.15}
