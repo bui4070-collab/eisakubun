@@ -8,7 +8,7 @@
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '4.5.0';
+const APP_VERSION = '4.6.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -5839,6 +5839,7 @@ document.addEventListener('click', e => {
   const O = over();
   if(hand && ITEM(hand.id)?.cat==='deco'){
     e.stopImmediatePropagation();
+    if(hand.id==='d_signal' && window.sigPlaceOK && !window.sigPlaceOK(key)){ toast('🚦 信号は 十字路・T字路・横断歩道だけに おけるよ'); return; }
     if(O[key]){ toast('もう かざりが あるよ'); return; }
     O[key] = hand.id; sound('tap');
     if(hand.from==='inv'){ t.inv[hand.id]--; if(t.inv[hand.id] <= 0){ delete t.inv[hand.id]; hand = null; } } else hand = null;

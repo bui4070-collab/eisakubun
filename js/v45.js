@@ -67,25 +67,46 @@ DEFAULT_ART.sky_crown=crownArt;
 if(!FURNITURE.some(f=>f.id===CROWN)) FURNITURE.push({id:CROWN,name:'天空の おうかん',art:'sky_crown',type:'fur',price:9999,lv:8,sty:20,special:true});
 function towerData(){ return save.tower || (save.tower={floor:1,best:0,done:false,rewards:[]}); }
 const towerRewarded=(T,n)=>T.rewards.includes(n);
-function towerRewardHTML(f){ if(f===100) return '👑 天空の おうかん・きらきらレター×5・ランクアップの本×3・能力の実 全5しゅるい×3'; if(f%25===0) return '✨ 能力の実 全5しゅるい×1・きらきらレター×1'; if(f%10===0) return '🌱 能力の実×2・ポイント'; if(f%5===0) return '🪙 ポイント'; return ''; }
+function towerRewardHTML(f){ if(f===100) return '🌈 超レアかくていレター・天空の おうかん・ランクアップの本×3・能力の実 全5しゅるい×3'; if(f%25===0) return '✨ 能力の実 全5しゅるい×1・きらきらレター×1'; if(f%10===0) return '🌱 能力の実×2・ポイント'; if(f%5===0) return '🪙 ポイント'; return ''; }
 function towerGive(f){ const T=towerData(); if(f!==100 && f%5!==0) return ''; if(towerRewarded(T,f)) return ''; T.rewards.push(f); const t=save.town; let msg='';
-  if(f===100){ const H=ensureHome(); H.inv[CROWN]=(H.inv[CROWN]||0)+1; t.bag.goldletter=(t.bag.goldletter||0)+5; t.bag.rankbook=(t.bag.rankbook||0)+3; Object.keys(FRUITS).forEach(k=>fruitBag()[k]+=3); msg='天空の おうかん、きらきらレター×5、ランクアップの本×3、能力の実 全しゅるい×3'; }
-  else if(f%25===0){ Object.keys(FRUITS).forEach(k=>fruitBag()[k]++); t.bag.goldletter=(t.bag.goldletter||0)+1; msg='能力の実 全しゅるい×1、きらきらレター×1'; }
+  if(f===100){ const H=ensureHome(); H.inv[CROWN]=(H.inv[CROWN]||0)+1; save.superLetter=(save.superLetter||0)+0; t.bag.rankbook=(t.bag.rankbook||0)+3; Object.keys(FRUITS).forEach(k=>fruitBag()[k]+=3); msg='天空の おうかん、きらきらレター×5、ランクアップの本×3、能力の実 全しゅるい×3'; }
+  else if(f%25===0){ Object.keys(FRUITS).forEach(k=>fruitBag()[k]++); t.bag.goldletter=(t.bag.goldletter||0)+2; t.bag.rankbook=(t.bag.rankbook||0)+1; msg='能力の実 全しゅるい×1、きらきらレター×2、ランクアップの本×1'; }
   else if(f%10===0){ fruitBag()[randomFruit()]+=2; addPoints(50+f*2,`タワー ${f}かい とうたつ`,true); msg=`能力の実×2、${50+f*2}pt`; }
   else if(f%5===0){ addPoints(20+f,`タワー ${f}かい とうたつ`,true); msg=`${20+f}pt`; }
   persist(); return msg;
 }
-function towerView(){ const T=towerData(), f=Math.min(100,T.floor), pct=Math.max(1,(f-1)/99*100); return `<div class="towerHero"><img src="${esc(artSrc('bld_office'))}" alt=""><div><h2>🏙️ 100かい タワー</h2><b>${T.done?'100かい せいは！':`${f}かいから`}</b><small>さいこう：${T.best}かい</small></div></div><div class="towerMeter"><i style="height:${pct}%"></i><em style="bottom:calc(${pct}% - 13px)">🚪 ${T.done?'GOAL':f+'F'}</em></div><div class="towerMarks"><span>100F 👑</span><span>75F ✨</span><span>50F ✨</span><span>25F ✨</span><span>1F</span></div><p class="dlgP towerNote">1問 れんぞくせいかいするたび 1かい 上へ！<br>まちがえると そのかいで ストップ。つぎは 同じかいから ちょうせんできるよ。<br>5かいごとに ごほうびが あるよ。</p>`; }
+function towerView(){ const T=towerData(), f=Math.min(100,T.floor), pct=Math.max(1,(f-1)/99*100); return `<div class="towerHero"><img src="${esc(artSrc('bld_office'))}" alt=""><div><h2>🏙️ 100かい タワー</h2><b>${T.done?'100かい せいは！':`${f}かいから`}</b><small>さいこう：${T.best}かい</small></div></div><div class="towerMeter"><i style="height:${pct}%"></i><em style="bottom:calc(${pct}% - 13px)">🚪 ${T.done?'GOAL':f+'F'}</em></div><div class="towerMarks"><span>100F 👑</span><span>75F ✨</span><span>50F ✨</span><span>25F ✨</span><span>1F</span></div><p class="dlgP towerNote">1問 れんぞくせいかいするたび 1かい 上へ！<br>まちがえるか 時間切れで 1かいから やりなおし。途中で やめたときだけ つづきから できるよ。<br>5かいごとに ごほうびが あるよ。</p>`; }
 async function towerLobby(key){ if(townLevel()<8){ await dialog(`<div class="dlgArt">${picHTML(ITEM('office'))}</div><h2 class="dlgT">🔒 タワーは まちLv8から</h2><p class="dlgP">まちを もっと 大きくすると シマくんが おしえてくれるよ！</p>`); return; }
   const T=towerData(); const main=T.done?[{label:'👑 ごほうびを みる',cls:'gold',v:'reward'}]:[{label:`🚪 ${T.floor}かいから のぼる`,cls:'gold',v:'start'}]; const v=await dialog(towerView(),main.concat(key?[{label:'⬆ ビルを グレードアップ',cls:'white',v:'grade'}]:[]).concat([{label:'とじる',v:null}]),'wide towerDlg');
   if(v==='start') towerRun(); if(v==='grade') openBuilding(key); if(v==='reward') dialog(`<div class="fruitBig">👑</div><h2 class="dlgT">天空の おうかん</h2><p class="dlgP">100かいを せいはした あかし！<br>わたしの家に かざれる、とても きちょうな アイテムだよ。</p>`);
 }
-async function towerAsk(m,f){ const ans=m.ansF||m.ans; const v=await dialog(`<div class="towerFloor"><b>${f}F</b><span>れんぞくせいかいで 上へ！</span></div>${m.html}${m.say?sayBtn(m.say):''}`,m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる',cls:'white',v:'__quit'}]),'wide quiz towerQuiz'); if(v==='__quit'||v==null) return 'quit'; const ok=v===ans; sound(ok?'ok':'ng'); if(m.wk&&ok)delWeak(m.wk); if(m.kq)addStat(m.kq,'read',ok,1); persist(); return ok; }
-async function towerRun(){ const T=towerData(); while(!T.done){ const f=T.floor, m=makeMQ({weakOnly:f>80&&Math.random()<.35}); const r=await towerAsk(m,f); if(r==='quit'){ toast(`🏙️ ${f}かいで きろくを ほぞんしたよ`); return towerLobby(); }
-    if(!r){ await dialog(`<h2 class="dlgT">おしい！ ${f}かいで ストップ</h2><p class="dlgP">こたえは <b>${esc(m.ansF||m.ans)}</b> だったよ。<br>つぎも ${f}かいから はじめられるよ！</p>`,[{label:'また ちょうせん！',cls:'gold',v:1}]); return towerLobby(); }
-    T.best=Math.max(T.best,f); const rw=towerGive(f); if(f>=100){ T.done=true; T.floor=100; persist(); sound('fan'); confetti(3500); await dialog(`<div class="fruitBig">👑</div><h2 class="dlgT">100かい せいは！</h2><p class="dlgP">すごい！ タワーの てっぺんに とうちゃく！</p><div class="skillBox"><b>とくべつな ごほうび</b><br>${towerRewardHTML(100)}</div>`,[{label:'うけとる！',cls:'gold',v:1}],'gold'); renderCurrent(); return; }
-    T.floor=f+1; persist(); if(rw){ sound('fan'); confetti(1000); const nx=await dialog(`<h2 class="dlgT">🎉 ${f}かい とうたつ！</h2><p class="dlgP">${rw}を てにいれた！<br>つぎは ${T.floor}かい！</p>`,[{label:'つぎへ',cls:'gold',v:1},{label:'ここで やめる',cls:'white',v:'quit'}]); if(nx==='quit'){ toast(`🏙️ ${T.floor}かいで きろくを ほぞんしたよ`); return towerLobby(); } }
-  } }
+function towerSec(f){ return f<=20?30:f<=40?27:f<=60?24:f<=80?21:18; }
+function towerQ(f){
+  const band=f<=25?1:f<=50?2:f<=75?3:4, cand=[];
+  Object.entries(MATH_UNITS).forEach(([k,u])=>{ const lv=typeof u.g==='number'?Math.max(1,u.g-2):(SOC_LV[k]||SCI_LV[k]||EK_LV[k]||0); if(lv && (band===4?lv>=3:lv===band))cand.push(k); });
+  for(let i=0;i<15;i++){ const k=choice(cand.length?cand:Object.keys(MATH_UNITS)), u=MATH_UNITS[k]; try{ const m=mqFromP(u.gen(),k); if(m)return m; }catch(e){} }
+  return makeMQ({weakOnly:band===4&&Math.random()<.45});
+}
+async function towerAsk(m,f){
+  const ans=m.ansF||m.ans, sec=towerSec(f), token='tw'+Date.now();
+  const buttons=m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる',cls:'white',v:'__quit'}]);
+  let left=sec, timer=null, done=false;
+  const p=dialog(`<div class="towerFloor"><b>${f}F</b><span>むずかしさ ${'★'.repeat(Math.min(4,Math.ceil(f/25)))}　⏳ <strong id="${token}">${sec}</strong>びょう</span></div><div class="towerTime"><i id="${token}b"></i></div>${m.html}${m.say?sayBtn(m.say):''}`,buttons,'wide quiz towerQuiz');
+  const timeout=new Promise(res=>{ timer=setInterval(()=>{ if(done)return; left--; const e=$('#'+token),b=$('#'+token+'b'); if(e)e.textContent=left; if(b)b.style.width=(left/sec*100)+'%'; if(left<=0){clearInterval(timer); $('#dlg')?.classList.remove('show');res('__time');}},1000); });
+  const v=await Promise.race([p,timeout]); done=true; clearInterval(timer);
+  if(v==='__quit'||v==null)return 'quit'; if(v==='__time'){sound('ng');return 'time';}
+  const ok=v===ans;sound(ok?'ok':'ng');if(m.wk&&ok)delWeak(m.wk);if(m.kq)addStat(m.kq,'read',ok,1);persist();return ok;
+}
+async function towerRun(){
+  const T=towerData(); if(T.done)return;
+  while(!T.done){ const f=T.floor, m=towerQ(f), r=await towerAsk(m,f);
+    if(r==='quit'){toast(`🏙️ ${f}かいで きろくを ほぞんしたよ`);return towerLobby();}
+    if(r!==true){ const why=r==='time'?'じかんぎれ！':'おしい！'; T.floor=1; T.rewards=[]; persist(); await dialog(`<h2 class="dlgT">${why} ${f}かいで ストップ</h2><p class="dlgP">${r==='time'?'時間内に こたえられなかったよ。':`こたえは <b>${esc(m.ansF||m.ans)}</b> だったよ。`}<br><b>つぎは 1かいから やりなおし！</b><br>さいこうきろく ${T.best}かいは のこるよ。</p>`,[{label:'もういちど！',cls:'gold',v:1}]);return towerLobby();}
+    T.best=Math.max(T.best,f);const rw=towerGive(f);
+    if(f>=100){T.done=true;T.floor=100;save.superLetter=(save.superLetter||0)+1;persist();sound('fan');confetti(3500);await dialog(`<div class="fruitBig">🌈💌</div><h2 class="dlgT">100かい せいは！</h2><p class="dlgP">すごい！ タワーの てっぺんに とうちゃく！</p><div class="skillBox"><b>超レアかくていレター ×1</b><br>天空の おうかん・ランクアップの本×3・能力の実 全しゅるい×3</div>`,[{label:'うけとる！',cls:'gold',v:1}],'gold');renderCurrent();return;}
+    T.floor=f+1;persist();if(rw){sound('fan');confetti(1000);const nx=await dialog(`<h2 class="dlgT">🎉 ${f}かい とうたつ！</h2><p class="dlgP">${rw}<br>つぎは ${T.floor}かい！</p>`,[{label:'つぎへ',cls:'gold',v:1},{label:'ここで やめる',cls:'white',v:'quit'}]);if(nx==='quit'){toast(`🏙️ ${T.floor}かいで きろくを ほぞんしたよ`);return towerLobby();}}
+  }
+}
 /* 高層ビルを タッチ */
 window.addEventListener('click',async e=>{ if(curScreen!=='town'||townEdit||!save.town)return; const c=e.target.closest('#townMap .cell'); if(!c)return; const k=`${c.dataset.x},${c.dataset.y}`; if(save.town.cells[k]!=='office')return; e.stopImmediatePropagation();e.preventDefault(); if(await tryScene('office'))return; towerLobby(k); },true);
 

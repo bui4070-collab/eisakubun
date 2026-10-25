@@ -146,14 +146,14 @@ async function openSchool(key){
   if(v==='grade') return openBuilding(key);
   if(v!=='class') return;
   const q = await miniQuiz(choice(list), '🏫 じゅぎょう：お手本を 見せて！');
-  if(!q.ok){ givePts(2, '学校で じゅぎょう（チャレンジ）'); persist();
+  if(!q.ok){ givePts(10, '学校で じゅぎょう（チャレンジ）'); persist();
     await dialog(`<h2 class="dlgT">おしい！</h2><p class="dlgP">こたえは <b>${esc(q.ans)}</b> だったよ。<br>もう いちど チャレンジ できるよ！</p>`); return; }
   S.done = true; const up = [];
   list.forEach(r => { S.exp[r.id] = (S.exp[r.id]||0) + 1;
     if(S.exp[r.id] >= 3){ S.exp[r.id] = 0; if((r.ab.know||0) < 10){ r.ab.know = (r.ab.know||0) + 1; up.push(r); } } });
-  givePts(6, '学校で じゅぎょう'); persist(); sound('fan'); confetti(1500);
+  givePts(40, '学校で じゅぎょう'); persist(); sound('fan'); confetti(1500);
   await dialog(`<div class="whoRow">${list.map(r => `<div class="whoIt">${resPic(r)}</div>`).join('')}</div><h2 class="dlgT">📖 じゅぎょう だいせいこう！</h2>
-    <p class="dlgP">みんな「なるほど〜！」って うなずいているよ<br><span class="coin sm">P</span> +6</p>
+    <p class="dlgP">みんな「なるほど〜！」って うなずいているよ<br><span class="coin sm">P</span> +40</p>
     ${up.length ? `<div class="skillBox"><b>📘 ちしきが あがった！</b><div>${up.map(r => esc(r.name)).join('・')}</div></div>` : ''}`, [{label:'よかった！', cls:'gold', v:1}], 'wide');
 }
 
@@ -252,10 +252,10 @@ async function openHall(key){
 /* =====================================================================
    ホテル：かんこうきゃくと なかよく なる → レターで 来やすく
    ===================================================================== */
-const TOUR_MAX = 3, TOUR_CD = 10*MIN;
+const TOUR_MAX = 12, TOUR_CD = 10*MIN;
 const TOUR_LINES = ['この まち すてきだね！ 来て よかった〜','きょうは どこを 見に いこうかな？','おみやげ なにが いいと おもう？','この まちの おすすめの ばしょ おしえて！',
   'ホテルの ベッド ふかふかだったよ','まちの みんな やさしいね','しゃしん いっぱい とっちゃった！','つぎの おやすみも また 来たいなあ'];
-const tourCount = () => Math.min(TOUR_MAX, cellsOf('hotel').length + (maxGlv('hotel') >= 2 ? 1 : 0));
+const tourCount = () => Math.min(TOUR_MAX, cellsOf('hotel').reduce((n,k) => n + 1 + Math.min(3, glv(k)), 0));
 function pickTourist(){
   const live = new Set(save.town.res.map(r => r.sp)), cur = new Set(F().tour.map(t => t.sp));
   const W = {1:1, 2:0.8, 3:0.35, 4:0.12};
@@ -437,7 +437,7 @@ function ovHTML(k, id){
   if(id==='field'){ const p = f.farm[k]; if(!p) return '';
     const c = CROP(p.c), pr = farmProg(p);
     return pr >= 1 ? `<img class="facOv crop" src="${esc(artSrc(cropArt(c)))}" alt=""><span class="facOv ready">!</span>` : `<span class="facOv sprout">${pr < 0.5 ? '🌱' : '🌿'}</span>`; }
-  if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it && !p.paid ? '<span class="facOv ready">🪙</span>' : ''; }   // 車は v43.js で 上から 見た パーキングに かく
+  if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it ? `<img class="facOv car" src="${esc(artSrc(it.art))}" alt="">${p.paid ? '' : '<span class="facOv ready">🪙</span>'}` : ''; }
   if(id==='park' && f.park.ids.length) return `<span class="facOv badge">${f.park.game ? f.park.game[1] : '🎵'}${f.park.ids.length}</span>`;
   if(id==='school' && f.school.day===dayKey() && f.school.ids.length) return `<span class="facOv badge">✏️${f.school.ids.length}</span>`;
   if(id==='hotel' && f.tour.length) return `<span class="facOv badge">🧳${f.tour.length}</span>`;

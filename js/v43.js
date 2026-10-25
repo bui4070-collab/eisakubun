@@ -48,6 +48,13 @@ try{ ZUKAN_INFO[SIG_ID] = 'あお・きいろ・あかで 車に 「すすめ」
 const sigDirs = () => save.town.sigDir || (save.town.sigDir = {});
 const DIR_N = ['まえむき','よこむき（みぎ）','よこむき（ひだり）'];
 const sigDir = k => sigDirs()[k] || 0;
+function sigTopo(k){
+  const [x,y]=k.split(',').map(Number), t=save.town, road=(a,b)=>isRoadId(t.cells[`${a},${b}`]);
+  const a={n:road(x,y-1),e:road(x+1,y),s:road(x,y+1),w:road(x-1,y)}, n=Object.values(a).filter(Boolean).length;
+  const zebra=isRoadId(t.cells[k]) && n===2 && ((a.e&&a.w)||(a.n&&a.s)) && ((x*7+y*3)%4===0);
+  return {a,n,zebra,ok:n===4||n===3||zebra,count:n===4?4:n===3?3:zebra?2:0};
+}
+window.sigPlaceOK = k => sigTopo(k).ok;
 function sigKeys(){
   const t = save.town, out = [];
   Object.entries(t.cells).forEach(([k,id]) => { if(id===SIG_ID) out.push(k); });
@@ -68,14 +75,12 @@ function paintSignals(){
 setInterval(paintSignals, 400);
 function drawSignals(){
   sigKeys().forEach(k => {
-    const [x,y] = k.split(','), c = $(`#townMap .cell[data-x="${x}"][data-y="${y}"]`); if(!c) return;
-    const onRoad = isRoadId(save.town.cells[k]);
-    c.querySelectorAll(onRoad ? '.overImg' : '.bimg').forEach(e => e.remove());
-    c.querySelectorAll('.sigWrap').forEach(e => e.remove());
-    const d = sigDir(k);
-    c.insertAdjacentHTML('beforeend', `<span class="sigWrap ${onRoad?'onRoad':''} d${d} ${d===0?'fv':'fh'}">${sigSVG(d===0?0:1)}</span>`);
-  });
-  paintSignals();
+    const [x,y]=k.split(','), c=$(`#townMap .cell[data-x="${x}"][data-y="${y}"]`); if(!c)return;
+    c.querySelectorAll('.sigWrap,.overImg').forEach(e=>e.remove());
+    const T=sigTopo(k); if(!T.ok){ if((save.town.over||{})[k]===SIG_ID){ delete save.town.over[k]; save.town.inv[SIG_ID]=(save.town.inv[SIG_ID]||0)+1; persist(); } return; }
+    const dirs=T.n===4?['n','e','s','w']:T.n===3?Object.keys(T.a).filter(d=>T.a[d]):(T.a.e?['n','s']:['e','w']);
+    dirs.forEach(d=>c.insertAdjacentHTML('beforeend',`<span class="sigWrap onRoad auto ${d} ${d==='n'||d==='s'?'fv':'fh'}">${sigSVG(d==='n'||d==='s'?0:1)}</span>`));
+  }); paintSignals();
 }
 /* その マスの 信号が 車の すすむ むきに 「とまれ」か */
 function redFor(x, y, axis){
@@ -94,7 +99,7 @@ window.addEventListener('click', e => {
   const k = `${c.dataset.x},${c.dataset.y}`, t = save.town;
   if(t.cells[k]!==SIG_ID && (t.over||{})[k]!==SIG_ID) return;
   e.stopImmediatePropagation(); e.preventDefault();
-  const n = (sigDir(k) + 1) % 3; sigDirs()[k] = n; persist(); sound('tap');
+  const T=sigTopo(k); if(!T.ok){ toast('🚦 十字路・T字路・横断歩道に おいてね'); return; } toast(`🚦 ${T.n===4?'十字路：4つ':T.n===3?'T字路：3つ':'横断歩道：2つ'}の 信号が じどうで つくよ`); return; const n = (sigDir(k) + 1) % 3; sigDirs()[k] = n; persist(); sound('tap');
   const w = c.querySelector('.sigWrap');
   if(w){ w.className = `sigWrap ${isRoadId(t.cells[k])?'onRoad':''} d${n} ${n===0?'fv':'fh'}`; w.innerHTML = sigSVG(n===0?0:1); }
   toast(`🚦 しんごうきを ${DIR_N[n]}に したよ（${n===0 ? 'たての 車' : 'よこの 車'}に あいずするよ）`);
