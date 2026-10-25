@@ -8,7 +8,7 @@
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '4.8.0';
+const APP_VERSION = '4.9.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -4514,7 +4514,7 @@ let openBuilding = async function(key){
   const v = await dialog(`<div class="dlgArt">${picHTML(it)}</div><h2 class="dlgT">${esc(it.name)} <small class="glvT">${'★'.repeat(lv)}${'☆'.repeat(max-lv)}</small></h2>
     <p class="dlgP" style="font-size:14px">${esc(itemEffect(it))}</p>
     ${lv < max ? `<div class="skillBox"><b>⬆ グレードアップ</b><div>たてものを ふやさずに、まちの 発展度を <b>+${add}</b> できるよ（さいだい ★3）</div></div>` : '<div class="skillBox"><b>🌟 さいこうグレード！</b></div>'}`,
-    (lv < max ? [{label:`⬆ グレードアップ（${nf(cost)}pt）`, cls: save.points.bal >= cost ? 'gold' : 'white', v:'up'}] : []).concat([{label:'とじる', cls:'white', v:null}]), 'wide');
+    (lv < max ? [{label:`⬆ グレードアップ<span class="nw">（${nf(cost)}pt）</span>`, cls: save.points.bal >= cost ? 'gold' : 'white', v:'up'}] : []).concat([{label:'とじる', cls:'white', v:null}]), 'wide');
   if(v==='up'){
     if(save.points.bal < cost){ toast('ポイントが たりないよ'); return; }
     givePts(-cost, `${it.name}を グレードアップ`); t.glv[key] = lv + 1; persist(); sound('fan'); confetti(1400);

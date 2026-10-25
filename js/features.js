@@ -74,12 +74,24 @@ function paintSignals(){
 }
 setInterval(paintSignals, 400);
 function drawSignals(){
+  const map=$('#townMap'); if(!map) return; map.querySelectorAll('.sig49').forEach(e=>e.remove());
+  const cs=parseFloat(map.style.getPropertyValue('--cell'))||60, O=0.07;
   sigKeys().forEach(k => {
-    const [x,y]=k.split(','), c=$(`#townMap .cell[data-x="${x}"][data-y="${y}"]`); if(!c)return;
+    const [x,y]=k.split(',').map(Number), c=map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); if(!c)return;
     c.querySelectorAll('.sigWrap,.overImg').forEach(e=>e.remove());
     const T=sigTopo(k); if(!T.ok){ if((save.town.over||{})[k]===SIG_ID){ delete save.town.over[k]; save.town.inv[SIG_ID]=(save.town.inv[SIG_ID]||0)+1; persist(); } return; }
-    const dirs=T.n===4?['n','e','s','w']:T.n===3?Object.keys(T.a).filter(d=>T.a[d]):(T.a.e?['n','s']:['e','w']);
-    dirs.forEach(d=>c.insertAdjacentHTML('beforeend',`<span class="sigWrap onRoad auto ${d} ${d==='n'||d==='s'?'fv':'fh'}">${sigSVG(d==='n'||d==='s'?0:1)}</span>`));
+    const A=T.a, P=[];   // [よこ, たて, むき(f=まえ / r=よこ右 / l=よこ左)]
+    if(T.n===4){ P.push([-O,-O,'l'],[1+O,-O,'f'],[-O,1+O,'f'],[1+O,1+O,'r']); }
+    else if(T.n===3){ const miss=['n','e','s','w'].find(d=>!A[d]);
+      if(miss==='n') P.push([.82,-O,'f'],[-O,1+O,'l'],[1+O,1+O,'r']);
+      if(miss==='s') P.push([.18,1+O,'f'],[-O,-O,'l'],[1+O,-O,'r']);
+      if(miss==='w') P.push([-O,.82,'l'],[1+O,-O,'f'],[1+O,1+O,'f']);
+      if(miss==='e') P.push([1+O,.18,'r'],[-O,-O,'f'],[-O,1+O,'f']); }
+    else if(A.e&&A.w) P.push([.18,-O,'l'],[.82,1+O,'r']);
+    else P.push([-O,.18,'f'],[1+O,.82,'f']);
+    const w=cs*.4, h=w*1.5, L=c.offsetLeft, Tp=c.offsetTop;
+    P.forEach(([fx,fy,d])=>{ const z=Math.floor(y+fy)*10+8;
+      map.insertAdjacentHTML('beforeend',`<span class="sig49 ${d==='f'?'fv':'fh'} ${d==='l'?'flip':''}" style="left:${L+fx*cs-w/2}px;top:${Tp+fy*cs-h*.93}px;width:${w}px;height:${h}px;z-index:${z}">${sigSVG(d==='f'?0:1)}</span>`); });
   }); paintSignals();
 }
 /* その マスの 信号が 車の すすむ むきに 「とまれ」か */
@@ -358,8 +370,10 @@ const FRUITS = {
   pop:  {n:'にんきの実', i:'🍑', c:'#F28EAE', d:'にんき能力 +1'},
   drive:{n:'うんてんの実', i:'🍋', c:'#E5C83D', d:'うんてん能力 +1'}
 };
+Object.keys(FRUITS).forEach(k=>{ FRUITS[k].art='fruit_'+k; DEFAULT_ART['fruit_'+k]='./assets/images/v49/fruit_'+k+'.webp'; });
+const frImg=(k,cls='frIc')=>`<img class="${cls}" src="${esc(artSrc('fruit_'+k))}" alt="">`;
 function fruitBag(){ const b = save.fruits || (save.fruits = {}); Object.keys(FRUITS).forEach(k => b[k] = b[k]||0); return b; }
-function addFruit(k, n=1, why=''){ if(!FRUITS[k]) return; const B=fruitBag(); B[k]+=n; persist(); toast(`${FRUITS[k].i} ${FRUITS[k].n} ×${n}を てにいれた！${why?'（'+why+'）':''}`); }
+function addFruit(k, n=1, why=''){ if(!FRUITS[k]) return; const B=fruitBag(); B[k]+=n; persist(); toast(`${FRUITS[k].n} ×${n}を てにいれた！${why?'（'+why+'）':''}`); }
 const randomFruit = () => choice(Object.keys(FRUITS));
 function fruitReason(why){
   const w=String(why||'');
@@ -376,62 +390,114 @@ function fruitReason(why){
 const _givePts45 = givePts;
 givePts = function(p, why){ const out=_givePts45.call(this,p,why); if(p>0){ const q=fruitReason(why); if(q && Math.random()<q[1]) setTimeout(()=>addFruit(q[0],1),350); } return out; };
 
-function fruitPanel(r){ const B=fruitBag(); return `<div class="fruitPanel"><b>🌱 能力の実で そだてる</b><small>あげるたびに 能力が +1。何度でも そだつよ！</small><div class="fruitGrid">${ABILITIES.map(a=>{const f=FRUITS[a.id];return `<button data-feed="${r.id}|${a.id}" ${B[a.id]? '' : 'disabled'} style="--fc:${f.c}"><i>${f.i}</i><span>${f.n}</span><b>×${B[a.id]}</b><small>${a.i}${a.n} ${(r.ab[a.id]||0)} → ${(r.ab[a.id]||0)+1}</small></button>`;}).join('')}</div></div>`; }
+function fruitPanel(r){ const B=fruitBag(); return `<div class="fruitPanel"><b>🌱 能力の実で そだてる</b><small>あげるたびに 能力が +1。何度でも そだつよ！</small><div class="fruitGrid">${ABILITIES.map(a=>{const f=FRUITS[a.id];return `<button data-feed="${r.id}|${a.id}" ${B[a.id]? '' : 'disabled'} style="--fc:${f.c}">${frImg(a.id)}<span>${f.n}</span><b>×${B[a.id]}</b><small>${a.i}${a.n} ${(r.ab[a.id]||0)} → ${(r.ab[a.id]||0)+1}</small></button>`;}).join('')}</div></div>`; }
 function attachFruit(rid){ const r=save.town?.res.find(x=>x.id===rid); if(!r || SP(r.sp).human) return; const body=$('#dlgBody'); if(!body || body.querySelector('.fruitPanel')) return; body.insertAdjacentHTML('beforeend',fruitPanel(r)); }
 /* 住民カードを ひらいた あとに 実の パネルを 追加 */
 document.addEventListener('click', e=>{ const b=e.target.closest('#resGrid .resCard'); if(b) setTimeout(()=>attachFruit(b.dataset.id),30); }, true);
 document.addEventListener('click', async e=>{ const b=e.target.closest('[data-feed]'); if(!b) return; e.stopImmediatePropagation(); const [rid,k]=b.dataset.feed.split('|'), r=save.town.res.find(x=>x.id===rid), B=fruitBag(); if(!r||!B[k]) return;
   B[k]--; r.ab[k]=(r.ab[k]||0)+1; persist(); sound('fan'); confetti(700); const f=FRUITS[k], a=ABILITIES.find(x=>x.id===k);
-  await dialog(`<div class="fruitBig">${f.i}</div><h2 class="dlgT">${esc(r.name)}が ${f.n}を たべた！</h2><p class="dlgP">${a.i} ${a.n}が <b>${r.ab[k]}</b>に あがったよ！<br>そだてるほど、まちでの かつやくが 大きくなるよ。</p>`,[{label:'やったね！',cls:'gold',v:1}],'gold'); renderCurrent();
+  await dialog(`<div class="dlgArt big">${frImg(k,'')}</div><h2 class="dlgT">${esc(r.name)}が ${f.n}を たべた！</h2><p class="dlgP">${a.i} ${a.n}が <b>${r.ab[k]}</b>に あがったよ！<br>そだてるほど、まちでの かつやくが 大きくなるよ。</p>`,[{label:'やったね！',cls:'gold',v:1}],'gold'); renderCurrent();
 },true);
 
 /* =====================================================================
-   高層ビル：100かい タワー
+   v4.9 高層ビル：100かい タワー（つくりなおし）
+   ・1かい せいかい → 1かい 上へ。まちがい／じかんぎれ → 1かいから
+   ・とちゅうで やめると その かいから つづき
+   ・上の かいほど むずかしい 問題・みじかい じかん
+   ・ふしめの ごほうびは はじめて とうたつした ときだけ（2かいめ からは すこし）
    ===================================================================== */
+const IMG49='./assets/images/v49/';
 const CROWN='sky_crown';
-const crownArt='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 150"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff2a5"/><stop offset=".45" stop-color="#ffd43b"/><stop offset="1" stop-color="#e59917"/></linearGradient></defs><path d="M20 45l35 28 35-55 35 55 35-28-12 78H32z" fill="url(#g)" stroke="#b86f09" stroke-width="6"/><path d="M38 102h104v28H38z" rx="8" fill="#f8b81d" stroke="#b86f09" stroke-width="6"/><circle cx="90" cy="88" r="10" fill="#70d6ff"/><circle cx="52" cy="91" r="8" fill="#ff6b9b"/><circle cx="128" cy="91" r="8" fill="#9b75ff"/><path d="M38 137h104" stroke="#7a4a05" stroke-width="5" stroke-linecap="round"/></svg>');
-DEFAULT_ART.sky_crown=crownArt;
-if(!FURNITURE.some(f=>f.id===CROWN)) FURNITURE.push({id:CROWN,name:'天空の おうかん',art:'sky_crown',type:'fur',price:9999,lv:8,sty:20,special:true});
-function towerData(){ return save.tower || (save.tower={floor:1,best:0,done:false,rewards:[]}); }
-const towerRewarded=(T,n)=>T.rewards.includes(n);
-function towerRewardHTML(f){ if(f===100) return '🌈 超レアかくていレター・天空の おうかん・ランクアップの本×3・能力の実 全5しゅるい×3'; if(f%25===0) return '✨ 能力の実 全5しゅるい×1・きらきらレター×1'; if(f%10===0) return '🌱 能力の実×2・ポイント'; if(f%5===0) return '🪙 ポイント'; return ''; }
-function towerGive(f){ const T=towerData(); if(f!==100 && f%5!==0) return ''; if(towerRewarded(T,f)) return ''; T.rewards.push(f); const t=save.town; let msg='';
-  if(f===100){ const H=ensureHome(); H.inv[CROWN]=(H.inv[CROWN]||0)+1; save.superLetter=(save.superLetter||0)+0; t.bag.rankbook=(t.bag.rankbook||0)+3; Object.keys(FRUITS).forEach(k=>fruitBag()[k]+=3); msg='天空の おうかん、きらきらレター×5、ランクアップの本×3、能力の実 全しゅるい×3'; }
-  else if(f%25===0){ Object.keys(FRUITS).forEach(k=>fruitBag()[k]++); t.bag.goldletter=(t.bag.goldletter||0)+2; t.bag.rankbook=(t.bag.rankbook||0)+1; msg='能力の実 全しゅるい×1、きらきらレター×2、ランクアップの本×1'; }
-  else if(f%10===0){ fruitBag()[randomFruit()]+=2; addPoints(50+f*2,`タワー ${f}かい とうたつ`,true); msg=`能力の実×2、${50+f*2}pt`; }
-  else if(f%5===0){ addPoints(20+f,`タワー ${f}かい とうたつ`,true); msg=`${20+f}pt`; }
-  persist(); return msg;
+Object.assign(DEFAULT_ART,{sky_crown:IMG49+'sky_crown.webp',ft_sky_crown:IMG49+'sky_crown.webp',fs_sky_crown:IMG49+'sky_crown.webp',itm_superletter:IMG49+'itm_superletter.webp',tower_medal:IMG49+'tower_medal.webp',tower_big:IMG49+'tower_big.webp'});
+if(!FURNITURE.some(f=>f.id===CROWN)) FURNITURE.push({id:CROWN,name:'天空の おうかん',art:'sky_crown',type:'fur',price:9999,lv:8,sty:40,special:true});
+else { const f=FURNITURE.find(f=>f.id===CROWN); f.art='sky_crown'; f.sty=40; }
+const TW_TOP=100;
+function towerData(){ const T=save.tower||(save.tower={}); T.floor=Math.max(1,Math.min(TW_TOP,T.floor||1)); T.best=T.best||0; T.first=T.first||[]; T.clears=T.clears||0; T.tries=T.tries||0;
+  if(T.done){ T.done=false; T.floor=1; if(!T.first.includes(100)) T.first.push(100); T.clears=Math.max(1,T.clears); }  // むかしの データ
+  delete T.rewards; return T; }
+const twImg=(k,cls='twIc')=>`<img class="${cls}" src="${esc(artSrc(k))}" alt="">`;
+const twSec=f=>f<=20?30:f<=40?27:f<=60?24:f<=80?21:18;
+const twBand=f=>f<=25?1:f<=50?2:f<=75?3:4;
+/* ごほうび：[ばしょ, はじめて, 2かいめ いこう] */
+function twReward(f){
+  if(f===100) return {first:[['superletter',1],['crown',1],['rankbook',3],['fruitAll',3],['pt',1000]], again:[['superletter',1],['fruitAll',1],['pt',500]]};
+  if(f%25===0) return {first:[['goldletter',2],['rankbook',1],['fruitAll',1],['pt',f*4]], again:[['fruit',2],['pt',f*2]]};
+  if(f%10===0) return {first:[['fruit',2],['goldletter',f>=50?1:0],['pt',f*3]], again:[['fruit',1],['pt',f]]};
+  if(f%5===0) return {first:[['pt',f*2]], again:[['pt',Math.round(f/2)]]};
+  return null;
 }
-function towerView(){ const T=towerData(), f=Math.min(100,T.floor), pct=Math.max(1,(f-1)/99*100); return `<div class="towerHero"><img src="${esc(artSrc('bld_office'))}" alt=""><div><h2>🏙️ 100かい タワー</h2><b>${T.done?'100かい せいは！':`${f}かいから`}</b><small>さいこう：${T.best}かい</small></div></div><div class="towerMeter"><i style="height:${pct}%"></i><em style="bottom:calc(${pct}% - 13px)">🚪 ${T.done?'GOAL':f+'F'}</em></div><div class="towerMarks"><span>100F 👑</span><span>75F ✨</span><span>50F ✨</span><span>25F ✨</span><span>1F</span></div><p class="dlgP towerNote">1問 れんぞくせいかいするたび 1かい 上へ！<br>まちがえるか 時間切れで 1かいから やりなおし。途中で やめたときだけ つづきから できるよ。<br>5かいごとに ごほうびが あるよ。</p>`; }
-async function towerLobby(key){ if(townLevel()<8){ await dialog(`<div class="dlgArt">${picHTML(ITEM('office'))}</div><h2 class="dlgT">🔒 タワーは まちLv8から</h2><p class="dlgP">まちを もっと 大きくすると シマくんが おしえてくれるよ！</p>`); return; }
-  const T=towerData(); const main=T.done?[{label:'👑 ごほうびを みる',cls:'gold',v:'reward'}]:[{label:`🚪 ${T.floor}かいから のぼる`,cls:'gold',v:'start'}]; const v=await dialog(towerView(),main.concat(key?[{label:'⬆ ビルを グレードアップ',cls:'white',v:'grade'}]:[]).concat([{label:'とじる',v:null}]),'wide towerDlg');
-  if(v==='start') towerRun(); if(v==='grade') openBuilding(key); if(v==='reward') dialog(`<div class="fruitBig">👑</div><h2 class="dlgT">天空の おうかん</h2><p class="dlgP">100かいを せいはした あかし！<br>わたしの家に かざれる、とても きちょうな アイテムだよ。</p>`);
-}
-function towerSec(f){ return f<=20?30:f<=40?27:f<=60?24:f<=80?21:18; }
+const RW_INFO={superletter:['itm_superletter','超レアかくていレター'],crown:['sky_crown','天空の おうかん'],rankbook:['itm_rankbook','ランクアップの本'],goldletter:['itm_goldletter','きらきらレター'],fruitAll:['fruit_know','能力の実 5しゅるい'],fruit:['fruit_work','能力の実'],pt:['tower_medal','ポイント']};
+function rwHTML(list){ return `<div class="twRw">${list.filter(([k,n])=>n>0).map(([k,n])=>{const [a,nm]=RW_INFO[k];return `<span>${twImg(a)}<b>${nm}</b><small>${k==='pt'?`+${nf(n)}pt`:`×${n}`}</small></span>`;}).join('')}</div>`; }
+function giveRw(list){ const t=save.town; let fr=[];
+  list.forEach(([k,n])=>{ if(!n) return;
+    if(k==='superletter') save.superLetter=(save.superLetter||0)+n;
+    if(k==='crown'){ const H=ensureHome(); H.inv[CROWN]=(H.inv[CROWN]||0)+n; }
+    if(k==='rankbook') t.bag.rankbook=(t.bag.rankbook||0)+n;
+    if(k==='goldletter') t.bag.goldletter=(t.bag.goldletter||0)+n;
+    if(k==='fruitAll') Object.keys(FRUITS).forEach(x=>fruitBag()[x]+=n);
+    if(k==='fruit') for(let i=0;i<n;i++){ const x=randomFruit(); fruitBag()[x]++; fr.push(x); }
+    if(k==='pt') addPoints(n,'100かいタワー ごほうび',true); });
+  persist(); return fr; }
+function nextRw(T){ for(let f=T.floor;f<=TW_TOP;f++){ const r=twReward(f); if(r) return [f,T.first.includes(f)?r.again:r.first,T.first.includes(f)]; } return null; }
+/* ---------- もんだい ---------- */
+const twUsed=new Set();
 function towerQ(f){
-  const band=f<=25?1:f<=50?2:f<=75?3:4, cand=[];
-  Object.entries(MATH_UNITS).forEach(([k,u])=>{ const lv=typeof u.g==='number'?Math.max(1,u.g-2):(SOC_LV[k]||SCI_LV[k]||EK_LV[k]||0); if(lv && (band===4?lv>=3:lv===band))cand.push(k); });
-  for(let i=0;i<15;i++){ const k=choice(cand.length?cand:Object.keys(MATH_UNITS)), u=MATH_UNITS[k]; try{ const m=mqFromP(u.gen(),k); if(m)return m; }catch(e){} }
-  return makeMQ({weakOnly:band===4&&Math.random()<.45});
+  const band=twBand(f), cand=[];
+  Object.entries(MATH_UNITS).forEach(([k,u])=>{ const lv=typeof u.g==='number'?u.g-2:(SOC_LV[k]||SCI_LV[k]||EK_LV[k]||0); if(lv<1) return;
+    if(band===1?lv===1:band===2?lv<=2&&lv>=1:band===3?lv>=2:lv>=3) cand.push(k); });
+  for(let i=0;i<40;i++){
+    if(Math.random()<.18){ const L=BUILTIN.filter(q=>q.grade>=3); const q=choice(L); const m=kanjiMQ(q,false); if(!twUsed.has(m.key)){ twUsed.add(m.key); return m; } continue; }
+    const k=choice(cand.length?cand:Object.keys(MATH_UNITS)); let m=null; try{ m=mqFromP(MATH_UNITS[k].gen(),k); }catch(e){}
+    if(m && m.opts && m.opts.length>=2 && !twUsed.has(m.key)){ twUsed.add(m.key); return m; } }
+  const m=makeMQ({}); return m;
 }
-async function towerAsk(m,f){
-  const ans=m.ansF||m.ans, sec=towerSec(f), token='tw'+Date.now();
-  const buttons=m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる',cls:'white',v:'__quit'}]);
-  let left=sec, timer=null, done=false;
-  const p=dialog(`<div class="towerFloor"><b>${f}F</b><span>むずかしさ ${'★'.repeat(Math.min(4,Math.ceil(f/25)))}　⏳ <strong id="${token}">${sec}</strong>びょう</span></div><div class="towerTime"><i id="${token}b"></i></div>${m.html}${m.say?sayBtn(m.say):''}`,buttons,'wide quiz towerQuiz');
-  const timeout=new Promise(res=>{ timer=setInterval(()=>{ if(done)return; left--; const e=$('#'+token),b=$('#'+token+'b'); if(e)e.textContent=left; if(b)b.style.width=(left/sec*100)+'%'; if(left<=0){clearInterval(timer); $('#dlg')?.classList.remove('show');res('__time');}},1000); });
-  const v=await Promise.race([p,timeout]); done=true; clearInterval(timer);
-  if(v==='__quit'||v==null)return 'quit'; if(v==='__time'){sound('ng');return 'time';}
-  const ok=v===ans;sound(ok?'ok':'ng');if(m.wk&&ok)delWeak(m.wk);if(m.kq)addStat(m.kq,'read',ok,1);persist();return ok;
+function twAsk(m,f){
+  return new Promise(res=>{
+    const sec=twSec(f), ans=m.ansF||m.ans, id='tw'+Date.now(); let left=sec, end=false;
+    const fin=v=>{ if(end) return; end=true; clearInterval(tm); $('#dlg').classList.remove('show'); res(v); };
+    dialog(`<div class="twQHead">${twImg('tower_big','twQTower')}<div><b>${f}<small>かい</small></b><span>${'★'.repeat(twBand(f))}${'☆'.repeat(4-twBand(f))}</span></div><div class="twTime"><i id="${id}b"></i><em id="${id}">${sec}</em></div></div>${m.html}${m.say&&!/data-say/.test(m.html)?sayBtn(m.say):''}`,
+      m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる（つづきから できる）',cls:'white twQuit',v:'__quit'}]),'wide quiz towerQuiz').then(v=>{ if(end) return; end=true; clearInterval(tm);
+        if(v==='__quit'||v==null) return res('quit'); const ok=v===ans; sound(ok?'ok':'ng'); if(m.wk&&ok)delWeak(m.wk); if(m.kq)addStat(m.kq,'read',ok,1); persist(); res(ok?'ok':'ng'); });
+    const tm=setInterval(()=>{ left--; const e=$('#'+id), b=$('#'+id+'b'); if(e) e.textContent=Math.max(0,left); if(b){ b.style.width=Math.max(0,left/sec*100)+'%'; b.classList.toggle('hurry',left<=5); }
+      if(left<=0){ sound('ng'); fin('time'); } },1000);
+  });
 }
-async function towerRun(){
-  const T=towerData(); if(T.done)return;
-  while(!T.done){ const f=T.floor, m=towerQ(f), r=await towerAsk(m,f);
-    if(r==='quit'){toast(`🏙️ ${f}かいで きろくを ほぞんしたよ`);return towerLobby();}
-    if(r!==true){ const why=r==='time'?'じかんぎれ！':'おしい！'; T.floor=1; T.rewards=[]; persist(); await dialog(`<h2 class="dlgT">${why} ${f}かいで ストップ</h2><p class="dlgP">${r==='time'?'時間内に こたえられなかったよ。':`こたえは <b>${esc(m.ansF||m.ans)}</b> だったよ。`}<br><b>つぎは 1かいから やりなおし！</b><br>さいこうきろく ${T.best}かいは のこるよ。</p>`,[{label:'もういちど！',cls:'gold',v:1}]);return towerLobby();}
-    T.best=Math.max(T.best,f);const rw=towerGive(f);
-    if(f>=100){T.done=true;T.floor=100;save.superLetter=(save.superLetter||0)+1;persist();sound('fan');confetti(3500);await dialog(`<div class="fruitBig">🌈💌</div><h2 class="dlgT">100かい せいは！</h2><p class="dlgP">すごい！ タワーの てっぺんに とうちゃく！</p><div class="skillBox"><b>超レアかくていレター ×1</b><br>天空の おうかん・ランクアップの本×3・能力の実 全しゅるい×3</div>`,[{label:'うけとる！',cls:'gold',v:1}],'gold');renderCurrent();return;}
-    T.floor=f+1;persist();if(rw){sound('fan');confetti(1000);const nx=await dialog(`<h2 class="dlgT">🎉 ${f}かい とうたつ！</h2><p class="dlgP">${rw}<br>つぎは ${T.floor}かい！</p>`,[{label:'つぎへ',cls:'gold',v:1},{label:'ここで やめる',cls:'white',v:'quit'}]);if(nx==='quit'){toast(`🏙️ ${T.floor}かいで きろくを ほぞんしたよ`);return towerLobby();}}
+/* ---------- ロビー ---------- */
+function lobbyHTML(){
+  const T=towerData(), pct=Math.round((T.floor-1)/(TW_TOP-1)*100), bp=Math.round(Math.max(0,T.best-1)/(TW_TOP-1)*100), nx=nextRw(T);
+  return `<div class="twLobby"><div class="twBuild">${twImg('tower_big','twBig')}<div class="twMeter"><i class="best" style="height:${bp}%"></i><i class="now" style="height:${pct}%"></i><em style="bottom:${pct}%">${T.floor}F</em></div>
+    <div class="twMarks">${[100,75,50,25].map(f=>`<span style="bottom:${(f-1)/(TW_TOP-1)*100}%" class="${T.first.includes(f)?'got':''}">${f}F</span>`).join('')}</div></div>
+   <div class="twInfo"><h2>100かい タワー</h2><div class="twNow"><b>${T.floor}</b><small>かいから スタート</small></div>
+    <div class="twStat"><span>さいこう<b>${T.best}F</b></span><span>せいは<b>${T.clears}回</b></span></div>
+    ${nx?`<div class="twNext"><small>つぎの ごほうび：<b>${nx[0]}かい</b>${nx[2]?'（2かいめ）':''}</small>${rwHTML(nx[1])}</div>`:''}
+   </div></div>
+   <div class="twRule"><span>⏳ 1もん ${twSec(T.floor)}びょう</span><span>✔ せいかいで 1かい 上へ</span><span>✖ まちがい・じかんぎれは 1かいから</span><span>⏸ やめた ときは つづきから</span></div>
+   <div class="twGoal">${twImg('itm_superletter')}<div><b>100かいの ごほうび</b><small>超レアかくていレター（まいかい）・天空の おうかん（はじめて）</small></div></div>`;
+}
+async function towerLobby(key){
+  if(townLevel()<8){ await dialog(`<div class="dlgArt big">${twImg('tower_big','twBigS')}</div><h2 class="dlgT">タワーは まちLv8から</h2><p class="dlgP">まちを もっと 大きくすると シマくんが おしえてくれるよ！</p>`); return; }
+  const T=towerData();
+  const v=await dialog(lobbyHTML(),[{label:`${T.floor}かいから のぼる！`,cls:'gold',v:'start'},...(T.floor>1?[{label:'1かいから やりなおす',cls:'white',v:'reset'}]:[]),...(key?[{label:'⬆ ビルを グレードアップ',cls:'white',v:'grade'}]:[]),{label:'とじる',v:null}],'wide towerDlg');
+  if(v==='start') towerRun(key);
+  if(v==='reset'){ T.floor=1; persist(); towerLobby(key); }
+  if(v==='grade') openBuilding(key);
+}
+async function towerRun(key){
+  const T=towerData(); T.tries++; twUsed.clear(); persist();
+  while(true){
+    const f=T.floor, m=towerQ(f), r=await twAsk(m,f);
+    if(r==='quit'){ persist(); toast(`${f}かいで きろくを ほぞんしたよ`); return towerLobby(key); }
+    if(r!=='ok'){ T.floor=1; persist();
+      await dialog(`<div class="dlgArt">${twImg('tower_big','twBigS')}</div><h2 class="dlgT">${r==='time'?'じかんぎれ！':'おしい！'}　${f}かいで ストップ</h2><p class="dlgP">${r==='time'?'じかん ないに こたえられなかったよ。':`こたえは <b>${esc(m.ansF||m.ans)}</b> だったよ。`}<br><b>つぎは 1かいから ちょうせん！</b><br><small>さいこう きろく ${T.best}かいは のこるよ</small></p>`,[{label:'もういちど！',cls:'gold',v:1}]);
+      return towerLobby(key); }
+    T.best=Math.max(T.best,f); const R=twReward(f);
+    if(f>=TW_TOP){ const first=!T.first.includes(100), list=first?R.first:R.again; if(first)T.first.push(100); T.clears++; T.floor=1; giveRw(list); persist(); sound('fan'); confetti(4000);
+      await dialog(`<div class="dlgArt big">${twImg('itm_superletter','twBigS')}</div><h2 class="dlgT">100かい せいは！</h2><p class="dlgP">すごい！ タワーの てっぺんに とうちゃく！${first?'<br><b>はじめての せいは ボーナス！</b>':''}</p>${rwHTML(list)}<p class="dlgP facNote">超レアかくていレターは「住民」の ページで つかえるよ。<br>${first?'天空の おうかんは わたしの家の「もようがえ」で かざれるよ。<br>':''}つぎは また 1かいから ちょうせんできるよ。</p>`,[{label:'うけとる！',cls:'gold',v:1}],'gold');
+      return towerLobby(key); }
+    T.floor=f+1; persist();
+    if(R){ const first=!T.first.includes(f), list=first?R.first:R.again; if(first)T.first.push(f); giveRw(list); sound('fan'); confetti(first&&f%25===0?2000:900);
+      const nx=await dialog(`<div class="dlgArt">${twImg('tower_medal','twBigS')}</div><h2 class="dlgT">${f}かい とうたつ！</h2>${first?'<p class="dlgP"><b>はじめて とうたつ ボーナス！</b></p>':''}${rwHTML(list)}<p class="dlgP">つぎは ${T.floor}かい！</p>`,[{label:'つぎへ のぼる',cls:'gold',v:1},{label:'ここで やめる',cls:'white',v:'quit'}]);
+      if(nx==='quit'){ toast(`${T.floor}かいで きろくを ほぞんしたよ`); return towerLobby(key); } }
   }
 }
 /* 高層ビルを タッチ */
@@ -455,7 +521,8 @@ window.addEventListener('click',e=>{ if(!e.target.closest('#btnUd')||townLevel()
 
 /* 能力の実を バッグにも 表示 */
 const _renderResidents45=renderResidents;
-renderResidents=function(){ const o=_renderResidents45.apply(this,arguments); const box=$('#resBag'); if(box){const B=fruitBag(); box.insertAdjacentHTML('beforeend',Object.entries(FRUITS).map(([k,f])=>`<div class="bagIt fruitBagIt"><i>${f.i}</i><div><b>${f.n} ×${B[k]}</b><small>${f.d}</small></div></div>`).join(''));} return o; };
+renderResidents=function(){ const o=_renderResidents45.apply(this,arguments); const box=$('#resBag'); if(box){const B=fruitBag();
+  box.insertAdjacentHTML('beforeend',`<div class="bagIt fruitBag49"><div><b>能力の実</b><small>住民を タッチして あげると 能力が +1</small><div class="frRow49">${Object.entries(FRUITS).map(([k,f])=>`<span title="${f.n}">${frImg(k)}<em>×${B[k]}</em><i>${f.n.replace('の実','')}</i></span>`).join('')}</div></div></div>`);} return o; };
 })();
 /* =====================================================================
    まなびタウン v4.6
@@ -479,7 +546,9 @@ function superInvite(){
   dialog(`<div class="rareIntro rk4"><div class="rays"></div>${resPic(r)}<b>🌈 超レアかくてい！ 🌈</b></div><h2 class="dlgT">${esc(r.name)}が ひっこしてきた！</h2><p class="dlgP">100かいタワーの とくべつな レターで 来てくれたよ！</p>`,[{label:'ようこそ！',cls:'gold',v:1}],'gold'); renderResidents();
 }
 const _renderResidents46=renderResidents;
-renderResidents=function(){const o=_renderResidents46.apply(this,arguments),b=$('#resBag');if(b&&!b.querySelector('[data-superletter]'))b.insertAdjacentHTML('beforeend',`<button class="bagIt use superLetter" data-superletter><i>🌈💌</i><div><b>超レアかくていレター</b><small>超レアの住民が かならず来る</small></div><strong>×${save.superLetter||0}</strong></button>`);return o;};
+renderResidents=function(){const o=_renderResidents46.apply(this,arguments),b=$('#resBag');if(b&&!b.querySelector('.superLetter49')){const n=save.superLetter||0;
+ const html=`<div class="bagIt superLetter49"><img src="${esc(artSrc('itm_superletter'))}" alt=""><div><b>超レアかくていレター ×${n}</b><small>超レアの 住民が かならず 来る（100かいタワーの ごほうび）</small></div>${n?'<button class="btn small green" data-superletter>つかう</button>':''}</div>`;
+ const gl=[...b.children].find(e=>e.querySelector('[data-use="goldletter"]')||/きらきらレター/.test(e.textContent));if(gl)gl.insertAdjacentHTML('afterend',html);else b.insertAdjacentHTML('afterbegin',html);}return o;};
 document.addEventListener('click',e=>{if(e.target.closest('[data-superletter]')){e.stopImmediatePropagation();superInvite();}},true);
 
 /* =====================================================================
@@ -608,8 +677,8 @@ function menuBody(){const c=C(),sel=new Set(c.menu),all=cafeMenus(true);
  <div class="secT48">② ざいりょうを のうひんする</div>
  ${mats.length?`<div class="matList48">${mats.map(k=>{const have=handBag(k)[k]||0,st=c.stock[k]||0;return `<div class="matIt48">${imgTag(matArt(k))}<div><b>${esc(matName(k))}</b><small>カフェ ${st}こ・てもち ${have}こ</small></div><button data-cdel="${k}|1" ${have?'':'disabled'}>+1</button><button data-cdel="${k}|all" ${have?'':'disabled'}>ぜんぶ</button></div>`;}).join('')}</div>
  <button class="btn gold delAll48" data-cdelall>まとめて ぜんぶ のうひん</button>`:'<p class="dlgP facNote">メニューを えらぶと ひつような ざいりょうが でるよ</p>'}
- <p class="dlgP facNote">やさい・くだものは 畑やお店、ミルク・たまご・おにくは ぼくじょうで 手に入るよ。</p>`;}
-function cafeMenu(){dialog(menuBody(),[{label:'できあがり',cls:'gold',v:1}],'wide cafeDlg48').then(()=>{if(curScreen==='myhome')renderMyHome();});}
+ <p class="dlgP facNote">やさい・くだものは 畑や 八百屋、ミルク・たまご・おにくは ぼくじょうで 手に入るよ。<br>ミルク・たまごは 八百屋、おにくは コンビニでも しいれられるよ。</p>`;}
+function cafeMenu(){dialog(menuBody(),[{label:'とじる',v:1}],'wide cafeDlg48').then(()=>{if(curScreen==='myhome')renderMyHome();});}
 function deliver(k,n){const B=handBag(k),have=B[k]||0,q=n==='all'?have:Math.min(have,+n);if(!q)return 0;B[k]=have-q;if(B[k]<=0)delete B[k];C().stock[k]=(C().stock[k]||0)+q;return q;}
 document.addEventListener('click',e=>{const t=e.target.closest('[data-cmenu],[data-cdel],[data-cdelall]');if(!t||!t.closest('#dlgBody'))return;e.stopImmediatePropagation();const c=C();
  if(t.dataset.cmenu){const id=t.dataset.cmenu,i=c.menu.indexOf(id);if(i>=0)c.menu.splice(i,1);else if(c.menu.length<6)c.menu.push(id);else{toast('メニューは 6こまで だよ');return;}}
@@ -650,4 +719,21 @@ buildCars=function(cs){autoRun();const o=_buildCars48.apply(this,arguments);
  const good=roadCells().filter(([x,y])=>roadNb(x,y)>0);
  if(good.length)CAR.list.forEach((c,i)=>{if(roadNb(c.x,c.y)>0)return;const [x,y]=good[(i*7+rint(0,good.length-1))%good.length];c.x=x;c.y=y;c.py=y;placeCar(c,true);});
  return o;};
+
+/* =====================================================================
+   v4.9 お店で カフェの ざいりょうを しいれる
+   ・八百屋：やさい・くだもの（もとから）＋ミルク・たまご
+   ・コンビニ：ミルク・たまご・とりにく・ぶたにく・ぎゅうにく
+   ===================================================================== */
+const CF_PRICE={cf_milk:40,cf_egg:40,cf_chicken:70,cf_pork:70,cf_beef:100};
+const CF_SHOP={market:['cf_milk','cf_egg'],konbini:['cf_milk','cf_egg','cf_chicken','cf_pork','cf_beef']};
+const _catalog49=catalog;
+catalog=function(b){const L=_catalog49.apply(this,arguments);if(!CF_SHOP[b])return L;const g=(save.town.glv||{})[SHOP_KEY]||0;
+ return L.concat(CF_SHOP[b].map((id,i)=>({id,kind:'cfm',name:`${RMAT[id]}（カフェよう）`,art:id,price:CF_PRICE[id],only:true,lockG:b==='konbini'&&i>=4?Math.max(0,1-g)&&1:0})));};
+const _dialog49=dialog;
+dialog=function(){const p=_dialog49.apply(this,arguments);try{$$('#dlgBody [data-sbuy^="cfm:"]').forEach(btn=>{const id=btn.dataset.sbuy.split(':')[1],sm=btn.closest('.siIt')?.querySelector('small');if(sm)sm.textContent=`もっている ${cafeStock()[id]||0}`;});}catch(e){}return p;};
+window.addEventListener('click',e=>{const sb=e.target.closest('[data-sbuy^="cfm:"]');if(!sb)return;e.stopImmediatePropagation();e.preventDefault();
+ const [,id,price]=sb.dataset.sbuy.split(':'),p=+price;if(save.points.bal<p){toast('ポイントが たりないよ');return;}
+ const S=cafeStock();S[id]=(S[id]||0)+1;givePts(-p,`${SHOPS[save.town.cells[SHOP_KEY]]?.n||'お店'}で ${RMAT[id]}を かった`);persist();sound('ok');
+ const card=sb.closest('.siIt');card.classList.add('bought');card.querySelector('small').textContent=`もっている ${S[id]}`;},true);
 })();
