@@ -146,14 +146,14 @@ async function openSchool(key){
   if(v==='grade') return openBuilding(key);
   if(v!=='class') return;
   const q = await miniQuiz(choice(list), '🏫 じゅぎょう：お手本を 見せて！');
-  if(!q.ok){ givePts(10, '学校で じゅぎょう（チャレンジ）'); persist();
+  if(!q.ok){ givePts(2, '学校で じゅぎょう（チャレンジ）'); persist();
     await dialog(`<h2 class="dlgT">おしい！</h2><p class="dlgP">こたえは <b>${esc(q.ans)}</b> だったよ。<br>もう いちど チャレンジ できるよ！</p>`); return; }
   S.done = true; const up = [];
   list.forEach(r => { S.exp[r.id] = (S.exp[r.id]||0) + 1;
     if(S.exp[r.id] >= 3){ S.exp[r.id] = 0; if((r.ab.know||0) < 10){ r.ab.know = (r.ab.know||0) + 1; up.push(r); } } });
-  givePts(40, '学校で じゅぎょう'); persist(); sound('fan'); confetti(1500);
+  givePts(6, '学校で じゅぎょう'); persist(); sound('fan'); confetti(1500);
   await dialog(`<div class="whoRow">${list.map(r => `<div class="whoIt">${resPic(r)}</div>`).join('')}</div><h2 class="dlgT">📖 じゅぎょう だいせいこう！</h2>
-    <p class="dlgP">みんな「なるほど〜！」って うなずいているよ<br><span class="coin sm">P</span> +40</p>
+    <p class="dlgP">みんな「なるほど〜！」って うなずいているよ<br><span class="coin sm">P</span> +6</p>
     ${up.length ? `<div class="skillBox"><b>📘 ちしきが あがった！</b><div>${up.map(r => esc(r.name)).join('・')}</div></div>` : ''}`, [{label:'よかった！', cls:'gold', v:1}], 'wide');
 }
 

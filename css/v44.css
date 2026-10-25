@@ -1,0 +1,6 @@
+/* v4.4 せつめいの ふきだしを 上か 下に こてい */
+.tutBub.fixTop,.tutBub.fixBot{transition:opacity .25s ease!important}
+.tutBub.fixTop{top:calc(env(safe-area-inset-top,0px) + 12px)!important;bottom:auto!important}
+.tutBub.fixBot{top:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 96px)!important}
+.tutBub.fixTop::before,.tutBub.fixBot::before{display:none!important}
+.rareTag{background:linear-gradient(90deg,#E6F7EA,#F4FFF0)!important;color:#2E8B57!important;border-color:#9BD8A8!important}

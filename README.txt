@@ -1,14 +1,10 @@
-まなびタウン v4.3 UPDATE（v4.2 からの さぶん）
+まなびタウン v4.4 UPDATE（v4.3 からの さぶん）
 
 アップロードする ファイル（同じ ばしょに 上書き・追加）:
-- index.html            … 新しい ファイルの 読みこみを 追加
-- js/app.js             … バージョン表記だけ 4.3.0 に変更
-- js/facilities.js      … パーキングの 車の かきかたを 変更
-- js/v43.js             … 新規：しんごうき・コンビニ・パーキング／ガソリンスタンド
-- js/eng_more.js        … 新規：えいごの 問題 ついか
-- css/v43.css           … 新規
-- assets/images/v43/    … 新規フォルダ（画像3まい）
-    bld_konbini.webp / lot_parking.webp / lot_gas.webp
+- index.html          … v44.css / v44.js の 読みこみを 追加
+- js/app.js           … 住民の 家具プレゼントを ひかえめに・バージョン 4.4.0
+- js/facilities.js    … 学校の じゅぎょうの ポイントを すくなめに
+- js/v44.js           … 新規：しまう ふぐあい・せつめいの ふきだし・住民の 問題（ポイント／えらびかた）
+- css/v44.css         … 新規
 
-※ 既存の assets/images の 画像や css/style.css は そのままで OK です。
-※ セーブデータは そのまま 引きつぎます（追加データ：save.town.sigDir）。
+※ 画像の 追加は ありません。セーブデータは そのまま 引きつぎます。

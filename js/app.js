@@ -8,7 +8,7 @@
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '4.3.0';
+const APP_VERSION = '4.4.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -2669,7 +2669,7 @@ function maybeVisit(){
   H.lastTry = now;
   if(Math.random() < visitChance()){
     const r = t.res[Math.random()*t.res.length|0];
-    H.visit = {id:r.id, at:now, gift:Math.random() < 0.45, x:rint(0,ROOM.cols-1), y:ROOM.rows-1};
+    H.visit = {id:r.id, at:now, gift:Math.random() < 0.25, x:rint(0,ROOM.cols-1), y:ROOM.rows-1};
     H.lastVisit = dayKey(); H.visits = (H.visits||0) + 1;
     setTimeout(() => { if(curScreen==='myhome'){ toast(`🔔 ピンポーン！ ${r.name}が あそびに きたよ！`); sound('fan'); } }, 500);
   }
@@ -2710,7 +2710,7 @@ async function talkVisitor(){
   if(v.gift){
     v.gift = false;
     const cheap = FURNITURE.filter(f => !f.special && (f.lv||1) <= save.town.lv+2 && f.price <= 500);
-    if(Math.random() < 0.6 && cheap.length){
+    if(Math.random() < 0.3 && cheap.length){
       const f = pick(cheap); H.inv[f.id] = (H.inv[f.id]||0) + 1;
       giftHTML = `<div class="giftBox"><img src="${esc(artSrc(f.art))}" alt=""><div>おみやげ：<b>${esc(f.name)}</b>を もらった！<br><small>「もようがえ」で おけるよ</small></div></div>`;
     } else {
@@ -3303,9 +3303,9 @@ async function residentQuiz(r, fromHouse){
   if(res.ok){
     const p2 = givePts(Math.round(40*gb), `${r.name}の クイズに せいかい`); got.push(`⭐ せいかい +${p2}pt`);
     r.fr = (r.fr||0) + 1; got.push('💗 なかよし アップ');
-    if(Math.random() < 0.45*gb){ const f = rewardFurniture(700); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
+    if(Math.random() < 0.1*gb){ const f = rewardFurniture(700); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
     confetti(1600);
-  } else if(Math.random() < 0.15*gb){ const f = rewardFurniture(250); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
+  } else if(Math.random() < 0.02*gb){ const f = rewardFurniture(250); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
   persist();
   await dialog(`<div class="talkWrap"><div class="talkPic happy">${resPic(r)}</div>
     <div class="talkBubble"><b>${esc(r.name)}</b>${res.ok ? pick(['せいかい！ すごーい！','さすが！ ばっちりだね！','ぼくより かしこいかも！']) : `ざんねん！ こたえは「${esc(res.ans)}」だよ。でも ちょうせん してくれて うれしい！`}</div></div>
@@ -3342,7 +3342,7 @@ async function rescue(){
     save.ghost.id = null; save.ghost.saved = (save.ghost.saved||0) + 1; r.fr = (r.fr||0) + 3;
     const gb = giftBoost(), got = [`💗 なかよし 大アップ！`];
     got.push(`🪙 +${givePts(Math.round(100*gb), `${r.name}を たすけた`)}pt`);
-    const f = rewardFurniture(900); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`);
+    if(Math.random() < 0.35){ const f = rewardFurniture(900); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
     persist(); confetti(2600); sound('fan');
     await dialog(`<div class="talkWrap"><div class="talkPic happy">${resPic(r)}<span class="spark s1">✨</span><span class="spark s2">💕</span></div>
       <div class="talkBubble"><b>${esc(r.name)}</b>たすけてくれて ありがとう！ きみは ヒーローだよ！</div></div>${rewardHTML(got)}`, [{label:'よかった！', cls:'gold', v:1}], 'wide talk');
@@ -4109,7 +4109,7 @@ async function completeReq(q){
   const gb = typeof giftBoost==='function' ? giftBoost() : 1, got = [];
   got.push(`🪙 +${givePts(Math.round(q.pt*gb), `${r.name}の おねがいを かなえた`)}pt`);
   r.fr = (r.fr||0) + 2; got.push('💗 なかよし 大アップ');
-  if(Math.random() < 0.5*gb){ const f = rewardFurniture(800); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
+  if(Math.random() < 0.2*gb){ const f = rewardFurniture(800); got.push(`<img src="${esc(artSrc(f.art))}" alt=""> ${esc(f.name)}`); }
   persist(); sound('fan'); confetti(2200); misEv('req');
   await dialog(`<div class="talkWrap"><div class="talkPic happy">${resPic(r)}<span class="spark s1">✨</span><span class="spark s2">💕</span><span class="spark s3">✨</span></div>
     <div class="talkBubble"><b>${esc(r.name)}</b>${pick(['ありがとう！ ずっと ほしかったんだ！','わあ！ ほんとうに かなえてくれたんだね！','きみって さいこう！ これ、お礼だよ！'])}</div></div>${rewardHTML(got)}`,
@@ -5768,7 +5768,7 @@ document.addEventListener('click', async e => {
 }, true);
 /* おきゃくさん：ランクで おみやげ アップ */
 const _maybeVisit15 = maybeVisit;
-maybeVisit = function(){ const H = ensureHome(), had = H.visit; _maybeVisit15(); if(H.visit && H.visit!==had && !H.visit.gift && Math.random() < hRank()*0.07){ H.visit.gift = true; persist(); } };
+maybeVisit = function(){ const H = ensureHome(), had = H.visit; _maybeVisit15(); if(H.visit && H.visit!==had && !H.visit.gift && Math.random() < hRank()*0.03){ H.visit.gift = true; persist(); } };
 /* 家具を ドラッグで いどう */
 const DRG = {on:false};
 $('#roomBox').addEventListener('pointerdown', e => {
