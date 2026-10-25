@@ -32,18 +32,35 @@ const EWE = {
   action:[['walk','あるく','🚶'],['dance','おどる','💃'],['cook','りょうりする','🍳'],['write','かく（字を）','✍️'],['draw','えを かく','🎨'],
           ['listen','きく','👂'],['drink','のむ','🥛'],['climb','のぼる','🧗'],['ride','のる','🚴'],['fly','とぶ（そらを）','🕊️'],['study','べんきょうする','📚'],['wash','あらう','🧼'],['play','あそぶ','🎮']]
 };
+/* v4.7：追加英語も 絵文字ではなく 絵本イラストで表示 */
+const ENG_IMG_BASE = './assets/images/v47/';
+const ENG_EXACT = {
+  peach:1, melon:2, cherry:3, lemon:4, pineapple:5, pear:6,
+  lion:7, tiger:8, bear:9, panda:10, monkey:11, pig:12,
+  taxi:13, truck:14, ship:15, helicopter:16, rocket:17, 'police car':18,
+  walk:19, jump:20, dance:21, cook:22, write:23, draw:24
+};
+const ENG_FALLBACK = {food:1,animal:10,vehicle:13,things:23,nature:5,weather:6,feel:10,clothes:19,sports:21,action:22};
+function engIll(word, cat){
+  const n=ENG_EXACT[word]||ENG_FALLBACK[cat]||1;
+  const norm=String(word).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+  const keys=[`en_${norm}`,`res_${norm}`,`veh_${norm}`,`act_${norm}`,`veg_${norm}`];
+  for(const k of keys){const a=artSrc(k);if(a)return a;}
+  return `${ENG_IMG_BASE}eng_${String(n).padStart(2,'0')}.webp`;
+}
+const engImg=(src,cls='ekIll')=>`<img class="${cls}" src="${esc(src)}" alt="">`;
 /* 絵の ことばと ぶつかる ものは のぞく */
 Object.keys(EWE).forEach(c => { const have = new Set(Object.values(EW).filter(w => w[2]===c).map(w => w[0].toLowerCase())); EWE[c] = EWE[c].filter(w => !have.has(w[0].toLowerCase())); });
-const ekEmo = (e, w) => `<div class="ekPic"><span class="ekEmo">${e}</span>${sayBtn(w)}</div>`;
+const ekEmo = (e, w, cat='food') => `<div class="ekPic">${engImg((String(e).startsWith('./')||String(e).startsWith('data:'))?e:engIll(w,cat))}${sayBtn(w)}</div>`;
 function emoQ(cats){
-  const pool = cats.flatMap(c => (EWE[c]||[]).map(w => ({en:w[0], ja:w[1], e:w[2]})).concat(EWK(c).map(k => ({en:EW[k][0], ja:EW[k][1], art:k}))));
-  const L = cats.flatMap(c => (EWE[c]||[]).map(w => ({en:w[0], ja:w[1], e:w[2]})));
+  const pool = cats.flatMap(c => (EWE[c]||[]).map(w => ({en:w[0], ja:w[1], e:w[2], cat:c, img:engIll(w[0],c)})).concat(EWK(c).map(k => ({en:EW[k][0], ja:EW[k][1], art:k, cat:c, img:artSrc(k)}))));
+  const L = cats.flatMap(c => (EWE[c]||[]).map(w => ({en:w[0], ja:w[1], e:w[2], cat:c, img:engIll(w[0],c)})));
   const w = choice(L), ens = pool.map(x => x.en), jas = pool.map(x => x.ja), t = ri(0,3);
-  if(t===0) return {type:'choice', q:'この 絵は えいごで なんという？', disp:ekEmo(w.e, w.en), ans:w.en, opts:optsFrom(w.en, ens), say:w.en, sub:'ee'+w.en, hint:`「${w.en[0]}」から はじまるよ`};
+  if(t===0) return {type:'choice', q:'この 絵は えいごで なんという？', disp:ekEmo(w.img, w.en, w.cat), ans:w.en, opts:optsFrom(w.en, ens), say:w.en, sub:'ee'+w.en, hint:`「${w.en[0]}」から はじまるよ`};
   if(t===1) return {type:'choice', q:`<b class="enW">${esc(w.en)}</b> は にほんごで？`, disp:sayBtn(w.en), ans:w.ja, opts:optsFrom(w.ja, jas), say:w.en, sub:'ej'+w.en};
-  if(t===2){ const opts = optsFrom(w.en, ens), oh = {}; opts.forEach(o => { const x = pool.find(p => p.en===o); oh[o] = x && x.e ? `<span class="ekOptEmo">${x.e}</span>` : `<img class="ekOpt" src="${esc(artSrc(x && x.art))}" alt="">`; });
+  if(t===2){ const opts = optsFrom(w.en, ens), oh = {}; opts.forEach(o => { const x = pool.find(p => p.en===o); oh[o] = x ? engImg(x.img||artSrc(x.art),'ekOpt') : '';  });
     return {type:'choice', q:`<b class="enW">${esc(w.en)}</b> の 絵は どれ？`, disp:sayBtn(w.en), ans:w.en, opts, optHtml:oh, say:w.en, sub:'ep'+w.en}; }
-  return {type:'choice', q:`「<b>${esc(w.ja)}</b>」は えいごで？`, disp:`<div class="ekPic"><span class="ekEmo">${w.e}</span></div>`, ans:w.en, opts:optsFrom(w.en, ens), say:w.en, sub:'eq'+w.en};
+  return {type:'choice', q:`「<b>${esc(w.ja)}</b>」は えいごで？`, disp:`<div class="ekPic">${engImg(w.img)}</div>`, ans:w.en, opts:optsFrom(w.en, ens), say:w.en, sub:'eq'+w.en};
 }
 const PIC_UNITS = {ek_food:['food'], ek_animal:['animal'], ek_vehicle:['vehicle'], ek_things:['things','nature'], ek_weather:['weather'], ek_feel:['feel'], ek_clothes:['clothes'], ek_sports:['sports'], ek_action:['action']};
 Object.entries(PIC_UNITS).forEach(([k, cats]) => {
@@ -56,7 +73,7 @@ if(EKU.ek_listen){ const g0 = EKU.ek_listen.gen;
   EKU.ek_listen.gen = function(){
     if(Math.random() < .55) return g0.apply(this, arguments);
     const c = choice(Object.keys(EWE)), L = EWE[c], w = choice(L), opts = optsFrom(w[0], L.map(x => x[0])), oh = {};
-    opts.forEach(o => { oh[o] = `<span class="ekOptEmo">${L.find(x => x[0]===o)[2]}</span>`; });
+    opts.forEach(o => { { const z=L.find(x=>x[0]===o); oh[o]=engImg(engIll(z[0],c),'ekOpt'); } });
     return {type:'choice', q:'🔊 きこえた ことばの 絵は どれ？', disp:sayBtn(w[0]), ans:w[0], opts, optHtml:oh, say:w[0], sub:'el'+w[0], listen:1};
   };
 }
@@ -182,13 +199,13 @@ wrapGen('ek_week', .45, () => { const t = ri(0,3);
 });
 wrapGen('ek_sentence', .45, () => { const t = ri(0,2);
   if(t===0){ const L = [['🍑','peaches'],['🍒','cherries'],['🍋','lemons'],['🍍','pineapples'],['🍈','melons'],['🥭','mangoes'],['🦁','lions'],['🐼','pandas'],['🐵','monkeys'],['🐧','penguins'],['🐨','koalas'],['🦒','giraffes'],['🐢','turtles'],['🐬','dolphins'],['🐸','frogs'],['🐻','bears']], w = choice(L), s = `I like ${w[1]}.`;
-    return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(w[0], s), ans:s, opts:optsFrom(s, L.map(x => `I like ${x[1]}.`)), say:s, sub:'sl'+w[1]}; }
-  if(t===1){ const L = EWE.action, w = choice(L), s = `I can ${w[0]}.`; return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(w[2], s), ans:s, opts:optsFrom(s, L.map(x => `I can ${x[0]}.`)), say:s, sub:'sc'+w[0]}; }
-  const L = EWE.feel, w = choice(L), s = `I'm ${w[0]}.`; return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(w[2], s), ans:s, opts:optsFrom(s, L.map(x => `I'm ${x[0]}.`)), say:s, sub:'sf'+w[0]};
+    return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[1].replace(/s$/,''),'animal'), s), ans:s, opts:optsFrom(s, L.map(x => `I like ${x[1]}.`)), say:s, sub:'sl'+w[1]}; }
+  if(t===1){ const L = EWE.action, w = choice(L), s = `I can ${w[0]}.`; return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[0],'action'), s), ans:s, opts:optsFrom(s, L.map(x => `I can ${x[0]}.`)), say:s, sub:'sc'+w[0]}; }
+  const L = EWE.feel, w = choice(L), s = `I'm ${w[0]}.`; return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[0],'feel'), s), ans:s, opts:optsFrom(s, L.map(x => `I'm ${x[0]}.`)), say:s, sub:'sf'+w[0]};
 });
 /* いろ：まぜた いろ・もの の いろ */
 wrapGen('ek_color', .35, () => { const O = [['🍌','yellow'],['🍓','red'],['🐸','green'],['☁️','white'],['🍫','brown'],['🍆','purple'],['🐼','black'],['🌊','blue'],['🍊','orange'],['🌸','pink']], o = choice(O);
-  return {type:'choice', q:`<b class="enW">What color is it?</b><br>この ものの いろは？`, disp:`<div class="ekPic"><span class="ekEmo">${o[0]}</span></div>`, ans:o[1], opts:optsFrom(o[1], COLORS.slice(0,10).map(x=>x[0])), say:`It's ${o[1]}.`, sub:'oc'+o[0]}; });
+  return {type:'choice', q:`<b class="enW">What color is it?</b><br>この ものの いろは？`, disp:`<div class="ekPic">${engImg(engIll(({yellow:'lemon',red:'cherry',green:'pear',white:'panda',brown:'bear',purple:'grapes',black:'panda',blue:'ship',orange:'pineapple',pink:'peach'})[o[1]]||'peach','food'))}</div>`, ans:o[1], opts:optsFrom(o[1], COLORS.slice(0,10).map(x=>x[0])), say:`It's ${o[1]}.`, sub:'oc'+o[0]}; });
 
 /* ---------- ふえた 問題の かず（めやす） ---------- */
 window.ENG_MORE_COUNT = Object.values(EWE).reduce((n,L) => n + L.length*4, 0) + Object.values(MORE).reduce((n,L) => n + L.length*4, 0);
