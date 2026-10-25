@@ -32,21 +32,22 @@ const EWE = {
   action:[['walk','あるく','🚶'],['dance','おどる','💃'],['cook','りょうりする','🍳'],['write','かく（字を）','✍️'],['draw','えを かく','🎨'],
           ['listen','きく','👂'],['drink','のむ','🥛'],['climb','のぼる','🧗'],['ride','のる','🚴'],['fly','とぶ（そらを）','🕊️'],['study','べんきょうする','📚'],['wash','あらう','🧼'],['play','あそぶ','🎮']]
 };
-/* v4.7：追加英語も 絵文字ではなく 絵本イラストで表示 */
-const ENG_IMG_BASE = './assets/images/v47/';
-const ENG_EXACT = {
-  peach:1, melon:2, cherry:3, lemon:4, pineapple:5, pear:6,
-  lion:7, tiger:8, bear:9, panda:10, monkey:11, pig:12,
-  taxi:13, truck:14, ship:15, helicopter:16, rocket:17, 'police car':18,
-  walk:19, jump:20, dance:21, cook:22, write:23, draw:24
-};
-const ENG_FALLBACK = {food:1,animal:10,vehicle:13,things:23,nature:5,weather:6,feel:10,clothes:19,sports:21,action:22};
-function engIll(word, cat){
-  const n=ENG_EXACT[word]||ENG_FALLBACK[cat]||1;
-  const norm=String(word).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-  const keys=[`en_${norm}`,`res_${norm}`,`veh_${norm}`,`act_${norm}`,`veg_${norm}`];
-  for(const k of keys){const a=artSrc(k);if(a)return a;}
-  return `${ENG_IMG_BASE}eng_${String(n).padStart(2,'0')}.webp`;
+/* v4.8：追加英語は ことばごとの イラスト（assets/images/v48/en_〇〇.webp）。
+   同じ ファイル名で 上書きすれば 絵を さしかえられる */
+const EN_NEW = ['badminton','ball','blueberry','boots','bored','box','bullet_train','cactus','camera','cherry','chestnut','climb','cloud','coconut','cold','cook','cup','dance','draw','dress','drink','drum','earth','excited','fine','fire','fly','foggy','gift','glasses','gloves','golf','hat','helicopter','hot','jacket','key','kickscooter','kiwi_fruit','leaf','lemon','letter','listen','mango','melon','motorcycle','mountain','mushroom','nervous','notebook','pants','peach','pear','pen','phone','pineapple','play','proud','ride','rock','rocket','rugby','ruler','scared','scarf','scissors','sea','ship','shirt','shy','sick','skating','skiing','snake','stormy','study','subway','swimming','swimsuit','table_tennis','thunder','tired','trumpet','typhoon','violin','volcano','volleyball','walk','warm','wash','write'];
+EN_NEW.forEach(k => { DEFAULT_ART['en_'+k] = './assets/images/v48/en_'+k+'.webp'; });
+const EN_MAP = {tomato:'veg_tomato', lion:'res_lion', tiger:'res_tiger', bear:'res_bear', panda:'res_panda', monkey:'res_macaque', pig:'res_pig', cow:'res_cow',
+  horse:'res_horse', sheep:'res_sheep', mouse:'res_mouse', frog:'res_frog', penguin:'res_penguin', koala:'res_koala', giraffe:'res_giraffe', zebra:'res_zebra',
+  turtle:'res_turtle', owl:'res_owl', duck:'res_duck', whale:'res_whale', dolphin:'res_dolphin', octopus:'res_octopus',
+  taxi:'veh_taxi', truck:'veh_truck', 'police car':'veh_police', ambulance:'veh_ambulance', 'fire engine':'veh_fire', tractor:'veh_tractor', scooter:'en_kickscooter',
+  peaches:'en_peach', cherries:'en_cherry', lemons:'en_lemon', pineapples:'en_pineapple', melons:'en_melon', mangoes:'en_mango', lions:'res_lion', pandas:'res_panda',
+  monkeys:'res_macaque', penguins:'res_penguin', koalas:'res_koala', giraffes:'res_giraffe', turtles:'res_turtle', dolphins:'res_dolphin', frogs:'res_frog', bears:'res_bear'};
+const enKey = w => 'en_' + String(w).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+function engIll(word){
+  const w = String(word).toLowerCase();
+  if(EN_MAP[w] && artSrc(EN_MAP[w])) return artSrc(EN_MAP[w]);
+  for(const c of [w, w.replace(/ies$/,'y'), w.replace(/es$/,''), w.replace(/s$/,'')]){ const a = artSrc(enKey(c)); if(a) return a; }
+  return artSrc('ui_bulb');
 }
 const engImg=(src,cls='ekIll')=>`<img class="${cls}" src="${esc(src)}" alt="">`;
 /* 絵の ことばと ぶつかる ものは のぞく */
@@ -199,13 +200,13 @@ wrapGen('ek_week', .45, () => { const t = ri(0,3);
 });
 wrapGen('ek_sentence', .45, () => { const t = ri(0,2);
   if(t===0){ const L = [['🍑','peaches'],['🍒','cherries'],['🍋','lemons'],['🍍','pineapples'],['🍈','melons'],['🥭','mangoes'],['🦁','lions'],['🐼','pandas'],['🐵','monkeys'],['🐧','penguins'],['🐨','koalas'],['🦒','giraffes'],['🐢','turtles'],['🐬','dolphins'],['🐸','frogs'],['🐻','bears']], w = choice(L), s = `I like ${w[1]}.`;
-    return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[1].replace(/s$/,''),'animal'), s), ans:s, opts:optsFrom(s, L.map(x => `I like ${x[1]}.`)), say:s, sub:'sl'+w[1]}; }
+    return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[1]), s), ans:s, opts:optsFrom(s, L.map(x => `I like ${x[1]}.`)), say:s, sub:'sl'+w[1]}; }
   if(t===1){ const L = EWE.action, w = choice(L), s = `I can ${w[0]}.`; return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[0],'action'), s), ans:s, opts:optsFrom(s, L.map(x => `I can ${x[0]}.`)), say:s, sub:'sc'+w[0]}; }
   const L = EWE.feel, w = choice(L), s = `I'm ${w[0]}.`; return {type:'choice', q:'絵に あう 文は どれ？', disp:ekEmo(engIll(w[0],'feel'), s), ans:s, opts:optsFrom(s, L.map(x => `I'm ${x[0]}.`)), say:s, sub:'sf'+w[0]};
 });
 /* いろ：まぜた いろ・もの の いろ */
-wrapGen('ek_color', .35, () => { const O = [['🍌','yellow'],['🍓','red'],['🐸','green'],['☁️','white'],['🍫','brown'],['🍆','purple'],['🐼','black'],['🌊','blue'],['🍊','orange'],['🌸','pink']], o = choice(O);
-  return {type:'choice', q:`<b class="enW">What color is it?</b><br>この ものの いろは？`, disp:`<div class="ekPic">${engImg(engIll(({yellow:'lemon',red:'cherry',green:'pear',white:'panda',brown:'bear',purple:'grapes',black:'panda',blue:'ship',orange:'pineapple',pink:'peach'})[o[1]]||'peach','food'))}</div>`, ans:o[1], opts:optsFrom(o[1], COLORS.slice(0,10).map(x=>x[0])), say:`It's ${o[1]}.`, sub:'oc'+o[0]}; });
+wrapGen('ek_color', .35, () => { const O = [['banana','yellow'],['strawberry','red'],['frog','green'],['cloud','white'],['chestnut','brown'],['grapes','purple'],['sea','blue'],['orange','orange'],['peach','pink']], o = choice(O);
+  return {type:'choice', q:`<b class="enW">What color is it?</b><br>この ものの いろは？`, disp:`<div class="ekPic">${engImg(engIll(o[0]))}</div>`, ans:o[1], opts:optsFrom(o[1], COLORS.slice(0,10).map(x=>x[0])), say:`It's ${o[1]}.`, sub:'oc'+o[0]}; });
 
 /* ---------- ふえた 問題の かず（めやす） ---------- */
 window.ENG_MORE_COUNT = Object.values(EWE).reduce((n,L) => n + L.length*4, 0) + Object.values(MORE).reduce((n,L) => n + L.length*4, 0);

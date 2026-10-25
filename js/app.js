@@ -8,7 +8,7 @@
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '4.7.0';
+const APP_VERSION = '4.8.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -2773,7 +2773,7 @@ function buildCars(cs){
   CAR.list = [];
   const t = save.town, rc = roadCells();
   if(rc.length < 2) return;
-  t.veh.slice(0, 16).forEach((id, i) => {
+  t.veh.slice(0, 60).forEach((id, i) => {
     const it = ITEM(id); if(!it) return;
     const [x,y] = rc[(i*7 + rint(0, rc.length-1)) % rc.length];
     const el = document.createElement('button'); el.className = 'car2'; el.dataset.id = id;
@@ -7405,7 +7405,7 @@ document.addEventListener('click', async e => {
   const sb = e.target.closest('[data-sbuy]');
   if(sb){ e.stopImmediatePropagation(); const [kind,id,price] = sb.dataset.sbuy.split(':'), p = +price, t = save.town;
     if(save.points.bal < p){ toast('ポイントが たりないよ'); return; }
-    if(kind==='veh'){ const it = ITEM(id); if(t.veh.length >= townCalc().vehCap){ garage().push(id); toast(`${it.name}は しゃこに 入れたよ`); } else t.veh.push(id); }
+    if(kind==='veh'){ const it = ITEM(id); if(t.veh.length >= townCalc().vehCap){ garage().push(id); (t.autoGar = t.autoGar || []).push(id); toast(`${it.name}は はしれる だいすうが いっぱいなので しゃこで まっているよ（わくが ふえたら じどうで はしるよ）`); } else t.veh.push(id); }
     else if(kind==='use') t.bag[id] = (t.bag[id]||0) + 1;
     else { const H = ensureHome(); H.inv[id] = (H.inv[id]||0) + 1; }
     givePts(-p, `${SHOPS[t.cells[SHOP_KEY]]?.n||'お店'}で ${(FUR(id)||ITEM(id)).name}を かった`); discover(id); persist(); sound('ok'); confetti(900);
