@@ -180,3 +180,49 @@
 .annSteps50 i{position:absolute;left:-4px;top:-6px;width:22px;height:22px;border-radius:50%;background:#E8833A;color:#fff;font-style:normal;font-weight:900;display:grid;place-items:center;font-size:13px}
 .annSteps50 img{width:52px;height:48px;object-fit:contain}.annSteps50 span{font-size:10px;font-weight:800;line-height:1.4;text-align:center}
 .hl50{color:#D2622A;font-weight:900}
+/* ===== v5.1 ===== */
+.rbHouse::before{display:none!important}
+.hisTag51{display:inline-block;margin:0 0 6px;background:#E8F4FF;border:2px solid #8EC3F0;color:#2667A8;border-radius:10px;padding:2px 10px;font-size:12px;font-weight:900}
+.twCard51{border-color:#9B7BE0!important;box-shadow:0 0 0 3px #EDE4FF,var(--shadow)!important;background:linear-gradient(90deg,#FFFFFF 45%,#EEE6FF)!important;margin-top:10px}
+.twCard51 img{height:72px;width:auto;object-fit:contain;animation:none!important}
+.twCard51 .udGo{background:#7554BE!important}
+/* カフェ */
+.up51{background:#fff;border:2px solid #F0DDBB;border-radius:12px;padding:5px 10px;margin:-2px 0 8px;text-align:left}
+.up51 small{font-size:11px;font-weight:800;color:#7A6A55}
+.up51 i{display:block;height:10px;background:#F1E8DA;border-radius:6px;overflow:hidden;margin-top:3px}
+.up51 i b{display:block;height:100%;background:linear-gradient(90deg,#FFB86B,#F07B3F)}
+.cafeStats48{grid-template-columns:repeat(2,1fr)!important}
+.qb51{position:absolute;transform:translate(-50%,-100%);background:#fff;border:2px solid #F07B3F;color:#F07B3F;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-weight:900;font-size:13px;pointer-events:none;box-shadow:0 2px 3px rgba(0,0,0,.2);animation:qb51 1.2s ease-in-out infinite}
+@keyframes qb51{50%{transform:translate(-50%,-115%)}}
+.dish51{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0}.dish51 img{width:48px;height:42px;object-fit:contain}.dish51 span{font-weight:800;font-size:13px}
+/* 電車クイズ */
+.tqHead{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px}.tqHead img{height:32px;width:auto}.tqHead b{font-size:15px}
+.tqPic{display:flex;justify-content:center;margin:4px 0}.tqPic img{max-width:80%;max-height:130px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.15))}
+.tqQ{font-size:17px;font-weight:900;line-height:1.6;margin:6px 0}
+/* タワー せいはの えんしゅつ */
+#fin51{position:fixed;inset:0;z-index:99999;overflow:hidden;cursor:pointer;animation:fin51in .5s ease}
+#fin51.out{animation:fin51out .45s ease forwards}
+@keyframes fin51in{from{opacity:0}}@keyframes fin51out{to{opacity:0}}
+.sky51{position:absolute;inset:0;background:linear-gradient(180deg,#2B1E6B 0%,#6A47B8 35%,#F59BC0 70%,#FFD98A 100%);animation:sky51 3s ease forwards}
+@keyframes sky51{from{filter:brightness(.4)}to{filter:brightness(1)}}
+.rays51{position:absolute;left:50%;top:30%;width:180vmax;height:180vmax;transform:translate(-50%,-50%);background:repeating-conic-gradient(rgba(255,255,255,.22) 0 8deg,transparent 8deg 20deg);animation:rays51 12s linear infinite;opacity:0;animation:rays51 12s linear infinite,fade51 1s 1.2s forwards}
+@keyframes rays51{to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes fade51{to{opacity:1}}
+.fs51{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff;animation:tw51 1.6s ease-in-out infinite}
+@keyframes tw51{50%{opacity:.2;transform:scale(.5)}}
+.fw51{position:absolute;width:6px;height:6px;border-radius:50%;opacity:0;box-shadow:0 0 0 0 hsl(var(--h) 90% 65%);animation:fw51 1.6s ease-out infinite}
+@keyframes fw51{0%{opacity:1;box-shadow:0 0 0 0 hsl(var(--h) 90% 65%),0 0 0 0 #fff}100%{opacity:0;box-shadow:0 0 0 60px hsla(var(--h),90%,65%,0),0 0 0 30px rgba(255,255,255,0)}}
+.tw51{position:absolute;left:50%;bottom:-70%;height:78vh;max-width:70vw;object-fit:contain;transform:translateX(-50%);animation:tw51up 2.2s cubic-bezier(.2,.8,.3,1) forwards;filter:drop-shadow(0 0 30px rgba(255,240,180,.8))}
+@keyframes tw51up{to{bottom:-8%}}
+.rain51{position:absolute;left:50%;top:24%;width:90vw;height:45vw;max-height:60vh;transform:translateX(-50%);border-radius:50% 50% 0 0;background:radial-gradient(circle at 50% 100%,transparent 52%,#FF6B6B 53%,#FFB84D 57%,#FFF06B 61%,#7BE07B 65%,#6BC4FF 69%,#9B7BFF 73%,transparent 74%);opacity:0;animation:fade51 1.2s 1.6s forwards}
+.lt51{position:absolute;left:50%;top:44%;width:28vmin;transform:translate(-50%,-50%) scale(0);animation:pop51 .8s 2.2s cubic-bezier(.3,1.6,.5,1) forwards;filter:drop-shadow(0 0 20px #fff)}
+.cr51{position:absolute;left:72%;top:28%;width:18vmin;transform:translate(-50%,-50%) scale(0);animation:pop51 .8s 2.6s cubic-bezier(.3,1.6,.5,1) forwards}
+@keyframes pop51{to{transform:translate(-50%,-50%) scale(1) rotate(-6deg)}}
+.ttl51{position:absolute;left:0;right:0;top:9%;text-align:center;color:#fff;text-shadow:0 3px 0 #6A47B8,0 0 20px rgba(255,255,255,.8);opacity:0;animation:ttl51 .9s .9s cubic-bezier(.3,1.5,.5,1) forwards}
+.ttl51 span{display:block;font-size:7vmin;font-weight:900}.ttl51 b{display:block;font-size:13vmin;line-height:1;color:#FFE27A}.ttl51 small{display:block;font-size:4.5vmin;font-weight:900;margin-top:6px}
+@keyframes ttl51{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+.cast51{position:absolute;left:0;right:0;bottom:6%;display:flex;justify-content:space-between;padding:0 6vw;opacity:0;animation:fade51 .8s 2.8s forwards}
+.cast51 img{height:22vmin;object-fit:contain;animation:hop51 .6s ease-in-out infinite alternate}
+@keyframes hop51{to{transform:translateY(-12px)}}
+.tap51{position:absolute;left:0;right:0;bottom:2%;text-align:center;color:#fff;font-weight:900;opacity:0}
+#fin51.done .tap51{animation:tw51 1.4s ease-in-out infinite;opacity:1}
+.cafeStats48 span:nth-child(3){grid-column:1/-1}
