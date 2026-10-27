@@ -1281,7 +1281,7 @@ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); con
    ===================================================================== */
 (function(){
 'use strict';
-const VER53 = '5.3.0';
+const VER53 = '5.3.1';
 const IMG53 = './assets/images/v53/';
 const H53 = (s, k=0) => { let h = 2166136261 ^ k; for(const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h >>> 0; };
 const pick53 = (L, seed) => L[(seed==null ? Math.random()*L.length : seed % L.length) | 0];
@@ -1757,7 +1757,7 @@ try{ GIRL_ART.talk.push('gt_wave','gt_read'); GIRL_ART.quiz.push('gt_think'); }c
 /* だい5・6しょうの さしえ：せんようの 絵が できるまでは いまある 絵で 代用（キーは そのまま） */
 const CH_ART_TMP = {c5_1:'c4_6', c5_2:'c1_5', c5_3:'c1_3', c5_4:'c1_4', c5_5:'gt_wave', c5_6:'gt_read',
                     c6_1:'c4_1', c6_2:'c3_2', c6_3:'c3_3', c6_4:'c3_4', c6_5:'gt_think', c6_6:'gt_night'};
-Object.entries(CH_ART_TMP).forEach(([k, v]) => { if(!DEFAULT_ART[k]) DEFAULT_ART[k] = DEFAULT_ART[v] || ''; });
+Object.keys(CH_ART_TMP).forEach(k => { DEFAULT_ART[k] = IMG53 + k + '.jpg'; });   // v5.3.1：せんようの さしえ
 
 /* =====================================================================
    ① まちレベルを Lv30まで
