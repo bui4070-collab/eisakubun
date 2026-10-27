@@ -362,3 +362,20 @@
   @keyframes driveRev52{from{translate:105cqw 0}to{translate:-30cqw 0}}
 }
 #railStrip .mover img,#roadStrip .mover img{filter:none!important}
+
+/* ===== v5.3：住民の ものがたり・ハナ ===== */
+.st53{margin:10px 0 4px;background:#FFF8EC;border:2px dashed #F2C77A;border-radius:16px;padding:8px 12px;text-align:left}
+.st53.hana{background:#FFF0F5;border-color:#FFB3C8}
+.st53 .st53T{display:block;font-size:15px;color:#B0662A;margin-bottom:4px}
+.st53.hana .st53T{color:var(--pink-d)}
+.st53 .st53T small{font-size:11px;background:#fff;border-radius:999px;padding:1px 7px;margin-left:4px;color:#8A7B6C}
+.st53 p{margin:5px 0;font-size:13.5px;line-height:1.6;font-weight:700}
+.st53 p i{display:block;font-style:normal;font-size:11px;color:#C9822F;font-weight:900}
+.st53.hana p i{color:var(--pink-d)}
+.st53 p.lk{color:#A99A88;font-weight:800}
+.mqHint .hw53{display:block;font-size:13px;color:#7A5A2E;margin-bottom:2px}
+.mqHint .hw53 b{color:var(--pink-d);margin-right:2px}
+#cheerBox.hana53 .chMsg{border-color:#FFB3C8;background:linear-gradient(135deg,#FFF6F9,#FFFDF5)}
+#cheerBox.hana53 .chPic{height:92px;width:92px}
+#cheerBox.hana53 .chPic img.hc53{width:92px;height:92px;object-fit:cover;object-position:50% 22%;border-radius:50%;border:4px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.2);display:block}
+.chItem.plan53 .q53{width:120px;height:44px;flex:none;border-radius:10px;background:repeating-linear-gradient(45deg,#EFE6D8 0 8px,#F7F0E5 8px 16px);display:flex;align-items:center;justify-content:center;font-size:24px;color:#B9A88F}
