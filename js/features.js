@@ -936,3 +936,337 @@ async function trainQuiz(id){
 }
 document.addEventListener('click',e=>{const b=e.target.closest('#railStrip .mover.train,.mover.train');if(!b||curScreen!=='town'||townEdit)return;e.stopImmediatePropagation();e.preventDefault();trainQuiz(b.dataset.id);},true);
 })();
+
+
+/* =====================================================================
+   まなびタウン v5.2
+   ① かわ・はし（かわは みちのように つながる／2×2で 池／はしの 上は 人も 車も OK）
+   ② よこむきの 信号の 光の むきを なおす
+   ③ 公園で あそぶ・学校で まなぶ 演出を ふやす
+   ④ ずかん「ものがたりを 見る」で 画面が 白く なって とまる 不具合を なおす（CSS）
+   ⑤ まちの 画面を かるく（ふってくる アイコンを とめる・うごきの さいてきか）
+   ⑥ つかいかたの せつめい：ふきだしが さいしょから いい 場所に 出る（CSS）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER52 = '5.2.0';
+const D4 = [[0,-1,'n'],[1,0,'e'],[0,1,'s'],[-1,0,'w']];
+
+/* =====================================================================
+   ① かわ・はし
+   ===================================================================== */
+const RIVER = 'river', BRIDGE = 'road_bridge';
+const RV = {L:null};
+const curL = () => RV.L || (save.town ? townCalc().L : {cols:6, rows:6});
+const isWaterId = id => id===RIVER || id===BRIDGE;
+window.isWaterId52 = isWaterId;
+
+/* となりが 水か（画面の そとは「水が つづく」あつかい） */
+function waterAt(x, y, L){
+  if(x < 0 || y < 0 || x >= L.cols || y >= L.rows) return true;
+  return isWaterId(save.town.cells[`${x},${y}`]);
+}
+/* n+e を きじゅんに かいて、rotate で ほかの むきへ */
+const ROT = {n:0, e:90, s:180, w:270};
+const PAIRS = [['n','e',1,-1,0],['e','s',1,1,90],['s','w',-1,1,180],['w','n',-1,-1,270]];
+const ARM = {n:'M23 0H77V50H23Z', e:'M50 23H100V77H50Z', s:'M23 50H77V100H23Z', w:'M0 23H50V77H0Z'};
+const ARC_NE = 'M23 0A77 77 0 0 0 100 77L100 23A23 23 0 0 1 77 0Z';      // R の まがりかど
+const FILLET_NE = 'M77 9L77 23L91 23A14 14 0 0 1 77 9Z';                 // T字・十字の すみを まるく
+const QUAD_NE = 'M50 0H100V50H50Z';                                      // 2×2 いじょうで 池に なる
+const rot = (d, deg) => deg ? `<path d="${d}" transform="rotate(${deg} 50 50)"/>` : `<path d="${d}"/>`;
+function waterShapes(x, y, L){
+  const c = {}; D4.forEach(([dx,dy,d]) => c[d] = waterAt(x+dx, y+dy, L));
+  const arms = D4.map(d => d[2]).filter(d => c[d]);
+  let sh = '', quads = 0;
+  if(!arms.length) return {sh:'<ellipse cx="50" cy="52" rx="34" ry="29"/>', arms, quads:0, pond:true};
+  const pureL = arms.length===2 && !((c.n && c.s) || (c.e && c.w));
+  PAIRS.forEach(([a,b,dx,dy,deg]) => {
+    if(!c[a] || !c[b]) return;
+    if(waterAt(x+dx, y+dy, L)){ sh += rot(QUAD_NE, deg); quads++; }
+    else if(pureL) sh += rot(ARC_NE, deg);
+    else sh += rot(FILLET_NE, deg);
+  });
+  if(!pureL || quads){ sh = '<circle cx="50" cy="50" r="27"/>' + arms.map(d => `<path d="${ARM[d]}"/>`).join('') + sh; }
+  return {sh, arms, quads, pond:false};
+}
+const hash = (x, y, k=0) => ((x*73856093) ^ (y*19349663) ^ (k*83492791)) >>> 0;
+function riverSVG(x, y, L, opt={}){
+  const W = waterShapes(x, y, L), h = hash(x, y);
+  // きらきら・なみ（水の 上だけ）
+  let deco = '';
+  const spots = [];
+  if(W.pond) spots.push([40,46],[60,58]);
+  else { spots.push([44,44]); W.arms.forEach(d => spots.push({n:[48,18],e:[80,47],s:[52,82],w:[18,53]}[d])); }
+  spots.forEach(([sx,sy], i) => { if((h >> i) & 1 || i===0) deco += `<path class="wv" d="M${sx-7} ${sy}q3.5 -3.5 7 0t7 0"/>`; });
+  if(W.pond && !opt.bridge && h % 3 !== 0) deco += `<g class="lily"><circle cx="${62 + h%7}" cy="${40 + h%9}" r="7"/><path d="M${62 + h%7} ${40 + h%9}l7 -2l-1 5z" class="cut"/></g>`;
+  if(W.quads >= 3 && !opt.bridge && h % 4 === 1) deco += `<g class="lily"><circle cx="30" cy="66" r="6"/><path d="M30 66l6 -2l-1 4z" class="cut"/></g>`;
+  if(W.pond || W.quads) deco += `<circle class="spk" cx="${30 + h%30}" cy="${30 + (h>>3)%30}" r="1.8"/>`;
+  return `<svg class="rv52" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <g class="bank">${W.sh}</g><g class="rim">${W.sh}</g><g class="wat">${W.sh}</g>${deco}${opt.extra||''}</svg>`;
+}
+/* はし：ゆかの むき */
+function bridgeAxis(x, y){
+  const t = save.town.cells, L = curL();
+  const road = (a,b) => isRoadId(t[`${a},${b}`]) && t[`${a},${b}`]!==BRIDGE;
+  const wat = (a,b) => a>=0 && b>=0 && a<L.cols && b<L.rows && t[`${a},${b}`]===RIVER;
+  const hR = road(x-1,y) || road(x+1,y), vR = road(x,y-1) || road(x,y+1);
+  const hW = wat(x-1,y) || wat(x+1,y), vW = wat(x,y-1) || wat(x,y+1);
+  const hB = t[`${x-1},${y}`]===BRIDGE || t[`${x+1},${y}`]===BRIDGE, vB = t[`${x},${y-1}`]===BRIDGE || t[`${x},${y+1}`]===BRIDGE;
+  if(hR && !vR) return 'h'; if(vR && !hR) return 'v';
+  if(vW && !hW) return 'h'; if(hW && !vW) return 'v';
+  if(hB && !vB) return 'h'; if(vB && !hB) return 'v';
+  return 'h';
+}
+function deckSVG(ax){
+  let planks = ''; for(let i=1;i<10;i++) planks += `<path d="M${i*10} 27V73"/>`;
+  const posts = [6,28,50,72,94].map(px => `<rect x="${px-2.5}" y="17" width="5" height="10" rx="1.5"/><rect x="${px-2.5}" y="73" width="5" height="10" rx="1.5"/>`).join('');
+  const g = `<g class="deck"><rect class="shadow" x="0" y="29" width="100" height="48"/><rect class="floor" x="0" y="25" width="100" height="50"/><g class="pl">${planks}</g>
+    <g class="post">${posts}</g><path class="rail" d="M0 19H100M0 79H100"/></g>`;
+  return ax==='v' ? `<g transform="rotate(90 50 50)">${g}</g>` : g;
+}
+function bridgeHTML(x, y){
+  const L = curL(), ax = bridgeAxis(x, y);
+  return `<div class="rd brg52 ax-${ax}">${riverSVG(x, y, L, {bridge:true, extra:deckSVG(ax)})}</div>`;
+}
+
+/* ---------- アイテム ---------- */
+const tileSVG = inner => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect x="4" y="4" width="112" height="112" rx="22" fill="#A9DB86" stroke="#fff" stroke-width="5"/><g transform="translate(10 10)">${inner}</g></svg>`);
+const ICON_WATER = (sh, extra='') => `<g fill="#E8D9A8" stroke="#E8D9A8" stroke-width="12" stroke-linejoin="round">${sh}</g>
+  <g fill="#4FA9DA" stroke="#4FA9DA" stroke-width="5" stroke-linejoin="round">${sh}</g><g fill="#8AD3F3">${sh}</g>
+  <g fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" opacity=".85"><path d="M30 48q4 -4 8 0t8 0"/><path d="M55 74q4 -4 8 0t8 0"/></g>${extra}`;
+const ICON_RIVER_SH = '<path d="M28 0H72V100H28Z"/>';
+DEFAULT_ART.bld_river = tileSVG(`<svg viewBox="0 0 100 100" width="100" height="100" overflow="hidden">${ICON_WATER('<path d="M0 18C42 18 44 58 100 58V92C26 92 24 52 0 52Z"/>', '<g><circle cx="72" cy="28" r="8" fill="#67B85A"/><path d="M72 28l8 -2l-1 5z" fill="#A9DB86"/><circle cx="24" cy="80" r="5" fill="#FF9EBB"/><circle cx="24" cy="80" r="2" fill="#FFE27A"/></g>')}</svg>`);
+DEFAULT_ART.bld_bridge = tileSVG(`<svg viewBox="0 0 100 100" width="100" height="100" overflow="hidden">${ICON_WATER(ICON_RIVER_SH)}
+  <g><rect x="0" y="29" width="100" height="48" fill="rgba(0,0,0,.18)"/><rect x="0" y="25" width="100" height="50" fill="#D6A15F"/>
+  <g stroke="#A8743B" stroke-width="2">${[1,2,3,4,5,6,7,8,9].map(i => `<path d="M${i*10} 27V73"/>`).join('')}</g>
+  <g fill="#8A5A2B">${[6,28,50,72,94].map(px => `<rect x="${px-3}" y="16" width="6" height="11" rx="2"/><rect x="${px-3}" y="73" width="6" height="11" rx="2"/>`).join('')}</g>
+  <path d="M0 19H100M0 79H100" stroke="#B8793A" stroke-width="5" stroke-linecap="round"/></g></svg>`);
+if(!TOWN_ITEMS.some(x => x.id===RIVER))
+  TOWN_ITEMS.push({id:RIVER, type:'bld', cat:'road', name:'かわ', art:'bld_river', emoji:'\uD83C\uDF0A', price:15, lv:1, dev:1,
+    desc:'みちのように つながる・2×2で 池に なる・人も 車も わたれない'});
+if(!TOWN_ITEMS.some(x => x.id===BRIDGE))
+  TOWN_ITEMS.push({id:BRIDGE, type:'bld', cat:'road', name:'はし', art:'bld_bridge', emoji:'\uD83C\uDF09', price:60, lv:1, dev:3,
+    desc:'かわの 上に かける みち・人も 車も わたれる'});
+try{ ZUKAN_INFO[RIVER] = 'さらさら ながれる かわ。つなげると 水が つながり、4マス あつめると 池に なるよ。';
+     ZUKAN_INFO[BRIDGE] = 'かわの 上を わたれる はし。車も 人も とおれるよ。'; }catch(e){}
+try{ ACT_OF[RIVER] = 'fishing'; }catch(e){}
+itemEffect = (orig => function(it){
+  const s = orig.apply(this, arguments);
+  if(it && it.id===RIVER) return `${s ? s + '・' : ''}\uD83C\uDF0A つなげると 水が ながれる・2×2で 池・人も 車も わたれない`;
+  if(it && it.id===BRIDGE) return `${s ? s + '・' : ''}\uD83C\uDF09 かわの 上を 人も 車も わたれる`;
+  return s;
+})(itemEffect);
+picHTML = (orig => function(o, cls=''){
+  if(o && o.id===BRIDGE) return `<img class="${cls}" src="${esc(artSrc('bld_bridge'))}" alt="">`;
+  return orig(o, cls);
+})(picHTML);
+
+/* ---------- みちの 絵：はしは とくべつ・かわへは みちを のばさない ---------- */
+roadHTML = (orig => function(x, y){
+  const c = save.town.cells;
+  if(c[`${x},${y}`]===BRIDGE) return bridgeHTML(x, y);
+  let h = orig(x, y);
+  D4.forEach(([dx,dy,d]) => { if(c[`${x+dx},${y+dy}`]===RIVER) h = h.replace(`<i class="x x-${d}"></i>`, ''); });
+  return h;
+})(roadHTML);
+
+/* ---------- マップに かわを かく ---------- */
+function drawRivers(){
+  const map = $('#townMap'); if(!map || !save.town) return;
+  const L = curL();
+  Object.entries(save.town.cells).forEach(([k,id]) => {
+    if(id!==RIVER) return; const [x,y] = k.split(',').map(Number);
+    const cell = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); if(!cell) return;
+    cell.querySelectorAll('.bimg,.rv52').forEach(e => e.remove());
+    cell.classList.add('river52'); cell.style.zIndex = 1;
+    cell.insertAdjacentHTML('afterbegin', riverSVG(x, y, L));
+  });
+}
+
+/* =====================================================================
+   ② よこむきの 信号：光が 出る むきを はんたいに
+   ===================================================================== */
+// sig49 の「flip」は 左むき（'l'）に ついていた → 右むき（'r'）に つけかえる
+function fixSignals(){
+  $$('#townMap .sig49.fh').forEach(e => { if(e.dataset.f52) return; e.dataset.f52 = 1; e.classList.toggle('flip'); });
+}
+
+/* =====================================================================
+   ③ 公園・学校の 演出
+   ===================================================================== */
+const GAME_KEY = {'おにごっこ':'tag','かくれんぼ':'hide','ブランコ':'swing','すべりだい':'slide','なわとび':'rope','ボールあそび':'ball'};
+const gameKey = () => GAME_KEY[(save.fac?.park?.game||[])[0]] || 'ball';
+const PROP = {
+  ball:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="#fff" stroke="#E8414B" stroke-width="1.6"/><path d="M3 8q7 3 14 0M4 13q6 -3 12 0" stroke="#E8414B" stroke-width="1.4" fill="none"/></svg>',
+  rope:'<svg viewBox="0 0 40 30"><path d="M3 4Q20 34 37 4" fill="none" stroke="#E86AA0" stroke-width="2.4" stroke-linecap="round"/><rect x="0" y="0" width="6" height="7" rx="2" fill="#7A5BD6"/><rect x="34" y="0" width="6" height="7" rx="2" fill="#7A5BD6"/></svg>',
+  swing:'<svg viewBox="0 0 40 40"><path d="M2 38L8 2H32L38 38" fill="none" stroke="#C0563F" stroke-width="3" stroke-linecap="round"/><g class="sw52"><path d="M14 3V30M26 3V30" stroke="#8A8F98" stroke-width="1.4"/><rect x="11" y="29" width="18" height="4" rx="2" fill="#F2B33D"/></g></svg>',
+  slide:'<svg viewBox="0 0 40 40"><path d="M6 38V8H12V38" fill="none" stroke="#4E9BD6" stroke-width="2.4"/><path d="M8 12h2M8 18h2M8 24h2M8 30h2" stroke="#4E9BD6" stroke-width="2"/><path d="M12 8Q22 10 28 26T38 37" fill="none" stroke="#F06C5A" stroke-width="5" stroke-linecap="round"/></svg>',
+  hide:'<svg viewBox="0 0 40 30"><ellipse cx="12" cy="20" rx="12" ry="10" fill="#5DB35A"/><ellipse cx="28" cy="19" rx="12" ry="11" fill="#6CC468"/><ellipse cx="20" cy="14" rx="10" ry="9" fill="#7BD176"/><circle cx="14" cy="16" r="1.6" fill="#FF8FB1"/><circle cx="28" cy="13" r="1.6" fill="#FFD84D"/></svg>',
+  tag:'<svg viewBox="0 0 30 16"><path d="M2 12h8M4 7h10M2 2h7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".95"/></svg>'
+};
+const nextTo = (s, id) => { for(const [dx,dy] of D4){ const k = `${s.x+dx},${s.y+dy}`; if(save.town.cells[k]===id) return k; } return null; };
+try{ ACTS.learned = {h:'\uD83D\uDCA1', cls:'jump'}; }catch(e){}
+
+function fxWalker(s, a){
+  const el = s.el; if(!el) return;
+  el.querySelectorAll('.pp52').forEach(e => e.remove());
+  if(a==='play' && nextTo(s, 'park')){
+    const g = gameKey(); s.game52 = g;
+    el.classList.add('pl52', 'pl-'+g);
+    if(s.left < 9) s.left = rint(9, 14);
+    if(PROP[g]) el.insertAdjacentHTML('beforeend', `<i class="pp52 pp-${g}">${PROP[g]}</i>`);
+  } else if(a==='study' && nextTo(s, 'school')){
+    if(s.left < 10) s.left = rint(10, 15); s.study52 = 1;
+    setTimeout(() => { if(s.act==='study' && s.el===el){ el.classList.add('inSchool52'); liveSoon(); } }, 900);
+  }
+  liveSoon();
+}
+const _showAct52 = showAct;
+showAct = function(s, a){ const o = _showAct52.apply(this, arguments); try{ fxWalker(s, a); }catch(e){ console.warn(e); } return o; };
+const _clearAct52 = clearAct;
+clearAct = function(s){
+  const was = s.act, st = s.study52; s.study52 = 0; s.game52 = null;
+  const o = _clearAct52.apply(this, arguments);
+  try{
+    if(s.el) s.el.querySelectorAll('.pp52').forEach(e => e.remove());
+    if(was==='study' && st && s.el){ s.act = 'learned'; s.left = 3; showAct(s, 'learned'); if(Math.random() < 0.5) sfx52('ding'); }
+    liveSoon();
+  }catch(e){ console.warn(e); }
+  return o;
+};
+
+/* まちの 上：公園で あそんでいる・学校で じゅぎょう中 */
+const BOARD = [['1+2=3','あいう','ABC','3×4=12'],['にじ','かんじ','12÷3=4','Hello'],['🌱→🌻','100+50','みず H₂O','やま 山']];
+let liveT = 0;
+function liveSoon(){ clearTimeout(liveT); liveT = setTimeout(updateLive, 120); }
+function updateLive(){
+  if(curScreen!=='town' || !save.town) return;
+  const map = $('#townMap'); if(!map) return;
+  const play = {}, study = {};
+  WK.st.forEach(s => {
+    if(!s.el) return;
+    if(s.act==='play'){ const k = nextTo(s, 'park'); if(k) play[k] = (play[k]||0) + 1; }
+    if(s.act==='study' && s.el.classList.contains('inSchool52')){ const k = nextTo(s, 'school'); if(k) study[k] = (study[k]||0) + 1; }
+  });
+  Object.entries(save.town.cells).forEach(([k,id]) => {
+    if(id!=='park' && id!=='school') return;
+    const [x,y] = k.split(','), c = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); if(!c) return;
+    const n = (id==='park' ? play : study)[k] || 0, cur = c.querySelector('.live52');
+    if(!n){ if(cur) cur.remove(); c.classList.remove('liveOn52'); return; }
+    if(cur && +cur.dataset.n===n) return;
+    if(cur) cur.remove();
+    c.classList.add('liveOn52');
+    if(id==='park'){
+      const g = gameKey(), name = (save.fac?.park?.game||['あそび'])[0];
+      c.insertAdjacentHTML('beforeend', `<div class="live52 pk52 g-${g}" data-n="${n}"><span class="tag52">${esc(name)}</span>
+        <i class="nt52 a">♪</i><i class="nt52 b">♫</i><i class="nt52 c">♡</i></div>`);
+    } else {
+      const b = choice(BOARD);
+      if(!cur) sfx52('chime');
+      c.insertAdjacentHTML('beforeend', `<div class="live52 sc52" data-n="${n}"><div class="board52">${b.map((t,i) => `<b style="animation-delay:${i*2}s">${esc(t)}</b>`).join('')}</div>
+        <span class="tag52">じゅぎょう中 ✏️${n}</span></div>`);
+    }
+  });
+}
+
+/* おと（おんがく せっていに したがう） */
+function sfx52(k){
+  try{
+    if(!save.settings.sound) return; smCtx(); const t = SM.ctx.currentTime;
+    SM.master.gain.cancelScheduledValues(t); SM.master.gain.setValueAtTime(Math.max(SM.master.gain.value, 0.6), t);
+    if(k==='chime') [['E5',0],['C5',.42],['D5',.84],['G4',1.26],['G4',1.9],['D5',2.32],['E5',2.74],['C5',3.16]].forEach(([n,d]) => nt(NOTE(n), t+d, 0.9, 'sine', 0.05));
+    if(k==='ding') nt(NOTE('A5'), t, 0.5, 'sine', 0.05);
+    if(k==='play') [['C5',0],['E5',.12],['G5',.24],['E5',.36],['C6',.5]].forEach(([n,d]) => nt(NOTE(n), t+d, 0.25, 'triangle', 0.05));
+  }catch(e){}
+}
+
+/* ダイアログの 中：公園・学校の ぶたい */
+const PARK_BG = `<svg class="bg52" viewBox="0 0 300 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <rect width="300" height="120" fill="#CFEFFF"/><circle cx="262" cy="22" r="13" fill="#FFE27A"/>
+  <ellipse cx="60" cy="24" rx="22" ry="8" fill="#fff" opacity=".9"/><ellipse cx="190" cy="16" rx="18" ry="6" fill="#fff" opacity=".85"/>
+  <path d="M0 78Q75 62 150 74T300 70V120H0Z" fill="#9FD97C"/><path d="M0 96Q90 84 170 94T300 90V120H0Z" fill="#86CB66"/>
+  <g transform="translate(18 40)"><rect x="9" y="22" width="6" height="22" fill="#9A6A3C"/><circle cx="12" cy="18" r="16" fill="#5DB35A"/><circle cx="4" cy="24" r="10" fill="#6CC468"/></g>
+  <g transform="translate(250 44)"><rect x="9" y="20" width="6" height="22" fill="#9A6A3C"/><circle cx="12" cy="16" r="14" fill="#5DB35A"/></g>
+  <g transform="translate(206 46)" fill="none" stroke-linecap="round"><path d="M2 34L8 2H30L36 34" stroke="#C0563F" stroke-width="3"/>
+    <g class="sw52"><path d="M14 3V24M24 3V24" stroke="#8A8F98" stroke-width="1.2"/><rect x="11" y="23" width="16" height="3" rx="1.5" fill="#F2B33D" stroke="none"/></g></g>
+  <g transform="translate(52 50)" fill="none" stroke-linecap="round"><path d="M4 32V6H9V32" stroke="#4E9BD6" stroke-width="2.4"/><path d="M9 6Q18 8 23 22T34 32" stroke="#F06C5A" stroke-width="5"/></g>
+  <g fill="#FF8FB1"><circle cx="120" cy="100" r="2.4"/><circle cx="160" cy="106" r="2.4"/></g><g fill="#FFE27A"><circle cx="140" cy="104" r="2.4"/><circle cx="96" cy="108" r="2.4"/></g></svg>`;
+const SCHOOL_BG = b => `<div class="bg52"><div class="cb52"><span>${b.map((t,i) => `<b style="animation-delay:${i*1.6}s">${esc(t)}</b>`).join('')}</span><i class="chalk52"></i></div>
+  <img class="tch52" src="${esc(artSrc('bird_think') || '')}" alt=""><div class="win52"></div></div>`;
+function stage52(html){
+  if(typeof html !== 'string' || html.indexOf('whoRow') < 0) return html;
+  const isPark = html.includes('公園</h2>') && !html.includes('病院');
+  const parkDone = html.includes('たのしかった！</h2>');
+  const isSchool = html.includes('学校</h2>');
+  const schoolWin = html.includes('じゅぎょう だいせいこう！');
+  if(isPark || parkDone){
+    const g = gameKey();
+    if(parkDone) sfx52('play');
+    return html.replace('<div class="whoRow">', `<div class="whoRow stage52 pkS52 g-${g} ${parkDone ? 'done52' : ''}">${PARK_BG}<i class="gp52">${PROP[g]||''}</i>`);
+  }
+  if(isSchool || schoolWin){
+    if(schoolWin) sfx52('chime');
+    return html.replace('<div class="whoRow">', `<div class="whoRow stage52 scS52 ${schoolWin ? 'win52' : ''}">${SCHOOL_BG(choice(BOARD))}`);
+  }
+  return html;
+}
+const _dialog52 = dialog;
+dialog = function(html, btns, cls){ try{ html = stage52(html); }catch(e){ console.warn(e); } return _dialog52.call(this, html, btns, cls); };
+
+/* =====================================================================
+   ⑤ かるく する
+   ===================================================================== */
+// イベントの ふってくる アイコンは まちの 画面では 出さない
+evFx = (orig => function(){
+  if(curScreen==='town'){ const b = $('#evFx'); if(b && b.innerHTML){ b.innerHTML = ''; } if(b) b.dataset.e = ''; return; }
+  return orig.apply(this, arguments);
+})(evFx);
+// 住民の うごき：うごいている ときだけ かきなおす・みんな とまったら ループを やすむ
+movLoop = function(t){
+  const dt = Math.min(0.05, (t - MOV.last)/1000); MOV.last = t;
+  const sp = WK.cs/0.66; let busy = false;
+  WK.st.forEach(s => {
+    if(!s.el || s.tx==null) return;
+    const dx = s.tx - s.px, dy = s.ty - s.py, d = Math.hypot(dx, dy);
+    if(d < 0.4){
+      if(s.mvg){ s.mvg = false; s.el.classList.remove('moving'); }
+      if(s.px !== s.tx || s.py !== s.ty){ s.px = s.tx; s.py = s.ty; paintW(s); }
+    } else {
+      busy = true; const st = Math.min(d, sp*dt); s.px += dx/d*st; s.py += dy/d*st;
+      if(!s.mvg){ s.mvg = true; s.el.classList.add('moving'); }
+      paintW(s);
+    }
+  });
+  if(curScreen==='town' && busy && !document.hidden) MOV.raf = requestAnimationFrame(movLoop); else MOV.raf = 0;
+};
+// 車：left/top ではなく translate で うごかす（GPUで なめらか・かるい）
+placeCar = (orig => function(c, instant){
+  const r = orig.apply(this, arguments);
+  const el = c && c.el; if(!el) return r;
+  const L = parseFloat(el.style.left), T = parseFloat(el.style.top); if(isNaN(L) || isNaN(T)) return r;
+  if(instant) el.style.setProperty('transition', 'none', 'important');
+  el.style.translate = `${L.toFixed(1)}px ${T.toFixed(1)}px`; el.style.left = '0px'; el.style.top = '0px';
+  if(instant){ void el.offsetWidth; el.style.removeProperty('transition'); }
+  return r;
+})(placeCar);
+
+/* =====================================================================
+   マップを かいた あとに まとめて
+   ===================================================================== */
+renderMap = (orig => function(){
+  try{ RV.L = save.town ? townCalc().L : null; }catch(e){ RV.L = null; }
+  const o = orig.apply(this, arguments);
+  try{ drawRivers(); fixSignals(); updateLive(); }catch(e){ console.warn(e); }
+  RV.L = null;
+  return o;
+})(renderMap);
+// 信号は 5びょうごとなどに かきなおされる ことが あるので 見はる
+(function(){
+  const m = $('#townMap'); if(!m || !window.MutationObserver) return;
+  new MutationObserver(muts => { if(muts.some(x => [...x.addedNodes].some(n => n.classList && n.classList.contains('sig49')))) fixSignals(); }).observe(m, {childList:true});
+})();
+
+/* バージョン ひょうじ */
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER52}`; return o; })(renderSettings);
+})();

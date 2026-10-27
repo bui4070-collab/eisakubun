@@ -226,3 +226,139 @@
 .tap51{position:absolute;left:0;right:0;bottom:2%;text-align:center;color:#fff;font-weight:900;opacity:0}
 #fin51.done .tap51{animation:tw51 1.4s ease-in-out infinite;opacity:1}
 .cafeStats48 span:nth-child(3){grid-column:1/-1}
+
+/* ===== v5.2：かわ・はし ===== */
+.cell.river52{z-index:1}
+.rv52{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;display:block}
+.rv52 .bank{fill:#E6D6A2;stroke:#E6D6A2;stroke-width:12;stroke-linejoin:round}
+.rv52 .rim{fill:#4FA9DA;stroke:#4FA9DA;stroke-width:5;stroke-linejoin:round}
+.rv52 .wat{fill:#8AD3F3}
+.rv52 .wv{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;opacity:.8}
+.rv52 .lily circle{fill:#67B85A}.rv52 .lily .cut{fill:#8AD3F3}
+.rv52 .spk{fill:#fff;opacity:.9}
+#townMap.edit .cell.river52{background:rgba(255,255,255,.12)}
+/* はし */
+.cell.road .rd.brg52{position:absolute;inset:0;pointer-events:none}
+.brg52 .deck .shadow{fill:rgba(0,0,0,.16)}
+.brg52 .deck .floor{fill:#D6A15F}
+.brg52 .deck .pl path{stroke:#A8743B;stroke-width:1.6}
+.brg52 .deck .post rect{fill:#8A5A2B}
+.brg52 .deck .rail{stroke:#B8793A;stroke-width:4.5;stroke-linecap:round;fill:none}
+.roadIcon.rt-road_bridge{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10' fill='%238AD3F3'/%3E%3Crect y='3' width='10' height='4' fill='%23D6A15F'/%3E%3C/svg%3E") center/cover!important}
+
+/* ===== v5.2：公園・学校（まちの 上） ===== */
+#townMap .walker.pl52 .wact{display:none}
+#townMap .walker.pl-tag .wimg{animation:pl52tag 1.5s ease-in-out infinite!important}
+#townMap .walker.pl-hide .wimg{animation:pl52hide 3.2s ease-in-out infinite!important}
+#townMap .walker.pl-swing .wimg{transform-origin:50% -30%;animation:pl52swing 1.3s ease-in-out infinite!important}
+#townMap .walker.pl-slide .wimg{animation:pl52slide 1.8s ease-in infinite!important}
+#townMap .walker.pl-rope .wimg{animation:pl52jump .5s ease-in-out infinite alternate!important}
+#townMap .walker.pl-ball .wimg{animation:pl52jump .6s ease-in-out infinite alternate!important}
+@keyframes pl52tag{0%{translate:-30% 0;rotate:-6deg}25%{translate:0 -6%}50%{translate:30% 0;rotate:6deg}75%{translate:0 -6%}100%{translate:-30% 0;rotate:-6deg}}
+@keyframes pl52hide{0%,35%{opacity:1;scale:1}45%,80%{opacity:.18;scale:.8}90%{opacity:1;scale:1.08}100%{opacity:1;scale:1}}
+@keyframes pl52swing{0%,100%{rotate:-20deg}50%{rotate:20deg}}
+@keyframes pl52slide{0%{translate:-22% -30%;opacity:1}70%{translate:22% 4%;opacity:1}80%{translate:22% 4%;opacity:0}81%{translate:-22% -30%;opacity:0}100%{translate:-22% -30%;opacity:1}}
+@keyframes pl52jump{from{translate:0 0}to{translate:0 -22%}}
+.pp52{position:absolute;pointer-events:none;font-style:normal;z-index:3}
+.pp52 svg{width:100%;height:100%;display:block;overflow:visible}
+.pp-ball{width:34%;left:60%;top:-26%;animation:pl52ball .6s ease-in-out infinite alternate}
+@keyframes pl52ball{from{translate:0 0;rotate:0deg}to{translate:-40% -70%;rotate:180deg}}
+.pp-rope{width:120%;left:-10%;bottom:-6%;height:40%;animation:pl52rope .5s ease-in-out infinite alternate;transform-origin:50% 0}
+@keyframes pl52rope{from{scale:1 1}to{scale:1 -1}}
+.pp-swing{width:110%;height:110%;left:-5%;top:-20%;z-index:-1}
+.pp-swing .sw52{transform-origin:50% 5%;animation:pl52swing 1.3s ease-in-out infinite}
+.pp-slide{width:110%;height:100%;left:-5%;top:-10%;z-index:-1}
+.pp-hide{width:90%;height:50%;left:5%;bottom:-8%;z-index:4}
+.pp-tag{width:40%;left:-30%;top:40%;animation:pl52speed .4s linear infinite}
+@keyframes pl52speed{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+#townMap .walker.inSchool52{opacity:0!important;pointer-events:none}
+.live52{position:absolute;left:0;right:0;top:-14%;pointer-events:none;z-index:6;display:flex;flex-direction:column;align-items:center}
+.live52 .tag52{background:#fff;border:2px solid #FFC94D;border-radius:999px;padding:0 6px;font-size:max(9px,calc(var(--cell)*.15));font-weight:900;color:#B05A00;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+.pk52 .nt52{position:absolute;font-style:normal;font-weight:900;color:#FF6FA3;font-size:max(12px,calc(var(--cell)*.22));text-shadow:0 1px 0 #fff;opacity:0;animation:nt52 2.4s ease-out infinite}
+.pk52 .nt52.a{left:18%;top:10%}.pk52 .nt52.b{left:70%;top:4%;color:#4E9BD6;animation-delay:.8s}.pk52 .nt52.c{left:44%;top:-6%;color:#F27C3A;animation-delay:1.6s}
+@keyframes nt52{0%{opacity:0;translate:0 10px}20%{opacity:1}100%{opacity:0;translate:0 -18px}}
+.cell.liveOn52 .bimg{animation:live52 2s ease-in-out infinite}
+@keyframes live52{0%,100%{scale:1}50%{scale:1.03}}
+.sc52{top:-34%}
+.sc52 .board52{position:relative;width:96%;aspect-ratio:2.4;background:#2F6A4F;border:3px solid #A8743B;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,.25);overflow:hidden}
+.sc52 .board52 b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:max(9px,calc(var(--cell)*.16));font-weight:900;white-space:nowrap;opacity:0;animation:board52 8s steps(1,end) infinite}
+@keyframes board52{0%{opacity:1;clip-path:inset(0 100% 0 0)}3%{clip-path:inset(0 60% 0 0)}6%{clip-path:inset(0 30% 0 0)}9%,24%{opacity:1;clip-path:inset(0 0 0 0)}25%,100%{opacity:0}}
+.sc52 .tag52{margin-top:2px}
+
+/* ===== v5.2：公園・学校（ダイアログの ぶたい） ===== */
+.whoRow.stage52{position:relative;overflow:hidden;border-radius:18px;padding:64px 8px 10px;min-height:150px;align-items:flex-end;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.12);gap:6px}
+.stage52 .bg52{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.stage52 .whoIt{position:relative;z-index:2}
+.stage52 .whoIt span,.stage52 .whoIt small{background:rgba(255,255,255,.9);border-radius:999px;padding:0 6px;margin-top:2px}
+.stage52 .whoIt .rpic{height:74px}
+.stage52 .sw52{transform-origin:19px 3px;animation:pl52swing 1.4s ease-in-out infinite}
+.stage52 .gp52{position:absolute;z-index:3;pointer-events:none;font-style:normal}
+.stage52 .gp52 svg{width:100%;height:100%;display:block;overflow:visible}
+/* 公園：あそびごとの うごき */
+.pkS52.g-tag .whoIt .rpic{animation:pl52tag 1.4s ease-in-out infinite}
+.pkS52.g-tag .whoIt:nth-child(odd) .rpic{animation-delay:-.7s}
+.pkS52.g-tag .gp52{display:none}
+.pkS52.g-hide .whoIt .rpic{animation:pl52hide 3s ease-in-out infinite}
+.pkS52.g-hide .whoIt:nth-child(3n) .rpic{animation-delay:-1s}.pkS52.g-hide .whoIt:nth-child(3n+1) .rpic{animation-delay:-2s}
+.pkS52.g-hide .gp52{left:6%;right:6%;bottom:22px;height:44px;width:auto}
+.pkS52.g-hide .gp52 svg{width:100%;height:100%}
+.pkS52.g-swing .whoIt .rpic{transform-origin:50% -40%;animation:pl52swing 1.4s ease-in-out infinite}
+.pkS52.g-swing .whoIt:nth-child(even) .rpic{animation-delay:-.7s}
+.pkS52.g-swing .gp52{display:none}
+.pkS52.g-slide .whoIt .rpic{animation:pl52slide 2s ease-in infinite}
+.pkS52.g-slide .whoIt:nth-child(even) .rpic{animation-delay:-1s}
+.pkS52.g-slide .gp52{display:none}
+.pkS52.g-rope .whoIt .rpic{animation:pl52jump .45s ease-in-out infinite alternate}
+.pkS52.g-rope .gp52{left:4%;right:4%;bottom:14px;height:70px;width:auto;transform-origin:50% 0;animation:pl52rope .45s ease-in-out infinite alternate}
+.pkS52.g-rope .gp52 svg{width:100%;height:100%}
+.pkS52.g-ball .whoIt .rpic{animation:pl52jump .6s ease-in-out infinite alternate}
+.pkS52.g-ball .whoIt:nth-child(even) .rpic{animation-delay:-.3s}
+.pkS52.g-ball .gp52{width:28px;height:28px;top:30px;left:10%;animation:ball52 2.4s ease-in-out infinite}
+@keyframes ball52{0%,100%{left:10%;top:44px;rotate:0deg}25%{top:6px}50%{left:84%;top:44px;rotate:360deg}75%{top:6px}}
+.pkS52.done52 .whoIt .rpic{animation:pl52jump .4s ease-in-out infinite alternate!important}
+.pkS52.done52::after{content:"♡ ♪ ♡";position:absolute;left:0;right:0;top:8px;text-align:center;font-size:22px;font-weight:900;color:#FF6FA3;z-index:3;animation:nt52 1.8s ease-out infinite}
+/* 学校：こくばん・つくえ */
+.scS52{background:linear-gradient(#FFF6E2 0 70%,#E2C79B 70%)!important;padding-top:84px!important}
+.scS52 .bg52{display:block}
+.scS52 .cb52{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:62%;height:62px;background:#2F6A4F;border:5px solid #A8743B;border-radius:8px;box-shadow:0 3px 0 rgba(0,0,0,.15);overflow:hidden}
+.scS52 .cb52 span b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:900;letter-spacing:1px;opacity:0;animation:board52 6.4s steps(1,end) infinite;font-family:inherit}
+.scS52 .cb52 .chalk52{position:absolute;right:6px;bottom:4px;width:18px;height:5px;background:#fff;border-radius:2px;animation:chalk52 .5s ease-in-out infinite alternate}
+@keyframes chalk52{from{translate:-30px 0}to{translate:0 -3px}}
+.scS52 .tch52{position:absolute;left:3%;top:18px;width:58px;height:auto;animation:tch52 1.6s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes tch52{0%,100%{rotate:-4deg}50%{rotate:6deg}}
+.scS52 .win52{position:absolute;right:3%;top:14px;width:46px;height:46px;border:4px solid #fff;border-radius:6px;background:linear-gradient(#BEE7FF,#E8F7FF);box-shadow:inset 0 0 0 2px #A8743B}
+.scS52 .whoIt::after{content:"";display:block;width:84px;height:16px;margin-top:-12px;background:#C8955A;border-radius:4px;box-shadow:0 4px 0 #A8743B;position:relative;z-index:-1}
+.scS52 .whoIt .rpic{animation:study52 2.2s ease-in-out infinite}
+.scS52 .whoIt:nth-child(3n) .rpic{animation-delay:-.7s}.scS52 .whoIt:nth-child(3n+1) .rpic{animation-delay:-1.4s}
+@keyframes study52{0%,100%{rotate:0deg}30%{rotate:-4deg}60%{rotate:3deg;translate:0 -3px}}
+.scS52 .whoIt::before{content:"🙋";position:absolute;top:-18px;right:-6px;font-size:22px;opacity:0;animation:hand52 4.5s ease-in-out infinite;z-index:3}
+.scS52 .whoIt:nth-child(3n)::before{animation-delay:1.5s}.scS52 .whoIt:nth-child(3n+1)::before{animation-delay:3s}
+@keyframes hand52{0%,60%,100%{opacity:0;scale:.6}68%,90%{opacity:1;scale:1}}
+.scS52.win52 .whoIt::before{content:"💡";animation:hand52w 1.4s ease-in-out infinite;opacity:1}
+@keyframes hand52w{0%,100%{scale:1;translate:0 0}50%{scale:1.2;translate:0 -6px}}
+.scS52.win52 .whoIt .rpic{animation:pl52jump .4s ease-in-out infinite alternate}
+
+/* ===== v5.2：ずかん「ものがたり」の かぎ（.lock の 全画面 白い まく を つかわない） ===== */
+.chList .chItem.lock{position:relative!important;inset:auto!important;display:flex!important;align-items:center;justify-content:flex-start!important;background:#F4F0EA!important;color:inherit!important;font-size:16px!important;border-radius:16px!important;opacity:.7}
+
+/* ===== v5.2：つかいかたの ふきだし：さいしょから まん中に（pop の transform で 右に ずれない） ===== */
+.tutBub{left:0!important;right:0!important;margin-left:auto!important;margin-right:auto!important;transform:none!important;animation:tutIn52 .32s cubic-bezier(.2,1.4,.4,1) both!important}
+@keyframes tutIn52{from{opacity:0;scale:.9}to{opacity:1;scale:1}}
+
+/* ===== v5.2：まちの 画面を かるく ===== */
+#townMap .walker .wimg{filter:none!important}
+#townMap .walker:not(.moving):not([class*="act-"]):not(.pl52) .wimg{animation:none!important}
+#townMap .walker::after{content:"";position:absolute;left:20%;right:20%;bottom:-3%;height:12%;border-radius:50%;background:rgba(0,0,0,.16);z-index:-1;pointer-events:none}
+#townMap .walker.inside::after,#townMap .walker.inSchool52::after{display:none}
+#townMap .car2{left:0;top:0;transition:translate 1.35s linear!important;will-change:translate}
+#townMap .car2 img{filter:none!important}
+#townMap .car2::after{content:"";position:absolute;left:12%;right:12%;bottom:-4%;height:16%;border-radius:50%;background:rgba(0,0,0,.18);z-index:-1}
+#townMap .car2.flip::after{left:12%}
+@supports (container-type:inline-size){
+  #railStrip,#roadStrip{container-type:inline-size}
+  #railStrip .mover,#roadStrip .mover{left:0!important;animation-name:drive52;will-change:translate}
+  #railStrip .mover.train.lane1{animation-name:driveRev52!important}
+  @keyframes drive52{from{translate:-30cqw 0}to{translate:105cqw 0}}
+  @keyframes driveRev52{from{translate:105cqw 0}to{translate:-30cqw 0}}
+}
+#railStrip .mover img,#roadStrip .mover img{filter:none!important}
