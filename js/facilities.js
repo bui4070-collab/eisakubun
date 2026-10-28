@@ -171,7 +171,7 @@ const guestCars = () => TOWN_ITEMS.filter(it => it.type==='veh' && it.art && (it
 function refreshParking(){
   const P = F().parking; let ch = false;
   Object.keys(P).forEach(k => { if(save.town.cells[k]!=='parking' || P[k].until < now()){ delete P[k]; ch = true; } });
-  cellsOf('parking').forEach(k => { if(!P[k] && Math.random() < 0.35){ const L = guestCars(); if(L.length){ P[k] = {v:choice(L).id, until:now() + rint(4,12)*MIN, paid:false}; ch = true; } } });
+  cellsOf('parking').forEach(k => { const busy = (typeof CAR!=='undefined' && CAR.list || []).filter(c => c.lot && c.lot.key===k).length; if(!P[k] && busy < 2 && Math.random() < 0.35){ const L = guestCars(); if(L.length){ P[k] = {v:choice(L).id, until:now() + rint(4,12)*MIN, paid:false}; ch = true; } } });
   return ch;
 }
 async function openParking(key){
@@ -447,7 +447,7 @@ function ovHTML(k, id){
   if(id==='field'){ const p = f.farm[k]; if(!p) return '';
     const c = CROP(p.c), pr = farmProg(p);
     return pr >= 1 ? `<img class="facOv crop" src="${esc(artSrc(cropArt(c)))}" alt=""><span class="facOv ready">!</span>` : `<span class="facOv sprout">${pr < 0.5 ? '🌱' : '🌿'}</span>`; }
-  if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it ? `<img class="facOv car" src="${esc(artSrc(it.art))}" alt="">${p.paid ? '' : '<span class="facOv ready">🪙</span>'}` : ''; }
+  if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it && !p.paid ? '<span class="facOv ready">🪙</span>' : ''; }   // v5.5：車の 絵は drawLots だけ（2重に ならない）
   if(id==='park' && f.park.ids.length) return `<span class="facOv badge">${f.park.game ? f.park.game[1] : '🎵'}${f.park.ids.length}</span>`;
   if(id==='school' && f.school.day===dayKey() && f.school.ids.length) return `<span class="facOv badge">✏️${f.school.ids.length}</span>`;
   if(id==='hotel' && f.tour.length) return `<span class="facOv badge">🧳${f.tour.length}</span>`;

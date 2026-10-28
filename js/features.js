@@ -149,6 +149,18 @@ function lotCars(){
     const a = L[k] = L[k] || []; const s = a[0] ? (a[1] ? -1 : 1) : 0; if(s >= 0) a[s] = {id:p.v, guest:true}; }); }catch(e){}
   return L;
 }
+/* v5.5：おなじ ばしょに 2台 とまらないように（かさなり ぼうし） */
+const _lotCars55 = lotCars;
+lotCars = function(){
+  const L = {};
+  CAR.list.forEach(c => { if(!c.lot) return; const D = LOTS[save.town.cells[c.lot.key]], a = L[c.lot.key] = L[c.lot.key] || [];
+    if(!D){ c.lot = null; return; }
+    if(a[c.lot.slot]){ const f = D.slots.findIndex((_,i) => !a[i]); if(f < 0){ c.lotT = 0; return; } c.lot.slot = f; }
+    a[c.lot.slot] = {id:c.id, town:true}; });
+  try{ Object.entries((save.fac||{}).parking||{}).forEach(([k,p]) => { if(save.town.cells[k]!=='parking' || p.until < Date.now()) return;
+    const D = LOTS.parking, a = L[k] = L[k] || []; const f = D.slots.findIndex((_,i) => !a[i]); if(f >= 0) a[f] = {id:p.v, guest:true}; }); }catch(e){}
+  return L;
+}
 function drawLots(){
   if(!save.town) return;
   const L = lotCars();
@@ -597,9 +609,10 @@ try{ZUKAN_INFO[RANCH]='ミルク・たまご・おにくなど、カフェの �
 const RMAT={cf_milk:'ミルク',cf_egg:'たまご',cf_beef:'ぎゅうにく',cf_chicken:'とりにく',cf_pork:'ぶたにく'};
 const imgTag=(k,cls='')=>`<img class="${cls}" src="${esc(artSrc(k)||k)}" alt="">`;
 function cafeStock(){return save.cafeStock||(save.cafeStock={});}   // 手持ちの ぼくじょう ざいりょう
-async function openRanch(key){const S=cafeStock(),d=dayKey(),ready=S.ranchDay!==d,g=(save.town.glv||{})[key]||0,n=2+g;
+/* v5.5：ぼくじょうごとに 1日1かい しゅうかく（ふたつ あれば ふたつとも とれる） */
+async function openRanch(key){const S=cafeStock(),d=dayKey(),RD=S.ranchDays||(S.ranchDays={});if(S.ranchDay){if(S.ranchDay===d&&!Object.keys(RD).length)RD[key]=d;delete S.ranchDay;}const ready=RD[key]!==d,g=(save.town.glv||{})[key]||0,n=2+g;
  const v=await dialog(`<div class="dlgArt big">${imgTag('bld_ranch')}</div><h2 class="dlgT">ぼくじょう</h2><div class="matRow48">${Object.entries(RMAT).map(([k,nm])=>`<span>${imgTag(k)}<b>${nm}</b><small>×${S[k]||0}</small></span>`).join('')}</div><p class="dlgP">${ready?'きょうの ざいりょうが できているよ！':'きょうの しゅうかくは おしまい。また あした！'}<br><small>グレードアップすると 1日に とれる かずが ふえるよ。<br>とれた ざいりょうは カフェの「メニューと ざいりょう」から のうひんしてね</small></p>`,(ready?[{label:`うけとる（各${n}こ）`,cls:'gold',v:'get'}]:[]).concat([{label:'⬆ グレードアップ',cls:'white',v:'grade'},{label:'とじる',v:null}]),'wide');
- if(v==='get'){Object.keys(RMAT).forEach(k=>S[k]=(S[k]||0)+n);S.ranchDay=d;persist();sound('fan');confetti(900);toast('ぼくじょうの ざいりょうを うけとった！');}
+ if(v==='get'){Object.keys(RMAT).forEach(k=>S[k]=(S[k]||0)+n);RD[key]=d;persist();sound('fan');confetti(900);toast('ぼくじょうの ざいりょうを うけとった！');}
  if(v==='grade')openBuilding(key);
 }
 window.addEventListener('click',async e=>{if(curScreen!=='town'||townEdit)return;const c=e.target.closest('#townMap .cell');if(!c)return;const k=`${c.dataset.x},${c.dataset.y}`;if(save.town.cells[k]!==RANCH)return;e.stopImmediatePropagation();e.preventDefault();openRanch(k);},true);
@@ -1304,7 +1317,7 @@ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); con
    ===================================================================== */
 (function(){
 'use strict';
-const VER53 = '5.3.1';
+const VER53 = '5.5.0';
 const IMG53 = './assets/images/v53/';
 const H53 = (s, k=0) => { let h = 2166136261 ^ k; for(const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h >>> 0; };
 const pick53 = (L, seed) => L[(seed==null ? Math.random()*L.length : seed % L.length) | 0];
@@ -2126,4 +2139,271 @@ cheer = (orig => function(kind){
 /* バージョン ひょうじ */
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER53}`; return o; })(renderSettings);
 window.__v53 = {TRAITS, SPL, NAMED, personalLine, storySteps, traitOf, backOf, HANA};
+})();
+
+/* =====================================================================
+   まなびタウン v5.5：プログラミング 高学年チャレンジ（小学5・6年）
+   ・じゅんじ／くりかえし／じょうけんぶんき／へんすう／フローチャート／
+     デバッグ／2しんすう／アルゴリズム／ことば
+   ・さんすうと おなじ もんだい画面（ポイント・ボーナス・にがて きろく）を つかう
+   ===================================================================== */
+(function(){
+'use strict';
+const IMG55 = './assets/images/v55/';
+['pr_seq','pr_loop','pr_if','pr_var','pr_flow','pr_bug','pr_bin','pr_algo','pr_word'].forEach(k => { DEFAULT_ART['ic_'+k] = IMG55 + 'ic_' + k + '.webp'; });
+
+/* ---------- 絵（SVG） ---------- */
+const COL = {ev:'#F2B33D', mv:'#4C97FF', ctl:'#FFAB19', op:'#59C059', vr:'#FF8C1A', look:'#9966FF', pen:'#0FBD8C'};
+const X = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* ブロックの ならび。items: {t:'テキスト', c:'色'} または {loop:'n かい', body:[...]} または {ifc:'じょうけん', yes:[...], no:[...]} */
+function blocks(items, title){
+  let y = 8, out = '';
+  const W = 270, BH = 30, IND = 18;
+  const draw = (list, x) => list.forEach(it => {
+    if(it.loop || it.ifc){
+      const head = it.loop ? `🔁 ${it.loop}` : `もし ${it.ifc} なら`, c = it.loop ? COL.ctl : '#E6A100';
+      const y0 = y; out += `<rect x="${x}" y="${y}" width="${W-x}" height="${BH}" rx="7" fill="${c}"/><text x="${x+10}" y="${y+20}" class="t55">${X(head)}</text>`; y += BH + 2;
+      draw(it.loop ? it.body : it.yes, x + IND);
+      if(it.ifc && it.no){ out += `<rect x="${x}" y="${y}" width="${W-x}" height="24" rx="6" fill="${c}"/><text x="${x+10}" y="${y+17}" class="t55">でなければ</text>`; y += 26; draw(it.no, x + IND); }
+      out += `<rect x="${x}" y="${y0}" width="${IND-4}" height="${y - y0 + 12}" rx="5" fill="${c}"/><rect x="${x}" y="${y}" width="${W-x}" height="12" rx="5" fill="${c}"/>`; y += 16;
+      return; }
+    out += `<rect x="${x}" y="${y}" width="${W-x}" height="${BH}" rx="7" fill="${it.c||COL.mv}"/><text x="${x+10}" y="${y+20}" class="t55">${X(it.t)}</text>`; y += BH + 2;
+  });
+  const top = title ? `<rect x="0" y="${y}" width="150" height="30" rx="14" fill="${COL.ev}"/><text x="10" y="${y+20}" class="t55">🚩 ${X(title)}</text>` : '';
+  if(title) y += 34;
+  draw(items, 0);
+  return `<svg class="pr55 blk55" viewBox="-2 0 ${W+4} ${y+6}" width="${W+4}">${top}${out}</svg>`;
+}
+/* 正多角形を かく ロボット */
+function turtleSVG(n){
+  const r = 52, pts = [...Array(n)].map((_,i) => { const a = -Math.PI/2 + i*2*Math.PI/n; return [70 + r*Math.cos(a), 70 + r*Math.sin(a)]; });
+  return pts;
+}
+/* フローチャート */
+function flowSVG(a, lim, op, k){
+  const opT = op==='*' ? `x を x×${k} にする` : `x を x＋${k} にする`;
+  return `<svg class="pr55 flow55" viewBox="0 0 300 330" width="300">
+  <defs><marker id="ar55" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7A5A3A"/></marker></defs>
+  <g stroke="#7A5A3A" stroke-width="2.5" fill="none" marker-end="url(#ar55)">
+   <path d="M120 40V60"/><path d="M120 96V116"/><path d="M120 176V200"/><path d="M120 236V250H40V146H66"/><path d="M174 146H230V266"/></g>
+  <rect x="70" y="8" width="100" height="32" rx="16" fill="#FFE29A" stroke="#C9963A" stroke-width="2.5"/><text x="120" y="29" class="f55">はじめ</text>
+  <rect x="45" y="62" width="150" height="34" rx="4" fill="#CFE6FF" stroke="#4C97FF" stroke-width="2.5"/><text x="120" y="84" class="f55">x を ${a} にする</text>
+  <path d="M120 116L176 146L120 176L64 146Z" fill="#FFE7C7" stroke="#FFAB19" stroke-width="2.5"/><text x="120" y="151" class="f55 sm">x &lt; ${lim} ？</text>
+  <text x="100" y="194" class="f55 sm g">はい</text><text x="200" y="138" class="f55 sm r">いいえ</text>
+  <rect x="45" y="202" width="150" height="34" rx="4" fill="#D7F2D1" stroke="#59C059" stroke-width="2.5"/><text x="120" y="224" class="f55">${X(opT)}</text>
+  <rect x="180" y="268" width="100" height="34" rx="4" fill="#E9DDFF" stroke="#9966FF" stroke-width="2.5"/><text x="230" y="290" class="f55">x を 見せる</text>
+  <rect x="180" y="306" width="100" height="0"/></svg>`;
+}
+/* マスの ちず ＋ とおりたい みち */
+function gridSVG(w, h, s, g, path){
+  const cs = 40, W = w*cs, H = h*cs; let o = '';
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) o += `<rect x="${x*cs}" y="${y*cs}" width="${cs}" height="${cs}" fill="${(x+y)%2?'#E3F4D7':'#F1FAE9'}"/>`;
+  const pl = path.map(([x,y]) => `${x*cs+cs/2},${y*cs+cs/2}`).join(' ');
+  o += `<polyline points="${pl}" fill="none" stroke="#FF8FB1" stroke-width="5" stroke-dasharray="2 8" stroke-linecap="round" stroke-linejoin="round"/>`;
+  o += `<text x="${g[0]*cs+cs/2}" y="${g[1]*cs+cs/2+9}" font-size="26" text-anchor="middle">🏁</text>`;
+  o += `<image href="${X(artSrc('bird_wave')||'')}" x="${s[0]*cs+2}" y="${s[1]*cs+2}" width="${cs-4}" height="${cs-4}"/>`;
+  return `<svg class="pr55 grid55" viewBox="0 0 ${W} ${H}" width="${W}"><rect width="${W}" height="${H}" rx="6" fill="none" stroke="#9CC98A" stroke-width="3"/>${o}</svg>`;
+}
+/* 2しんすうの カード（16・8・4・2・1） */
+function binCards(bits){
+  const v = [16,8,4,2,1];
+  return `<svg class="pr55 bin55" viewBox="0 0 300 96" width="300">${v.map((n,i) => { const x = i*60 + 4, on = bits[i];
+    if(!on) return `<rect x="${x}" y="6" width="52" height="78" rx="7" fill="#7A8CA8" stroke="#56647A" stroke-width="2.5"/><path d="M${x+8} 14l36 62M${x+44} 14l-36 62" stroke="#93A3BC" stroke-width="2"/>`;
+    const dots = [], cols = n >= 8 ? 4 : n >= 4 ? 2 : n; const rows = Math.ceil(n/cols);
+    for(let d=0; d<n; d++){ const cx = x + 26 + ((d%cols) - (cols-1)/2)*11, cy = 45 + (Math.floor(d/cols) - (rows-1)/2)*11; dots.push(`<circle cx="${cx}" cy="${cy}" r="4" fill="#E8414B"/>`); }
+    return `<rect x="${x}" y="6" width="52" height="78" rx="7" fill="#fff" stroke="#C9963A" stroke-width="2.5"/>${dots.join('')}`; }).join('')}
+    ${v.map((n,i) => `<text x="${i*60+30}" y="95" class="f55 sm">${n}</text>`).join('')}</svg>`;
+}
+/* カードの ならび */
+function cardsSVG(a){
+  return `<svg class="pr55 cards55" viewBox="0 0 ${a.length*52} 64" width="${a.length*52}">${a.map((n,i) => `<rect x="${i*52+3}" y="4" width="44" height="56" rx="7" fill="#FFF8E7" stroke="#C99A63" stroke-width="2.5"/><text x="${i*52+25}" y="41" class="f55 big">${n}</text>`).join('')}</svg>`;
+}
+
+/* ---------- もんだい ---------- */
+const opt4 = (ans, cands) => { const a = String(ans); const s = new Set([a]); shuffle(cands.map(String)).forEach(c => { if(s.size < 4 && c !== a) s.add(c); }); let k = 1; while(s.size < 4){ s.add(String(Number(a) + k*(k%2?1:-1)*(1+Math.floor(k/2)))); k++; } return shuffle([...s]); };
+const pick4 = (ans, list) => { const a = String(ans), r = uniq(list.map(String).filter(v => v!==a)); return shuffle([a, ...shuffle(r).slice(0,3)]); };
+const near = (n, sp=[1,2,3,5,10]) => sp.flatMap(d => [n+d, n-d]).filter(v => v >= 0);
+const Q = (q, disp, ans, opts, hint, dk) => ({type:'choice', q, disp:`<div class="pr55Box">${disp||''}</div>`, ans:String(ans), opts, hint, dk});
+const DIRJ = {U:'うえ', D:'した', L:'ひだり', R:'みぎ'}, DV = {U:[0,-1], D:[0,1], L:[-1,0], R:[1,0]}, ARW = {U:'⬆',D:'⬇',L:'⬅',R:'➡'};
+
+const G = {};
+/* じゅんじ */
+G.pr_seq = () => {
+  const a = rint(2,9), b = rint(2,9), c = rint(2,4), t = rint(0,2);
+  let ans, items, h;
+  if(t===0){ items = [{t:`x を ${a} にする`, c:COL.vr}, {t:`x を x＋${b} にする`, c:COL.op}, {t:`x を x×${c} にする`, c:COL.op}]; ans = (a+b)*c; h = `まず ${a}＋${b}、その あとで ×${c}`; }
+  else if(t===1){ items = [{t:`x を ${a} にする`, c:COL.vr}, {t:`x を x×${c} にする`, c:COL.op}, {t:`x を x＋${b} にする`, c:COL.op}]; ans = a*c + b; h = `じゅんばんが 大事！ さきに ×${c}`; }
+  else { const d = rint(1, a); items = [{t:`x を ${a} にする`, c:COL.vr}, {t:`x を x×${c} にする`, c:COL.op}, {t:`x を x－${d} にする`, c:COL.op}, {t:`x を x＋${b} にする`, c:COL.op}]; ans = a*c - d + b; h = '上から じゅんばんに 1つずつ'; }
+  return Q('プログラムを 上から じゅんに 実行したよ。<br>さいごの <b>x</b> は いくつ？', blocks(items, 'スタート'), ans, opt4(ans, near(ans).concat([(a+b)*c, a*c+b])), h);
+};
+/* くりかえし */
+G.pr_loop = () => {
+  const t = rint(0,3);
+  if(t===0){ const s = rint(0,10), n = rint(3,8), d = rint(2,6), ans = s + n*d;
+    return Q(`<b>スコア</b>は さいごに いくつ？`, blocks([{t:`スコア を ${s} にする`, c:COL.vr}, {loop:`${n} かい くりかえす`, body:[{t:`スコア を ${d} ふやす`, c:COL.vr}]}], 'スタート'), ans, opt4(ans, near(ans).concat([s+d, n*d, s+(n-1)*d])), `${d}が ${n}かい ふえるよ`); }
+  if(t===1){ const a = rint(2,5), b = rint(2,6), ans = a*b;
+    return Q('⭐は ぜんぶで いくつ かかれる？', blocks([{loop:`${a} かい くりかえす`, body:[{loop:`${b} かい くりかえす`, body:[{t:'⭐ を 1こ かく', c:COL.pen}]}]}], 'スタート'), ans, opt4(ans, [a+b, ans+a, ans-b, ans+b]), `中の くりかえしが ${a}セット → ${a}×${b}`); }
+  if(t===2){ const n = choice([3,4,5,6,8]), ang = 360/n, nm = {3:'正三角形',4:'正方形',5:'正五角形',6:'正六角形',8:'正八角形'};
+    return Q('ロボットが ペンで せんを かくよ。<br>どんな 形が かける？', blocks([{t:'ペンを おろす', c:COL.pen}, {loop:`${n} かい くりかえす`, body:[{t:'50 ほ すすむ', c:COL.mv}, {t:`みぎに ${ang}ど まわる`, c:COL.mv}]}], 'スタート'),
+      nm[n], shuffle([nm[n], ...shuffle(Object.values(nm).filter(x => x!==nm[n])).slice(0,3)]), `${n}かい まがって もとに もどるよ（${n}×${ang}＝360ど）`); }
+  const n = choice([3,4,5,6,8,9,10,12]), ang = 360/n;
+  return Q(`ロボットで <b>正${n}角形</b>を かきたい。<br>□ に 入る まわる 角度は？`, blocks([{t:'ペンを おろす', c:COL.pen}, {loop:`${n} かい くりかえす`, body:[{t:'50 ほ すすむ', c:COL.mv}, {t:'みぎに □ ど まわる', c:COL.mv}]}], 'スタート'),
+    ang, opt4(ang, [180 - ang, 180, 90, 60, 45, 30, 72, 120].filter(v => v > 0 && v !== ang)), '1しゅう（360ど）を かいすうで わろう');
+};
+/* じょうけんぶんき */
+G.pr_if = () => {
+  const t = rint(0,2);
+  if(t===0){ const T = rint(15,34), ans = T >= 25 ? 'はんそで' : 'ながそで';
+    return Q(`きょうの 気温は <b>${T}ど</b>。<br>ロボットが えらぶ ふくは？`, blocks([{ifc:'気温 ≧ 25', yes:[{t:'はんそで を きる', c:COL.look}], no:[{t:'ながそで を きる', c:COL.look}]}], 'スタート'), ans, shuffle(['はんそで','ながそで','どちらも きる','なにも きない']), '25いじょう かな？'); }
+  if(t===1){ const x = rint(1,20), lim = rint(6,14), a = rint(2,9), b = rint(2,5), ans = x > lim ? x - a : x * b;
+    return Q(`x が <b>${x}</b> の とき、さいごの x は？`, blocks([{t:`x を ${x} にする`, c:COL.vr}, {ifc:`x ＞ ${lim}`, yes:[{t:`x を x－${a} にする`, c:COL.op}], no:[{t:`x を x×${b} にする`, c:COL.op}]}], 'スタート'),
+      ans, opt4(ans, near(ans).concat([x-a, x*b])), `${x} は ${lim} より 大きい？`); }
+  const n = rint(1,30), f = n%15===0 ? 'フィズバズ' : n%3===0 ? 'フィズ' : n%5===0 ? 'バズ' : String(n);
+  return Q(`かず が <b>${n}</b> の とき、ロボットは なんと いう？`, blocks([{ifc:'かず が 15で わりきれる', yes:[{t:'「フィズバズ」と いう', c:COL.look}], no:[{ifc:'かず が 3で わりきれる', yes:[{t:'「フィズ」と いう', c:COL.look}], no:[{ifc:'かず が 5で わりきれる', yes:[{t:'「バズ」と いう', c:COL.look}], no:[{t:'かず を いう', c:COL.look}]}]}]}]),
+    f, pick4(f, ['フィズ','バズ','フィズバズ',String(n)]), '上の じょうけんから じゅんに しらべるよ');
+};
+/* へんすう */
+G.pr_var = () => {
+  const t = rint(0,2), a = rint(1,9); let b = rint(1,9); if(b===a) b = a%9 + 1;
+  if(t===0){ const ans = `a=${b}, b=${b}`;
+    return Q('a と b を いれかえたかったのに…<br>さいごは どうなった？', blocks([{t:`a を ${a} にする`, c:COL.vr}, {t:`b を ${b} にする`, c:COL.vr}, {t:'a を b にする', c:COL.vr}, {t:'b を a にする', c:COL.vr}], 'スタート'),
+      ans, shuffle([ans, `a=${b}, b=${a}`, `a=${a}, b=${a}`, `a=${a}, b=${b}`]), 'a に b を 入れた とき、もとの a は きえちゃうよ'); }
+  if(t===1){ const ans = `a=${b}, b=${a}`;
+    return Q('「とっておく はこ」c を つかったよ。<br>さいごは どうなった？', blocks([{t:`a を ${a} にする`, c:COL.vr}, {t:`b を ${b} にする`, c:COL.vr}, {t:'c を a にする', c:COL.vr}, {t:'a を b にする', c:COL.vr}, {t:'b を c にする', c:COL.vr}], 'スタート'),
+      ans, shuffle([ans, `a=${b}, b=${b}`, `a=${a}, b=${a}`, `a=${a}, b=${b}`]), 'c に もとの a を とっておけるね'); }
+  const n = rint(3,6), s = rint(1,3); let x = s, sum = 0; for(let i=0;i<n;i++){ sum += x; x += 1; }
+  return Q('<b>ごうけい</b> は さいごに いくつ？', blocks([{t:'ごうけい を 0 にする', c:COL.vr}, {t:`i を ${s} にする`, c:COL.vr}, {loop:`${n} かい くりかえす`, body:[{t:'ごうけい を i ふやす', c:COL.vr}, {t:'i を 1 ふやす', c:COL.vr}]}], 'スタート'),
+    sum, opt4(sum, near(sum).concat([n*s, sum + x])), `${s}から ${s+n-1}まで たしてみよう`);
+};
+/* フローチャート */
+G.pr_flow = () => {
+  for(let t=0;t<30;t++){
+    const op = Math.random() < .5 ? '*' : '+', k = op==='*' ? rint(2,3) : rint(3,9), a = rint(1,6), lim = rint(15,60);
+    let x = a, n = 0; while(x < lim && n < 8){ x = op==='*' ? x*k : x+k; n++; }
+    if(n < 2 || n > 6) continue;
+    const prev = op==='*' ? x/k : x-k;
+    return Q('フローチャートの とおりに すすむと、<br>さいごに 見せる x は？', flowSVG(a, lim, op, k), x, opt4(x, near(x).concat([prev, op==='*' ? x*k : x+k])), `「はい」の あいだは ぐるぐる まわるよ（${lim}いじょうで ぬける）`);
+  }
+  return G.pr_seq();
+};
+/* デバッグ */
+G.pr_bug = () => {
+  const w = 5, h = 4;
+  for(let t=0;t<60;t++){
+    const n = rint(5,7), s = [rint(0,w-1), rint(0,h-1)], path = [s.slice()], prog = [];
+    let [x,y] = s, ok = true;
+    for(let i=0;i<n;i++){ const ds = shuffle(['U','D','L','R']).filter(d => { const nx = x+DV[d][0], ny = y+DV[d][1]; return nx>=0 && ny>=0 && nx<w && ny<h && !path.some(p => p[0]===nx && p[1]===ny); });
+      if(!ds.length){ ok = false; break; } const d = ds[0]; x += DV[d][0]; y += DV[d][1]; prog.push(d); path.push([x,y]); }
+    if(!ok) continue;
+    const bad = rint(0, n-1), wrong = choice(['U','D','L','R'].filter(d => d!==prog[bad])), shown = prog.slice(); shown[bad] = wrong;
+    return Q('ピンクの みちを とおって 🏁 に 行きたい。<br>プログラムの <b>なんばんめ</b>が まちがっている？',
+      gridSVG(w, h, s, [x,y], path) + blocks(shown.map((d,i) => ({t:`${i+1}．${ARW[d]} ${DIRJ[d]}へ 1マス`, c:COL.mv})), 'スタート'),
+      `${bad+1}ばんめ`, shuffle(uniq([`${bad+1}ばんめ`, ...shuffle([...Array(n).keys()].filter(i => i!==bad)).slice(0,3).map(i => `${i+1}ばんめ`)])), 'みちを 1マスずつ ゆびで たどってみよう', prog.join('')+bad);
+  }
+  return G.pr_seq();
+};
+/* 2しんすう */
+G.pr_bin = () => {
+  const t = rint(0,2);
+  if(t===0){ let n = rint(1,31); const bits = [16,8,4,2,1].map(v => n & v ? 1 : 0);
+    return Q('うらがえしの カードは 0、おもての カードは 1。<br>おもての 点を ぜんぶ たすと いくつ？', binCards(bits), n, opt4(n, near(n,[1,2,4,8,16])), 'おもての カードの 数を たそう'); }
+  if(t===1){ const n = rint(3,31), bits = [16,8,4,2,1].map(v => n & v ? 1 : 0), s = bits.join('');
+    const cands = [16,8,4,2,1].map(v => (n ^ v)).filter(v => v > 0).map(v => [16,8,4,2,1].map(b => v & b ? 1 : 0).join(''));
+    return Q(`<b>${n}</b> を 2しんすう（0と1）で あらわすと？`, binCards(bits.map(() => 1)), s, shuffle([s, ...shuffle(cands).slice(0,3)]), '16・8・4・2・1 の どれを つかうか かんがえよう'); }
+  const k = choice([2,3,4,5,6,8]), ans = 2**k;
+  return Q(`0 と 1 の ランプが <b>${k}こ</b> あるよ。<br>ぜんぶで なんとおりの あらわしかたが できる？`, `<div class="lamp55">${'<i></i>'.repeat(k)}</div>`, ans, opt4(ans, [k*2, k*k, ans*2, ans/2, ans-1, ans+1]), '1こ ふえるごとに 2ばいに なるよ');
+};
+/* アルゴリズム */
+G.pr_algo = () => {
+  const t = rint(0,2);
+  if(t===0){ const k = rint(3,7), N = 2**k;
+    return Q(`1〜${N} の かずあて。「もっと 大きい？」と きいて<br>のこりを <b>はんぶんずつ</b> へらすと、<br>なんかいで 1つに しぼれる？`, `<div class="half55">${[...Array(Math.min(k,5)+1)].map((_,i) => `<span style="width:${100/2**i}%">${N/2**i}</span>`).join('')}</div>`,
+      k, opt4(k, [N/2, N, k+1, k-1, k+2, Math.ceil(N/4)]), `${N} → ${N/2} → ${N/4} … と へっていくよ`); }
+  if(t===1){ const n = rint(4,5); let a, b; for(let z=0;z<50;z++){ a = shuffle([...Array(9).keys()].map(i => i+1)).slice(0,n); b = a.slice();
+    for(let i=0;i<n-1;i++) if(b[i] > b[i+1]){ [b[i], b[i+1]] = [b[i+1], b[i]]; }
+    if(b.join()!==a.join() && b.join()!==a.slice().sort((x,y)=>x-y).join()) break; }
+    const ans = b.join(' '), sorted = a.slice().sort((x,y) => x-y).join(' '), c2 = a.slice(); [c2[0], c2[1]] = [c2[1], c2[0]];
+    const c3 = a.slice().reverse().join(' ');
+    return Q('となりどうしを くらべて、<b>左が 大きければ いれかえる</b>。<br>左から 右へ 1かい とおりおわった ならびは？', cardsSVG(a), ans, pick4(ans, [sorted, c2.join(' '), c3, a.join(' ')]), 'いちばん 大きい カードが 右はしまで うごくよ');
+  }
+  const L = rint(4,8), arr = shuffle([...Array(20).keys()].map(i => i+1)).slice(0,L), pos = rint(1,L), tgt = arr[pos-1];
+  return Q(`カードを <b>左から じゅんに</b> 1まいずつ 見て <b>${tgt}</b> を さがす。<br>なんまい 見たら 見つかる？`, cardsSVG(arr), pos, opt4(pos, [1,2,3,4,5,6,7,8,L].filter(v => v!==pos)), 'ひだりから 1まいずつ かぞえよう');
+};
+/* ことば */
+const WORDS = [
+  ['プログラムの まちがいの ことを なんと いう？','バグ',['バグ','ノイズ','エラー音','ウイルス']],
+  ['プログラムの まちがいを 見つけて なおすことは？','デバッグ',['デバッグ','ダウンロード','ログイン','コピー']],
+  ['もんだいを とくための 手じゅんや やりかたの ことは？','アルゴリズム',['アルゴリズム','アプリ','データ','ネットワーク']],
+  ['めいれいを 上から じゅんばんに 実行することを なんと いう？','じゅんじ',['じゅんじ','くりかえし','ぶんき','へんすう']],
+  ['「もし 〜なら」で 動きを かえることを なんと いう？','じょうけんぶんき',['じょうけんぶんき','じゅんじ','くりかえし','せいれつ']],
+  ['かずや ことばを 入れておく「はこ」の ようなものは？','へんすう',['へんすう','かんすう','ていすう','ふごう']],
+  ['あかるさや 温度を はかって コンピュータに つたえる ぶひんは？','センサー',['センサー','モーター','スピーカー','バッテリー']],
+  ['コンピュータが 中で つかっている 0と1だけの かずは？','2しんすう',['2しんすう','10しんすう','ローマすうじ','かんすうじ']],
+  ['人の ことばを コンピュータが わかる ように 書いた ものは？','プログラム',['プログラム','パスワード','フォルダ','アイコン']],
+  ['じどうドアが「人が 来たら ひらく」のは どの しくみ？','じょうけんぶんき',['じょうけんぶんき','くりかえし','じゅんじ','へんすう']],
+  ['しんごうきが 青→黄→赤 を ずっと つづけるのは どの しくみ？','くりかえし',['くりかえし','じょうけんぶんき','へんすう','じゅんじ']],
+  ['パスワードの つくりかたで よいのは？','ながくて よそうしにくい もの',['ながくて よそうしにくい もの','じぶんの たんじょうび','1234','なまえ そのまま']],
+  ['ネットで 知らない 人に おしえて よいのは？','どれも おしえない',['どれも おしえない','じゅうしょ','がっこうの なまえ','でんわばんごう']],
+  ['プログラムを 書く ための ことばを なんと いう？','プログラミングげんご',['プログラミングげんご','がいこくご','てんじ','しゅわ']]
+];
+const WORD_ART = {'センサー':'🌡️','バグ':'🐛','デバッグ':'🔧','アルゴリズム':'🗺️','くりかえし':'🚦','じょうけんぶんき':'🚪'};
+G.pr_word = () => { const [q, a, o] = choice(WORDS); const ic = WORD_ART[a];
+  return Q(q, ic ? `<div class="word55">${ic}</div>` : '', a, shuffle(o.slice()), 'ことばの いみを 思い出そう'); };
+
+/* ---------- たんげんの とうろく ---------- */
+const UNITS55 = [
+  ['pr_seq','じゅんじ（じゅんばん）',1,'🧱 きほん'], ['pr_loop','くりかえし・図形',1,'🧱 きほん'], ['pr_if','じょうけんぶんき',1,'🧱 きほん'], ['pr_word','プログラミングの ことば',1,'🧱 きほん'],
+  ['pr_var','へんすう',2,'🧠 おうよう'], ['pr_bug','デバッグ（まちがい さがし）',2,'🧠 おうよう'], ['pr_bin','2しんすう',2,'🧠 おうよう'],
+  ['pr_flow','フローチャート',3,'🏆 チャレンジ'], ['pr_algo','アルゴリズム（さがす・ならべる）',3,'🏆 チャレンジ']
+];
+UNITS55.forEach(([k, n, lv]) => { MATH_UNITS[k] = {n, g:'prog', lv, art:'ic_'+k, gen:G[k]}; });
+const KEYS55 = UNITS55.map(u => u[0]);
+const PRS = {units:['pr_seq','pr_loop','pr_if'], count:10};
+
+/* ---------- がめん（プログラミングの ステージえらびの 上） ---------- */
+function prHTML(){
+  const M = mSave(), st = k => M.stats?.[k] || {n:0, c:0}, cats = uniq(UNITS55.map(u => u[3]));
+  return `<div class="pr55Menu"><div class="pr55Hd"><img src="${esc(artSrc('bird_think')||'')}" alt=""><div><b>🎓 高学年チャレンジ</b><small>小学5・6年の プログラミングの かんがえかた</small></div></div>
+    ${cats.map(c => `<h4 class="sGrp">${c}</h4><div class="sGrid">${UNITS55.filter(u => u[3]===c).map(([k, n]) => { const s = st(k), on = PRS.units.includes(k);
+      return `<button class="mUnit soc pr55U ${on?'on':''}" data-pr55="${k}"><img class="mIco" src="${esc(artSrc('ic_'+k))}" alt=""><span class="mTxt"><b>${n}</b><small>${s.n ? `${s.c}/${s.n} せいかい` : 'まだ やってない'}</small></span>${on?'<span class="mChk">✓</span>':''}</button>`; }).join('')}</div>`).join('')}
+    <div class="row"><div class="lab">問題の かず</div><div class="seg" id="pr55Count">${[5,10].map(v => `<button data-v="${v}" class="${PRS.count===v?'on':''}">${v}問</button>`).join('')}</div>
+      <button class="btn small white" data-pr55all>ぜんぶ えらぶ</button></div>
+    <button class="btn big pink" id="pr55Start" style="width:100%">はじめる！（${PRS.units.length}たんげん）</button>
+    <h4 class="sGrp">🗺️ めいろ ステージ</h4></div>`;
+}
+renderProgSel = (orig => function(){ const o = orig.apply(this, arguments); try{ $('#pView').insertAdjacentHTML('afterbegin', prHTML()); }catch(e){ console.warn(e); } return o; })(renderProgSel);
+function prStart(){
+  if(!PRS.units.length){ toast('たんげんを えらんでね'); return; }
+  const list = buildSet(PRS.units, PRS.count);
+  window.MQREV = false; window.MQSOC = true; window.MQSCI = false; window.MQEK = false; window.MQBUN = false; window.MQPRG = true;
+  $('#mPlayTag').textContent = 'プログラミング'; $('#mPlayTag').style.background = '#4C97FF';
+  MQ = {list, i:0, res:[], pts:0, t0:Date.now(), combo:0, soc:true}; show('mathplay'); mRender();
+}
+document.addEventListener('click', e => {
+  if(curScreen!=='prog') return;
+  const u = e.target.closest('[data-pr55]');
+  if(u){ e.stopImmediatePropagation(); const k = u.dataset.pr55, i = PRS.units.indexOf(k); if(i >= 0){ if(PRS.units.length > 1) PRS.units.splice(i,1); } else PRS.units.push(k); sound('tap'); renderProgSel(); return; }
+  if(e.target.closest('[data-pr55all]')){ e.stopImmediatePropagation(); PRS.units = PRS.units.length===KEYS55.length ? ['pr_seq'] : KEYS55.slice(); sound('tap'); renderProgSel(); return; }
+  const c = e.target.closest('#pr55Count [data-v]'); if(c){ e.stopImmediatePropagation(); PRS.count = +c.dataset.v; renderProgSel(); return; }
+  if(e.target.closest('#pr55Start')){ e.stopImmediatePropagation(); sound('tap'); prStart(); }
+}, true);
+/* おわった あと・やめた ときは プログラミングへ もどる */
+show = (orig => function(name){
+  if(name!=='mathplay'){ if(window.MQPRG && curScreen==='mathplay'){ markHist(); if(name==='soc') name = 'prog'; } window.MQPRG = false; }
+  const o = orig.apply(this, [name]);
+  if(name==='prog') try{ renderProgSel(); }catch(e){}
+  return o;
+})(show);
+socStart = (orig => function(){ if(window.MQPRG && curScreen==='mathplay'){ markHist(); return prStart(); } window.MQPRG = false; return orig.apply(this, arguments); })(socStart);
+/* ボーナスは プログラミングの むずかしい たんげんから */
+pickHardQ = (orig => function(units, soc){
+  if(!window.MQPRG) return orig.apply(this, arguments);
+  const lv = Math.max(...PRS.units.map(k => MATH_UNITS[k].lv || 1)), pool = KEYS55.filter(k => (MATH_UNITS[k].lv||1) >= Math.min(3, lv + 1));
+  const ks = pool.length ? pool : PRS.units, used = new Set(MQ.list.map(qKeyOf));
+  for(let t=0;t<20;t++){ const k = choice(ks), c = {u:k, ...MATH_UNITS[k].gen()}; if(!used.has(qKeyOf(c))) return c; }
+  return null;
+})(pickHardQ);
+/* きろく：プログラミングとして のこす */
+try{ if(typeof HIST_LBL==='object') HIST_LBL.prg5 = '🤖 プログラミング（高学年）'; }catch(e){}
+function markHist(){ try{ const H = save.history, h = H && H[H.length-1]; if(h && h.subj==='soc' && MQ && MQ.list && MQ.list.every(p => KEYS55.includes(p.u)) && Date.now() - h.d < 6*3600e3){ h.subj = 'prg5'; persist(); } }catch(e){} }
 })();

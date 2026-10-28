@@ -413,3 +413,27 @@ button.vres54.on{filter:drop-shadow(0 0 5px #FFD54A) drop-shadow(0 0 2px #FFB300
 .vhWho54 button.on{border-color:#F08DAA;background:#FFEAF0;box-shadow:0 0 0 2px #FFC2D1 inset}
 .vhWho54 button .rpic{width:44px;height:44px}
 .vhWho54 button span{font-size:10px;font-weight:900;line-height:1.2;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* =====================================================================
+   v5.5 プログラミング 高学年チャレンジ
+   ===================================================================== */
+.pr55Menu{margin-bottom:6px}
+.pr55Hd{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,#E3F0FF,#FFF3DE);border:2px solid #BFD8F7;border-radius:16px;padding:8px 12px;margin-bottom:4px}
+.pr55Hd img{width:52px;height:52px;object-fit:contain}
+.pr55Hd b{display:block;font-size:17px;color:#2F6DB5}.pr55Hd small{font-size:12px;color:#6F6252}
+.pr55Menu .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.pr55Box{display:flex;flex-direction:column;align-items:center;gap:8px;margin:6px auto;max-width:100%}
+.pr55{max-width:100%;height:auto;display:block}
+.pr55 .t55{fill:#fff;font-weight:900;font-size:13px;font-family:inherit}
+.pr55 .f55{font-weight:900;font-size:13px;text-anchor:middle;fill:#4A3A2A;font-family:inherit}
+.pr55 .f55.sm{font-size:12px}.pr55 .f55.big{font-size:24px}
+.pr55 .f55.g{fill:#3C9A3A}.pr55 .f55.r{fill:#D0563F}
+.grid55{border-radius:8px}
+.lamp55{display:flex;gap:8px;justify-content:center;padding:6px}
+.lamp55 i{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF6B8,#FFC93C);border:3px solid #C9963A;animation:lamp55 1.6s ease-in-out infinite alternate}
+.lamp55 i:nth-child(2n){background:radial-gradient(circle at 35% 35%,#E8E8E8,#9AA3B0);border-color:#6E7787;animation-delay:.4s}
+@keyframes lamp55{to{transform:scale(.9);filter:brightness(.85)}}
+.half55{width:min(280px,90%);display:flex;flex-direction:column;gap:3px}
+.half55 span{display:block;background:#CFE6FF;border:2px solid #4C97FF;border-radius:6px;text-align:center;font-weight:900;font-size:12px;color:#2F6DB5;min-width:22px;box-sizing:border-box}
+.word55{font-size:54px;line-height:1}
+@media (max-width:480px){ .pr55 .t55{font-size:12px} }
