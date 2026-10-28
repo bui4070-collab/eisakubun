@@ -8,7 +8,7 @@
    ・ポイントのルールは POINT_RULES、ボーナス問題の条件は BONUS_RULES で調整できます。
    ・判定パラメータは JUDGE_PRESETS で調整できます。
    ===================================================================== */
-const APP_VERSION = '5.1.0';
+const APP_VERSION = '5.4.0';
 const STORE_KEY = 'manabiTown.v1';
 const ART_KEY = 'manabiTown.art.v1';
 
@@ -3241,20 +3241,30 @@ const ROOM_SETS = {
   pop:['sofa','teddy','rug','starlight','tv'], drive:['trainset','toybox','tv','rug','lamp'], all:['piano','aquarium','dollhouse','shimaplush','starlight']
 };
 const WALL_OF = {know:'mint', work:'wood', biz:'cream', pop:'pink', drive:'sky', all:'star'};
-async function visitHouse(key){
+async function visitHouse(key, hostId){
   const t = save.town, who = t.res.filter(r => r.home===key); if(!who.length) return;
-  const host = who[0], sp = SP(host.sp), set = ROOM_SETS[sp.bias] || ROOM_SETS.pop;
+  /* v5.4：マンションなど ふくすうの 住民が すむ 家は、タッチした 住民と はなせる */
+  const host = who.find(r => r.id===hostId) || who[0], sp = SP(host.sp), set = ROOM_SETS[sp.bias] || ROOM_SETS.pop;
   const wall = WALLS.find(w => w.id===(WALL_OF[sp.bias]||'cream')) || WALLS[0], floor = FLOORS[host.name.length % FLOORS.length];
   const pos = [[14,58,30],[78,60,28],[30,88,24],[68,90,26],[50,64,22]];
   const furn = set.map((id,i) => { const f = FUR(id); if(!f) return ''; const [x,y,w] = pos[i]; return `<img class="vfur" src="${esc(artSrc(f.art))}" style="left:${x}%;top:${y}%;width:${w}%;z-index:${y}" alt="">`; }).join('');
-  const people = who.map((r,i) => `<div class="vres" style="left:${42+i*16}%;top:94%">${resPic(r)}</div>`).join('');
+  const multi = who.length > 1, step = multi ? Math.min(16, 80/who.length) : 16, x0 = multi ? 50 - step*(who.length-1)/2 : 42;
+  const people = who.map((r,i) => multi
+    ? `<button class="vres vres54 ${r.id===host.id?'on':''}" data-vh54="${r.id}" style="left:${x0+i*step}%;top:94%">${resPic(r)}</button>`
+    : `<div class="vres" style="left:${42+i*16}%;top:94%">${resPic(r)}</div>`).join('');
+  const chips = multi ? `<div class="vhWho54"><small>だれと はなす？（タッチで かわるよ）</small><div>${who.map(r => `<button class="${r.id===host.id?'on':''}" data-vh54="${r.id}">${resPic(r)}<span>${esc(r.name)}</span></button>`).join('')}</div></div>` : '';
   sound('fan');
   let msg = pick(['いらっしゃい！ ゆっくりしていってね♪','わあ、来てくれたの！？ うれしい！','ちょうど お茶を いれたところだよ！']);
   const first = host.visitedBy !== dayKey();
   if(first){ host.visitedBy = dayKey(); host.fr = (host.fr||0) + 1; persist(); }
-  const v = await dialog(`<div class="vroom"><div class="vwall" style="background:${wall.css}"><i class="win"></i></div><div class="vfloor" style="background:${floor.css}"></div>${furn}${people}</div>
-    <div class="talkBubble" style="margin:10px auto 0"><b>${esc(host.name)}</b>${esc(msg)}</div>${first ? '<div class="frUp">💗 なかよし アップ！</div>' : ''}`,
-    [{label:'💬 はなす', cls:'pink', v:'talk'}, {label:'🎲 クイズを ちょうだい', cls:'orange', v:'quiz'}, {label:'おいとまする', cls:'white', v:null}], 'wide');
+  const v = await new Promise(res => {
+    let done = false; const end = x => { if(done) return; done = true; $('#dlgBody').onclick = null; res(x); };
+    dialog(`<div class="vroom"><div class="vwall" style="background:${wall.css}"><i class="win"></i></div><div class="vfloor" style="background:${floor.css}"></div>${furn}${people}</div>
+    <div class="talkBubble" style="margin:10px auto 0"><b>${esc(host.name)}</b>${esc(msg)}</div>${first ? '<div class="frUp">💗 なかよし アップ！</div>' : ''}${chips}`,
+    [{label:multi ? `💬 ${esc(host.name)}と はなす` : '💬 はなす', cls:'pink', v:'talk'}, {label:'🎲 クイズを ちょうだい', cls:'orange', v:'quiz'}, {label:'おいとまする', cls:'white', v:null}], 'wide').then(end);
+    if(multi) $('#dlgBody').onclick = e => { const b = e.target.closest('[data-vh54]'); if(!b || b.dataset.vh54===host.id) return; $('#dlg').classList.remove('show'); end('vh:' + b.dataset.vh54); };
+  });
+  if(typeof v==='string' && v.startsWith('vh:')) return visitHouse(key, v.slice(3));
   if(v==='talk') talkTo(host.id, 'home');
   if(v==='quiz') residentQuiz(host, true);
 }
@@ -4135,7 +4145,7 @@ talkTo = async function(id, ctx){
   return _talkTo(id, ctx);
 };
 const _rq = residentQuiz; residentQuiz = async function(r, h){ misEv('quiz'); return _rq(r, h); };
-const _vh = visitHouse; visitHouse = async function(key){ misEv('visit'); return _vh(key); };
+const _vh = visitHouse; visitHouse = async function(key, hostId){ if(!hostId) misEv('visit'); return _vh(key, hostId); };
 const _ap = addPoints;
 addPoints = function(pt, reason, silent){
   if(reason==='パーフェクト！' || reason==='さんすう パーフェクト！') setTimeout(() => misEv('perfect'), 0);
@@ -4610,9 +4620,9 @@ talkTo = async function(id, ctx){
   return _talkTo(id, ctx);
 };
 const _vh11 = visitHouse;
-visitHouse = async function(key){
+visitHouse = async function(key, hostId){
   (reqData().list||[]).forEach(q => { if(q.kind==='visit'){ const r = save.town.res.find(x => x.id===q.rid); if(r && r.home===key) q.visited = true; } });
-  persist(); return _vh11(key);
+  persist(); return _vh11(key, hostId);
 };
 
 /* =====================================================================
@@ -5339,10 +5349,18 @@ engJudge = function(r){
   if(q.bonus && r==='o'){ const b = givePts(30, 'えいご ボーナス せいかい'); toast(`⭐ ボーナス +${b}pt！`); save.counters.bonus++; persist(); }
   const last = ES.res.slice(-3);
   if(!q.bonus && E.set.pts && (ES.bn||0) < 2 && last.length===3 && last.every(x => x.res==='o') && Math.random() < .35 && ES.i < ES.qs.length){
-    const used = new Set(ES.qs.map(x => x.id)), cnt = {};
-    E.hist.forEach(h => { if(h.res!=='o') cnt[h.qid] = (cnt[h.qid]||0) + 1; });
-    const cand = E.qs.filter(x => !used.has(x.id) && cnt[x.id]).sort((a,b) => cnt[b.id]-cnt[a.id]);
-    const pick = cand[0] || choice(E.qs.filter(x => !used.has(x.id) && wcount(x.en) >= 8));
+    /* v5.4：いつも 同じ 文に ならないように、とけなかった 文の 中から ランダム（にがてほど 出やすい） */
+    const used = new Set(ES.qs.map(x => x.id)), cnt = {}, last = {};
+    E.hist.forEach(h => { if(h.res!=='o') cnt[h.qid] = (cnt[h.qid]||0) + 1; last[h.qid] = h.res; });
+    const recent = new Set(E.bRecent || []);
+    const notUsed = E.qs.filter(x => !used.has(x.id));
+    let cand = notUsed.filter(x => cnt[x.id] && last[x.id]!=='o');          // まだ とけていない 文
+    if(!cand.length) cand = notUsed.filter(x => cnt[x.id]);                // いちどでも まちがえた 文
+    const fresh = cand.filter(x => !recent.has(x.id)); if(fresh.length) cand = fresh;
+    let pick = null;
+    if(cand.length){ let w = Math.random() * cand.reduce((a,x) => a + 1 + cnt[x.id], 0); for(const x of cand){ w -= 1 + cnt[x.id]; if(w <= 0){ pick = x; break; } } pick = pick || cand[cand.length-1]; }
+    else { const L = notUsed.filter(x => wcount(x.en) >= 8 && !recent.has(x.id)); pick = L.length ? choice(L) : choice(notUsed.length ? notUsed : E.qs); }
+    if(pick){ E.bRecent = [pick.id, ...(E.bRecent || []).filter(id => id!==pick.id)].slice(0, Math.max(3, Math.min(20, Math.floor(cand.length/2)))); engSave(); }
     if(pick){ ES.qs.splice(ES.i, 0, {...pick, bonus:true}); ES.bn = (ES.bn||0) + 1; if(ES.phase==='ask'){ engNext(); } }
   }
   return res;

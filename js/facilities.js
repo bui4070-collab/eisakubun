@@ -59,8 +59,15 @@ const CROPS = [
   {id:'corn',       f:'f_corn',       n:'とうもろこし', seed:40,  min:45,  y:[2,3], lv:2},
   {id:'strawberry', f:'f_strawberry', n:'いちご',       seed:60,  min:60,  y:[2,4], lv:3},
   {id:'pumpkin',    f:'f_pumpkin',    n:'かぼちゃ',     seed:70,  min:90,  y:[1,3], lv:4},
-  {id:'watermelon', f:'f_watermelon', n:'すいか',       seed:100, min:120, y:[1,2], lv:5}
+  {id:'watermelon', f:'f_watermelon', n:'すいか',       seed:100, min:120, y:[1,2], lv:5},
+  {id:'potato',     f:'f_potato',     n:'じゃがいも',   seed:35,  min:40,  y:[2,4], lv:2},              // v5.4
+  {id:'coffee',     f:'f_coffee',     n:'コーヒーの木', got:'コーヒーまめ', seed:80, min:100, y:[2,3], lv:5}   // v5.4
 ];
+/* v5.4：じゃがいも・コーヒーまめ（おやつ／カフェの ざいりょう） */
+Object.assign(DEFAULT_ART, {doc_bunny:'./assets/images/v54/doc_bunny.webp', veg_potato:'./assets/images/v54/veg_potato.webp', veg_coffee:'./assets/images/v54/veg_coffee.webp'});
+[{id:'f_potato', n:'じゃがいも', price:50, m:1.1, min:15, art:'veg_potato'}, {id:'f_coffee', n:'コーヒーまめ', price:90, m:1.2, min:15, art:'veg_coffee'}]
+  .forEach(f => { if(!FD(f.id)) FOOD.push(f); });
+try{ const M = SHOP_FOOD.market; if(!M.includes('f_potato')) M.splice(2, 0, 'f_potato'); if(!M.includes('f_coffee')) M.push('f_coffee'); }catch(e){}
 const CROP = id => CROPS.find(c => c.id===id);
 const cropArt = c => FD(c.f)?.art || 'bld_field';
 const millRate = () => 1 - 0.15*Math.min(2, cellsOf('windmill').length);
@@ -87,7 +94,7 @@ async function openField(key){
     const n = rint(c.y[0], c.y[1]) + (glv(key) >= 2 ? 1 : 0) + (p.w ? 1 : 0), B = foodBag();
     B[c.f] = (B[c.f]||0) + n; delete f.farm[key]; persist(); sound('fan'); confetti(1400);
     await dialog(`<div class="dlgArt big"><img src="${esc(artSrc(cropArt(c)))}" alt=""></div><h2 class="dlgT">🧺 しゅうかく！</h2>
-      <p class="dlgP">${c.n}が <b>${n}こ</b> とれたよ！<br><small>ホームの「おやつ」で たべると ポイントが ふえるよ</small></p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+      <p class="dlgP">${c.got||c.n}が <b>${n}こ</b> とれたよ！<br><small>ホームの「おやつ」で たべると ポイントが ふえるよ</small></p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
     decorate(); return;
   }
   const rest = p.need - (now() - p.at);
@@ -200,8 +207,11 @@ function hurtCheck(){
 async function heal(r){
   if(!has('clinic')){ toast('🏥 病院が ないよ。ショップで「病院」を おこう'); return; }
   sound('tap');
-  await dialog(head('bld_clinic', '🏥 病院に ついたよ', '') + `<div class="whoRow"><div class="whoIt">${resPic(r)}<span>${esc(r.name)}</span></div></div>
-    <div class="talkBubble"><b>おいしゃさん</b>だいじょうぶ！ すぐに なおるからね。はい、ばんそうこう ぺたっ🩹</div>`, [{label:'おねがいします！', cls:'gold', v:1}], 'wide');
+  /* v5.4：だれが はなしているか わかるように、せんせいと 住民を わけて ひょうじ */
+  await dialog(head('bld_clinic', '🏥 病院に ついたよ', '') + `<div class="docTalk54">
+      <div class="dt54 pat"><div class="dt54Pic">${resPic(r)}<span>${esc(r.name)}</span></div><div class="talkBubble"><b>${esc(r.name)}</b>${esc(speak(r, 'せんせい… いたいところを みてください…'))}</div></div>
+      <div class="dt54 doc"><div class="talkBubble"><b>うさぎせんせい</b>だいじょうぶ！ すぐに なおるからね。はい、ばんそうこう ぺたっ🩹</div><div class="dt54Pic"><img src="${esc(artSrc('doc_bunny'))}" alt=""><span>せんせい</span></div></div>
+    </div>`, [{label:'おねがいします！', cls:'gold', v:1}], 'wide');
   delete r.hurt; r.fr = (r.fr||0) + 2; givePts(30, `${r.name}を 病院へ つれていった`); persist(); sound('fan'); confetti(1500);
   await dialog(`<div class="dlgArt big">${resPic(r)}</div><h2 class="dlgT">✨ なおった！</h2>
     <div class="talkBubble"><b>${esc(r.name)}</b>${esc(speak(r, 'つれてきてくれて ありがとう！ きみって やさしいね'))}</div>

@@ -1,9 +1,15 @@
-まなびタウン v5.3.1 UPDATE（v5.3 からの差分）
+まなびタウン v5.4 UPDATE（v5.3.1 からの差分）
 
 アップロードする ファイル:
-- js/features.js     （上書き）
-- assets/images/v53/ に 12まい 追加
-    c5_1.jpg 〜 c5_6.jpg（だい5しょう）
-    c6_1.jpg 〜 c6_6.jpg（だい6しょう）
+- js/app.js           （上書き）
+- js/facilities.js    （上書き）
+- js/features.js      （上書き）
+- css/features.css    （上書き）
+- assets/images/v54/  （新しい フォルダ・9まい）
+    veg_potato.webp / veg_coffee.webp      … じゃがいも・コーヒーまめ
+    cm_blend_coffee.webp / cm_cafe_latte.webp / cm_vienna_coffee.webp
+    cm_coffee_jelly.webp / cm_french_fries.webp / cm_potato_salad.webp
+    doc_bunny.webp                          … 病院の うさぎせんせい
 
-ほかの ファイルは 変更なし。セーブデータは 引きつぎます。
+変更なし: index.html / js/eng_more.js / css/style.css / css/facilities.css
+セーブデータは 引きつぎます。
