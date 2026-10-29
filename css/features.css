@@ -495,3 +495,7 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 #townMap.lite56 *{animation:none!important;filter:none!important}
 #townMap.lite56 .wact,#townMap.lite56 [data-off56="1"]{display:none!important}
 .lite56Tag{margin-left:6px;background:#E3F6DA;color:#3C8A2E;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:900}
+
+/* v5.7 下の学年の 問題 */
+.low57{display:inline-block;margin:4px 4px 0;background:#EEF1F5;color:#5B6B80;border-radius:10px;padding:1px 9px;font-size:12px;font-weight:800}
+.low57n{margin-top:4px;font-size:12px;color:#5B6B80}
