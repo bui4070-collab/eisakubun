@@ -437,3 +437,61 @@ button.vres54.on{filter:drop-shadow(0 0 5px #FFD54A) drop-shadow(0 0 2px #FFB300
 .half55 span{display:block;background:#CFE6FF;border:2px solid #4C97FF;border-radius:6px;text-align:center;font-weight:900;font-size:12px;color:#2F6DB5;min-width:22px;box-sizing:border-box}
 .word55{font-size:54px;line-height:1}
 @media (max-width:480px){ .pr55 .t55{font-size:12px} }
+
+/* =====================================================================
+   v5.6 かいせつ・れんぞくボーナス・学年・かるい表示
+   ===================================================================== */
+.ex56{margin:10px auto 4px;max-width:520px;text-align:left;background:#FFFDF6;border:3px solid #F4D58D;border-radius:18px;padding:10px 12px 12px;box-shadow:0 3px 10px rgba(150,110,40,.15);font-size:15px;line-height:1.6;color:#4A3A2A;animation:ex56in .35s ease-out}
+@keyframes ex56in{from{transform:translateY(8px);opacity:0}}
+.ex56Hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}.ex56Hd img{width:38px;height:38px;object-fit:contain}.ex56Hd b{font-size:16px;color:#B5701C}.ex56Hd small{margin-left:auto;background:#FFF0C9;border-radius:10px;padding:0 8px;font-size:11px;font-weight:800;color:#9A6B1E}
+.ex56Ans{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.ex56Ans span{border-radius:12px;padding:3px 10px;font-size:13px;font-weight:800}.ex56Ans .ok{background:#FFE8EC;color:#C0392B}.ex56Ans .ng{background:#E3F0FF;color:#1C6AAE}.ex56Ans b{font-size:16px}
+.ex56Fast{background:#FFF1D6;border-radius:10px;padding:4px 10px;font-size:13px;font-weight:800;color:#B35C00;margin-bottom:6px}
+.ex56Why{background:#EAF4FF;border-left:5px solid #4C97FF;border-radius:8px;padding:4px 10px;margin:4px 0 8px;font-size:14px;font-weight:800;color:#1C5A99}
+.ex56Fig{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px;margin:6px 0;overflow-x:auto}
+.ex56Fig .jpMap,.ex56Fig .wMap{width:100%;max-width:330px;height:auto}
+.ex56Steps{margin:6px 0 4px;padding-left:24px}.ex56Steps li{margin:3px 0}.ex56Steps b{color:#C0392B}.ex56Steps u{text-decoration:none;background:#FFE27A;border-radius:4px;padding:0 2px}
+.ex56Tip{background:#EFFAEA;border-radius:10px;padding:5px 10px;font-size:13.5px;font-weight:800;color:#2E7D32;margin-top:6px}
+.ex56Dlg .ex56{margin:4px 0;max-height:62vh;overflow:auto}
+.fig56{max-width:100%;height:auto;display:block}
+.tx56{font-size:12px;font-weight:800;fill:#4A3A2A;font-family:inherit}.tx56.c{text-anchor:middle}.tx56.r{fill:#E8414B}.tx56.b{fill:#1C6AAE}.tx56.g{fill:#2E7D32}
+/* 筆算 */
+.col56{display:inline-block;font-family:'Zen Maru Gothic',monospace;font-weight:900;font-size:22px;background:#fff;border:2px dashed #E6D3B3;border-radius:12px;padding:6px 12px}
+.ca56{display:flex;justify-content:flex-end}.ca56 i{font-style:normal;width:22px;text-align:center;position:relative}.ca56 i.op{width:24px;color:#8A6A4A}
+.ca56.ann i{font-size:12px;height:14px;line-height:14px}.ca56.ann.cy i{color:#E8414B}.ca56.ann.bw i{color:#1C6AAE}
+.ca56 i.st{color:#B0A090;text-decoration:line-through}.ca56.r i{color:#C0392B}.ca56.p i{color:#2F6DB5;font-size:20px}.ca56 i.sh{color:#ccc}
+.ca56 i.dp::after{content:'.';position:absolute;right:-5px;bottom:-2px;color:#C0392B}
+.ln56{height:3px;background:#7A5A3A;margin:2px 0 2px 24px;border-radius:2px}.dpNote{font-size:10px;color:#9B8366;text-align:right}
+.ld56{display:inline;font-size:13.5px;line-height:1.9}.ld56 b[class]{border-radius:8px;padding:0 6px;color:#fff;font-size:11px}.ld56 .c1{background:#E8414B}.ld56 .c2{background:#F2A33A}.ld56 .c3{background:#4C97FF}.ld56 .c4{background:#59C059}
+.fb56{display:flex;align-items:center;gap:8px}.fb56>span{min-width:62px;font-weight:900;font-size:14px;text-align:right}
+.pt56 table{border-collapse:collapse;font-weight:900;margin:auto}.pt56 th{font-size:10px;color:#8A6A4A;padding:1px 3px;border-bottom:2px solid #E6D3B3}.pt56 td{font-size:19px;text-align:center;padding:1px 4px}
+.pt56 .grp{border-right:3px solid #F2A33A}.pt56 .hi{background:#FFE27A;border-radius:6px}.pt56 small{display:block;text-align:center;font-size:11px;color:#9B8366}
+/* しゃかい */
+.pc56{background:#FFF1F1;border-radius:10px;padding:4px 10px;margin:2px 0;display:inline-block}.pc56.ng{background:#EAF4FF}.pc56 b{display:block;font-size:14px}.pc56 small{font-size:12px}
+.sym56{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}.sym56 span{width:62px;background:#fff;border:2px solid #EEE2CE;border-radius:10px;text-align:center;padding:2px}
+.sym56 span.ok{border-color:#E8414B;background:#FFF1F1}.sym56 span.ng{border-color:#4C97FF;background:#EEF6FF}.sym56 i{font-style:normal;font-size:22px;display:block;height:30px;line-height:30px}.sym56 i svg{width:28px;height:28px}.sym56 small{font-size:9.5px;line-height:1.2;display:block}
+/* りか */
+.pp56{display:flex;gap:10px;justify-content:center}.pp56 span{display:flex;flex-direction:column;align-items:center;border-radius:12px;padding:4px;border:3px solid #E8414B}.pp56 span.ng{border-color:#4C97FF}.pp56 img{width:90px;height:90px;object-fit:contain}.pp56 b{font-size:12px}
+.okc{color:#C0392B}
+/* こくご */
+.fill56{background:#FFE27A;border-radius:5px;padding:0 3px}
+.jo56,.st56{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}.jo56 span,.st56 span{background:#fff;border:2px solid #EEE2CE;border-radius:10px;padding:2px 7px;max-width:150px;font-size:11px;line-height:1.35}
+.jo56 b{font-size:17px;margin-right:4px}.st56 b{display:block;font-size:12px}.jo56 .ok,.st56 .ok{border-color:#E8414B;box-shadow:0 0 0 2px #FFB3B3}.jo56 .ng,.st56 .ng{border-color:#4C97FF;opacity:.9}
+.svo56{display:flex;align-items:center;gap:8px;justify-content:center}.svo56 span{border-radius:12px;padding:4px 14px;font-weight:900;text-align:center;line-height:1.3}.svo56 i{font-style:normal;font-size:20px}
+.sj56{background:#D7ECFF;color:#1C5A99;border-radius:5px;padding:0 3px}.pr56{background:#FFE0E6;color:#B03045;border-radius:5px;padding:0 3px}
+.kc56{text-align:center}.kc56 ruby{font-size:44px;font-weight:900}.kc56 rt{font-size:15px;color:#E8414B}.kc56 p{margin:2px 0;font-size:15px}.kc56 u{text-decoration-color:#E8414B;text-decoration-thickness:3px}
+.kx56{margin:3px 0}.kx56 b{display:inline-block;background:#FFE27A;border-radius:6px;padding:0 6px;margin-right:6px}.kx56 span{margin-right:8px;font-size:13px}
+button.hold56{opacity:.75;filter:grayscale(.3)}
+/* れんぞく */
+.stk56{display:inline-flex;align-items:center;gap:8px;margin:6px 4px 0;background:linear-gradient(90deg,#FFEFD0,#FFD9C2);border:2px solid #FFB35C;border-radius:14px;padding:3px 12px;animation:stk56 .5s ease-out}
+.stk56 b{color:#E0561B;font-size:15px}.stk56 span{color:#B5701C;font-weight:900;font-size:13px}
+@keyframes stk56{0%{transform:scale(.6)}70%{transform:scale(1.08)}}
+.stkPop56{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:9999;pointer-events:none;text-align:center;font-size:56px;animation:stkPop56 1.5s ease-out forwards;filter:drop-shadow(0 4px 8px rgba(200,80,0,.35))}
+.stkPop56 b{display:block;font-size:46px;color:#E0561B;line-height:1}.stkPop56 small{display:block;font-size:18px;font-weight:900;color:#B5701C}
+@keyframes stkPop56{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}20%{transform:translate(-50%,-50%) scale(1.15);opacity:1}75%{opacity:1}100%{transform:translate(-50%,-90%) scale(1);opacity:0}}
+/* せってい */
+.seg.wrap56{flex-wrap:wrap}.seg.wrap56 button{min-width:44px}
+#set56 .lab small{font-weight:600;font-size:11px;color:#8A7560}
+/* かるい表示 */
+#townMap.lite56 *{animation:none!important;filter:none!important}
+#townMap.lite56 .wact,#townMap.lite56 [data-off56="1"]{display:none!important}
+.lite56Tag{margin-left:6px;background:#E3F6DA;color:#3C8A2E;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:900}

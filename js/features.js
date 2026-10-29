@@ -726,7 +726,7 @@ async function openCafeShop(){const v=await dialog(`<div class="dlgArt big">${im
  if(v!=='yes')return;if(save.points.bal<500)return toast('ポイントが たりないよ');givePts(-500,'わたしの家：カフェを つくった');const c=C();c.on=true;c.last=Date.now();syncCafeRoom();persist();sound('fan');confetti(1800);
  if(homeEdit)endHomeEdit(true);switchRoom('cafe');clearTableCells();renderMyHome();}
 /* ---------- カフェの メインがめん ---------- */
-const CAFE_UP=[null,{h:15,p:1200},{h:50,p:2400},{h:120,p:3600}];
+const CAFE_UP=[null,{h:15,p:1200},{h:50,p:2400},{h:120,p:3600}];window.CAFE_UP=CAFE_UP;
 async function cafeOpen(){const c=C();if(!c.on)return openCafeShop();cafeTick();
  const sel=c.menu.map(menuById).filter(Boolean),left=sel.reduce((a,m)=>a+Math.max(0,servings(m)),0),td=c.today&&c.today.d===dayKey()?c.today:{pt:0,n:0};
  const v=await dialog(`<div class="cafeHead48">${imgTag('cafe_sign')}<div><b>おうちカフェ Lv${c.lv}</b><small>4人がけの 机 ${tablesOpen()}つ（${tablesOpen()*4}せき）</small><small class="${left?'ok':'ng'}">${left?`えいぎょうちゅう・あと ${left}さら つくれる`:'ざいりょうぎれ（のうひんしてね）'}</small></div></div>
@@ -2406,4 +2406,799 @@ pickHardQ = (orig => function(units, soc){
 /* きろく：プログラミングとして のこす */
 try{ if(typeof HIST_LBL==='object') HIST_LBL.prg5 = '🤖 プログラミング（高学年）'; }catch(e){}
 function markHist(){ try{ const H = save.history, h = H && H[H.length-1]; if(h && h.subj==='soc' && MQ && MQ.list && MQ.list.every(p => KEYS55.includes(p.u)) && Date.now() - h.d < 6*3600e3){ h.subj = 'prg5'; persist(); } }catch(e){} }
+})();
+
+/* =====================================================================
+   まなびタウン v5.6
+   ① まちがえた 問題の 手あつい かいせつ（図解つき）：さんすう・りか・しゃかい・こくご
+   ② ものがたりが すすむと ものの ねだんが 上がる
+   ③ れんぞく せいかい ボーナス
+   ④ 学年の せってい（住民・カフェなどの とつぜんの 問題が 学年に あう）
+   ⑤ 大きな まちの「かるい 表示」
+   ===================================================================== */
+(function(){
+'use strict';
+const VER56 = '5.6.0';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const nf2 = n => { const v = Math.round(Number(n)*1e6)/1e6; return Number.isInteger(v) ? v.toLocaleString('ja-JP') : String(v); };
+const gcd = (a,b) => { a = Math.abs(a); b = Math.abs(b); while(b){ [a,b] = [b, a%b]; } return a || 1; };
+const lcm = (a,b) => a / gcd(a,b) * b;
+/* 問題文 → ふつうの 文字（分数は a/b） */
+const plain = h => String(h||'').replace(/<span class="frac"><b>(\d+)<\/b><b>(\d+)<\/b><\/span>/g, ' $1/$2 ').replace(/<br\s*\/?>/g,' ').replace(/<[^>]+>/g,'')
+  .replace(/&nbsp;/g,' ').replace(/(\d),(\d{3})/g,'$1$2').replace(/＋/g,'+').replace(/[−－]/g,'-').replace(/\u3000/g,' ').replace(/\s+/g,' ').trim();
+const boldNums = h => { const out = []; String(h||'').replace(/<b>([^<]*)<\/b>/g, (_, t) => { (t.replace(/(\d),(\d{3})/g,'$1$2').match(/\d+(?:\.\d+)?/g)||[]).forEach(n => out.push(Number(n))); }); return out; };
+const allNums = t => (t.match(/\d+(?:\.\d+)?/g)||[]).map(Number);
+
+/* =====================================================================
+   図の パーツ
+   ===================================================================== */
+/* 筆算（たし算・ひき算） */
+function colAddSub(a, b, op){
+  const dec = Math.max((String(a).split('.')[1]||'').length, (String(b).split('.')[1]||'').length);
+  const A = Math.round(a*10**dec), B = Math.round(b*10**dec), R = op==='+' ? A+B : A-B;
+  const W = Math.max(String(A).length, String(B).length, String(R).length) + (op==='+' ? 0 : 0);
+  const da = String(A).padStart(W,' ').split(''), db = String(B).padStart(W,' ').split(''), dr = String(R).padStart(W,' ').split('');
+  const ann = Array(W).fill(''), strike = Array(W).fill(false); let carry = 0, lend = 0, carries = 0;
+  for(let i=W-1;i>=0;i--){
+    const x = da[i]===' ' ? 0 : +da[i], y = db[i]===' ' ? 0 : +db[i];
+    if(op==='+'){ const s = x + y + carry; if(carry) ann[i] = '1'; carry = s >= 10 ? 1 : 0; if(carry) carries++; }
+    else { let cur = x - lend; let borrowed = false; if(cur < y){ cur += 10; borrowed = true; carries++; }
+      if(cur !== x){ ann[i] = String(cur); strike[i] = true; } lend = borrowed ? 1 : 0; }
+  }
+  const pt = dec ? W - dec : -1;
+  const cell = (d, i, cls='') => `<i class="${cls}${i===pt-1 && dec ? ' dp' : ''}">${d===' ' ? '' : d}</i>`;
+  const row = (arr, cls, pre='') => `<div class="ca56 ${cls}"><i class="op">${pre}</i>${arr.map((d,i) => cell(d, i, strike[i] && cls==='a' ? 'st' : '')).join('')}</div>`;
+  const deco = arr => dec ? arr.map((d,i) => d) : arr;
+  return { html:`<div class="col56">${`<div class="ca56 ann ${op==='+'?'cy':'bw'}"><i class="op"></i>${ann.map(d => `<i>${d}</i>`).join('')}</div>`}${row(deco(da),'a')}${row(deco(db),'b', op==='+'?'＋':'－')}<div class="ln56"></div>${row(deco(dr),'r')}${dec ? `<div class="dpNote">・は 小数点の いち</div>` : ''}</div>`,
+    carries, R:R/10**dec, dec };
+}
+/* 筆算（かけ算） */
+function colMul(a, b){
+  const ds = String(b).split('').reverse(), parts = ds.map((d,i) => a*Number(d)*10**i), R = a*b;
+  const W = String(R).length + 1;
+  const pad = s => String(s).padStart(W,' ').split('');
+  const row = (s, cls, pre='') => `<div class="ca56 ${cls}"><i class="op">${pre}</i>${pad(s).map(d => `<i>${d===' '?'':d}</i>`).join('')}</div>`;
+  let h = `<div class="col56">${row(a,'a')}${row(b,'b','×')}<div class="ln56"></div>`;
+  if(ds.length > 1){ ds.forEach((d,i) => { const v = a*Number(d); h += `<div class="ca56 p"><i class="op"></i>${pad(String(v) + ' '.repeat(i)).map((c,j) => `<i class="${j >= W-i ? 'sh' : ''}">${c===' '?'':c}</i>`).join('')}</div>`; }); h += '<div class="ln56"></div>'; }
+  h += row(R,'r') + '</div>';
+  const steps = ds.length > 1 ? ds.map((d,i) => `${a} × ${Number(d)*10**i} = <b>${nf2(parts[i])}</b>${i ? `（${a}×${d} の こたえを <b>${i}けた 左</b>に ずらす）` : ''}`).concat([`ぜんぶ たして <b>${nf2(R)}</b>`])
+    : [`一の位から じゅんに：${String(a).split('').reverse().map((d,i) => `${d}×${b}`).join('、')}（くり上がりを わすれずに）`];
+  return {html:h, steps};
+}
+/* わり算の 筆算（手じゅん） */
+function longDivSteps(a, b){
+  const s = String(a); let r = 0, q = '', out = [], started = false;
+  for(let i=0;i<s.length;i++){
+    const cur = r*10 + Number(s[i]), d = Math.floor(cur/b);
+    if(!started && d===0 && i < s.length-1){ r = cur; continue; }
+    started = true; q += d;
+    out.push(`<span class="ld56"><b class="c1">たてる</b> ${cur} ÷ ${b} → <b>${d}</b>　<b class="c2">かける</b> ${b}×${d}=${b*d}　<b class="c3">ひく</b> ${cur}−${b*d}=${cur-b*d}${i < s.length-1 ? `　<b class="c4">おろす</b> つぎの ${s[i+1]}` : ''}</span>`);
+    r = cur - b*d;
+  }
+  return {steps:out, q:Number(q||0), r};
+}
+/* まとまりの 絵（わり算・かけ算） */
+function groupsSVG(total, per, opt={}){
+  const n = Math.floor(total/per), rem = total - n*per, cols = Math.min(5, per), rowsPer = Math.ceil(per/cols);
+  const gw = cols*14 + 10, gh = rowsPer*14 + 10, perRow = Math.max(1, Math.floor(300/(gw+6)));
+  let h = '', k = 0;
+  for(let g=0; g<n+(rem?1:0); g++){
+    const gx = (g % perRow)*(gw+6), gy = Math.floor(g/perRow)*(gh+6), isRem = g===n, cnt = isRem ? rem : per;
+    h += `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" fill="${isRem?'#FFF1F1':'#EEF7FF'}" stroke="${isRem?'#E8414B':'#7FB6E6'}" stroke-dasharray="${isRem?'4 3':''}" stroke-width="2"/>`;
+    for(let i=0;i<cnt;i++){ h += `<circle cx="${gx+12+(i%cols)*14}" cy="${gy+12+Math.floor(i/cols)*14}" r="5.2" fill="${isRem?'#E8414B':opt.col||'#F2A33A'}"/>`; k++; }
+  }
+  const W = Math.min(n+(rem?1:0), perRow)*(gw+6), H = Math.ceil((n+(rem?1:0))/perRow)*(gh+6);
+  return `<svg class="fig56" viewBox="-2 -2 ${W+4} ${H+4}" width="${Math.min(320, W+4)}">${h}</svg>`;
+}
+/* 分数の 帯 */
+function fracBar(n, d, opt={}){
+  const bars = Math.max(1, Math.ceil(n/d)), W = 240, H = 26; let h = '';
+  for(let b=0;b<bars;b++){ for(let i=0;i<d;i++){ const on = b*d + i < n;
+      h += `<rect x="${i*W/d}" y="${b*(H+6)}" width="${W/d}" height="${H}" fill="${on ? (opt.col||'#FF9EB5') : '#fff'}" stroke="#B88A5A" stroke-width="1.5"/>`; }
+    h += `<text x="${W+8}" y="${b*(H+6)+18}" class="tx56">${b < bars-1 || n%d===0 && n>0 ? '1' : ''}</text>`; }
+  return `<div class="fb56"><span>${opt.label ?? `${n}/${d}`}</span><svg class="fig56" viewBox="-2 -2 ${W+26} ${bars*(H+6)}" width="${W+28}">${h}</svg></div>`;
+}
+/* 位の ひょう */
+const PL = ['一','十','百','千','一万','十万','百万','千万','一億','十億','百億','千億','一兆','十兆','百兆','千兆'];
+function placeTable(n, hiIdx){
+  const s = String(n), L = s.length;
+  const cols = [...Array(L)].map((_,i) => L-1-i);
+  return `<div class="pt56"><table><tr>${cols.map(p => `<th class="${p%4===0 && p>0 ? 'grp' : ''} ${p===hiIdx?'hi':''}">${PL[p]}</th>`).join('')}</tr><tr>${s.split('').map((d,i) => `<td class="${cols[i]%4===0 && cols[i]>0 ? 'grp' : ''} ${cols[i]===hiIdx?'hi':''}">${d}</td>`).join('')}</tr></table><small>4けたごとに「万」「億」「兆」が かわるよ</small></div>`;
+}
+/* テープ図 */
+function tape(segs, opt={}){
+  const W = 280, tot = segs.reduce((a,s) => a + s.w, 0) || 1; let x = 0, h = '';
+  segs.forEach(s => { const w = Math.max(18, s.w/tot*W);
+    h += `<rect x="${x}" y="14" width="${w}" height="26" rx="4" fill="${s.col||'#BDE3FF'}" stroke="#5C88B5" stroke-width="1.5"/><text x="${x+w/2}" y="32" class="tx56 c">${X(s.t)}</text>`; x += w; });
+  if(opt.top) h += `<path d="M0 10 Q0 3 8 3 H${x-8} Q${x} 3 ${x} 10" fill="none" stroke="#E8414B" stroke-width="2"/><text x="${x/2}" y="0" class="tx56 c r">${X(opt.top)}</text>`;
+  if(opt.bot) h += `<path d="M0 44 Q0 51 8 51 H${x-8} Q${x} 51 ${x} 44" fill="none" stroke="#1C6AAE" stroke-width="2"/><text x="${x/2}" y="66" class="tx56 c b">${X(opt.bot)}</text>`;
+  return `<svg class="fig56" viewBox="-4 -14 ${x+8} ${opt.bot?84:60}" width="${Math.min(330, x+8)}">${h}</svg>`;
+}
+/* 数直線 */
+function numLine56(lo, hi, marks){
+  const W = 280, P = v => 10 + (v-lo)/(hi-lo)*W; let h = `<line x1="10" y1="34" x2="${W+10}" y2="34" stroke="#555" stroke-width="2"/>`;
+  for(let i=0;i<=10;i++){ const v = lo + (hi-lo)*i/10; h += `<line x1="${P(v)}" y1="${i%5?29:25}" x2="${P(v)}" y2="${i%5?39:43}" stroke="#555" stroke-width="${i%5?1:2}"/>`; }
+  marks.forEach(m => { h += `<circle cx="${P(m.v)}" cy="34" r="6" fill="${m.col}"/><text x="${P(m.v)}" y="${m.up?16:62}" class="tx56 c" fill="${m.col}">${X(m.t)}</text>`; });
+  h += `<text x="10" y="62" class="tx56 c">${nf2(lo)}</text><text x="${W+10}" y="62" class="tx56 c">${nf2(hi)}</text>`;
+  return `<svg class="fig56" viewBox="-24 0 ${W+60} 70" width="320">${h}</svg>`;
+}
+/* 長方形・直方体 */
+function rectFig(w, hgt, uw, uh){
+  const s = Math.min(200/w, 110/hgt, 24), W = Math.max(40, w*s), H = Math.max(30, hgt*s);
+  let g = ''; if(w*hgt <= 160) for(let i=1;i<w;i++) g += `<line x1="${i*W/w}" y1="0" x2="${i*W/w}" y2="${H}" stroke="#9CC3E6" stroke-width="1"/>`;
+  if(w*hgt <= 160) for(let j=1;j<hgt;j++) g += `<line x1="0" y1="${j*H/hgt}" x2="${W}" y2="${j*H/hgt}" stroke="#9CC3E6" stroke-width="1"/>`;
+  return `<svg class="fig56" viewBox="-60 -24 ${W+80} ${H+40}" width="${Math.min(320, W+80)}"><rect width="${W}" height="${H}" fill="#E7F3FF" stroke="#2F6DB5" stroke-width="2.5"/>${g}
+    <text x="${W/2}" y="-8" class="tx56 c">${X(uw)}</text><text x="-8" y="${H/2+5}" class="tx56" text-anchor="end">${X(uh)}</text></svg>`;
+}
+function boxFig(a, b, c){
+  return `<svg class="fig56" viewBox="0 0 260 160" width="260"><path d="M40 60 L150 60 L150 140 L40 140 Z" fill="#E7F3FF" stroke="#2F6DB5" stroke-width="2.5"/>
+    <path d="M40 60 L80 25 L190 25 L150 60 Z" fill="#CFE6FF" stroke="#2F6DB5" stroke-width="2.5"/><path d="M150 60 L190 25 L190 105 L150 140 Z" fill="#B9DAFB" stroke="#2F6DB5" stroke-width="2.5"/>
+    <text x="95" y="156" class="tx56 c">よこ ${X(b)}</text><text x="34" y="104" class="tx56" text-anchor="end">高さ ${X(c)}</text><text x="196" y="72" class="tx56">たて ${X(a)}</text></svg>`;
+}
+/* へいきんの ぼう */
+function aveBars(vals){
+  const mx = Math.max(...vals), av = vals.reduce((a,b)=>a+b,0)/vals.length, W = 34, H = 110;
+  let h = vals.map((v,i) => `<rect x="${i*(W+10)}" y="${H - v/mx*H}" width="${W}" height="${v/mx*H}" rx="4" fill="#9ED3A0"/><text x="${i*(W+10)+W/2}" y="${H - v/mx*H - 4}" class="tx56 c">${v}</text>`).join('');
+  const y = H - av/mx*H; h += `<line x1="-4" y1="${y}" x2="${vals.length*(W+10)}" y2="${y}" stroke="#E8414B" stroke-width="2.5" stroke-dasharray="6 4"/><text x="${vals.length*(W+10)+2}" y="${y+5}" class="tx56 r">へいきん ${nf2(av)}</text>`;
+  return `<svg class="fig56" viewBox="-6 -16 ${vals.length*(W+10)+110} ${H+22}" width="${Math.min(330, vals.length*(W+10)+116)}">${h}</svg>`;
+}
+/* 時こくの 線 */
+function timeLine(h1, m1, add){
+  const t0 = h1*60 + m1, t1 = t0 + add, nextH = Math.ceil((t0+0.01)/60)*60, W = 280, P = t => 10 + (t - t0)/(Math.max(add, 1))*W;
+  let h = `<line x1="10" y1="30" x2="${W+10}" y2="30" stroke="#555" stroke-width="2"/>`;
+  const fm = t => `${Math.floor(t/60)}時${t%60 ? (t%60)+'分' : ''}`;
+  h += `<circle cx="${P(t0)}" cy="30" r="6" fill="#1C6AAE"/><text x="${P(t0)}" y="56" class="tx56 c b">${fm(t0)}</text><circle cx="${P(t1)}" cy="30" r="6" fill="#E8414B"/><text x="${P(t1)}" y="56" class="tx56 c r">${fm(t1)}</text>`;
+  if(nextH > t0 && nextH < t1){ h += `<line x1="${P(nextH)}" y1="20" x2="${P(nextH)}" y2="40" stroke="#555" stroke-width="2"/><text x="${P(nextH)}" y="14" class="tx56 c">${fm(nextH)}</text>`
+    + `<text x="${(P(t0)+P(nextH))/2}" y="25" class="tx56 c g">${nextH-t0}分</text><text x="${(P(nextH)+P(t1))/2}" y="25" class="tx56 c g">${t1-nextH}分</text>`; }
+  return `<svg class="fig56" viewBox="-30 0 ${W+70} 64" width="320">${h}</svg>`;
+}
+
+/* =====================================================================
+   しきの 計算（じゅんばん つき）
+   ===================================================================== */
+function tokenize(s){ return (s.replace(/（/g,'(').replace(/）/g,')').match(/\d+(?:\.\d+)?|[+\-×÷()]/g)||[]); }
+function evalSteps(s){
+  let tk = tokenize(s); const steps = [];
+  const show = (arr, a, b) => arr.map((t,i) => i>=a && i<=b ? `<u>${t}</u>` : t).join(' ');
+  const calc = (x, o, y) => o==='+' ? x+y : o==='-' ? x-y : o==='×' ? x*y : x/y;
+  for(let guard=0; guard<20 && tk.length>1; guard++){
+    let lo = 0, hi = tk.length-1;
+    const op = tk.lastIndexOf('('); if(op >= 0){ lo = op+1; hi = tk.indexOf(')', op) - 1; }
+    let i = -1; for(let k=lo+1;k<=hi;k+=2) if(tk[k]==='×'||tk[k]==='÷'){ i = k; break; }
+    if(i < 0) i = lo+1;
+    if(lo===hi){ steps.push(show(tk, lo-1, hi+1) + '　（かっこを はずす）'); tk.splice(lo-1, 3, tk[lo]); continue; }
+    const v = calc(Number(tk[i-1]), tk[i], Number(tk[i+1])), r = Math.round(v*1e6)/1e6;
+    steps.push(`${show(tk, i-1, i+1)}　→　${tk[i-1]} ${tk[i]} ${tk[i+1]} = <b>${r}</b>`);
+    tk.splice(i-1, 3, String(r));
+  }
+  return {steps, v:Number(tk[0])};
+}
+/* 文章題：数を くみあわせて こたえに なる 式を さがす */
+function findExpr(ns, ans){
+  const A = Number(ans); if(!isFinite(A)) return null;
+  const ops = ['+','-','×','÷'], c = (x,o,y) => o==='+' ? x+y : o==='-' ? x-y : o==='×' ? x*y : y ? x/y : NaN, eq = v => Math.abs(v - A) < 1e-6;
+  for(let i=0;i<ns.length;i++) for(let j=0;j<ns.length;j++){ if(i===j) continue; for(const o of ops) if(eq(c(ns[i],o,ns[j]))) return {e:`${nf2(ns[i])} ${o} ${nf2(ns[j])}`, a:ns[i], b:ns[j], o}; }
+  for(let i=0;i<ns.length;i++) for(let j=0;j<ns.length;j++) for(let k=0;k<ns.length;k++){ if(i===j||j===k||i===k) continue;
+    for(const o1 of ops) for(const o2 of ops){
+      if(eq(c(c(ns[i],o1,ns[j]),o2,ns[k]))) return {e:`${(o2==='×'||o2==='÷') && (o1==='+'||o1==='-') ? '(' : ''}${nf2(ns[i])} ${o1} ${nf2(ns[j])}${(o2==='×'||o2==='÷') && (o1==='+'||o1==='-') ? ')' : ''} ${o2} ${nf2(ns[k])}`};
+      if(eq(c(ns[i],o1,c(ns[j],o2,ns[k])))) return {e:`${nf2(ns[i])} ${o1} ${(o1==='×'||o1==='÷'||o1==='-') && (o2==='+'||o2==='-') ? '(' : ''}${nf2(ns[j])} ${o2} ${nf2(ns[k])}${(o1==='×'||o1==='÷'||o1==='-') && (o2==='+'||o2==='-') ? ')' : ''}`}; } }
+  return null;
+}
+const UNIT_F = [[/km/,'m',1000,'1km = 1000m'],[/kg/,'g',1000,'1kg = 1000g'],[/(\d)t\b|\dt /,'kg',1000,'1t = 1000kg'],[/\dm(?!m|²|³)/,'cm',100,'1m = 100cm'],[/cm(?!²|³)/,'mm',10,'1cm = 10mm'],
+  [/時間/,'分',60,'1時間 = 60分'],[/分.*びょう|びょう/,'分',60,'1分 = 60びょう'],[/\dL/,'cm³',1000,'1L = 1000cm³'],[/m²/,'cm²',10000,'1m² = 10000cm²'],[/dL/,'',10,'1L = 10dL']];
+function convFacts(t){ return UNIT_F.filter(([re]) => re.test(t)).map(f => f[3]); }
+function convNums(t){ const o = []; UNIT_F.forEach(([re,,f]) => { if(re.test(t)) o.push(f); }); return o; }
+/* 文章題の テープ図 */
+function tapeFor(f, t){
+  if(!f || f.o==null) return '';
+  const a = f.a, b = f.b;
+  if(f.o==='+') return tape([{w:a, t:nf2(a)}, {w:b, t:nf2(b), col:'#FFD9A8'}], {top:'あわせて ？'});
+  if(f.o==='-') return tape([{w:Math.max(a-b,0.0001), t:'？', col:'#FFE3E8'}, {w:b, t:nf2(b), col:'#FFD9A8'}], {top:`ぜんぶ ${nf2(a)}`});
+  if(f.o==='×'){ if(!Number.isInteger(b) || b < 1) return ''; const n = Math.min(b, 8), segs = [...Array(n)].map((_,i) => ({w:1, t:i===0 ? nf2(a) : i===n-1 && b>8 ? '…' : ''})); return tape(segs, {top:`${nf2(a)} が ${nf2(b)}こ分 → ？`}); }
+  if(f.o==='÷') return tape([...Array(Math.min(8, Math.max(2, Math.round(Number(a)/Math.max(b,1e-9)) || 2)))].map((_,i) => ({w:1, t:i===0 ? nf2(b) : ''})), {top:`ぜんぶ ${nf2(a)}`, bot:`${nf2(b)} ずつ → いくつ分？`});
+  return '';
+}
+
+/* =====================================================================
+   さんすうの かいせつ
+   ===================================================================== */
+function mathExp(p, v){
+  const u = p.u, t = plain(p.q), ans = String(p.ans), out = {figs:[], steps:[], tip:'', why:''};
+  const bn = boldNums(p.q), an = Number(String(ans).replace(/,/g,''));
+  const exprM = t.replace(/□は？|（[^）]*）$/g,'').match(/^\s*([\d.\s+\-×÷()（）/]+)\s*$/);
+  const expr = exprM && /[+\-×÷]/.test(exprM[1]) ? exprM[1].trim() : null;
+  const hasFrac = /\d+\/\d+/.test(t);
+  const userN = Number(String(v||'').replace(/,/g,'').replace(/[^\d.\-]/g,''));
+
+  /* ---- 分数 ---- */
+  if(hasFrac || /等分|分数|仮分数|帯分数/.test(t)){
+    const fr = [...t.matchAll(/(?:(\d+)\s*(?=\d+\/))?(\d+)\/(\d+)/g)].map(m => ({n:Number(m[2]), d:Number(m[3])}));
+    const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)/);
+    if(/仮分数に/.test(t) && mixed){ const w = +mixed[1], n = +mixed[2], d = +mixed[3];
+      out.steps.push(`「${w}と${n}/${d}」は 1が ${w}こ と ${n}/${d}`, `1 = ${d}/${d} だから、${w} = ${w*d}/${d}`, `${w*d}/${d} ＋ ${n}/${d} = <b>${w*d+n}/${d}</b>`);
+      out.figs.push(fracBar(w*d+n, d, {label:`${w}と${n}/${d}`})); out.tip = '帯分数 → 仮分数：せいすう × 分母 ＋ 分子'; return out; }
+    if(/帯分数に/.test(t) && fr[0]){ const {n, d} = fr[0], w = Math.floor(n/d), r = n % d;
+      out.steps.push(`${n} ÷ ${d} = ${w} あまり ${r}`, `${d}/${d} が ${w}こ（＝${w}）と、あまり ${r}/${d}`, `こたえ <b>${w}と${r}/${d}</b>`);
+      out.figs.push(fracBar(n, d, {label:`${n}/${d}`})); out.tip = '仮分数 → 帯分数：分子 ÷ 分母 の しょうと あまり'; return out; }
+    if(fr.length >= 2 && (/[+\-]/.test(t) || /あわせて|ぜんぶで|のこり|ちがい/.test(t))){
+      const A = fr[0], B = fr[1], op = /\d\/\d+\s*-\s*\d/.test(t) || /のこり|ちがい/.test(t) ? '-' : '+';
+      if(A.d === B.d){ const r = op==='+' ? A.n+B.n : A.n-B.n;
+        out.steps.push(`分母は どちらも ${A.d}（${A.d}こに 分けた 1つ分が 同じ 大きさ）`, `分子だけ ${op==='+'?'たす':'ひく'}：${A.n} ${op==='+'?'＋':'－'} ${B.n} = ${r}`, `こたえ <b>${r}/${A.d}</b>（分母は そのまま！）`);
+        out.figs.push(fracBar(A.n, A.d), fracBar(B.n, B.d, {col:'#FFD27A'}), fracBar(r, A.d, {col:'#9ED3A0', label:`= ${r}/${A.d}`}));
+        if(userN && String(v).includes('/') && Number(String(v).split('/')[1]) === A.d*2) out.why = '分母どうしも たしちゃったかも？ 分母は そのままだよ';
+        out.tip = '分母が 同じ 分数の たし算・ひき算は、分子だけ 計算する'; return out; }
+      const L = lcm(A.d, B.d), a2 = A.n*L/A.d, b2 = B.n*L/B.d, r = op==='+' ? a2+b2 : a2-b2, g = gcd(r, L);
+      out.steps.push(`分母が ちがうので <b>通分</b>：${A.d} と ${B.d} の 最小公倍数は ${L}`, `${A.n}/${A.d} = ${a2}/${L}、${B.n}/${B.d} = ${b2}/${L}`, `${a2}/${L} ${op==='+'?'＋':'－'} ${b2}/${L} = <b>${r}/${L}</b>${g>1 ? `（約分すると ${r/g}/${L/g}）` : ''}`);
+      out.figs.push(fracBar(a2, L, {label:`${A.n}/${A.d}=${a2}/${L}`}), fracBar(b2, L, {col:'#FFD27A', label:`${B.n}/${B.d}=${b2}/${L}`}));
+      out.tip = '分母を そろえて（通分）から 分子を 計算しよう'; return out; }
+    if(/1\s*-\s*\d+\/\d+/.test(t) && fr[0]){ const {n,d} = fr[0];
+      out.steps.push(`1 を 分数に すると ${d}/${d}`, `${d}/${d} − ${n}/${d} = <b>${d-n}/${d}</b>`); out.figs.push(fracBar(d, d, {label:'1'}), fracBar(d-n, d, {col:'#9ED3A0', label:`のこり ${d-n}/${d}`})); return out; }
+    const eq = t.match(/(\d+)等分.*?(\d+)(?:こ分|まい)/);
+    if(eq){ const d = +eq[1], n = +eq[2]; out.steps.push(`${d}等分 → 分母は ${d}`, `${n}こ分 → 分子は ${n}`, `こたえ <b>${n}/${d}</b>`); out.figs.push(fracBar(n, d)); out.tip = '分母＝いくつに 分けたか、分子＝その いくつ分'; return out; }
+    if(p.type==='cmp' && fr.length >= 2){ out.figs.push(fracBar(fr[0].n, fr[0].d), fracBar(fr[1].n, fr[1].d, {col:'#FFD27A'})); out.steps.push('分母が 同じなら、分子が 大きい ほうが 大きい'); return out; }
+  }
+  /* ---- 大小（cmp） ---- */
+  if(p.type==='cmp'){
+    const d = plain(p.disp||''); const sides = d.split('□'); 
+    if(sides.length===2){ const L = sides[0].trim(), R = sides[1].trim();
+      const term = x => { x = x.trim(); const f = x.match(/^(\d+)\/(\d+)$/); if(f) return f[1]/f[2]; const m = x.match(/^(?:(\d+)兆)?(?:(\d+)億)?(?:(\d+)万)?(\d+(?:\.\d+)?)?$/); if(!m || !x) return NaN; return (+(m[1]||0))*1e12 + (+(m[2]||0))*1e8 + (+(m[3]||0))*1e4 + (+(m[4]||0)); };
+      const val = s => { const parts = s.replace(/\s/g,'').split(/(?=[+\-])/); let tot = 0; for(const pt of parts){ const sg = pt[0]==='-' ? -1 : 1, v2 = term(pt.replace(/^[+\-]/,'')); if(!isFinite(v2)) return NaN; tot += sg*v2; } return tot; };
+      const lv = val(L), rv = val(R);
+      out.steps.push(`左：${X(L)}${isFinite(lv) && String(lv)!==L ? ` → ${nf2(lv)}` : ''}`, `右：${X(R)}${isFinite(rv) && String(rv)!==R ? ` → ${nf2(rv)}` : ''}`, `大きい ほうに ひらく：<b>${X(L)} ${ans} ${X(R)}</b>`);
+      out.tip = '「＞」「＜」は 大きい ほうに 口を ひらく ワニの 口！'; return out; }
+  }
+  /* ---- 位・大きな数 ---- */
+  if(u==='big' || u==='oku'){
+    const pm = t.match(/(\d{5,})\s*の\s*(\S+?)の位/);
+    if(pm){ const idx = PL.indexOf(pm[2]); out.figs.push(placeTable(pm[1], idx)); out.steps.push(`右から 一・十・百・千・一万… と 数えて「${pm[2]}の位」を さがす`, `${pm[2]}の位の 数字は <b>${ans}</b>`); return out; }
+    if(/数字で/.test(t) && /^\d+$/.test(ans)){ out.figs.push(placeTable(ans)); out.steps.push('「兆」「億」「万」で 区切って、それぞれ 4けたで 書く', 'ない 位には <b>0</b> を 書く のを わすれずに'); out.tip = '「万」の 前と 後ろで 分けて 考えよう'; return out; }
+    if(/読み方/.test(t)){ const n = (t.match(/\d{5,}/)||[''])[0]; out.figs.push(placeTable(n)); out.steps.push('右から 4けたずつ 区切って、「万」「億」を つけて 読む', `こたえ <b>${X(ans)}</b>`); return out; }
+    const m = t.match(/(\d+)\s*を\s*(\d+)倍/); if(m){ const z = String(m[2]).length-1; out.steps.push(`${m[2]}倍 → 右に 0を <b>${z}こ</b> つける`, `${nf2(m[1])} → <b>${X(ans)}</b>`); out.figs.push(placeTable(String(an).length ? String(Math.round(an)) : ans)); return out; }
+    const c = t.match(/(\d+)\s*を\s*(\d+)こ\s*集め/); if(c){ out.steps.push(`${nf2(c[1])} が ${c[2]}こ → ${nf2(c[1])} × ${c[2]}`, `= <b>${nf2(an)}</b>`); out.figs.push(placeTable(String(an))); return out; }
+  }
+  /* ---- がい数 ---- */
+  if(u==='gaisu'){
+    const n = Number((t.match(/\d{3,}/)||[0])[0]); const pm = t.match(/(十|百|千|一万|万)の位まで|上から\s*(\d)けた/);
+    let unit = 10; if(pm){ if(pm[2]) unit = 10**(String(n).length - Number(pm[2])); else unit = {'十':10,'百':100,'千':1000,'一万':10000,'万':10000}[pm[1]] || 10; }
+    const lo = Math.floor(n/unit)*unit, hi = lo + unit, mid = lo + unit/2, look = Math.floor(n % unit / (unit/10));
+    out.figs.push(numLine56(lo, hi, [{v:n, t:nf2(n), col:'#1C6AAE', up:true}, {v:mid, t:'まんなか', col:'#999'}]));
+    out.steps.push(`${nf2(unit)}の まとまりで 考える：${nf2(lo)} と ${nf2(hi)} の あいだ`, `1つ 下の 位の 数字は <b>${look}</b> → ${look >= 5 ? '5〜9 なので 切り上げ' : '0〜4 なので 切りすて'}`, `こたえ <b>${nf2(an)}</b>`);
+    out.tip = '四捨五入：すぐ 下の 位が 0〜4 なら 切りすて、5〜9 なら 切り上げ'; return out;
+  }
+  /* ---- 時こく ---- */
+  if(u==='time' && /時/.test(ans)){
+    const m = t.match(/(\d+)時(\d+)?分?.*?(\d+)分\s*(?:歩い|後|前)/), back = /前/.test(t);
+    if(m){ const h = +m[1], mi = +(m[2]||0), d = +m[3];
+      if(!back){ out.figs.push(timeLine(h, mi, d)); const toH = 60 - mi; if(d >= toH && mi) out.steps.push(`${h}時${mi}分 から ${h+1}時 までは ${toH}分`, `のこり ${d} − ${toH} = ${d-toH}分 → ${h+1}時${d-toH ? (d-toH)+'分' : ''}`); else out.steps.push(`${mi} ＋ ${d} = ${mi+d}分`); out.steps.push(`こたえ <b>${X(ans)}</b>`); }
+      else out.steps.push(`${h}時${mi}分 から ${d}分 もどる`, `こたえ <b>${X(ans)}</b>`);
+      out.tip = '「ちょうど ○時」で いったん 区切ると まちがえにくいよ'; return out; }
+  }
+  /* ---- 面積・体積 ---- */
+  if(u==='area'){
+    const w = t.match(/たて\s*(\d+)(\w*)、\s*よこ\s*(\d+)(c?m)/), s = t.match(/1辺\s*(\d+)(c?m)/), inv = t.match(/面積が\s*(\d+).*たてが\s*(\d+)/);
+    if(w){ out.figs.push(rectFig(+w[3], +w[1], `よこ ${w[3]}${w[4]}`, `たて ${w[1]}${w[4]}`)); out.steps.push(`長方形の 面積 ＝ たて × よこ`, `${w[1]} × ${w[3]} = <b>${an}</b>`); return out; }
+    if(s){ out.figs.push(rectFig(+s[1], +s[1], `${s[1]}${s[2]}`, `${s[1]}${s[2]}`)); out.steps.push('正方形の 面積 ＝ 1辺 × 1辺', `${s[1]} × ${s[1]} = <b>${an}</b>`); return out; }
+    if(inv){ out.figs.push(rectFig(an||1, +inv[2], 'よこ ？', `たて ${inv[2]}`)); out.steps.push('たて × よこ ＝ 面積 だから、よこ ＝ 面積 ÷ たて', `${inv[1]} ÷ ${inv[2]} = <b>${an}</b>`); return out; }
+  }
+  if(u==='vol'){
+    const w = t.match(/たて\s*(\d+)\S*、\s*よこ\s*(\d+)\S*、\s*高さ\s*(\d+)/), s = t.match(/1辺\s*(\d+)/);
+    if(w){ out.figs.push(boxFig(w[1], w[2], w[3])); out.steps.push('直方体の 体積 ＝ たて × よこ × 高さ', `${w[1]} × ${w[2]} × ${w[3]} = <b>${an}</b>`); return out; }
+    if(s){ out.figs.push(boxFig(s[1], s[1], s[1])); out.steps.push('立方体の 体積 ＝ 1辺 × 1辺 × 1辺', `${s[1]} × ${s[1]} × ${s[1]} = <b>${an}</b>`); return out; }
+  }
+  /* ---- 平均 ---- */
+  if(u==='ave'){ const vals = bn.length >= 2 ? bn : allNums(t); const sum = vals.reduce((a,b)=>a+b,0);
+    out.figs.push(aveBars(vals)); out.steps.push(`ぜんぶ たす：${vals.join(' ＋ ')} = ${sum}`, `こ数で わる：${sum} ÷ ${vals.length} = <b>${nf2(sum/vals.length)}</b>`); out.tip = '平均 ＝ ごうけい ÷ こ数（でこぼこを ならした 高さ）'; return out; }
+  /* ---- 割合 ---- */
+  if(u==='ratio'){
+    const m1 = t.match(/(\d+)人?\s*の\s*うち\s*(\d+)/), m2 = t.match(/(\d+)円?\s*の\s*(\d+)%\s*は/), m3 = t.match(/(\d+)円の.*?(\d+)%引き/), m4 = t.match(/定員\s*(\d+).*?(\d+)人\s*乗/), m5 = t.match(/(\d+)%\s*を\s*小数/);
+    if(m1||m4){ const base = m1 ? +m1[1] : +m4[1], part = m1 ? +m1[2] : +m4[2]; out.figs.push(tape([{w:part, t:`${part}`, col:'#FFB3C1'}, {w:Math.max(base-part, 0.001), t:''}], {top:`もとに する量 ${base} ＝ 100%`}));
+      out.steps.push('割合 ＝ くらべる量 ÷ もとに する量', `${part} ÷ ${base} = ${nf2(part/base)}`, `百分率に すると × 100 → <b>${nf2(part/base*100)}%</b>`); }
+    else if(m2){ out.steps.push('くらべる量 ＝ もとに する量 × 割合', `${m2[2]}% ＝ ${nf2(+m2[2]/100)}`, `${m2[1]} × ${nf2(+m2[2]/100)} = <b>${nf2(an)}</b>`); out.figs.push(tape([{w:+m2[2], t:`${m2[2]}%`, col:'#FFB3C1'}, {w:100-m2[2], t:''}], {top:`${m2[1]} ＝ 100%`})); }
+    else if(m3){ out.steps.push(`${m3[2]}%引き → のこりは ${100 - m3[2]}%`, `${m3[1]} × ${nf2((100-m3[2])/100)} = <b>${nf2(an)}</b>`); out.figs.push(tape([{w:100-m3[2], t:`はらう ${100-m3[2]}%`, col:'#9ED3A0'}, {w:+m3[2], t:`${m3[2]}%`, col:'#FFE3E8'}], {top:`${m3[1]}円 ＝ 100%`})); }
+    else if(m5){ out.steps.push('100% ＝ 1', `${m5[1]}% → ${m5[1]} ÷ 100 = <b>${nf2(an)}</b>`); }
+    out.tip = '100% が「もとに する量」。くらべる量 ÷ もとに する量 で 割合'; return out;
+  }
+  /* ---- 約数・倍数 ---- */
+  if(u==='divisor'){
+    const ns = bn.length ? bn : allNums(t);
+    if(/約数は\s*ぜんぶで/.test(t)){ const n = ns[0], ds = []; for(let i=1;i<=n;i++) if(n%i===0) ds.push(i);
+      const pairs = ds.filter(d => d*d <= n).map(d => `${d} × ${n/d}`); out.steps.push(`かけて ${n} に なる ペアを さがす：${pairs.join('、')}`, `約数：${ds.join('・')} → <b>${ds.length}こ</b>`); out.tip = '1 と じぶん自身も 約数だよ'; return out; }
+    if(/公倍数|同時/.test(t)){ const [a, b] = ns, la = [...Array(6)].map((_,i) => a*(i+1)), lb = [...Array(6)].map((_,i) => b*(i+1));
+      out.steps.push(`${a}の 倍数：${la.join('、')}…`, `${b}の 倍数：${lb.join('、')}…`, `はじめて 同じに なるのは <b>${lcm(a,b)}</b>`); out.tip = '最小公倍数：両方の 倍数で いちばん 小さい 数'; return out; }
+    if(/公約数|分け/.test(t)){ const [a, b] = ns, da = [], db = []; for(let i=1;i<=a;i++) if(a%i===0) da.push(i); for(let i=1;i<=b;i++) if(b%i===0) db.push(i);
+      out.steps.push(`${a}の 約数：${da.join('・')}`, `${b}の 約数：${db.join('・')}`, `両方に ある いちばん 大きい 数は <b>${gcd(a,b)}</b>`); out.tip = '最大公約数：両方を わりきれる いちばん 大きい 数'; return out; }
+  }
+  /* ---- □を つかった 式 ---- */
+  if(u==='box'){
+    const m = t.match(/□\s*([+\-×÷])\s*(\d+)\s*=\s*(\d+)/);
+    if(m){ const inv = {'+':'-','-':'+','×':'÷','÷':'×'}[m[1]]; out.steps.push(`□ ${m[1]} ${m[2]} = ${m[3]} の □を もとめるには「ぎゃくの 計算」`, `□ = ${m[3]} ${inv} ${m[2]} = <b>${ans}</b>`, `たしかめ：${ans} ${m[1]} ${m[2]} = ${m[3]} ✔`);
+      out.figs.push(m[1]==='+' ? tape([{w:+ans, t:'□', col:'#FFE3E8'}, {w:+m[2], t:m[2], col:'#FFD9A8'}], {top:`ぜんぶ ${m[3]}`}) : m[1]==='-' ? tape([{w:+m[3], t:m[3]}, {w:+m[2], t:m[2], col:'#FFD9A8'}], {top:'□（はじめ）'}) : '');
+      out.tip = 'たし算 ⇔ ひき算、かけ算 ⇔ わり算 は ぎゃくの 計算'; return out; }
+  }
+  /* ---- わり算（あまり） ---- */
+  if(p.type==='rem' || u==='div' || u==='div2'){
+    const m = t.match(/(\d+)\s*÷\s*(\d+)/), q = ans.split('|');
+    if(m){ const a = +m[1], b = +m[2];
+      if(a <= 60 && b <= 9){ out.figs.push(groupsSVG(a, b)); out.steps.push(`${a}こを ${b}こずつ まとめる → <b>${Math.floor(a/b)}</b>まとまり`, `あまりは <b>${a%b}</b>こ（あまりは わる数 ${b} より 小さい）`); }
+      else { const L = longDivSteps(a, b); out.steps.push(...L.steps, `こたえ <b>${L.q}</b>${L.r ? ` あまり <b>${L.r}</b>` : ''}`); }
+      out.steps.push(`たしかめ：${b} × ${Math.floor(a/b)}${a%b ? ` ＋ ${a%b}` : ''} = ${a} ✔`);
+      if(q[1]!=null && userN && Number(String(v).split(/あまり|\|/)[1]) >= b) out.why = 'あまりが わる数より 大きく なっているよ';
+      return out; }
+  }
+  /* ---- しき だけの 計算 ---- */
+  if(expr){
+    const tk = tokenize(expr), ops = tk.filter(x => /[+\-×÷]/.test(x));
+    if(ops.length===1 && tk.length===3){
+      const a = Number(tk[0]), b = Number(tk[2]), o = tk[1];
+      if(o==='+' || o==='-'){ const c = colAddSub(a, b, o); out.figs.push(c.html);
+        out.steps.push(o==='+' ? '位を そろえて、一の位から じゅんに たす' : '位を そろえて、一の位から じゅんに ひく', c.carries ? (o==='+' ? `くり上がりが <b>${c.carries}かい</b> あるよ（小さい 1）` : `くり下がりが <b>${c.carries}かい</b> あるよ（となりから 10 かりる）`) : 'くり上がり・くり下がりは ないよ');
+        if(isFinite(userN) && c.carries){ const nc = o==='+' ? Number(String(a).split('').reverse().map((d,i) => (Number(d) + Number(String(b).split('').reverse()[i]||0)) % 10).reverse().join('')) : NaN; if(userN === nc) out.why = 'くり上がりを たすのを わすれたかも！'; }
+        if(c.dec) out.tip = '小数の 筆算は 小数点の 位置を そろえるのが ポイント'; return out; }
+      if(o==='×' && Number.isInteger(a) && Number.isInteger(b) && a >= 10){ const c = colMul(a, b); out.figs.push(c.html); out.steps.push(...c.steps); out.tip = 'かけ算の 筆算：かける数の 位ごとに かけて、さいごに たす'; return out; }
+      if(o==='×' || o==='÷'){ const da = (String(a).split('.')[1]||'').length, db = (String(b).split('.')[1]||'').length;
+        if(o==='×' && (da||db)){ out.steps.push(`小数点を 気に しないで 整数で 計算：${Math.round(a*10**da)} × ${Math.round(b*10**db)} = ${Math.round(a*10**da)*Math.round(b*10**db)}`, `小数点の 下の けた数は あわせて ${da+db}けた → <b>${nf2(an)}</b>`); out.tip = 'かけ算は「小数点の 下の けた数の 合計」だけ 小数点を うつ'; return out; }
+        if(o==='÷' && db){ const k = 10**db; out.steps.push(`わる数を 整数に するため、両方を ${k}倍：${a} ÷ ${b} → ${nf2(a*k)} ÷ ${nf2(b*k)}`, `${nf2(a*k)} ÷ ${nf2(b*k)} = <b>${nf2(an)}</b>`); out.tip = 'わる数と わられる数に 同じ 数を かけても こたえは かわらない'; return out; }
+        if(o==='×' && a <= 9 && b <= 9){ out.figs.push(groupsSVG(a*b, a)); out.steps.push(`${a} が ${b}こ分 → ${a}の だん：${[...Array(b)].map((_,i)=>a*(i+1)).join('、')}`, `こたえ <b>${a*b}</b>`); return out; }
+        if(o==='÷'){ out.steps.push(`${b} × □ = ${a} の □を さがす（${b}の だん）`, `こたえ <b>${nf2(an)}</b>`); return out; }
+      }
+    }
+    const E = evalSteps(expr); out.steps.push('<b>計算の じゅんばん</b>：①（ ）の 中 → ② × ÷ → ③ ＋ −', ...E.steps);
+    out.tip = '左から じゅんに 計算しない！ かけ算・わり算が さき'; return out;
+  }
+  /* ---- 文章題 ---- */
+  const facts = hasFrac ? [] : convFacts(t), ns = (bn.length ? bn : allNums(t)).concat(convNums(t));
+  const f = findExpr(uniq(ns), ans);
+  if(facts.length) out.steps.push('たんいの きまり：' + facts.join('、'));
+  if(f){ out.steps.push(`しき：<b>${f.e} = ${nf2(an)}</b>`); const tp = tapeFor(f, t); if(tp) out.figs.push(tp);
+    if(f.o==='+' || f.o==='-'){ const c = Number.isInteger(f.a) && Number.isInteger(f.b) && f.a >= 10 ? colAddSub(f.a, f.b, f.o) : null; if(c && f.a < 1e6) out.figs.push(c.html); }
+    if(f.o==='×' && Number.isInteger(f.a) && f.a >= 10 && Number.isInteger(f.b) && f.b < 100){ out.figs.push(colMul(f.a, f.b).html); }
+    const kw = /あわせて|ぜんぶで|合わせ|ふえ|もらう/.test(t) ? 'たし算' : /のこり|ちがい|使い|つかい|切りとる/.test(t) ? 'ひき算' : /ずつ.*何(ふくろ|本|人|たば)|分けると|1人/.test(t) ? 'わり算' : /1(こ|まい|本|日|列|はこ|ふくろ).*ずつ|1(こ|まい|本|日|列|はこ|ふくろ)/.test(t) ? 'かけ算' : '';
+    if(kw) out.tip = `ことばに 注目：この 問題は「${kw}」の 合図が あるよ`;
+  } else out.steps.push(`こたえは <b>${X(ans)}</b>`);
+  if(u==='div' && /何きゃく|いる/.test(t)) out.tip = 'あまった 人も すわれるように、あまりが あれば +1 するよ';
+  return out;
+}
+window.__mathExp56 = mathExp;
+
+/* =====================================================================
+   しゃかいの かいせつ
+   ===================================================================== */
+const PREF_BY = n => PREF.find(p => p[0]===n || p[0].replace(/[都道府県]$/,'')===String(n).replace(/[都道府県]$/,''));
+const PREF_OF_CAP = n => PREF.find(p => p[1]===n);
+const PREF_OF_THING = n => PREF.find(p => (p[5]||[]).includes(n));
+const REG_NAMES = ['北海道','東北','関東','中部','近畿','中国','四国','九州'];
+const regOf = n => { const s = String(n).replace(/地方$/,''); return REG_NAMES.includes(s) ? s : null; };
+const CTRY = n => COUNTRIES.find(c => c[1]===n || c[0]===n);
+const JPP = n => JP_PEOPLE.find(p => p[0]===n), WPP = n => W_PEOPLE.find(p => p[0]===n);
+const EVT = n => J_EVENTS.find(e => e[0]===n || String(n).includes(e[0]));
+const ERA_ALL = ['縄文','弥生','古墳','飛鳥','奈良','平安','鎌倉','室町','安土桃山','江戸','明治','大正','昭和','平成','令和'];
+const ERA_Y = {縄文:'〜前4c',弥生:'前4c〜',古墳:'3c〜',飛鳥:'592〜',奈良:'710〜',平安:'794〜',鎌倉:'1185〜',室町:'1336〜',安土桃山:'1573〜',江戸:'1603〜',明治:'1868〜',大正:'1912〜',昭和:'1926〜',平成:'1989〜',令和:'2019〜'};
+const ERA_S = {飛鳥:592,奈良:710,平安:794,鎌倉:1185,室町:1336,安土桃山:1573,江戸:1603,明治:1868,大正:1912,昭和:1926,平成:1989,令和:2019};
+const eraOfYear = y => { let e = '弥生'; Object.entries(ERA_S).forEach(([k,s]) => { if(y >= s) e = k; }); return e; };
+/* 日本地図：正しい ばしょ（赤）・きみの こたえ（青）・地方（オレンジ） */
+function jpMap2(ok, ng, region){
+  const dots = region ? PREF.filter(p => p[2]===region).map(p => { const [x,y] = prefXY(p); return `<circle cx="${x}" cy="${y}" r="6" fill="#FF9F43" stroke="#fff" stroke-width="1.5"/>`; }).join('') : '';
+  const pin = (p, col) => { if(!p) return ''; const [x,y] = prefXY(p); return pinSVG(x, y, col) + `<text x="${x+11}" y="${y-9}" font-size="15" font-weight="900" fill="${col}" stroke="#fff" stroke-width="3.5" paint-order="stroke">${X(p[0])}</text>`; };
+  const pts = [ok, ng].filter(Boolean).map(prefXY).concat(region ? PREF.filter(p => p[2]===region).map(prefXY) : []);
+  let vb = '0 0 400 440';
+  if(pts.length){ const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]); let x0 = Math.min(...xs)-60, x1 = Math.max(...xs)+70, y0 = Math.min(...ys)-60, y1 = Math.max(...ys)+60;
+    let W = Math.max(x1-x0, 200), H = Math.max(y1-y0, 200); const S2 = Math.max(W, H); W = H = S2; const cx = (x0+x1)/2, cy = (y0+y1)/2;
+    if(S2 < 400){ vb = `${clamp(cx-W/2, 0, 400-W).toFixed(0)} ${clamp(cy-H/2, 0, 440-H).toFixed(0)} ${W.toFixed(0)} ${H.toFixed(0)}`; } }
+  return `<svg class="jpMap ex56Map" viewBox="${vb}">${jpBase()}${dots}${pin(ng,'#1C6AAE')}${pin(ok,'#E8414B')}</svg>`;
+}
+function worldMap2(ok, ng){
+  const L = [ok, ng].filter(Boolean); let s = '';
+  try{ s = worldSVG(L, {nopin:true}); }catch(e){ return ''; }
+  if(ng && WORLD[ng]) s = s.replace(`<path d="${WORLD[ng][0]}" fill="#E8414B" stroke="#9C1F28"`, `<path d="${WORLD[ng][0]}" fill="#4C97FF" stroke="#1C5A99"`);
+  try{ const bs = L.map(n => wbox(n)); const x0 = Math.min(...bs.map(b => b.x0)), x1 = Math.max(...bs.map(b => b.x1)), y0 = Math.min(...bs.map(b => b.y0)), y1 = Math.max(...bs.map(b => b.y1)), AR = 1.76;
+    let W = Math.min(720, Math.max((x1-x0)*1.8, (y1-y0)*1.8*AR, 140)); const H = Math.min(300, W/AR); W = H*AR; const cx = (x0+x1)/2, cy = (y0+y1)/2;
+    s = s.replace('viewBox="0 0 720 300"', `viewBox="${clamp(cx-W/2,0,720-W).toFixed(1)} ${clamp(cy-H/2,0,300-H).toFixed(1)} ${W.toFixed(1)} ${H.toFixed(1)}"`); }catch(e){}
+  return s;
+}
+function prefCard(p, ng){
+  if(!p) return '';
+  return `<div class="pc56 ${ng?'ng':''}"><b>${ng ? '🔵 きみの こたえ' : '🔴 正しい こたえ'}：${X(p[0])}</b><small>${X(p[2])}地方・県庁所在地 ${X(p[1])}${(p[5]||[]).length ? `・有名：${X(p[5].join('、'))}` : ''}</small></div>`;
+}
+function eraLine(hits){
+  const eras = ERA_ALL.slice(1, 13);
+  const W = 28, H = 110; let h = '';
+  eras.forEach((e,i) => { const hit = hits.find(x => x.era===e);
+    h += `<rect x="${i*W}" y="20" width="${W-2}" height="44" rx="4" fill="${hit ? hit.col : (i%2?'#F4EADB':'#FBF4E8')}" stroke="${hit ? '#7A3A10' : '#D9C4A3'}"/>`
+      + `<text x="${i*W+W/2-1}" y="${e.length>2?36:44}" class="tx56 c v" font-size="${e.length>2?9.5:12}">${e.length>2 ? e.slice(0,2) : e}</text>${e.length>2 ? `<text x="${i*W+W/2-1}" y="50" class="tx56 c v" font-size="9.5">${e.slice(2)}</text>` : ''}`
+      + (hit ? `<text x="${i*W+W/2-1}" y="76" class="tx56 c" font-size="9" fill="#9B8366">${ERA_Y[e]||''}</text>` : ''); });
+  hits.forEach((x,k) => { const i = eras.indexOf(x.era); if(i < 0) return; h += `<path d="M${i*W+W/2-1} ${k%2 ? 90 : 16} l-6 ${k%2 ? 8 : -8} h12z" fill="${x.col}"/><text x="${Math.min(Math.max(i*W+W/2, 40), eras.length*W-40)}" y="${k%2 ? 108 : 0}" class="tx56 c" font-size="11" fill="${x.tcol||'#333'}">${X(x.t)}</text>`; });
+  return `<svg class="fig56" viewBox="-4 -18 ${eras.length*W+8} ${H+16}" width="340">${h}</svg>`;
+}
+const SYM_NOTE = {'小・中学校':'「文」の 字の 形（文ぼうぐ・学ぶ）','高等学校':'「文」を ○で かこむ','ゆうびん局':'〒（ていしん しょうの マーク）を ○で かこむ','お寺':'卍（まんじ）は お寺の しるし','神社':'神社の 入り口の とりいの 形',
+  '交番':'けいぼう 2本を ×に 組んだ 形','警察署':'交番の × を ○で かこむ','市役所':'二重丸 ◎','町や村の 役場':'丸 ○ ひとつ','温泉':'おゆから ゆげが 3本','工場':'きかいの はぐるま','図書館':'本を ひらいた 形','博物館':'たてものの 形（はしらと やね）'};
+function socExp(p, v){
+  const u = p.u, t = plain(p.q), ans = String(p.ans), out = {figs:[], steps:[], tip:'', why:''};
+  const okP = PREF_BY(ans) || PREF_OF_CAP(ans) || PREF_OF_THING(ans) || (u==='s_loc'||u==='s_food'||u==='s_cap'||u==='s_read'||u==='s_neigh' ? PREF_BY(p.sub) : null);
+  const ngP = v ? (PREF_BY(v) || PREF_OF_CAP(v) || PREF_OF_THING(v)) : null;
+  /* 都道府県 */
+  if(/^s_(loc|cap|food|read|neigh|pref2|region)$/.test(u) || u==='j_her' && (okP || /県|府|都|道/.test(ans))){
+    const reg = regOf(ans);
+    if(reg){ const ng = regOf(v); out.figs.push(jpMap2(null, null, reg)); out.steps.push(`オレンジの ● が <b>${reg}地方</b>`, `${reg}地方：${PREF.filter(p => p[2]===reg).map(p => p[0]).join('・')}`); if(ng) out.why = `${ng}地方は ${PREF.filter(p => p[2]===ng).slice(0,4).map(p=>p[0]).join('・')}… の あたりだよ`; out.tip = '日本は 北海道・東北・関東・中部・近畿・中国・四国・九州の 8地方'; return out; }
+    if(u==='s_neigh'){ const base = PREF_BY(String(p.sub||'').replace(ans,'')) || PREF_BY((t.match(/^(\S+?[都道府県])/)||[])[1]); out.figs.push(jpMap2(okP, base, null)); out.steps.push(`${X(base?.[0]||'')} と <b>${X(ans)}</b> は さかいを せっしているよ`); if(ngP) out.why = `${ngP[0]}は ${ngP[2]}地方。はなれているね`; return out; }
+    const multi = ans.includes('・') ? ans.split('・').map(PREF_BY).filter(Boolean) : [];
+    if(multi.length > 1){ out.figs.push(`<svg class="jpMap ex56Map" viewBox="0 0 400 440">${jpBase()}${multi.map(q => { const [x,y] = prefXY(q); return pinSVG(x, y) + `<text x="${x+11}" y="${y-9}" font-size="15" font-weight="900" fill="#E8414B" stroke="#fff" stroke-width="3.5" paint-order="stroke">${X(q[0])}</text>`; }).join('')}</svg>`); out.steps.push(`<b>${X(p.sub||'')}</b> は ${multi.map(q => q[0]).join('と ')}に またがっているよ`); return out; }
+    const rq = t.match(/(\S+?)地方には 都道府県が いくつ/); if(rq){ const r2 = regOf(rq[1]); if(r2){ out.figs.push(jpMap2(null, null, r2)); out.steps.push(`${r2}地方：${PREF.filter(q => q[2]===r2).map(q => q[0]).join('・')}`, `ぜんぶで <b>${ans}</b>`); return out; } }
+    if(!okP) out.steps.push(`こたえ <b class="okc">${X(ans)}</b>${p.sub && !/^(rg|ll|nd)/.test(p.sub) ? `（${X(p.sub)}）` : ''}`);
+    if(okP){ out.figs.push(jpMap2(okP, ngP && ngP!==okP ? ngP : null)); out.steps.push(prefCard(okP)); if(ngP && ngP!==okP) out.steps.push(prefCard(ngP, true)); }
+    if(u==='s_cap') out.tip = okP && okP[0].replace(/[県府都]$/,'') + '市' !== okP[1] ? `${okP[0]}の 県庁所在地は 県名と ちがう「${okP[1]}」！ 注意しよう` : '県名と 同じ 名前の 県庁所在地が 多いよ';
+    else if(u==='s_read') out.tip = `${X(okP?.[0]||'')} は「${X(ans)}」と 読む`;
+    else if(u==='s_pref2'){ const k = String(p.sub||'').slice(0,2); out.tip = k==='ll' ? '海に 面して いない 県：栃木・群馬・埼玉・山梨・長野・岐阜・滋賀・奈良' : k==='nd' ? '県名と 県庁所在地が ちがう：北海道(札幌)・岩手(盛岡)・宮城(仙台)・茨城(水戸)・栃木(宇都宮)・群馬(前橋)・埼玉(さいたま)・神奈川(横浜)・山梨(甲府)・石川(金沢)・愛知(名古屋)・三重(津)・滋賀(大津)・兵庫(神戸)・島根(松江)・香川(高松)・愛媛(松山)・沖縄(那覇) など' : ''; }
+    return out;
+  }
+  if(u==='s_sym'){ out.steps.push(`<b>${X(ans)}</b>：${X(SYM_NOTE[ans]||'')}`); if(v && SYM_NOTE[v]) out.steps.push(`🔵 ${X(v)} は：${X(SYM_NOTE[v])}`);
+    out.figs.push(`<div class="sym56">${MAPSYM.map(([s,n]) => `<span class="${n===ans?'ok':n===v?'ng':''}"><i>${s}</i><small>${X(n)}</small></span>`).join('')}</div>`); out.tip = '地図記号は「もとに なった もの」の 形を 思い出そう'; return out; }
+  if(u==='s_dir'){ const i = DIR8.indexOf(ans), j = DIR8.indexOf(v);
+    out.figs.push(`<svg class="fig56" viewBox="0 0 160 160" width="190"><circle cx="80" cy="80" r="72" fill="#FFF8E7" stroke="#C99A63" stroke-width="3"/>${DIR8.map((d,k) => { const a = k*45*Math.PI/180, x = 80+Math.sin(a)*56, y = 80-Math.cos(a)*56; return `<line x1="80" y1="80" x2="${80+Math.sin(a)*40}" y2="${80-Math.cos(a)*40}" stroke="${k===i?'#E8414B':k===j?'#1C6AAE':'#D8C3A0'}" stroke-width="${k===i||k===j?4:2}"/><text x="${x}" y="${y+5}" class="tx56 c" font-size="${d.length>1?12:15}" fill="${k===i?'#E8414B':k===j?'#1C6AAE':k===0?'#C0392B':'#5A4632'}">${d}</text>`; }).join('')}</svg>`);
+    out.steps.push('上が 北。時計まわりに 北 → 北東 → 東 → 南東 → 南 → 南西 → 西 → 北西', `こたえ <b>${X(ans)}</b>`); out.tip = '「北」「南」を さきに、「東」「西」を あとに いう（北東・南西）'; return out; }
+  /* 世界 */
+  if(/^w_(loc|cap|cont|flag)$/.test(u) || u==='w_her'){
+    const okC = CTRY(ans) || CTRY(p.sub) || COUNTRIES.find(c => c[2]===ans), ngC = v ? (CTRY(v) || COUNTRIES.find(c => c[2]===v)) : null;
+    if(okC){ out.figs.push(worldMap2(okC[0], ngC && ngC!==okC ? ngC[0] : null));
+      out.steps.push(`🔴 <b>${X(okC[1])}</b>（${X(okC[3])}）首都：${X(okC[2])}`); if(ngC && ngC!==okC) out.steps.push(`🔵 きみの こたえ ${X(ngC[1])} は ${X(ngC[3])}の 国（首都 ${X(ngC[2])}）`); }
+    if(u==='w_her'){ const H = W_HER.find(h => h[0]===ans || h[0]===p.sub); if(H) out.steps.push(`<b>${X(H[0])}</b>（${X(H[1])}）：${X(H[2])}`); }
+    if(u==='w_cont'){ out.tip = '6大陸：ユーラシア・アフリカ・北アメリカ・南アメリカ・オーストラリア・南極　3大洋：太平洋・大西洋・インド洋'; if(p.disp) out.figs.push(`<div class="dp56">${p.disp}</div>`); out.steps.push(`こたえ <b class="okc">${X(ans)}</b>${v ? `（${X(v)} では ないよ）` : ''}`); }
+    if(!out.steps.length) out.steps.push(`こたえ <b class="okc">${X(ans)}</b>`);
+    return out;
+  }
+  /* 歴史 */
+  if(/^j_(era|year|order|person|person2|face)$/.test(u)){
+    const hits = [];
+    if(u==='j_era'){ const e = EVT(p.sub||t); hits.push({era:ans, col:'#FFB3B3', t:`🔴 ${p.sub||''}`}); if(v && v!==ans && ERA_ALL.includes(v)) hits.push({era:v, col:'#BFD9F5', t:`🔵 きみ：${v}`, tcol:'#1C6AAE'});
+      out.steps.push(`「${X(p.sub)}」は <b>${X(ans)}時代</b>${e && e[2] ? `（${e[2]}年）` : ''}`); out.tip = 'じだいの じゅんばん：弥生・古墳・飛鳥・奈良・平安・鎌倉・室町・安土桃山・江戸・明治・大正・昭和'; }
+    else if(u==='j_year'){ const e = EVT(p.sub||t), y = parseInt(ans), vy = parseInt(v); hits.push({era:e ? e[1] : eraOfYear(y), col:'#FFB3B3', t:`🔴 ${y}年`});
+      if(vy && vy!==y) hits.push({era:eraOfYear(vy), col:'#BFD9F5', t:`🔵 ${vy}年`, tcol:'#1C6AAE'});
+      out.steps.push(`「${X(p.sub)}」は <b>${y}年</b>（${X(e ? e[1] : eraOfYear(y))}時代）`); if(vy && vy!==y) out.why = `${vy}年は ${eraOfYear(vy)}時代。${Math.abs(vy-y)}年も ずれているよ`; out.tip = 'ごろあわせで おぼえると わすれにくいよ'; }
+    else if(u==='j_order'){ const evs = String(p.q).replace(/<[^>]+>/g,'').split(/ と |、先に/).slice(0,2).map(s => EVT(s.trim())).filter(Boolean);
+      evs.sort((a,b) => (a[2]||0)-(b[2]||0)).forEach((e,i) => hits.push({era:e[1], col:i===0?'#FFB3B3':'#FFE2A8', t:`${i===0?'①':'②'} ${e[0]}`}));
+      out.steps.push(...evs.map((e,i) => `${i===0?'① さき':'② あと'}：${X(e[0])}（${X(e[1])}時代${e[2] ? `・${e[2]}年` : ''}）`)); out.tip = 'じだいの じゅんばんを 思い出して くらべよう'; }
+    else { const P = JPP(p.sub) || JPP(ans) || JP_PEOPLE.find(x => x[1]===ans); const Pv = v ? (JPP(v) || JP_PEOPLE.find(x => x[1]===v)) : null;
+      if(P){ hits.push({era:P[2], col:'#FFB3B3', t:`🔴 ${P[0]}`}); out.steps.push(`<b>${X(P[0])}</b>：${X(P[1])}（${X(P[2])}時代）`); }
+      if(Pv && Pv!==P){ hits.push({era:Pv[2], col:'#BFD9F5', t:`🔵 ${Pv[0]}`, tcol:'#1C6AAE'}); out.steps.push(`🔵 きみの こたえ：${X(Pv[0])} は「${X(Pv[1])}」人（${X(Pv[2])}時代）`); }
+      else if(v && ERA_ALL.includes(v) && P){ hits.push({era:v, col:'#BFD9F5', t:`🔵 ${v}`, tcol:'#1C6AAE'}); } }
+    if(hits.length) out.figs.unshift(eraLine(hits));
+    return out;
+  }
+  if(u==='w_person' || u==='w_face'){ const P = WPP(p.sub) || WPP(ans) || W_PEOPLE.find(x => x[1]===ans), Pv = v ? (WPP(v) || W_PEOPLE.find(x => x[1]===v)) : null;
+    if(P){ out.steps.push(`<b>${X(P[0])}</b>：${X(P[1])}${P[2] ? `（${X(P[2])}）` : ''}`); const c = CTRY(P[2]); if(c) out.figs.push(worldMap2(c[0])); }
+    if(Pv && Pv!==P) out.steps.push(`🔵 きみの こたえ：${X(Pv[0])} は「${X(Pv[1])}」人`); return out; }
+  /* こうみん：図 */
+  if(/国会|内閣|裁判所|違憲|弾劾|三権|国政調査/.test(t + ans)){
+    out.figs.push(`<svg class="fig56" viewBox="0 0 300 200" width="300"><g class="tx56 c" font-size="13"><circle cx="150" cy="40" r="34" fill="#FFE2A8"/><text x="150" y="38">国会</text><text x="150" y="54" font-size="10">立法</text>
+      <circle cx="60" cy="150" r="34" fill="#BFD9F5"/><text x="60" y="148">内閣</text><text x="60" y="164" font-size="10">行政</text><circle cx="240" cy="150" r="34" fill="#D7F2D1"/><text x="240" y="148">裁判所</text><text x="240" y="164" font-size="10">司法</text></g>
+      <g stroke="#7A5A3A" stroke-width="2" marker-end="url(#a56)" fill="none"><path d="M125 65 L80 120"/><path d="M175 65 L220 120"/><path d="M95 150 H205"/></g>
+      <defs><marker id="a56" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7A5A3A"/></marker></defs>
+      <text x="80" y="92" class="tx56" font-size="10">不信任決議</text><text x="200" y="92" class="tx56" font-size="10">弾劾裁判</text><text x="150" y="144" class="tx56 c" font-size="10">違憲審査</text></svg>`);
+    out.tip = '三権分立：国会・内閣・裁判所が おたがいを チェックしあう';
+  }
+  if(!out.steps.length) out.steps.push(`<b>${X(stripQ(t))}</b> → <b class="okc">${X(ans)}</b>`);
+  if(!out.figs.length && p.disp && !/<svg class="jpMap|qPic big/.test('')) out.figs.push(`<div class="dp56">${p.disp}</div>`);
+  if(u==='s_old' && v){ const r = (SOC_QA.old||[]).find(x => x[1]===v); if(r) out.why = `「${v}」は：${r[0].replace(/は？$|？$/,'')}`; }
+  if(u==='s_life' && v){ const r = (SOC_QA.life||[]).find(x => x[1]===v); if(r) out.why = `「${v}」は：${r[0].replace(/は？$|？$/,'')}`; }
+  if(u==='w_cont') out.tip = '6大陸：ユーラシア・アフリカ・北アメリカ・南アメリカ・オーストラリア・南極　3大洋：太平洋・大西洋・インド洋';
+  if(/自助|共助|公助/.test(t + ans)) out.tip = '自助＝じぶんで まもる、共助＝地域で 助け合う、公助＝国や 市が 助ける';
+  if(/リデュース|リユース|リサイクル|3R/.test(t + ans)) out.tip = '3R：リデュース（へらす）・リユース（くりかえし つかう）・リサイクル（しげんに もどす）';
+  if(/円高|円安/.test(t + ans)) out.tip = '円高＝円の ねうちが 上がる（1ドル 150円 → 100円）。外国の ものが 安く 買える';
+  return out;
+}
+
+/* =====================================================================
+   りかの かいせつ（まとめ図）
+   ===================================================================== */
+const S_TXT = (x,y,s,o='') => `<text x="${x}" y="${y}" class="tx56 c" ${o}>${s}</text>`;
+const SCI_FIG = {
+  bug:`<svg class="fig56" viewBox="0 0 300 150" width="300"><ellipse cx="80" cy="70" rx="24" ry="22" fill="#FFD27A"/><ellipse cx="130" cy="70" rx="28" ry="24" fill="#9ED3A0"/><ellipse cx="200" cy="70" rx="44" ry="28" fill="#BFD9F5"/>
+    <g stroke="#555" stroke-width="3">${[110,130,150].map(x => `<path d="M${x} 90 l-12 30"/><path d="M${x} 50 l-12 -30"/>`).join('')}<path d="M70 52 l-14 -26"/><path d="M84 50 l4 -28"/></g>
+    ${S_TXT(80,140,'あたま')}${S_TXT(130,140,'むね')}${S_TXT(200,140,'はら')}${S_TXT(240,20,'あし 6本は むねに','font-size="11"')}${S_TXT(56,16,'目・しょっかく','font-size="10"')}</svg>`,
+  plant:`<svg class="fig56" viewBox="0 0 260 170" width="260"><path d="M130 150 V60" stroke="#4E9A47" stroke-width="5"/><ellipse cx="102" cy="90" rx="26" ry="10" fill="#7CC36E" transform="rotate(-20 102 90)"/><ellipse cx="158" cy="80" rx="26" ry="10" fill="#7CC36E" transform="rotate(20 158 80)"/>
+    <circle cx="130" cy="48" r="16" fill="#FFB3C1"/><circle cx="130" cy="48" r="6" fill="#FFD27A"/><path d="M130 150 l-20 14 M130 150 l20 14 M130 150 v16" stroke="#A0703C" stroke-width="3"/><path d="M40 150 H220" stroke="#B0855A" stroke-width="2"/>
+    ${S_TXT(200,50,'花')}${S_TXT(210,90,'葉')}${S_TXT(92,125,'くき')}${S_TXT(180,166,'根')}</svg>`,
+  flower:`<svg class="fig56" viewBox="0 0 280 150" width="280"><ellipse cx="140" cy="80" rx="80" ry="58" fill="#FFE3EC"/><path d="M140 120 V40" stroke="#4E9A47" stroke-width="5"/><circle cx="140" cy="38" r="9" fill="#9ED3A0"/>
+    <path d="M110 120 V60" stroke="#E0A030" stroke-width="3"/><circle cx="110" cy="58" r="7" fill="#FFD27A"/><path d="M170 120 V60" stroke="#E0A030" stroke-width="3"/><circle cx="170" cy="58" r="7" fill="#FFD27A"/><ellipse cx="140" cy="128" rx="40" ry="12" fill="#9ED3A0"/>
+    ${S_TXT(140,20,'めしべ（先に 花粉が つく）','font-size="11"')}${S_TXT(70,62,'おしべ','font-size="11"')}${S_TXT(240,62,'花びら','font-size="11"')}${S_TXT(140,147,'がく','font-size="11"')}</svg>`,
+  moon:`<svg class="fig56" viewBox="0 0 320 110" width="320">${[['新月',0],['三日月',.25],['半月',.5],['満月',1]].map(([n,f],i) => { const x = 40 + i*80; return `<circle cx="${x}" cy="45" r="26" fill="#3B4366"/>${f===1 ? `<circle cx="${x}" cy="45" r="26" fill="#FFE27A"/>` : f ? `<path d="M${x} 19 A26 26 0 0 1 ${x} 71 A${26*(1-2*f)} 26 0 0 ${f>.5?1:0} ${x} 19Z" fill="#FFE27A"/>` : ''}${S_TXT(x,92,n)}`; }).join('')}</svg>`,
+  mag:`<svg class="fig56" viewBox="0 0 300 100" width="300"><rect x="20" y="30" width="60" height="30" fill="#E8414B"/><rect x="80" y="30" width="60" height="30" fill="#4C97FF"/>${S_TXT(50,50,'N','fill="#fff"')}${S_TXT(110,50,'S','fill="#fff"')}
+    ${S_TXT(80,85,'力が 強いのは 両はし','font-size="11"')}<g transform="translate(160 0)">${S_TXT(70,20,'同じ きょく → しりぞけあう','font-size="11"')}${S_TXT(70,50,'ちがう きょく → 引きあう','font-size="11"')}${S_TXT(70,80,'鉄は つく／アルミ・銅は つかない','font-size="11"')}</g></svg>`,
+  lever:null,
+  water:`<svg class="fig56" viewBox="0 0 300 100" width="300">${[['こおり（固体）','#CFE8FF','0℃'],['水（液体）','#7FB6E6','100℃'],['水じょう気（気体）','#EAF4FF','']].map(([n,c,tmp],i) => `<rect x="${10+i*100}" y="20" width="80" height="44" rx="8" fill="${c}" stroke="#5C88B5"/>${S_TXT(50+i*100,46,n,'font-size="10"')}${tmp ? `<path d="M${90+i*100} 42 h20" stroke="#E8414B" stroke-width="2"/>${S_TXT(100+i*100,82,tmp,'font-size="11" fill="#E8414B"')}` : ''}`).join('')}</svg>`,
+  burn:`<svg class="fig56" viewBox="0 0 280 140" width="280"><rect x="125" y="70" width="30" height="60" fill="#FFF1C9" stroke="#B88A5A"/><path d="M140 70 q-14 -22 0 -44 q14 22 0 44z" fill="#FFB347"/>
+    ${S_TXT(60,40,'酸素が 使われる','font-size="11" fill="#1C6AAE"')}${S_TXT(220,40,'二酸化炭素が できる','font-size="11" fill="#E8414B"')}${S_TXT(140,138,'空気が 入れかわると よく 燃える','font-size="11"')}</svg>`,
+  land:`<svg class="fig56" viewBox="0 0 320 120" width="320"><path d="M10 30 Q120 40 160 70 T310 100" stroke="#7FB6E6" stroke-width="14" fill="none"/>${S_TXT(50,16,'上流：流れが 速い・石は 大きく ごつごつ','font-size="10"')}${S_TXT(230,70,'下流：流れが ゆるやか','font-size="10"')}${S_TXT(230,84,'石は 小さく 丸い','font-size="10"')}
+    ${S_TXT(110,112,'曲がった ところ：外がわは けずられ、内がわに つもる','font-size="10"')}</svg>`,
+  body:`<svg class="fig56" viewBox="0 0 280 150" width="280"><circle cx="70" cy="30" r="18" fill="#FFE3C7"/><rect x="50" y="50" width="40" height="55" rx="10" fill="#FFE3C7"/><path d="M58 60 h24 M58 70 h24 M58 80 h24" stroke="#C99A63" stroke-width="2"/>
+    ${S_TXT(190,30,'頭のほね：のうを まもる','font-size="11"')}${S_TXT(190,60,'ろっ骨：心ぞう・はいを まもる','font-size="11"')}${S_TXT(190,90,'関節：ほねと ほねの つなぎめで 曲がる','font-size="11"')}${S_TXT(190,120,'筋肉：ちぢんだり ゆるんだりして 動かす','font-size="11"')}</svg>`,
+  hbody:`<svg class="fig56" viewBox="0 0 300 150" width="300">${[['心ぞう','血液を 全身に 送る','#FFB3B3'],['はい','酸素を とりこみ 二酸化炭素を 出す','#BFD9F5'],['胃・小腸','食べ物を 消化・吸収','#FFE2A8'],['じん臓','血液から 不要な ものを こしとる','#D7F2D1']].map(([a,b,c],i) => `<rect x="10" y="${8+i*35}" width="70" height="28" rx="8" fill="${c}"/>${S_TXT(45,27+i*35,a,'font-size="12"')}<text x="90" y="${27+i*35}" class="tx56" font-size="11">${b}</text>`).join('')}</svg>`,
+  sol:`<svg class="fig56" viewBox="0 0 300 130" width="300"><path d="M30 110 H280 M30 110 V10" stroke="#555" stroke-width="2"/><path d="M30 80 Q150 74 280 70" stroke="#E8414B" stroke-width="3" fill="none"/><path d="M30 100 Q160 90 280 25" stroke="#4C97FF" stroke-width="3" fill="none"/>
+    ${S_TXT(240,62,'食塩：あまり かわらない','font-size="10" fill="#E8414B"')}${S_TXT(220,22,'ミョウバン：ふえる','font-size="10" fill="#4C97FF"')}${S_TXT(160,126,'水の 温度 →','font-size="10"')}${S_TXT(12,60,'とける量','font-size="10" transform="rotate(-90 12 60)"')}</svg>`,
+  emag:`<svg class="fig56" viewBox="0 0 300 110" width="300"><rect x="40" y="40" width="110" height="26" rx="6" fill="#C9C9C9"/>${[...Array(8)].map((_,i) => `<path d="M${50+i*13} 34 v38" stroke="#C0763A" stroke-width="4"/>`).join('')}
+    ${S_TXT(95,96,'コイル＋鉄しん','font-size="11"')}${S_TXT(230,30,'強くするには：','font-size="11"')}${S_TXT(230,55,'電流を 大きく','font-size="11"')}${S_TXT(230,80,'まき数を ふやす','font-size="11"')}</svg>`
+};
+const SCI_TIP = {r_bug:'こん虫：からだが あたま・むね・はらの 3つ、あしは むねから 6本', r_bugpic:'あしの 数と からだの 分かれ方を 見よう（クモは 8本で こん虫では ない）', r_plant:'植物は 根・くき・葉で できている。たね → め → 花 → 実 → たね',
+  r_plantpic:'花の さく 季節：春（チューリップ・タンポポ）、夏（アサガオ・ヒマワリ）、秋（イネが みのる）', r_sun:'かげは 太陽の 反対がわに できる。太陽は 東 → 南 → 西 へ うごく', r_mag:'じしゃくは N と S。同じ きょくは しりぞけあい、ちがう きょくは 引きあう',
+  r_sky:'月は 形が かわって 見える（新月 → 三日月 → 半月 → 満月）。星には 明るさや 色の ちがいが ある', r_body:'ほねは 体を ささえ、中の だいじな ものを まもる。筋肉で 関節が 曲がる', r_water:'水は 0℃で こおり、100℃で ふっとうする。あたためると 体積が ふえる',
+  r_flower:'受粉すると めしべの もとが 実に なる', r_life:'メダカ・人などの たんじょう：受精卵 → 育つ → たんじょう', r_sol:'水よう液は すきとおっている。食塩は 温度を 上げても あまり とけない', r_lever:'てこが つり合う：左の（重さ × きょり）＝ 右の（重さ × きょり）',
+  r_emag:'電磁石は 電流を ながした ときだけ じしゃくに なる', r_land:'流れる 水の はたらき：しん食（けずる）・運ぱん（はこぶ）・たい積（つもらせる）', r_burn:'ものが 燃えると 酸素が へり、二酸化炭素が ふえる',
+  r_hbody:'血液は 心ぞうから 全身へ。はいで 酸素を とりいれる', r_moon:'月は 太陽の 光を はんしゃして 光る。月と 太陽の いちで 形が かわる',
+  r_bio:'生物の なかま分け：せきつい動物（魚・両生・は虫・鳥・ほにゅう）と 無せきつい動物', r_chem:'化学変化では 原子の 組み合わせが かわる。質量の 合計は かわらない（質量保存）',
+  r_phys:'直列回路：電流は どこも 同じ。並列回路：電圧が どこも 同じ', r_earth:'火山岩は 急に 冷えて できる（小さな つぶ）、深成岩は ゆっくり 冷えて できる（大きな つぶ）'};
+const SCI_FIGK = {r_bug:'bug', r_bugpic:'bug', r_plant:'plant', r_plantpic:'plant', r_flower:'flower', r_sky:'moon', r_moon:'moon', r_mag:'mag', r_emag:'emag', r_water:'water', r_burn:'burn', r_land:'land', r_body:'body', r_hbody:'hbody', r_sol:'sol'};
+function sciExp(p, v){
+  const u = p.u, t = plain(p.q), ans = String(p.ans), out = {figs:[], steps:[], tip:SCI_TIP[u]||'', why:''};
+  if(u==='r_lever' && p.type==='num'){ const m = t.match(/(\d+)g\s*を\s*支点から\s*(\d+).*?(\d+)\s*の\s*位置/);
+    if(m){ const w = +m[1], d1 = +m[2], d2 = +m[3];
+      out.figs.push(`<svg class="fig56" viewBox="0 0 300 120" width="300"><path d="M20 60 H280" stroke="#8A5A2B" stroke-width="6"/><path d="M150 62 l-14 30 h28z" fill="#999"/>${[...Array(13)].map((_,i) => `<path d="M${30+i*20} 54 v12" stroke="#fff" stroke-width="1.5"/>`).join('')}
+        <path d="M${150-d1*20} 62 v18" stroke="#555"/><rect x="${150-d1*20-14}" y="80" width="28" height="20" fill="#FFB347"/>${S_TXT(150-d1*20,95,w+'g','font-size="11"')}
+        <path d="M${150+d2*20} 62 v18" stroke="#555"/><rect x="${150+d2*20-14}" y="80" width="28" height="20" fill="#9ED3A0"/>${S_TXT(150+d2*20,95,'？','font-size="12"')}${S_TXT(150-d1*10,50,d1,'font-size="11"')}${S_TXT(150+d2*10,50,d2,'font-size="11"')}</svg>`);
+      out.steps.push('つり合う とき：左の（重さ × きょり）＝ 右の（重さ × きょり）', `${w} × ${d1} = ${w*d1}`, `□ × ${d2} = ${w*d1} → □ = ${w*d1} ÷ ${d2} = <b>${ans}</b>`); return out; } }
+  if(u==='r_calc'){ const h = p.hint || ''; out.steps.push(`こうしき：<b>${X(h)}</b>`); const f = findExpr(boldNums(p.q), ans); if(f) out.steps.push(`しき：${f.e} = <b>${X(ans)}</b>`); out.tip = 'こうしきを 書いてから 数を あてはめよう'; return out; }
+  const fk = SCI_FIGK[u]; if(fk && SCI_FIG[fk]) out.figs.push(SCI_FIG[fk]);
+  /* 絵の 問題：正しい 絵と えらんだ 絵 */
+  const PICS = (BUGS||[]).concat(PLANTS||[], SKY||[]); const pa = PICS.find(x => x[1]===ans), pv = v ? PICS.find(x => x[1]===v) : null;
+  if((u==='r_bugpic' || u==='r_plantpic' || u==='r_sky' || u==='r_moon') && pa) out.figs.unshift(`<div class="pp56"><span class="ok">${SPIC(pa[0])}<b>🔴 ${X(pa[1])}</b></span>${pv && pv!==pa ? `<span class="ng">${SPIC(pv[0])}<b>🔵 ${X(pv[1])}</b></span>` : ''}</div>`);
+  if(/こん虫/.test(t) && /こん虫/.test(ans)) out.steps.push(ans==='こん虫' ? `${X(p.sub||'')}は あしが 6本・からだが 3つ → こん虫` : `${X(p.sub||'')}は あしが 8本 → こん虫では ない`);
+  out.steps.push(`<b>${X(stripQ(t))}</b> → <b class="okc">${X(ans)}</b>`);
+  if(!out.figs.length && p.disp) out.figs.push(`<div class="dp56">${p.disp}</div>`);
+  return out;
+}
+const stripQ = t => t.replace(/[？?]\s*$/,'').replace(/は$/,'');
+
+/* =====================================================================
+   こくごの かいせつ
+   ===================================================================== */
+const JOSHI = {'は':'話の テーマ（〜について いうと）','が':'だれが・なにが（主語）を はっきり しめす','を':'うごきの あいて（〜を する）','に':'行き先・時・あいて（〜に 行く・〜に あげる）','へ':'むかう ほうこう（〜へ 行く）',
+  'で':'ばしょ・どうぐ（〜で あそぶ・〜で 書く）','と':'いっしょに する あいて・ならべる（友だちと）','も':'ほかと 同じ（ぼくも）','から':'はじまり（〜から）','まで':'おわり（〜まで）','の':'もちぬし（〜の 本）','や':'いくつか ならべる（〜や 〜）'};
+const SETSU = [['順接（だから）','前の ことが りゆうで、思った とおりの けっか','だから・それで・すると・そこで','#9ED3A0'],['逆接（でも）','前の ことから 思うのと はんたいの けっか','でも・しかし・けれども・ところが','#FFB3B3'],
+  ['並列・添加（そして）','つけたす・ならべる','そして・それから・しかも・また','#BFD9F5'],['選択（それとも）','どちらかを えらぶ','それとも・または','#FFE2A8'],['説明・例示（なぜなら・たとえば）','りゆうや れいを いう','なぜなら・たとえば・つまり','#E3D3FF'],['転換（ところで）','話を かえる','ところで・さて','#E0E0E0']];
+function bunExp(p, v){
+  const u = p.u, ans = String(p.ans), out = {figs:[], steps:[], tip:'', why:''}, sub = String(p.sub||'');
+  const filled = sub.replace(/\[([^\]]+)\]/g, '<b class="fill56">$1</b>');
+  if(u==='b_joshi'){ out.steps.push(`正しい 文：${filled}`); if(JOSHI[ans]) out.steps.push(`「<b>${X(ans)}</b>」＝ ${X(JOSHI[ans])}`); if(v && JOSHI[v] && v!==ans) out.steps.push(`🔵 きみが えらんだ「${X(v)}」＝ ${X(JOSHI[v])}`);
+    out.figs.push(`<div class="jo56">${Object.entries(JOSHI).slice(0,8).map(([k,d]) => `<span class="${k===ans?'ok':k===v?'ng':''}"><b>${k}</b><small>${X(d)}</small></span>`).join('')}</div>`);
+    out.tip = 'こえに 出して 読んで、しぜんに きこえるか たしかめよう'; return out; }
+  if(u==='b_setsu'){ const g = SETSU.find(s => s[2].split('・').includes(ans)), gv = SETSU.find(s => s[2].split('・').includes(v));
+    out.steps.push(`正しい 文：${filled}`); if(g) out.steps.push(`「<b>${X(ans)}</b>」は <b>${g[0]}</b>：${g[1]}`); if(gv && gv!==g) out.why = `「${v}」は ${gv[0]}。${gv[1]} ときに つかうよ`;
+    out.figs.push(`<div class="st56">${SETSU.map(s => `<span style="background:${s[3]}" class="${s===g?'ok':s===gv?'ng':''}"><b>${s[0]}</b><small>${s[2]}</small></span>`).join('')}</div>`);
+    out.tip = '前の 文と 後ろの 文が「思った とおり」か「はんたい」かを 考えよう'; return out; }
+  if(u==='b_svo'){ const isP = /述語/.test(p.q), s = sub; const hl = s.replace(ans, `<b class="${isP?'pr56':'sj56'}">${X(ans)}</b>`);
+    out.steps.push(`文：${hl}`, isP ? '述語は「どうする・どんなだ・なんだ」に あたる ことば。文の <b>さいご</b>に あることが 多い' : '主語は「だれが・なにが（は）」に あたる ことば。「〜が」「〜は」が ついているよ');
+    out.figs.push(`<div class="svo56"><span class="sj56">だれが（は）<br><small>主語</small></span><i>→</i><span class="pr56">どうする<br><small>述語</small></span></div>`); out.tip = 'まず 述語（さいごの ことば）を 見つけてから、「だれが？」と 聞いて 主語を さがそう'; return out; }
+  if(u==='b_ten'){ out.steps.push(`正しい：<b>${X(ans)}</b>`, '「。」（句点）は 文の おわり', '「、」（読点）は いみの 切れめ・読みやすく する ところ', '会話の「 」の 中の おわりにも「。」を つける'); return out; }
+  if(u==='b_tsunagu'){ const k = ans.match(/ので|から|けれど|が、|て、|てから|し、/); const kind = !k ? '' : /ので|から/.test(k[0]) ? 'りゆう → けっか（ので・から）' : /けれど|が、/.test(k[0]) ? 'はんたいの けっか（けれど・が）' : /てから/.test(k[0]) ? 'じゅんばん（〜してから）' : 'つづけて（て）';
+    out.steps.push(`正しい 文：<b>${X(ans)}</b>`, kind ? `つなぎかた：${kind}` : ''); if(v) out.why = '前と 後ろの つながり（りゆう？ はんたい？ じゅんばん？）を たしかめよう'; return out; }
+  return out;
+}
+function kanjiExp(q, kind){
+  const ks = String(q.word).split('').filter(c => /[\u4E00-\u9FFF]/.test(c));
+  const more = ks.map(k => { const L = BUILTIN.filter(x => x!==q && x.word.includes(k)).slice(0,3); return L.length ? `<div class="kx56"><b>${k}</b>${L.map(x => `<span>${X(x.word)}（${X(x.reading)}）</span>`).join('')}</div>` : ''; }).join('');
+  return {figs:[`<div class="kc56"><ruby>${X(q.word)}<rt>${X(q.reading)}</rt></ruby><p>${X(q.pre||'')}<u>${X(q.word)}</u>${X(q.post||'')}</p></div>`], steps:[kind==='write' ? `「${X(q.reading)}${X((q.post||'').match(/^[ぁ-ん]*/)[0])}」は「<b>${X(q.word)}</b>」と 書くよ。一画ずつ ていねいに なぞってみよう` : `「${X(q.word)}」は「<b>${X(q.reading)}</b>」と 読むよ`].concat(more ? [`同じ 漢字を つかう ことば：${more}`] : []), tip:'声に 出して 読み、ゆびで 空中に 書くと おぼえやすいよ', why:''};
+}
+
+/* =====================================================================
+   かいせつカード
+   ===================================================================== */
+const SUBJ = u => { const g = MATH_UNITS[u]?.g; return typeof g==='number' || g==='now' || g==='next' || g==='low' ? 'math' : g==='sci' ? 'sci' : g==='soc' ? 'soc' : g==='bun' ? 'bun' : null; };
+const SUBJ_N = {math:'さんすう', sci:'りか', soc:'しゃかい', bun:'こくご', kanji:'こくご（漢字）'};
+function explain(p, v, opt={}){
+  let r = null; const s = opt.kq ? 'kanji' : SUBJ(p?.u);
+  if(!s) return '';
+  try{ r = s==='kanji' ? kanjiExp(opt.kq, opt.kind) : s==='math' ? mathExp(p, v) : s==='soc' ? socExp(p, v) : s==='sci' ? sciExp(p, v) : bunExp(p, v); }catch(e){ console.warn('explain', e); r = null; }
+  if(!r) r = {figs:[], steps:[], tip:'', why:''};
+  const shw = s==='kanji' ? '' : p.type==='rem' ? String(p.ans).replace('|',' あまり ') : String(p.ans);
+  const vv = v==null || v==='' ? '' : String(v).replace('|',' あまり ');
+  const head = s==='kanji' ? '' : `<div class="ex56Ans"><span class="ok">⭕ 正しい こたえ <b>${X(shw)}</b></span>${vv ? `<span class="ng">❌ きみの こたえ <b>${X(vv)}</b></span>` : ''}</div>`;
+  const fast = opt.sec != null && opt.sec < 3 ? '<div class="ex56Fast">⏱ こたえるのが はやすぎたかも？ もんだいを さいごまで 読んでから えらぼう</div>' : '';
+  return `<div class="ex56 s-${s}"><div class="ex56Hd"><img src="${X(artSrc('bird_think')||'')}" alt=""><b>📖 シマくんの かいせつ</b><small>${SUBJ_N[s]||''}</small></div>${fast}${head}
+    ${r.why ? `<div class="ex56Why">🔍 ${r.why}</div>` : ''}
+    ${r.figs.filter(Boolean).length ? `<div class="ex56Fig">${r.figs.filter(Boolean).join('')}</div>` : ''}
+    ${r.steps.filter(Boolean).length ? `<ol class="ex56Steps">${r.steps.filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ol>` : ''}
+    ${r.tip ? `<div class="ex56Tip">💡 ${r.tip}</div>` : ''}</div>`;
+}
+window.__explain56 = explain;
+/* よむ 時間：つぎへ ボタンを すこし まつ */
+function holdBtn(btn, sec=3){
+  if(!btn) return; const base = btn.textContent; let n = sec; btn.disabled = true; btn.classList.add('hold56'); btn.textContent = `📖 かいせつを よもう… ${n}`;
+  const iv = setInterval(() => { n--; if(n <= 0 || !document.body.contains(btn)){ clearInterval(iv); btn.disabled = false; btn.classList.remove('hold56'); btn.textContent = base; return; } btn.textContent = `📖 かいせつを よもう… ${n}`; }, 1000);
+}
+/* さんすう・りか・しゃかい・こくご（MQ） */
+mJudge = (orig => function(v){
+  const was = MQ && MQ.done, p = MQ && MQ.list[MQ.i], sec = MQ ? (Date.now() - MQ.qt)/1000 : 99;
+  const out = orig.apply(this, arguments);
+  if(was || !p) return out;
+  const last = MQ.res[MQ.res.length-1];
+  if(last && !last.ok && SUBJ(p.u)){
+    const uv = v ?? MQ.inp;
+    $('#mFb').insertAdjacentHTML('beforeend', explain(p, uv, {sec}));
+    holdBtn($('#mNext'), 3);
+    setTimeout(() => { const e = $('#mFb .ex56'); if(e) e.scrollIntoView({behavior:'smooth', block:'nearest'}); }, 120);
+  }
+  return out;
+})(mJudge);
+/* 漢字（れんしゅう） */
+finalize = (orig => function(correct, opt={}){
+  const was = !cur || cur.done, q = cur?.q, kind = S?.kind;
+  const out = orig.apply(this, arguments);
+  try{ if(!was && !correct && S && S.mode!=='test' && q && q.word){ $('#qFeedback').insertAdjacentHTML('beforeend', explain({}, '', {kq:q, kind})); } }catch(e){ console.warn(e); }
+  return out;
+})(finalize);
+/* 住民・カフェなどの 問題：まちがえたら かいせつ */
+let LASTPICK = null;
+document.addEventListener('click', e => { const b = e.target.closest('#dlgBtns button'); if(b) LASTPICK = b.textContent.trim(); }, true);
+mqFromP = (orig => function(p, u){ const m = orig.apply(this, arguments); if(m && p){ m.p56 = Object.assign({}, p, {u: u || p.u}); } return m; })(mqFromP);
+weakToMQ = (orig => function(it){ const m = orig.apply(this, arguments); if(m && it && it.w && m.p56) m.p56.u = it.w.u || m.p56.u; return m; })(weakToMQ);
+kanjiMQ = (orig => function(q, weak){ const m = orig.apply(this, arguments); if(m) m.kq56 = q; return m; })(kanjiMQ);
+miniQuiz = (orig => async function(who, title){
+  LASTPICK = null; const t0 = Date.now();
+  const res = await orig.apply(this, arguments);
+  try{
+    const m = LASTMQ;
+    if(res && !res.ok && m){
+      const html = m.kq56 ? explain({}, '', {kq:m.kq56, kind:'read'}) : m.p56 && SUBJ(m.p56.u) ? explain(m.p56, LASTPICK, {sec:(Date.now()-t0)/1000}) : '';
+      if(html){ const pr = dialog(`${who ? `<div class="mqHead"><span class="mqWho">${resPic(who)}</span><b>${X(who.name||'')}「いっしょに たしかめよう！」</b></div>` : ''}${html}`, [{label:'わかった！', cls:'gold', v:1}], 'wide ex56Dlg');
+        setTimeout(() => holdBtn($('#dlgBtns button'), 2), 30); await pr; }
+    }
+  }catch(e){ console.warn(e); }
+  return res;
+})(miniQuiz);
+
+/* =====================================================================
+   ③ れんぞく せいかい ボーナス
+   ===================================================================== */
+const STREAK = n => n===3 ? 5 : n===5 ? 15 : n===7 ? 20 : n===10 ? 50 : n > 10 && n % 5===0 ? 50 : 0;
+function streakFx(n, pt, host){
+  if(!host) return;
+  host.insertAdjacentHTML('beforeend', `<div class="stk56"><b>🔥 ${n}れんぞく せいかい！</b>${pt ? `<span>れんぞくボーナス +${pt}pt</span>` : ''}</div>`);
+  if(pt){ sound('fan'); if(n >= 10) confetti(1400); const b = document.createElement('div'); b.className = 'stkPop56'; b.innerHTML = `🔥<b>${n}</b><small>れんぞく！</small>`; document.body.appendChild(b); setTimeout(() => b.remove(), 1500); }
+  const st = save.streak56 || (save.streak56 = {best:0}); if(n > st.best){ st.best = n; persist(); }
+}
+mJudge = (orig => function(v){
+  const was = MQ && MQ.done; const out = orig.apply(this, arguments);
+  if(!was && MQ){ const ok = MQ.res[MQ.res.length-1]?.ok, n = MQ.combo || 0;
+    if(ok && n >= 2){ const b = STREAK(n); let got = 0; if(b){ got = givePts(b, `${n}れんぞく せいかい ボーナス`); MQ.pts += got; } streakFx(n, got, $('#mFb')); }
+    MQ.best56 = Math.max(MQ.best56||0, n); }
+  return out;
+})(mJudge);
+finalize = (orig => function(correct, opt={}){
+  const was = !cur || cur.done; const out = orig.apply(this, arguments);
+  try{ if(!was && correct && S && S.mode==='practice' && !S.inBonus && S.combo >= 2){ const n = S.combo, b = STREAK(n); let got = 0; if(b){ got = givePts(b, `${n}れんぞく せいかい ボーナス`); } streakFx(n, got, $('#qFeedback')); } }catch(e){ console.warn(e); }
+  return out;
+})(finalize);
+try{ engJudge = (orig => function(r){
+  const q = ES?.qs?.[ES.i], ph = ES?.phase; const res = orig.apply(this, arguments);
+  try{ if(q && ph==='judge'){ ES.cmb56 = r==='o' ? (ES.cmb56||0) + 1 : 0; const n = ES.cmb56, b = STREAK(n); if(r==='o' && n >= 3){ let got = 0; if(b) got = givePts(b, `えいご ${n}れんぞく ボーナス`); toast(`🔥 ${n}れんぞく！${got ? ` +${got}pt` : ''}`); } } }catch(e){}
+  return res;
+})(engJudge); }catch(e){}
+
+/* =====================================================================
+   ② ものがたりが すすむと ねだんが 上がる
+   ===================================================================== */
+const chDone = () => (typeof CH_ORDER!=='undefined' ? CH_ORDER : []).filter(id => save.story && save.story[id]).length;
+function inflRate(){ const n = chDone(); const T = [1, 1, 1.15, 1.35, 1.6, 1.9, 2.25]; return n < T.length ? T[n] : 2.25 + 0.35*(n - 6); }
+const nice = v => v < 50 ? Math.round(v/5)*5 : v < 1000 ? Math.round(v/10)*10 : Math.round(v/50)*50;
+let INF_NOW = 0;
+function applyInfl(){
+  const m = inflRate(); if(m === INF_NOW) return; INF_NOW = m;
+  const sc = (o, key='price', soft) => { if(!o || typeof o[key]!=='number' && o[key+'0']==null) return; if(o[key+'0']==null) o[key+'0'] = o[key]; const k = soft ? 1 + (m-1)*0.5 : m; o[key] = o[key+'0'] ? nice(o[key+'0'] * k) : 0; };
+  try{ TOWN_ITEMS.forEach(it => sc(it, 'price', it.cat==='road' || it.cat==='rail' || /^road|^rail/.test(it.id))); }catch(e){}
+  try{ FURNITURE.forEach(f => sc(f)); }catch(e){}
+  try{ ROOMS.forEach(r => sc(r)); }catch(e){}
+  try{ (typeof WALLS!=='undefined' ? WALLS : []).forEach(w => sc(w)); (typeof FLOORS!=='undefined' ? FLOORS : []).forEach(w => sc(w)); }catch(e){}
+  try{ (window.CAFE_UP||[]).forEach(c => c && sc(c, 'p')); }catch(e){}
+}
+function inflNotice(){
+  const m = inflRate(); const S2 = save.infl56 || (save.infl56 = {m:1});
+  if(m > S2.m + 1e-9 && !$('#dlg').classList.contains('show') && !$('#story')?.classList.contains('show')){
+    S2.m = m; persist();
+    dialog(`<div class="dlgArt big"><img src="${X(artSrc('bird_think')||'')}" alt=""></div><h2 class="dlgT">📈 まちの ねだんが 上がったよ</h2>
+      <p class="dlgP">ものがたりが すすんで まちが にぎやかに なったので、<br>たてもの・かぐ・へや・カフェの グレードアップの ねだんが<br><b>はじめの ${m.toFixed(2).replace(/0$/,'')}ばい</b> に なったよ。</p>
+      <p class="dlgP facNote">みちと せんろは すこしだけ 上がるよ。<br>カフェや べんきょうで ポイントを ためよう！</p>`, [{label:'わかった！', cls:'gold', v:1}], 'wide');
+  } else if(m < S2.m) { S2.m = m; persist(); }
+}
+applyInfl();
+setInterval(() => { applyInfl(); if(curScreen==='town' || curScreen==='home') inflNotice(); }, 4000);
+
+/* =====================================================================
+   ④ 学年の せってい
+   ===================================================================== */
+const gradeNow = () => Number(save.settings?.grade56 || 0);   // 0：せってい しない、1〜6：小学、7：中学生
+const GN = g => g===7 ? '中学生' : `小学${g}年`;
+/* 1・2年生むけの かんたんな さんすう（とつぜんの 問題だけで つかう） */
+const LOWU = {
+  low1:{n:'1年の さんすう', g:'low', art:'mi_blocks', gen(){ const k = ri(0,3);
+    if(k===0){ const a = ri(1,9), b = ri(1,9); return {type:'num', q:`<b>${a} ＋ ${b}</b>`, ans:String(a+b), hint:'10の まとまりを つくろう'}; }
+    if(k===1){ const a = ri(6,18), b = ri(1, Math.min(9,a)); return {type:'num', q:`<b>${a} − ${b}</b>`, ans:String(a-b), hint:'10から ひいても いいよ'}; }
+    if(k===2){ const a = ri(2,9), b = ri(1,9-1); return {type:'num', q:`あめが <b>${a}こ</b> あります。<b>${b}こ</b> もらうと ぜんぶで 何こ？`, ans:String(a+b), hint:'あわせると'}; }
+    const t = ri(1,9); return {type:'num', q:`10が 1こと 1が <b>${t}こ</b>で いくつ？`, ans:String(10+t), hint:'10と いくつ'}; }},
+  low2:{n:'2年の さんすう', g:'low', art:'mi_mul', gen(){ const k = ri(0,3);
+    if(k===0){ const a = ri(2,9), b = ri(1,9); return {type:'num', q:`<b>${a} × ${b}</b>`, ans:String(a*b), hint:`${a}の だんの 九九`}; }
+    if(k===1){ const a = ri(12,78), b = ri(11,99-a); return {type:'num', q:`<b>${a} ＋ ${b}</b>`, ans:String(a+b), hint:'一の位から たそう'}; }
+    if(k===2){ const a = ri(40,99), b = ri(11,a-10); return {type:'num', q:`<b>${a} − ${b}</b>`, ans:String(a-b), hint:'一の位から ひこう'}; }
+    const a = ri(2,9), b = ri(2,5); return {type:'num', q:`1ふくろ <b>${a}こ</b>いりの あめが <b>${b}ふくろ</b>。ぜんぶで 何こ？`, ans:String(a*b), hint:`${a}が ${b}こ分`}; }}
+};
+Object.entries(LOWU).forEach(([k,u]) => { if(!MATH_UNITS[k]) MATH_UNITS[k] = u; });
+function gradePools(g){
+  const mathNum = Object.keys(MATH_UNITS).filter(k => typeof MATH_UNITS[k].g==='number');
+  const mg = (lo, hi) => mathNum.filter(k => MATH_UNITS[k].g >= lo && MATH_UNITS[k].g <= hi);
+  const lv = (map, ls) => Object.keys(map).filter(k => MATH_UNITS[k] && ls.includes(map[k]));
+  const P = {};
+  P.math = g===1 ? ['low1'] : g===2 ? ['low2','low1'] : g===3 ? mg(3,3).concat('low2') : g===4 ? mg(3,4) : g===5 ? mg(4,5) : mg(5,5).concat(mg(4,4));
+  P.sci = g<=2 ? ['r_bugpic','r_plantpic'] : g<=4 ? lv(SCI_LV,[1]) : g<=6 ? lv(SCI_LV,[1,2]).filter(k => SCI_LV[k]===2 || Math.random() < .3) : lv(SCI_LV,[2,3]);
+  P.soc = g<=2 ? ['s_life','s_old'] : g<=4 ? lv(SOC_LV,[1]) : g<=6 ? lv(SOC_LV,[1,2]).filter(k => SOC_LV[k]===2 || Math.random() < .3) : lv(SOC_LV,[2,3]);
+  P.bun = g<=2 ? ['b_joshi'] : g<=4 ? ['b_joshi','b_setsu','b_svo','b_ten'] : Object.keys(BUN_LV);
+  P.ek = g<=2 ? lv(EK_LV,[1]) : g<=4 ? lv(EK_LV,[1,2]) : lv(EK_LV,[2,3]);
+  P.prog = g>=5 ? Object.keys(MATH_UNITS).filter(k => k.startsWith('pr_') && (MATH_UNITS[k].lv||1) <= (g>=7 ? 3 : 2)) : [];
+  Object.keys(P).forEach(k => { P[k] = P[k].filter(u => MATH_UNITS[u]); });
+  const KQ = BUILTIN.concat(typeof customQs!=='undefined' ? customQs : []);
+  P.kanji = KQ.filter(q => g>=7 ? true : (q.grade||3) <= g && (q.grade||3) >= Math.max(1, g-1));
+  if(!P.kanji.length) P.kanji = KQ.filter(q => (q.grade||3) <= g);
+  return P;
+}
+const KW = g => g<=2 ? [['kanji',1.3],['math',1.5],['bun',.6],['sci',.4],['soc',.3],['ek',.5]] : g<=4 ? [['kanji',1.1],['math',1.2],['sci',1],['soc',1],['bun',.6],['ek',.6]] : [['kanji',1],['math',1.2],['sci',1],['soc',1],['bun',.5],['ek',.6],['prog',.4]];
+function fitsGrade(m, g, P){
+  if(m.kq56 || m.kq) { const q = m.kq56 || m.kq; return g>=7 || (q.grade||1) <= g; }
+  const u = m.p56?.u; if(!u) return true;
+  if(Object.values(P).some(L => Array.isArray(L) && L.includes(u))) return true;
+  const ug = MATH_UNITS[u]?.g; return typeof ug==='number' && g >= 3 && ug <= g && ug >= g - 2;
+}
+makeMQ = (orig => function(opt={}){
+  const g = gradeNow();
+  if(!g || opt && opt.weakOnly) return orig.apply(this, arguments);
+  const P = gradePools(g), M = mqMem();
+  if(Math.random() < 0.3){ try{ const W = weakItems(); for(const it of shuffle(W).slice(0,6)){ const m = weakToMQ(it); if(m && fitsGrade(m, g, P)){ noteMQ(m, it.kind); return m; } } }catch(e){} }
+  const kinds = KW(g).filter(([k]) => k==='kanji' ? P.kanji.length : (P[k]||[]).length).map(([k,w]) => [k, w * (M.kinds[0]===k ? 0.15 : M.kinds[1]===k ? 0.5 : 1)]);
+  for(let tries=0; tries<40; tries++){
+    let r = Math.random()*kinds.reduce((a,[,w])=>a+w,0), kind = kinds[0][0];
+    for(const [k,w] of kinds){ r -= w; if(r<=0){ kind = k; break; } }
+    let m = null;
+    if(kind==='kanji') m = kanjiMQ(choice(P.kanji), false);
+    else { const u = choice(P[kind]); try{ m = mqFromP(MATH_UNITS[u].gen(), u); }catch(e){ m = null; } }
+    if(!m || M.recent.includes(m.key)) continue;
+    noteMQ(m, kind==='bun' || kind==='prog' ? 'math' : kind); return m;
+  }
+  return orig.apply(this, arguments);
+})(makeMQ);
+
+/* =====================================================================
+   ⑤ 大きな まちの「かるい 表示」
+   ===================================================================== */
+const LITE_LV = 10, LITE_ZOOM = 0.85, LITE_WALK = 16, LITE_CAR = 8;
+function liteOn(){
+  const s = save.settings?.lite56 || 'auto';
+  if(s==='on') return true; if(s==='off') return false;
+  return !!save.town && (save.town.lv||0) + 1 >= LITE_LV && (save.town.zoom||1) <= LITE_ZOOM;
+}
+function applyLite(){
+  const m = $('#townMap'); if(!m) return;
+  const on = liteOn(); m.classList.toggle('lite56', on);
+  if(on){ m.querySelectorAll('.walker').forEach((e,i) => { e.dataset.off56 = i >= LITE_WALK ? 1 : 0; }); m.querySelectorAll('.car2').forEach((e,i) => { e.dataset.off56 = i >= LITE_CAR ? 1 : 0; }); }
+  else m.querySelectorAll('[data-off56]').forEach(e => { e.dataset.off56 = 0; });
+  const bar = $('.zoomBar'); if(bar){ let c = bar.querySelector('.lite56Tag'); if(on && !c){ bar.insertAdjacentHTML('beforeend', '<span class="lite56Tag" title="まちが 大きいので、うごきを へらして かるく しているよ">🍃 かるい表示</span>'); } else if(!on && c) c.remove(); }
+}
+renderMap = (orig => function(){ const o = orig.apply(this, arguments); try{ applyLite(); }catch(e){} return o; })(renderMap);
+setInterval(() => { if(curScreen==='town' && !document.hidden) try{ applyLite(); }catch(e){} }, 3000);
+
+/* =====================================================================
+   せってい：学年・まちの 表示
+   ===================================================================== */
+renderSettings = (orig => function(){
+  const o = orig.apply(this, arguments);
+  try{
+    const host = $('#segBonus')?.closest('.setSec') || $('#segBonus')?.parentElement;
+    let box = $('#set56');
+    if(!box && host){ host.insertAdjacentHTML('afterend', `<div class="setSec" id="set56"><h3>🎒 学年と まちの 表示</h3>
+      <div class="row"><div class="lab">いまの 学年<br><small>住民・カフェ・おばけなどの とつぜんの 問題が この 学年に あわせて 出るよ</small></div><div class="seg wrap56" id="segGrade56">${[0,1,2,3,4,5,6,7].map(g => `<button data-v="${g}">${g ? (g===7 ? '中学' : g+'年') : 'なし'}</button>`).join('')}</div></div>
+      <div class="row"><div class="lab">まちの 表示<br><small>「じどう」：まちLv10いじょうで ちいさく 見ている とき、うごきを へらして かるく するよ</small></div><div class="seg" id="segLite56"><button data-v="auto">じどう</button><button data-v="off">きれい</button><button data-v="on">かるい</button></div></div>
+      <div class="note" id="infl56Note"></div></div>`); box = $('#set56');
+      $('#segGrade56').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; save.settings.grade56 = Number(b.dataset.v); persist(); sound('tap'); renderSettings(); toast(save.settings.grade56 ? `🎒 ${GN(save.settings.grade56)}に あわせるよ` : '🎒 学年の せっていを はずしたよ'); });
+      $('#segLite56').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; save.settings.lite56 = b.dataset.v; persist(); sound('tap'); renderSettings(); }); }
+    syncSeg('segGrade56', String(save.settings.grade56||0)); syncSeg('segLite56', save.settings.lite56||'auto');
+    const n = $('#infl56Note'); if(n) n.innerHTML = `📈 いまの ねだん：はじめの <b>${inflRate().toFixed(2).replace(/0$/,'')}ばい</b>（ものがたり ${chDone()}しょう まで よんだ）　🔥 れんぞく せいかい さいこう記録：<b>${save.streak56?.best||0}</b>`;
+    const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER56}`;
+  }catch(e){ console.warn(e); }
+  return o;
+})(renderSettings);
+window.__v56 = {explain, mathExp, socExp, sciExp, bunExp, gradePools, inflRate, applyInfl, liteOn, STREAK};
 })();
