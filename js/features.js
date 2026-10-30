@@ -3896,7 +3896,7 @@ window.__v57 = {unitGrade, multFor};
    ===================================================================== */
 (function(){
 'use strict';
-const VER58 = '5.8.0';
+const VER58 = '5.8.1';
 const IL = './assets/images/v58/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const img = (k, cls='') => `<img class="il58 ${cls}" src="${X(k.startsWith('il_') ? IL + k + '.webp' : artSrc(k))}" alt="">`;
@@ -4068,6 +4068,23 @@ Object.assign(FIG, {
  cell:() => svg('0 0 300 135', 300, `<rect x="20" y="15" width="110" height="80" rx="6" fill="#DFF2D3" stroke="#3C8A2E" stroke-width="5"/><rect x="40" y="35" width="70" height="40" rx="8" fill="#E3F4FF"/><circle cx="105" cy="30" r="8" fill="#B39DDB"/>${[[35,85],[60,25],[120,80],[30,50]].map(([x,y]) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="4" fill="#4E9A47"/>`).join('')}${T2(75,112,'植物の 細胞','細胞かべ・葉緑体・液ほう')}
    <ellipse cx="225" cy="55" rx="55" ry="40" fill="#FFE9E0" stroke="#E0A080" stroke-width="2"/><circle cx="225" cy="55" r="10" fill="#B39DDB"/>${T2(225,112,'動物の 細胞','細胞まく・核')}`)
 });
+/* v5.8.1：植物まわりも イラストに */
+const LB = (k, labs) => `<figure class="ilw58 lab58">${img(k)}${labs.map(([t,s,x,y]) => `<b style="left:${x}%;top:${y}%">${t}${s ? `<small>${s}</small>` : ''}</b>`).join('')}</figure>`;
+Object.assign(FIG, {
+ cyc_butterfly:() => ilCap('il_butterfly_cycle', ['① たまご','② よう虫','③ さなぎ','④ せい虫']),
+ plantgrow:() => ilCap('il_plantgrow', ['① たね','② 子葉','③ 本葉','④ 花']),
+ roots:() => ilCap('il_roots', ['主根と 側根（ホウセンカ）','ひげ根（トウモロコシ・イネ）']),
+ cherry:() => ilCap('il_cherry', ['春：花','夏：葉','秋：紅葉・落葉','冬：芽']),
+ hechima:() => ilCap('il_hechima', ['おばな：おしべ','めばな：めしべ・下に 実']),
+ flower:() => LB('il_flower_cut', [['めしべ','先に 花粉が つく',50,2],['おしべ','花粉を つくる',22,14],['花びら','',86,30],['がく','',20,66],['子房','実に なる',50,82]]),
+ plant:() => LB('il_sunflower', [['花','',72,10],['葉','',78,30],['くき','',40,55],['根','水を すう',66,82]]),
+ il_seeds:() => ilCap('il_seeds', ['風で とぶ（タンポポ）','動物に くっつく','はじけて とぶ','回って 落ちる（カエデ）']),
+ il_bee:() => ilCap('il_bee_pollen', ['こん虫が 花粉を はこび、めしべの 先に つける（受粉）'])
+});
+Object.assign(EXP, {});
+[['plant|12','il_seeds'],['plant|3','plant'],['flower|0','il_bee'],['flower|3','flower'],['bug|5','cyc_butterfly']].forEach(([k,f]) => { if(EXP[k]) EXP[k][0] = f; });
+BI['アオムシ（よう虫）'].il = 'cyc_butterfly'; BI['さなぎ'].il = 'cyc_butterfly'; BI['ミツバチ'].il = 'il_bee';
+PI['タンポポ'].il = 'il_seeds'; PI['ヒマワリ'].il = 'plant'; PI['チューリップ'].il = 'plantgrow'; PI['アサガオ'].il = 'plantgrow'; PI['ミニトマト'].il = 'flower'; PI['イネ'].il = 'roots';
 let FIG_OLD = () => '';
 const figHTML = k => { if(!k) return ''; if(FIG[k]) return FIG[k](); if(/^(rp_|ri_)/.test(k)) return `<div class="pp56"><span class="ok">${img(k)}</span></div>`; return FIG_OLD(k); };
 
