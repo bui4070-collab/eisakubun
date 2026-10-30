@@ -520,3 +520,15 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .fl59{display:flex;flex-direction:column;align-items:center;gap:2px;border:2.5px solid #E8414B;border-radius:10px;padding:5px;background:#FFF6F6;width:140px}.fl59.ng{border-color:#4C97FF;background:#F1F7FF}
 .fl59 svg{width:110px !important;height:auto !important;max-height:74px;border:1px solid #ddd}.fl59 b{font-size:12.5px}.fl59 small{font-size:10px;color:#7A5A3A;text-align:center}
 .ld59{display:flex;gap:10px;justify-content:center}.ld59 figure{margin:0;text-align:center;border:2.5px solid #E8414B;border-radius:10px;padding:4px;background:#fff}.ld59 figure.ng{border-color:#4C97FF}.ld59 figcaption{font-size:12px;font-weight:800}
+
+/* v6.0 イラストの ラベル・ルビ */
+.il60{margin:0;width:100%;max-width:360px}
+.il60w{position:relative;border-radius:10px;overflow:hidden;line-height:0}.il60w img{width:100%;display:block}
+.il60w svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.il60w b{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.93);border:2px solid #E8414B;color:#C0392B;border-radius:9px;padding:1px 6px;font-size:12px;line-height:1.35;text-align:center;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.il60w b small{display:block;font-size:9.5px;color:#6B5540;font-weight:700}
+.il60 figcaption{font-size:11.5px;font-weight:800;color:#5A4632;background:#FFF4DC;border-radius:6px;padding:3px 6px;margin-top:4px;line-height:1.4}
+.ex56 ruby rt,#mQ ruby rt,#mPad ruby rt{font-size:.55em;color:#C0392B;font-weight:700;letter-spacing:0}
+.il60w b ruby rt{font-size:.6em}
+#mPad .mk.opt ruby{ruby-position:over}
+.ex56 ruby,.il60w ruby,#mQ ruby,#mPad ruby{ruby-align:center}

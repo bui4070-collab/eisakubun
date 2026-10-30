@@ -2894,7 +2894,7 @@ function soc59(p, v, u, t, ans){
   const prefFig = () => { const a = PREF_BY(ans), b = v ? PREF_BY(v) : null; if(a && PREF_RX.test(ans)) out.figs.push(jpMap2(a, b && b!==a ? b : null)); const r = regOf(String(ans).replace(/地方$/,'')); if(r && /地方$/.test(ans)) out.figs.push(jpMap2(null, null, r)); };
   /* 1) 問題ごとの せつめい */
   const key = String(p.q).replace(/<[^>]+>/g,'') + '|' + ans, ex = SOCX[key];
-  if(ex){ if(LAND59[ans]) out.figs.push(landFig(ans, v)); out.steps.push(`<b>${X(stripQ(String(p.q).replace(/<[^>]+>/g,'')))}</b> → <b class="okc">${X(ans)}</b>`, ex); addWhy(); prefFig(); if(p.disp && /qPic|<img/.test(p.disp) && !out.figs.length) out.figs.push(`<div class="dp56">${p.disp}</div>`); return out; }
+  if(ex){ { const il = window.__ill60q ? window.__ill60q(p.q, ans, v) : ''; if(il) out.figs.push(il); } if(LAND59[ans]) out.figs.push(landFig(ans, v)); out.steps.push(`<b>${X(stripQ(String(p.q).replace(/<[^>]+>/g,'')))}</b> → <b class="okc">${X(ans)}</b>`, ex); addWhy(); prefFig(); if(p.disp && /qPic|<img/.test(p.disp) && !out.figs.length) out.figs.push(`<div class="dp56">${p.disp}</div>`); return out; }
   /* 2) 絵の 仕事 */
   if(u==='s_life' && JOBS[ans]){ const J = JOBS[ans]; out.steps.push(`絵の 人は <b>${X(ans)}</b>：${X(J[0])}`); if(J[1]) out.steps.push(X(J[1])); if(p.disp) out.figs.push(`<div class="dp56">${p.disp}</div>`); if(v && JOBS[v]) out.why = `「${X(v)}」は：${X(JOBS[v][0])}`; out.tip = 'どうぐや ふく・のりものを 見ると 仕事が わかるよ'; return out; }
   /* 3) むかしの 道具 */
@@ -3112,11 +3112,12 @@ function explain(p, v, opt={}){
   const vv = v==null || v==='' ? '' : String(v).replace('|',' あまり ');
   const head = s==='kanji' ? '' : `<div class="ex56Ans"><span class="ok">⭕ 正しい こたえ <b>${X(shw)}</b></span>${vv ? `<span class="ng">❌ きみの こたえ <b>${X(vv)}</b></span>` : ''}</div>`;
   const fast = opt.sec != null && opt.sec < 3 ? '<div class="ex56Fast">⏱ こたえるのが はやすぎたかも？ もんだいを さいごまで 読んでから えらぼう</div>' : '';
-  return `<div class="ex56 s-${s}"><div class="ex56Hd"><img src="${X(artSrc('bird_think')||'')}" alt=""><b>📖 シマくんの かいせつ</b><small>${SUBJ_N[s]||''}</small></div>${fast}${head}
+  const H56 = `<div class="ex56 s-${s}"><div class="ex56Hd"><img src="${X(artSrc('bird_think')||'')}" alt=""><b>📖 シマくんの かいせつ</b><small>${SUBJ_N[s]||''}</small></div>${fast}${head}
     ${r.why ? `<div class="ex56Why">🔍 ${r.why}</div>` : ''}
     ${r.figs.filter(Boolean).length ? `<div class="ex56Fig">${r.figs.filter(Boolean).join('')}</div>` : ''}
     ${r.steps.filter(Boolean).length ? `<ol class="ex56Steps">${r.steps.filter(Boolean).map(x => `<li>${x}</li>`).join('')}</ol>` : ''}
     ${r.tip ? `<div class="ex56Tip">💡 ${r.tip}</div>` : ''}</div>`;
+  return window.__ruby60 ? window.__ruby60(H56, s) : H56;
 }
 window.__explain56 = explain;
 /* よむ 時間：つぎへ ボタンを すこし まつ */
@@ -4274,4 +4275,80 @@ fixQ('j_her', her); fixQ('w_her', her);
 /* こたえが 問題文に 書いてあった 問題 */
 fixQ('w_geo', p => { if(/レアメタルなどの 鉱産資源/.test(p.q)) p.q = 'アフリカなどで とれる、コバルトや プラチナのように 量が 少なく めずらしい 金属を 何という？'; });
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER59}`; }catch(e){} return o; })(renderSettings);
+})();
+
+/* =====================================================================
+   まなびタウン v6.0
+   ・しゃかい（地形・季節風）と りか（人の 体）の かいせつに イラスト
+   ・むずかしい ことばに ルビ（読みがな）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER60 = '6.0.0';
+const IL = './assets/images/v58/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* イラスト＋ひきだし線つきの ラベル  L: [文字, 小さい文字, ラベルx%, ラベルy%, 指す点x%, 指す点y%] */
+function lab(k, L, cap){
+  const lines = L.filter(l => l[4] != null).map(l => `<line x1="${l[2]}" y1="${l[3]}" x2="${l[4]}" y2="${l[5]}" stroke="#E8414B" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${l[4]}" cy="${l[5]}" r=".9" fill="#E8414B"/>`).join('');
+  return `<figure class="il60"><div class="il60w"><img src="${IL + k}.webp" alt=""><svg viewBox="0 0 100 100" preserveAspectRatio="none">${lines}</svg>${L.map(l => `<b style="left:${l[2]}%;top:${l[3]}%">${l[0]}${l[1] ? `<small>${l[1]}</small>` : ''}</b>`).join('')}</div>${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`;
+}
+const ILL = {
+ '扇状地':() => lab('il_fan', [['扇状地','石や 砂が 扇の 形に つもる',72,30,56,47],['果樹園','水はけが よい',18,90,22,68],['山から 出る 川','',30,10,47,22]], '川が 山から 平地に 出る ところに できる'),
+ '三角州':() => lab('il_delta', [['三角州','砂や どろが つもった 平らな 土地',28,90,50,62],['河口','川が 海に 出る ところ',82,92,64,80],['川が 分かれる','',80,12,57,32]], '川が 海に 出る ところに できる 三角形の 土地'),
+ '盆地':() => lab('il_basin', [['盆地','山に かこまれた 平らな 土地',50,52,null,null],['山','',14,22,22,40],['山','',86,24,80,40]], '夏は 暑く、冬は 寒く なりやすい'),
+ 'リアス海岸':() => lab('il_ria', [['リアス海岸','入り組んだ ギザギザの 海岸',72,14,55,26],['養殖の いかだ','波が おだやか',26,93,33,73]], '山が 海に しずんで できた。三陸海岸・志摩半島など'),
+ '養殖業':() => lab('il_ria', [['養殖の いかだ','出荷まで 育てる',26,93,33,73],['港','',80,92,78,72]], 'かき・ほたて・わかめ などを 育てる'),
+ 'monsoon':() => lab('il_monsoon', [['北西の 季節風','',16,10,10,24],['日本海側：雪','しめった 風が 山に ぶつかる',22,92,30,70],['山脈','',58,8,53,25],['太平洋側：晴れ','かわいた 風が ふく',80,92,82,68]], '冬は 日本海側に 雪が 多く、太平洋側は 晴れて かんそうする'),
+ 'skeleton':() => lab('il_skeleton', [['頭の ほね','のうを 守る',18,8,48,12],['ろっ骨','心ぞう・はいを 守る',84,26,54,34],['せぼね','体を ささえる',16,38,49,42],['こつばん','',16,54,45,50],['関節','曲がる ところ',84,64,54,70]], ''),
+ 'organs':() => lab('il_organs', [['はい','',12,34,39,40],['心ぞう','',88,30,51,43],['かん臓','',12,50,42,56],['胃','',88,48,56,56],['じん臓','',12,64,37,65],['小腸','',12,84,47,76],['大腸','',88,72,59,73]], '食べものの 通り道：口 → 食道 → 胃 → 小腸 → 大腸'),
+ 'circ':() => lab('il_circ', [['心ぞう','血液を 送る ポンプ',80,26,51,43],['はい','酸素を とり入れる',18,28,43,42],['赤い 血管','心ぞうから 全身へ',82,62,60,58],['青い 血管','全身から 心ぞうへ',18,68,42,62]], '血液は 心ぞうから 全身を 回って もどってくる'),
+ 'arm':() => lab('il_arm', [['ちぢむ','',36,8,24,36],['ゆるむ','',8,92,10,50],['関節','',40,94,26,76],['ちぢむ','',56,94,60,40],['ゆるむ','',88,10,70,36]], '左：うでを 曲げる（内がわが ちぢむ）　右：うでを のばす（外がわが ちぢむ）')
+};
+window.__ill60q = function(q, ans, v){
+  q = String(q).replace(/<[^>]+>/g,'');
+  if(/日本海側の 冬|太平洋側の 冬/.test(q)) return ILL.monsoon();
+  if(ILL[ans]) return ILL[ans]();
+  if(/扇状地|三角州|盆地|リアス海岸/.test(q)){ const k = q.match(/扇状地|三角州|盆地|リアス海岸/)[0]; return ILL[k](); }
+  return '';
+};
+/* りか：人の 体 */
+try{
+  const V = window.__v58; Object.assign(V.FIG, {body:ILL.skeleton, arm:ILL.arm, hbody:ILL.organs, circ:ILL.circ});
+  [['hbody|3','circ'],['hbody|4','circ'],['hbody|7','circ'],['bio|15','circ'],['bio|14','hbody'],['hbody|8','hbody'],['body|2','arm'],['body|6','arm'],['body|1','body']].forEach(([k,f]) => { if(V.EXP[k]) V.EXP[k][0] = f; });
+}catch(e){ console.warn(e); }
+
+/* ---------- ルビ ---------- */
+const RB = {
+'扇状地':'せんじょうち','三角州':'さんかくす','盆地':'ぼんち','台地':'だいち','平野':'へいや','半島':'はんとう','海溝':'かいこう','河口':'かこう','流域面積':'りゅういきめんせき','山脈':'さんみゃく','山地':'さんち','季節風':'きせつふう',
+'養殖業':'ようしょくぎょう','養殖':'ようしょく','栽培漁業':'さいばいぎょぎょう','遠洋漁業':'えんようぎょぎょう','沖合漁業':'おきあいぎょぎょう','沿岸漁業':'えんがんぎょぎょう','稚魚':'ちぎょ','酪農':'らくのう','促成栽培':'そくせいさいばい','抑制栽培':'よくせいさいばい','果樹園':'かじゅえん',
+'工業地帯':'こうぎょうちたい','工業地域':'こうぎょうちいき','輸入':'ゆにゅう','輸出':'ゆしゅつ','原油':'げんゆ','鉄鉱石':'てっこうせき','地熱発電':'ちねつはつでん','火力発電':'かりょくはつでん','水力発電':'すいりょくはつでん',
+'県庁所在地':'けんちょうしょざいち','都道府県':'とどうふけん','標準時子午線':'ひょうじゅんじしごせん','本初子午線':'ほんしょしごせん','赤道':'せきどう','経度':'けいど','緯度':'いど','時差':'じさ','流氷':'りゅうひょう',
+'三権分立':'さんけんぶんりつ','立法':'りっぽう','行政':'ぎょうせい','司法':'しほう','国会':'こっかい','内閣':'ないかく','裁判所':'さいばんしょ','憲法':'けんぽう','公布':'こうふ','施行':'しこう','象徴':'しょうちょう','国民主権':'こくみんしゅけん','平和主義':'へいわしゅぎ',
+'基本的人権':'きほんてきじんけん','納税':'のうぜい','勤労':'きんろう','義務':'ぎむ','権利':'けんり','選挙':'せんきょ','地方自治':'ちほうじち','条例':'じょうれい','消費税':'しょうひぜい','衆議院':'しゅうぎいん','参議院':'さんぎいん','内閣総理大臣':'ないかくそうりだいじん',
+'世界遺産':'せかいいさん','前方後円墳':'ぜんぽうこうえんふん','貿易':'ぼうえき','食料自給率':'しょくりょうじきゅうりつ','温暖化':'おんだんか','共助':'きょうじょ','自助':'じじょ','公助':'こうじょ','漁師':'りょうし','消火せん':'しょうかせん',
+'関節':'かんせつ','筋肉':'きんにく','ろっ骨':'ろっこつ','心ぞう':'しんぞう','心臓':'しんぞう','胃液':'いえき','胃':'い','小腸':'しょうちょう','大腸':'だいちょう','食道':'しょくどう','かん臓':'かんぞう','じん臓':'じんぞう','消化液':'しょうかえき','消化':'しょうか','吸収':'きゅうしゅう',
+'血液':'けつえき','血管':'けっかん','酸素':'さんそ','二酸化炭素':'にさんかたんそ','呼吸':'こきゅう','脈はく':'みゃくはく','養分':'ようぶん','全身':'ぜんしん','子宮':'しきゅう','受精':'じゅせい','受せい':'じゅせい','受粉':'じゅふん','子葉':'しよう','本葉':'ほんば','子房':'しぼう','発芽':'はつが',
+'光合成':'こうごうせい','水じょう気':'すいじょうき','電磁石':'でんじしゃく','回路':'かいろ','支点':'してん','力点':'りきてん','作用点':'さようてん','地層':'ちそう','化石':'かせき','震源':'しんげん','震央':'しんおう','火山岩':'かざんがん','深成岩':'しんせいがん','結晶':'けっしょう',
+'惑星':'わくせい','恒星':'こうせい','衛星':'えいせい','星座':'せいざ','北極星':'ほっきょくせい','葉緑体':'ようりょくたい','細胞':'さいぼう','気門':'きもん','しょっ角':'しょっかく','完全変態':'かんぜんへんたい','不完全変態':'ふかんぜんへんたい'
+};
+const RX = new RegExp(Object.keys(RB).sort((a,b) => b.length - a.length).map(s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'g');
+function ruby(html){
+  let svg = 0, rb = 0;
+  return String(html).split(/(<[^>]+>)/).map(t => {
+    if(t[0]==='<'){ if(/^<svg/i.test(t)) svg++; else if(/^<\/svg/i.test(t)) svg--; else if(/^<ruby/i.test(t)) rb++; else if(/^<\/ruby/i.test(t)) rb--; return t; }
+    if(svg > 0 || rb > 0 || !t) return t;
+    return t.replace(RX, m => `<ruby>${m}<rt>${RB[m]}</rt></ruby>`);
+  }).join('');
+}
+window.__ruby60 = (html, s) => (s==='soc' || s==='sci') ? ruby(html) : html;
+/* 問題文と えらぶ ボタンにも ルビ */
+const subj = u => { const g = MATH_UNITS[u]?.g; return g==='soc' || g==='sci'; };
+mRender = (orig => function(){
+  const o = orig.apply(this, arguments);
+  try{ const p = MQ && MQ.list[MQ.i]; if(p && subj(p.u)){ const q = $('#mQ'); if(q) q.innerHTML = ruby(q.innerHTML);
+    $$('#mPad .mk.opt').forEach(b => { if(!b.classList.contains('flagOpt') && !b.querySelector('img,svg')) b.innerHTML = ruby(b.innerHTML); }); } }catch(e){}
+  return o;
+})(mRender);
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER60}`; }catch(e){} return o; })(renderSettings);
+window.__v60 = {ILL, ruby, RB};
 })();
