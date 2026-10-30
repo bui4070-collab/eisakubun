@@ -469,14 +469,14 @@ function hisBonus(m){
   if(/\d{2,}\s*[×÷]\s*\d{2,}|\d{3,}\s*[×÷]\s*\d|\d{3,}\s*[＋+−\-]\s*\d{3,}|\d+\.\d+\s*[×÷＋+−\-]|[×÷＋+−\-]\s*\d+\.\d+/.test(t)) return 12;
   return 0;
 }
-function twAsk(m,f){
+function twAsk(m,f,resume){
   return new Promise(res=>{
-    const hx=hisBonus(m), sec=twSec(f)+hx, ans=m.ansF||m.ans, id='tw'+Date.now(); let left=sec, end=false;
+    const hx=hisBonus(m), sec=twSec(f)+hx, ans=m.ansF||m.ans, id='tw'+Date.now(); let left=resume!=null?Math.max(3,Math.min(sec,resume)):sec, end=false;
     const fin=v=>{ if(end) return; end=true; clearInterval(tm); $('#dlg').classList.remove('show'); res(v); };
-    dialog(`<div class="twQHead">${twImg('tower_big','twQTower')}<div><b>${f}<small>かい</small></b><span>${'★'.repeat(twBand(f))}${'☆'.repeat(4-twBand(f))}</span></div><div class="twTime"><i id="${id}b"></i><em id="${id}">${sec}</em></div></div>${hx?`<div class="hisTag51">✏️ ひっさん タイム ＋${hx}びょう</div>`:''}${m.html}${m.say&&!/data-say/.test(m.html)?sayBtn(m.say):''}`,
-      m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる（つづきから できる）',cls:'white twQuit',v:'__quit'}]),'wide quiz towerQuiz').then(v=>{ if(end) return; end=true; clearInterval(tm);
+    dialog(`<div class="twQHead">${twImg('tower_big','twQTower')}<div><b>${f}<small>かい</small></b><span>${'★'.repeat(twBand(f))}${'☆'.repeat(4-twBand(f))}</span></div><div class="twTime"><i id="${id}b" style="width:${left/sec*100}%"></i><em id="${id}">${left}</em></div></div>${resume!=null?'<div class="hisTag51 resume61">⏸ やめた ときの 問題の つづきだよ（のこり じかんも そのまま）</div>':''}${hx?`<div class="hisTag51">✏️ ひっさん タイム ＋${hx}びょう</div>`:''}${m.html}${m.say&&!/data-say/.test(m.html)?sayBtn(m.say):''}`,
+      m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる（つぎも この 問題から）',cls:'white twQuit',v:'__quit'}]),'wide quiz towerQuiz').then(v=>{ if(end) return; end=true; clearInterval(tm);
         if(v==='__quit'||v==null) return res('quit'); const ok=v===ans; sound(ok?'ok':'ng'); if(m.wk&&ok)delWeak(m.wk); if(m.kq)addStat(m.kq,'read',ok,1); persist(); res(ok?'ok':'ng'); });
-    const tm=setInterval(()=>{ left--; const e=$('#'+id), b=$('#'+id+'b'); if(e) e.textContent=Math.max(0,left); if(b){ b.style.width=Math.max(0,left/sec*100)+'%'; b.classList.toggle('hurry',left<=5); }
+    const tm=setInterval(()=>{ left--; try{ const P=save.tower&&save.tower.pend; if(P){ P.left=left; persist(); } }catch(e){} const e=$('#'+id), b=$('#'+id+'b'); if(e) e.textContent=Math.max(0,left); if(b){ b.style.width=Math.max(0,left/sec*100)+'%'; b.classList.toggle('hurry',left<=5); }
       if(left<=0){ sound('ng'); fin('time'); } },1000);
   });
 }
@@ -489,7 +489,7 @@ function lobbyHTML(){
     <div class="twStat"><span>さいこう<b>${T.best}F</b></span><span>せいは<b>${T.clears}回</b></span></div>
     ${nx?`<div class="twNext"><small>つぎの ごほうび：<b>${nx[0]}かい</b>${nx[2]?'（2かいめ）':''}</small>${rwHTML(nx[1])}</div>`:''}
    </div></div>
-   <div class="twRule"><span>⏳ 1もん ${twSec(T.floor)}びょう（ひっさんは ＋15）</span><span>✔ せいかいで 1かい 上へ</span><span>✖ まちがい・じかんぎれは 1かいから</span><span>⏸ やめた ときは つづきから</span></div>
+   <div class="twRule"><span>⏳ 1もん ${twSec(T.floor)}びょう（ひっさんは ＋15）</span><span>✔ せいかいで 1かい 上へ</span><span>✖ まちがい・じかんぎれは 1かいから</span><span>⏸ やめても つぎは 同じ 問題の つづきから</span></div>
    <div class="twGoal">${twImg('itm_superletter')}<div><b>100かいの ごほうび</b><small>超レアかくていレター（まいかい）・天空の おうかん（はじめて）</small></div></div>`;
 }
 async function towerLobby(key){
@@ -497,13 +497,18 @@ async function towerLobby(key){
   const T=towerData();
   const v=await dialog(lobbyHTML(),[{label:`${T.floor}かいから のぼる！`,cls:'gold',v:'start'},...(T.floor>1?[{label:'1かいから やりなおす',cls:'white',v:'reset'}]:[]),...(key?[{label:'⬆ ビルを グレードアップ',cls:'white',v:'grade'}]:[]),{label:'とじる',v:null}],'wide towerDlg');
   if(v==='start') towerRun(key);
-  if(v==='reset'){ T.floor=1; persist(); towerLobby(key); }
+  if(v==='reset'){ T.floor=1; delete T.pend; persist(); towerLobby(key); }
   if(v==='grade') openBuilding(key);
 }
 async function towerRun(key){
   const T=towerData(); T.tries++; twUsed.clear(); persist();
   while(true){
-    const f=T.floor, m=towerQ(f), r=await twAsk(m,f);
+    const f=T.floor; let m, rs=null;
+    /* v6.1：とちゅうで やめても、つぎは かならず 同じ 問題から（とくいな 問題が 出るまで やりなおす ずるを ふせぐ） */
+    if(T.pend && T.pend.f===f && T.pend.m && T.pend.m.opts){ m=T.pend.m; rs=T.pend.left; }
+    else { m=towerQ(f); T.pend={f, m:JSON.parse(JSON.stringify(m)), left:null}; persist(); }
+    const r=await twAsk(m,f,rs);
+    if(r!=='quit'){ delete T.pend; persist(); }
     if(r==='quit'){ persist(); toast(`${f}かいで きろくを ほぞんしたよ`); return towerLobby(key); }
     if(r!=='ok'){ T.floor=1; persist();
       await dialog(`<div class="dlgArt">${twImg('tower_big','twBigS')}</div><h2 class="dlgT">${r==='time'?'じかんぎれ！':'おしい！'}　${f}かいで ストップ</h2><p class="dlgP">${r==='time'?'じかん ないに こたえられなかったよ。':`こたえは <b>${esc(m.ansF||m.ans)}</b> だったよ。`}<br><b>つぎは 1かいから ちょうせん！</b><br><small>さいこう きろく ${T.best}かいは のこるよ</small></p>`,[{label:'もういちど！',cls:'gold',v:1}]);
@@ -607,6 +612,9 @@ if(!TOWN_ITEMS.some(x=>x.id===RANCH))TOWN_ITEMS.push({id:RANCH,type:'bld',cat:'b
 else { const it=ITEM(RANCH); it.art='bld_ranch'; }
 try{ZUKAN_INFO[RANCH]='ミルク・たまご・おにくなど、カフェの ざいりょうを つくる。';}catch(e){}
 const RMAT={cf_milk:'ミルク',cf_egg:'たまご',cf_beef:'ぎゅうにく',cf_chicken:'とりにく',cf_pork:'ぶたにく'};
+/* v6.1：はちみつ（みつばちの すばこで とれる・カフェの ざいりょう） */
+DEFAULT_ART.cf_honey=DEFAULT_ART.cf_honey||('data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="58" font-size="78" text-anchor="middle" dominant-baseline="middle">🍯</text></svg>'));
+if(!FD('cf_honey')) FOOD.push({id:'cf_honey',n:'はちみつ',price:120,m:1.2,min:15,art:'cf_honey',mat61:1});
 const imgTag=(k,cls='')=>`<img class="${cls}" src="${esc(artSrc(k)||k)}" alt="">`;
 function cafeStock(){return save.cafeStock||(save.cafeStock={});}   // 手持ちの ぼくじょう ざいりょう
 /* v5.5：ぼくじょうごとに 1日1かい しゅうかく（ふたつ あれば ふたつとも とれる） */
@@ -633,10 +641,15 @@ const NEW54=[['blend_coffee','ブレンドコーヒー',1,80,{f_coffee:1},1],['f
  ['cafe_latte','カフェラテ',2,120,{f_coffee:1,cf_milk:1},1],['coffee_jelly','コーヒーゼリー',2,140,{f_coffee:2,cf_milk:1},0],['potato_salad','ポテトサラダ',2,150,{f_potato:2,cf_egg:1,f_carrot:1},0],
  ['vienna_coffee','ウインナーコーヒー',3,190,{f_coffee:2,cf_milk:2},1]];
 NEW54.forEach(([id,n,lv,pt,req,dr])=>{if(!MENUS.some(m=>m.id===id)){const at=MENUS.findIndex(m=>m.lv>lv);const o={id,n,i:'',lv,pt,req,drink:!!dr,v54:1};if(at<0)MENUS.push(o);else MENUS.splice(at,0,o);}});
+/* v6.1：なす・キャベツ・はちみつの メニュー（Lv1〜8） */
+[['coleslaw','コールスロー',1,80,{f_cabbage:2,f_carrot:1}],['yasai_itame','やさいいため',2,150,{f_cabbage:1,f_carrot:1,cf_pork:1}],['honey_milk','ハニーミルク',2,130,{cf_honey:1,cf_milk:1},1],
+ ['nasu_gratin','なすの グラタン',3,210,{f_eggplant:2,f_tomato:1,cf_milk:2}],['honey_french','はちみつ フレンチトースト',4,260,{cf_honey:2,cf_egg:2,cf_milk:1}],['roll_cabbage','ロールキャベツ',5,340,{f_cabbage:2,cf_beef:2,f_tomato:2}],
+ ['ratatouille','ラタトゥイユ',6,360,{f_eggplant:2,f_tomato:2,f_corn:1,f_potato:1}],['apple_honey_tart','りんごと はちみつの タルト',7,420,{f_apple:3,cf_honey:2,cf_egg:2,cf_milk:1}],['nasu_curry','なすと チキンの カレー',8,460,{f_eggplant:2,cf_chicken:2,f_potato:2,f_carrot:1}]]
+ .forEach(([id,n,lv,pt,req,dr])=>{ if(MENUS.some(m=>m.id===id)) return; const o={id,n,i:'',lv,pt,req,drink:!!dr,v61:1}; const at=MENUS.findIndex(m=>m.lv>lv); if(at<0) MENUS.push(o); else MENUS.splice(at,0,o); });
 MENUS.forEach(m=>{ if(m.id==='pork_sand'){ m.n='ハムエッグサンド'; m.req={cf_pork:1,cf_egg:1}; }
  if(m.id==='rainbow_cake'){ m.n='にじいろロイヤルデザート'; m.pt=600; m.req={f_strawberry:5,f_banana:3,f_apple:3,f_watermelon:2,cf_egg:5,cf_milk:5}; } });
 const EVENT_MENU={halloween:{id:'ev_pumpkin',n:'ハロウィンかぼちゃパイ',lv:1,pt:350,req:{f_pumpkin:3,cf_egg:1}},christmas:{id:'ev_xmas',n:'クリスマスチキン',lv:1,pt:380,req:{cf_chicken:3,f_carrot:1}},newyear:{id:'ev_osechi',n:'おしょうがつプレート',lv:1,pt:380,req:{cf_egg:2,cf_beef:1,f_carrot:1}},summer:{id:'ev_summer',n:'なつのフルーツパフェ',lv:1,pt:350,req:{f_watermelon:2,f_strawberry:1,cf_milk:1}}};
-MENUS.forEach(m=>{ m.art=m.v54?'./assets/images/v54/cm_'+m.id+'.webp':IMG48+'cm_'+m.id+'.webp'; m.mult=m.id==='rainbow_cake'?3:m.lv===4?2.5:m.lv===3?2:m.lv===2?1.5:1.2; m.min=m.id==='rainbow_cake'?35:15+m.lv*5; m.buy=Math.round(m.pt*(m.id==='rainbow_cake'?2.5:1.15)); });
+MENUS.forEach(m=>{ m.art=m.v61?'./assets/images/v61/cm_'+m.id+'.webp':m.v54?'./assets/images/v54/cm_'+m.id+'.webp':IMG48+'cm_'+m.id+'.webp'; m.mult=m.id==='rainbow_cake'?3:m.lv>=4?Math.min(3,+(2.5+(m.lv-4)*.08).toFixed(2)):m.lv===3?2:m.lv===2?1.5:1.2; m.min=m.id==='rainbow_cake'?35:15+m.lv*5; m.buy=Math.round(m.pt*(m.id==='rainbow_cake'?2.5:1.15)); });
 Object.values(EVENT_MENU).forEach(m=>{ m.art=IMG48+'cm_'+m.id+'.webp'; m.mult=2.5; m.min=30; m.buy=Math.round(m.pt*1.4); m.ev=1; });
 const THEMES=[['wood','きの ぬくもり','#F2D9A8'],['cute','いちご','#FFC3D5'],['natural','もり','#C9EBBE'],['marine','うみ','#BDE6F7'],['luxury','ロイヤル','#DCCBFF']];
 const ROUND_MS=2*60000, MAX_ROUNDS=60;
@@ -675,26 +688,27 @@ function varietyBonus(c){const n=c.menu.map(menuById).filter(m=>m&&servings(m)>0
 /* v5.4：まんぞく度は「メニューの むずかしさ」と「カフェの レベル」で きまる
    ・ざいりょうの かず・しゅるい・手に入れにくさ が 大きい メニューほど まんぞく しやすい
    ・カフェの レベルが 上がるほど、かんたんな メニューでは まんぞく しにくく なる */
-const MAT_DIFF={f_carrot:1,f_tomato:1,f_corn:2,f_potato:2,f_apple:2,f_banana:2,f_strawberry:3,f_pumpkin:3,f_coffee:3,f_watermelon:4,cf_milk:2,cf_egg:2,cf_chicken:3,cf_pork:3,cf_beef:4};
+const MAT_DIFF={f_cabbage:1,f_eggplant:2,cf_honey:3,f_carrot:1,f_tomato:1,f_corn:2,f_potato:2,f_apple:2,f_banana:2,f_strawberry:3,f_pumpkin:3,f_coffee:3,f_watermelon:4,cf_milk:2,cf_egg:2,cf_chicken:3,cf_pork:3,cf_beef:4};
 function menuScore(m){if(!m)return 0;const e=Object.entries(m.req||{});const cx=e.reduce((a,[k,n])=>a+n*(MAT_DIFF[k]||2),0)+2*Math.max(0,e.length-1);return Math.min(1,cx/16);}
-const LV_PEN=[0,0,10,20,30];
+const LV_PEN=[0,0,10,20,30,32,34,36,38,40,42];
 function satMean(m,lv,vb){const s=menuScore(m);return 52+36*s-(LV_PEN[lv]??30)*(1-s)+(vb||0);}
 function rollSat(m,c){if(Math.random()<.08)return rint(60,75);return Math.round(satMean(m,c.lv,varietyBonus(c))+rint(-15,15));}
 function satChance(m,c){const mu=satMean(m,c.lv,varietyBonus(c));return .08+.92*Math.max(0,Math.min(1,(mu+15-60)/30));}
 function satStars(m,c){const p=satChance(m,c);return p>=.7?3:p>=.35?2:1;}
 function cafeRound(c,rate){let sales=0,served=0,happy=0;
- c.guests=c.guests.filter(g=>{g.stay=(g.stay??1)-1;if(g.stay>0)return true;const m=menuById(g.dish);sales+=Math.round((m?.pt||60)*rate*(g.sat>=60?1:.8))+(g.tip||0);served++;if(g.sat>=60)happy++;return false;});
+ c.guests=c.guests.filter(g=>{g.stay=(g.stay??1)-1;if(g.stay>0)return true;const m=menuById(g.dish);sales+=Math.round((m?.pt||60)*rate*(g.sat>=60?1:.8))+(g.tip||0)+(g.sat>=60&&c.lv>=6?10:0);served++;if(g.sat>=60)happy++;return false;});
  const sel=c.menu.map(menuById).filter(Boolean),seats=tablesOpen()*4,used=new Set(c.guests.map(g=>g.seat)),free=[...Array(seats).keys()].filter(i=>!used.has(i)).sort(()=>Math.random()-.5);
  const pop=Math.min(.1,(c.happy||0)*.0008);
- free.forEach(seat=>{if(Math.random()>ARR_P+pop)return;const ok=sel.filter(m=>canMake(m,c.stock));if(!ok.length)return;const m=choice(ok);take(m,c.stock);
+ free.forEach(seat=>{if(Math.random()>ARR_P+pop+arrBonus(c))return;const ok=sel.filter(m=>canMake(m,c.stock));if(!ok.length)return;const m=choice(ok);take(m,c.stock);
   const g=newGuest();Object.assign(g,{seat,dish:m.id,stay:rint(1,3),sat:rollSat(m,c),q:Math.random()<.65,qd:false});c.guests.push(g);});
  return {sales,served,happy};}
-function refreshGuests(){}   // いぜんの「すぐ 来る」しくみは つかわない
+function refreshGuests(){}
+const _newGuest61=newGuest; newGuest=function(){ const c=C(); if(c.lv>=9&&Math.random()<.3){ const live=new Set((save.town?.res||[]).map(r=>r.sp)),R=SPECIES.filter(s=>!s.human&&(s.rar||1)>=3&&(s.w||0)>0&&!live.has(s.id)); if(R.length){ const sp=choice(R); return {id:'cg'+Date.now().toString(36)+rint(100,999),sp:sp.id,name:choice(NAMES),talk:0,rare61:1}; } } return _newGuest61(); };   // いぜんの「すぐ 来る」しくみは つかわない
 function cafeTick(force){const c=C();if(!c.on)return null;const now=Date.now();if(!c.last)c.last=now;
  let rounds=Math.min(Math.floor((now-c.last)/ROUND_MS),MAX_ROUNDS);if(!rounds)return null;c.last=rounds>=MAX_ROUNDS?now:c.last+rounds*ROUND_MS;
  const rate=1+(c.lv-1)*.1;let sales=0,served=0,happy=0;
  for(let r=0;r<rounds;r++){const o=cafeRound(c,rate);sales+=o.sales;served+=o.served;happy+=o.happy;}
- if(served){c.sales+=sales;c.served+=served;c.happy=(c.happy||0)+happy;c.today=c.today&&c.today.d===dayKey()?c.today:{d:dayKey(),pt:0,n:0,h:0};c.today.pt+=sales;c.today.n+=served;c.today.h=(c.today.h||0)+happy;givePts(sales,'おうちカフェの うりあげ');}
+ if(served){c.sales+=sales;c.served+=served;c.happy=(c.happy||0)+happy;addXP(c,happy);c.today=c.today&&c.today.d===dayKey()?c.today:{d:dayKey(),pt:0,n:0,h:0};c.today.pt+=sales;c.today.n+=served;c.today.h=(c.today.h||0)+happy;givePts(sales,'おうちカフェの うりあげ');}
  persist();return served?{sales,served,happy}:null;}
 setInterval(()=>{if(document.hidden)return;const r=cafeTick();if(r){toast(`☕ カフェで ${r.served}人が 食べて +${r.sales}pt！（まんぞく ${r.happy}人）`);if(curScreen==='myhome'&&inCafe()&&!homeEdit)renderMyHome();}},30000);
 /* ---------- へやに 机・いす・おきゃくさんを かく ---------- */
@@ -726,32 +740,47 @@ async function openCafeShop(){const v=await dialog(`<div class="dlgArt big">${im
  if(v!=='yes')return;if(save.points.bal<500)return toast('ポイントが たりないよ');givePts(-500,'わたしの家：カフェを つくった');const c=C();c.on=true;c.last=Date.now();syncCafeRoom();persist();sound('fan');confetti(1800);
  if(homeEdit)endHomeEdit(true);switchRoom('cafe');clearTableCells();renderMyHome();}
 /* ---------- カフェの メインがめん ---------- */
-const CAFE_UP=[null,{h:15,p:1200},{h:50,p:2400},{h:120,p:3600}];window.CAFE_UP=CAFE_UP;
-async function cafeOpen(){const c=C();if(!c.on)return openCafeShop();cafeTick();
+/* v6.1：カフェは Lv10まで。Lv10は 1年 まいにち がんばって やっと とどく（カフェポイントは 1日 25まで） */
+const CAFE_MAX=10, XP_DAY=25;
+const CAFE_UP=[null,{h:15,p:1200},{h:50,p:2400},{h:120,p:3600},{h:400,p:6000},{h:900,p:10000},{h:1700,p:15000},{h:3000,p:22000},{h:5000,p:32000},{h:8500,p:50000}];window.CAFE_UP=CAFE_UP;
+const CAFE_PERK=[null,['机 1つ（4せき）','🪑'],['机が 2つに（8せき）','🪑'],['机が 3つに（12せき）','🪑'],['机が 4つに（16せき）','🪑'],['メニューを 7しゅるい だせる・おきゃくさんが 来やすい','📋'],['まんぞくした おきゃくさんが チップ +10pt','💰'],['メニューを 8しゅるい だせる・もっと 来やすい','📋'],['まいにち「ひょうばん ボーナス」（Lv×100pt）','🎁'],['めずらしい どうぶつの おきゃくさんが 来る','🦄'],['でんせつの カフェ！ きらきらレター 3まい・ひょうばん ボーナス 2ばい','👑']];
+function cafeXP(c){ if(c.xp==null) c.xp=c.happy||0; return c.xp; }
+function addXP(c,n){ const d=dayKey(); cafeXP(c); if(!c.xpd||c.xpd.d!==d) c.xpd={d,n:0}; const a=Math.max(0,Math.min(n,XP_DAY-c.xpd.n)); c.xp+=a; c.xpd.n+=a; return a; }
+const xpToday=c=>c.xpd&&c.xpd.d===dayKey()?c.xpd.n:0;
+const menuMax=()=>C().lv>=7?8:C().lv>=5?7:6;
+const arrBonus=c=>c.lv>=7?.06:c.lv>=5?.03:0;
+function cafePerks(){ const c=C();
+ dialog(`<h2 class="dlgT">☕ カフェの レベルと とくてん</h2><div class="perk61">${CAFE_PERK.slice(1).map((p,i)=>{const lv=i+1,got=c.lv>=lv;return `<div class="${got?'got':''} ${c.lv===lv?'now':''}"><b>Lv${lv}</b><i>${p[1]}</i><span>${p[0]}${(()=>{const L=MENUS.filter(m=>m.lv===lv).map(m=>m.n);return L.length?`<small>メニュー：${L.slice(0,3).join('・')}${L.length>3?` ほか ${L.length-3}しゅるい`:''}</small>`:'';})()}</span>${lv>1?`<em>${got?'✔':`🔒 ${nf(CAFE_UP[lv-1].h)}`}</em>`:'<em>✔</em>'}</div>`;}).join('')}</div>
+ <p class="dlgP facNote">レベルが 上がるたびに うりあげも +10%。<br>🔒の 数字は ひつような「カフェポイント」（まんぞくした おきゃくさん 1人で 1ポイント、1日 ${XP_DAY}ポイントまで）。<br>Lv10は 1年 まいにち つづけて やっと とどく でんせつの レベルだよ！</p>`,[{label:'とじる',v:null}],'wide cafeDlg48').then(()=>cafeOpen()); }
+window.__cafe61={C:()=>C(),cafeXP:c=>cafeXP(c),addXP:(c,n)=>addXP(c,n),cafePerks:()=>cafePerks(),cafeOpen:()=>cafeOpen(),menus:()=>MENUS,menuMax:()=>menuMax(),tick:()=>cafeTick()};
+function cafeLvBonus(c){ if(c.lv<8||c.bonusDay===dayKey()) return; c.bonusDay=dayKey(); const p=c.lv*100*(c.lv>=10?2:1); givePts(p,'カフェの ひょうばん ボーナス'); persist(); setTimeout(()=>toast(`🎁 カフェの ひょうばん ボーナス +${p}pt！`),400); }
+function onCafeLv(c){ if(c.lv===10){ const t=save.town; t.bag.goldletter=(t.bag.goldletter||0)+3; persist(); setTimeout(()=>dialog(`<div class="dlgArt big">${imgTag('cafe_sign')}</div><h2 class="dlgT">👑 でんせつの カフェ！</h2><p class="dlgP">おうちカフェが Lv10に なった！<br>きらきらレターを <b>3まい</b> もらったよ！<br>ひょうばん ボーナスも 2ばいに！</p>`,[{label:'やったー！',cls:'gold',v:1}],'gold'),400); }
+ else setTimeout(()=>toast(`☕ カフェ Lv${c.lv}！ ${CAFE_PERK[c.lv][0]}`),400); }
+async function cafeOpen(){const c=C();if(!c.on)return openCafeShop();cafeTick();cafeLvBonus(c);
  const sel=c.menu.map(menuById).filter(Boolean),left=sel.reduce((a,m)=>a+Math.max(0,servings(m)),0),td=c.today&&c.today.d===dayKey()?c.today:{pt:0,n:0};
- const v=await dialog(`<div class="cafeHead48">${imgTag('cafe_sign')}<div><b>おうちカフェ Lv${c.lv}</b><small>4人がけの 机 ${tablesOpen()}つ（${tablesOpen()*4}せき）</small><small class="${left?'ok':'ng'}">${left?`えいぎょうちゅう・あと ${left}さら つくれる`:'ざいりょうぎれ（のうひんしてね）'}</small></div></div>
-  <div class="cafeStats48"><span>きょうの うりあげ<b>${nf(td.pt)}pt</b></span><span>きょうの おきゃくさん<b>${td.n}人</b></span><span>まんぞくした おきゃくさん<b>${nf(c.happy||0)}人</b></span></div>${c.lv<4?(()=>{const U=CAFE_UP[c.lv],h=c.happy||0;return `<div class="up51"><small>Lv${c.lv+1}まで：まんぞく ${Math.min(h,U.h)}/${U.h}人 ・ ${nf(U.p)}pt</small><i><b style="width:${Math.min(100,h/U.h*100)}%"></b></i></div>`;})():''}
+ const v=await dialog(`<div class="cafeHead48">${imgTag('cafe_sign')}<div><b>${c.lv>=10?'👑 でんせつの ':''}おうちカフェ Lv${c.lv}<small style="display:inline">/${CAFE_MAX}</small></b><small>4人がけの 机 ${tablesOpen()}つ（${tablesOpen()*4}せき）</small><small class="${left?'ok':'ng'}">${left?`えいぎょうちゅう・あと ${left}さら つくれる`:'ざいりょうぎれ（のうひんしてね）'}</small></div></div>
+  <div class="cafeStats48"><span>きょうの うりあげ<b>${nf(td.pt)}pt</b></span><span>きょうの おきゃくさん<b>${td.n}人</b></span><span>まんぞくした おきゃくさん<b>${nf(c.happy||0)}人</b></span></div>${c.lv<CAFE_MAX?(()=>{const U=CAFE_UP[c.lv],h=cafeXP(c);return `<div class="up51"><small>Lv${c.lv+1}まで：カフェポイント ${nf(Math.min(h,U.h))}/${nf(U.h)}（きょう ${xpToday(c)}/${XP_DAY}） ・ ${nf(U.p)}pt</small><i><b style="width:${Math.min(100,h/U.h*100)}%"></b></i></div>`;})():''}
   <div class="cafeMenuNow48">${sel.length?sel.map(m=>`<span>${imgTag(m.art)}<small>${esc(m.n)}<br>あと${Math.max(0,servings(m))}</small></span>`).join(''):'<small>メニューを えらんでね</small>'}</div>
   <p class="dlgP facNote">カフェは いつも えいぎょうちゅう。おきゃくさんは すこしずつ 来るよ。<br>机（せき）が おおいほど たくさん 来るよ。<br><b>？の ふきだしの おきゃくさんを タッチすると 問題を 出してくれるよ。せいかいすると まんぞく＆チップ！</b></p>`,
-  [{label:`${imgTag('cafe_crate','btnIc48')} メニューと ざいりょう`,cls:'gold',v:'menu'},{label:`${imgTag('cafe_coffee','btnIc48')} じぶんで 買って 食べる`,cls:'gold',v:'eat'},{label:'🎨 机の 柄',cls:'white',v:'theme'},...(c.lv<4?[{label:`⬆ Lv${c.lv+1}へ<span class="nw">（${nf(CAFE_UP[c.lv].p)}pt）</span>`,cls:(c.happy||0)>=CAFE_UP[c.lv].h&&save.points.bal>=CAFE_UP[c.lv].p?'gold':'white',v:'up'}]:[]),...(inCafe()&&curScreen==='myhome'?[]:[{label:'カフェの へやへ',cls:'white',v:'go'}]),{label:'とじる',v:null}],'wide cafeDlg48');
- if(v==='menu')cafeMenu();if(v==='eat')cafeBuy();if(v==='theme')cafeTheme();
+  [{label:`${imgTag('cafe_crate','btnIc48')} メニューと ざいりょう`,cls:'gold',v:'menu'},{label:`${imgTag('cafe_coffee','btnIc48')} じぶんで 買って 食べる`,cls:'gold',v:'eat'},{label:'🎨 机の 柄',cls:'white',v:'theme'},{label:'🎁 レベルの とくてん',cls:'white',v:'perk'},...(c.lv<CAFE_MAX?[{label:`⬆ Lv${c.lv+1}へ<span class="nw">（${nf(CAFE_UP[c.lv].p)}pt）</span>`,cls:cafeXP(c)>=CAFE_UP[c.lv].h&&save.points.bal>=CAFE_UP[c.lv].p?'gold':'white',v:'up'}]:[]),...(inCafe()&&curScreen==='myhome'?[]:[{label:'カフェの へやへ',cls:'white',v:'go'}]),{label:'とじる',v:null}],'wide cafeDlg48');
+ if(v==='menu')cafeMenu();if(v==='perk')cafePerks();if(v==='eat')cafeBuy();if(v==='theme')cafeTheme();
  if(v==='go'){if(curScreen!=='myhome')show('myhome');if(homeEdit)endHomeEdit(true);switchRoom('cafe');}
- if(v==='up'){const U=CAFE_UP[c.lv],p=U.p;if((c.happy||0)<U.h){await dialog(`<div class="dlgArt">${imgTag('cafe_sign')}</div><h2 class="dlgT">まだ レベルアップ できないよ</h2><p class="dlgP">まんぞくして かえった おきゃくさんが <b>${U.h}人</b> ひつようだよ。<br>いまは <b>${c.happy||0}人</b>。あと ${U.h-(c.happy||0)}人！</p><p class="dlgP facNote">おきゃくさんの 問題に せいかいすると かならず まんぞくしてくれるよ。<br>ざいりょうが おおくて むずかしい メニューほど まんぞくしやすいよ。<br>カフェの レベルが 上がると、かんたんな メニューでは まんぞく しにくく なるよ。</p>`);return cafeOpen();}if(save.points.bal<p)return toast('ポイントが たりないよ');givePts(-p,'カフェを グレードアップ');c.lv++;persist();clearTableCells();sound('fan');confetti(1200);if(curScreen==='myhome')renderMyHome();cafeOpen();}}
+ if(v==='up'){const U=CAFE_UP[c.lv],p=U.p;if(cafeXP(c)<U.h){await dialog(`<div class="dlgArt">${imgTag('cafe_sign')}</div><h2 class="dlgT">まだ レベルアップ できないよ</h2><p class="dlgP">カフェポイントが <b>${nf(U.h)}</b> ひつようだよ。<br>いまは <b>${nf(cafeXP(c))}</b>。あと ${nf(U.h-cafeXP(c))}！<br><small>まんぞくした おきゃくさん 1人で 1ポイント（1日 ${XP_DAY}ポイントまで）</small></p><p class="dlgP facNote">おきゃくさんの 問題に せいかいすると かならず まんぞくしてくれるよ。<br>ざいりょうが おおくて むずかしい メニューほど まんぞくしやすいよ。<br>カフェの レベルが 上がると、かんたんな メニューでは まんぞく しにくく なるよ。</p>`);return cafeOpen();}if(save.points.bal<p)return toast('ポイントが たりないよ');givePts(-p,'カフェを グレードアップ');c.lv++;persist();clearTableCells();onCafeLv(c);sound('fan');confetti(1200);if(curScreen==='myhome')renderMyHome();cafeOpen();}}
 /* ---------- メニューと ざいりょう（のうひん） ---------- */
 function menuBody(){const c=C(),sel=new Set(c.menu),all=cafeMenus(true);
  const need=new Set();c.menu.map(menuById).filter(Boolean).forEach(m=>Object.keys(m.req).forEach(k=>need.add(k)));
  const mats=[...need];
  return `<h2 class="dlgT">メニューと ざいりょう</h2>
- <div class="secT48">① お店に だす メニュー（${sel.size}/6）</div>
+ <div class="secT48">① お店に だす メニュー（${sel.size}/${menuMax()}）</div>
  <div class="cafeMenus48">${all.map(m=>{const lock=!m.ev&&m.lv>c.lv;return `<button data-cmenu="${m.id}" class="${sel.has(m.id)?'on':''} ${lock?'lk48':''}" ${lock?'disabled':''}><img src="${esc(m.art)}" alt=""><b>${esc(m.n)}</b><small>${lock?`🔒 カフェLv${m.lv}`:`${m.pt}pt${m.ev?'・イベント':''}${m.drink?'・ドリンク':''}`}</small>${lock?'':(()=>{const st=satStars(m,c);return `<em class="sat54 s${st}">まんぞく ${'★'.repeat(st)}${'☆'.repeat(3-st)}</em>`;})()}<span class="reqs48">${Object.entries(m.req).map(([k,n])=>`<i>${imgTag(matArt(k))}${n}</i>`).join('')}</span></button>`;}).join('')}</div>
  <div class="secT48">② ざいりょうを のうひんする</div>
  ${mats.length?`<div class="matList48">${mats.map(k=>{const have=handBag(k)[k]||0,st=c.stock[k]||0;return `<div class="matIt48 mat50" data-mk="${k}">${imgTag(matArt(k))}<div class="mName50"><b>${esc(matName(k))}</b><div class="cnt50"><span class="hv50"><small>てもち</small><em>${have}</em></span><i>▶</i><span class="st50"><small>カフェ</small><em>${st}</em></span></div></div><div class="mBtn50"><button data-cdel="${k}|1" ${have?'':'disabled'}>＋1</button><button data-cdel="${k}|all" ${have?'':'disabled'}>ぜんぶ</button></div></div>`;}).join('')}</div>
  <button class="btn gold delAll48" data-cdelall>まとめて ぜんぶ のうひん</button>`:'<p class="dlgP facNote">メニューを えらぶと ひつような ざいりょうが でるよ</p>'}
- <p class="dlgP facNote">やさい・くだもの・じゃがいも・コーヒーまめは 畑や 八百屋、ミルク・たまご・おにくは ぼくじょうで 手に入るよ。<br>ミルク・たまごは 八百屋、おにくは コンビニでも しいれられるよ。</p>`;}
+ <p class="dlgP facNote">やさい・じゃがいも・コーヒーまめは 畑や 八百屋、りんご・バナナは 木、はちみつは みつばちの すばこ、たまごは にわとりごやでも とれるよ。ミルク・おにくは ぼくじょうで 手に入るよ。<br>ミルク・たまごは 八百屋、おにくは コンビニでも しいれられるよ。</p>`;}
 function cafeMenu(){dialog(menuBody(),[{label:'とじる',v:1}],'wide cafeDlg48').then(()=>{if(curScreen==='myhome')renderMyHome();});}
 function deliver(k,n){const B=handBag(k),have=B[k]||0,q=n==='all'?have:Math.min(have,+n);if(!q)return 0;B[k]=have-q;if(B[k]<=0)delete B[k];C().stock[k]=(C().stock[k]||0)+q;return q;}
 document.addEventListener('click',e=>{const t=e.target.closest('[data-cmenu],[data-cdel],[data-cdelall]');if(!t||!t.closest('#dlgBody'))return;e.stopImmediatePropagation();const c=C();c.__wasEmpty=!cafeLeft(c);
- if(t.dataset.cmenu){const id=t.dataset.cmenu,i=c.menu.indexOf(id);if(i>=0)c.menu.splice(i,1);else if(c.menu.length<6)c.menu.push(id);else{toast('メニューは 6こまで だよ');return;}}
+ if(t.dataset.cmenu){const id=t.dataset.cmenu,i=c.menu.indexOf(id);if(i>=0)c.menu.splice(i,1);else if(c.menu.length<menuMax())c.menu.push(id);else{toast(`メニューは ${menuMax()}こまで だよ`);return;}}
  else if(t.dataset.cdel){const [k,n]=t.dataset.cdel.split('|'),q=deliver(k,n);if(q){sound('tap');window.__matPop={k,q};}}
  else{let q=0;new Set(c.menu.map(menuById).filter(Boolean).flatMap(m=>Object.keys(m.req))).forEach(k=>{const d=deliver(k,'all');q+=d;if(d)(window.__matAll=window.__matAll||[]).push([k,d]);});if(q){sound('ok');toast(`ざいりょうを ${q}こ のうひんしたよ！`);}else toast('のうひんできる ざいりょうが ないよ');}
  if(!c.guests.length&&c.__wasEmpty)c.last=Date.now();delete c.__wasEmpty;persist();const sc=$('#dlgBody').scrollTop;$('#dlgBody').innerHTML=menuBody();$('#dlgBody').scrollTop=sc;matPop();(window.__matAll||[]).forEach(([k,q])=>{window.__matPop={k,q};matPop();});window.__matAll=null;},true);
@@ -4351,4 +4380,224 @@ mRender = (orig => function(){
 })(mRender);
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER60}`; }catch(e){} return o; })(renderSettings);
 window.__v60 = {ILL, ruby, RB};
+})();
+
+/* =====================================================================
+   まなびタウン v6.1
+   ④ のりものの 大きさ（げんじつに ちかく）
+   ⑤ テントに ときどき しらない どうぶつが あそびに 来る
+   ⑥ みつばちの すばこ → はちみつ　⑦ にわとりごや → たまご
+   ② りんごの 木・バナナの 木
+   ⑧ むじんの お店（やさいの むじんはんばい・じどうはんばいき・アイス・たこやき・クレープ・おみくじ）
+   ⑨ ほしぞら デッキ：ハナと ほしぞら かんさつ
+   ⑩ てんもんだい：ほしの クイズ 3もん れんぞく せいかいで 水晶（1日1回）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER61 = '6.1.0';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const svgArt = body => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">${body}</svg>`);
+const emo = e => svgArt(`<text x="60" y="68" font-size="88" text-anchor="middle" dominant-baseline="middle">${e}</text>`);
+const gl = key => (save.town.glv||{})[key] || 0;
+const P61 = () => save.prod61 || (save.prod61 = {});
+const cellsOf = id => save.town ? Object.keys(save.town.cells).filter(k => save.town.cells[k]===id) : [];
+const hashS = s => { let h = 2166136261; for(const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h; };
+
+/* ---------- ④ のりものの 大きさ ---------- */
+const VSIZE = {};
+[['bicycle','scooter','retroscoot','whitebike','kart','baketrike'], .32,
+ ['kei','sedan','crossover','taxi','ev','sports','convert','beetle','blacktaxi','wagon','rally','police','limo'], .42,
+ ['minivan','luxvan','vanblue','mail','pickup','jeep','camperbus','ambulance','tow','icecream','foodtruck','tractor','forklift','roller','sweeper','command','carriage'], .48,
+ ['truck','garbage','compactor','mixer','dump','tanker','fire','ladder','rescue','crane','excavator','snowplow','camper'], .56,
+ ['bus','schoolbus','shuttle','sightbus','partybus'], .62,
+ ['trolley'], .68, ['doubledecker'], .76].forEach((v,i,a) => { if(i%2===0) v.forEach(id => { VSIZE[id] = a[i+1]; }); });
+buildCars = (orig => function(cs){
+  const o = orig.apply(this, arguments);
+  try{ const c0 = CAR.cs || cs || 60; CAR.list.forEach(c => { const f = VSIZE[c.id]; if(f && c.el){ c.el.style.height = Math.round(c0 * f) + 'px'; c.el.dataset.sz61 = f >= .6 ? 'big' : f >= .5 ? 'large' : f <= .32 ? 'small' : 'mid'; } }); }catch(e){}
+  return o;
+})(buildCars);
+
+/* ---------- ② りんごの 木・バナナの 木（かりの 絵） ---------- */
+const TREE_ART = {
+  dc_appletree: svgArt(`<path d="M60 92 L112 66 L60 40 L8 66Z" fill="#9BD37A"/><path d="M8 66 L60 92 L60 98 L8 72Z" fill="#7DB85E"/><path d="M60 92 L112 66 L112 72 L60 98Z" fill="#6AA44E"/>
+    <rect x="54" y="48" width="12" height="34" rx="4" fill="#9A6A3C"/><circle cx="60" cy="38" r="30" fill="#5DB35A"/><circle cx="40" cy="46" r="18" fill="#6CC468"/><circle cx="80" cy="46" r="18" fill="#6CC468"/><circle cx="60" cy="24" r="18" fill="#72CB6D"/>
+    ${[[44,34],[70,28],[58,50],[82,48],[38,52],[64,38]].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="5.5" fill="#E8414B"/><circle cx="${x-1.6}" cy="${y-1.8}" r="1.6" fill="#fff" opacity=".7"/>`).join('')}<circle cx="80" cy="78" r="5" fill="#E8414B"/>`),
+  dc_bananatree: svgArt(`<path d="M60 92 L112 66 L60 40 L8 66Z" fill="#9BD37A"/><path d="M8 66 L60 92 L60 98 L8 72Z" fill="#7DB85E"/><path d="M60 92 L112 66 L112 72 L60 98Z" fill="#6AA44E"/>
+    <path d="M56 82 Q54 50 60 26 Q66 50 64 82Z" fill="#8FBF5A"/><g fill="#4FAE4A">${[[-60,-34],[-30,-46],[10,-48],[40,-36],[56,-18]].map(([dx,dy]) => `<path d="M60 26 Q${60+dx/2} ${26+dy/2-8} ${60+dx} ${26+dy+20} Q${60+dx/2} ${26+dy/2+6} 60 30Z"/>`).join('')}</g>
+    <g fill="#F7D84A" stroke="#C9A100" stroke-width="1">${[0,1,2,3].map(i => `<path d="M${66+i*3} ${40+i*5} q10 2 12 10 q-6 -3 -12 -4z"/>`).join('')}</g>`)
+};
+Object.assign(DEFAULT_ART, TREE_ART);
+const NEW_ITEMS = [
+  {id:'d_appletree', type:'bld', cat:'deco', name:'りんごの 木', art:'dc_appletree', emoji:'🍎', price:350, lv:3, dev:14},
+  {id:'d_bananatree', type:'bld', cat:'deco', name:'バナナの 木', art:'dc_bananatree', emoji:'🍌', price:450, lv:4, dev:16}
+];
+NEW_ITEMS.forEach(it => { if(!TOWN_ITEMS.some(x => x.id===it.id)) TOWN_ITEMS.push(it); });
+try{ ZUKAN_INFO.d_appletree = 'りんごが みのる 木。ときどき しゅうかく できるよ。'; ZUKAN_INFO.d_bananatree = 'バナナが みのる 木。ときどき しゅうかく できるよ。'; }catch(e){}
+
+/* ---------- しゅうかく できる もの ---------- */
+const HRS = 3600000;
+const PROD = {
+  d_beehive:{n:'はちみつ', mat:'cf_honey', bag:'cafe', base:1, every:24, art:'cf_honey', msg:'みつばちが あつめた はちみつ'},
+  d_coop:{n:'たまご', mat:'cf_egg', bag:'cafe', base:2, every:24, art:'cf_egg', msg:'にわとりが うんだ たまご'},
+  d_appletree:{n:'りんご', mat:'f_apple', bag:'food', base:2, every:12, art:'veg_apple', msg:'あかく みのった りんご'},
+  d_bananatree:{n:'バナナ', mat:'f_banana', bag:'food', base:2, every:12, art:'veg_banana', msg:'あまく みのった バナナ'}
+};
+const bagOf = P => P.bag==='cafe' ? (save.cafeStock || (save.cafeStock = {})) : foodBag();
+const readyAt = (key, P) => (P61()[key] || 0) + P.every*HRS;
+const isReady = (key, id) => { const P = PROD[id]; return P && Date.now() >= readyAt(key, P); };
+const leftStr = ms => { const m = Math.ceil(ms/60000); return m >= 60 ? `${Math.floor(m/60)}じかん${m%60 ? (m%60)+'ぷん' : ''}` : `${m}ぷん`; };
+async function openProd(key, id){
+  const P = PROD[id], it = ITEM(id), B = bagOf(P), n = P.base + gl(key);
+  if(isReady(key, id)){
+    B[P.mat] = (B[P.mat]||0) + n; P61()[key] = Date.now(); persist(); sound('fan'); confetti(1000); drawOv();
+    const v = await dialog(`<div class="dlgArt big"><img src="${X(artSrc(P.art))}" alt=""></div><h2 class="dlgT">🧺 ${P.n}が とれた！</h2>
+      <p class="dlgP">${X(P.msg)}が <b>${n}こ</b> とれたよ！（もっている：${B[P.mat]}こ）<br><small>${P.bag==='cafe' ? 'カフェの「メニューと ざいりょう」から のうひんしてね' : 'カフェの ざいりょうや「おやつ」に つかえるよ'}</small></p>
+      <p class="dlgP facNote">つぎは ${P.every}じかん ごに とれるよ。グレードアップすると とれる かずが ふえるよ（いま ${n}こ）。</p>`,
+      [{label:'やったー！', cls:'gold', v:1}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}], 'wide');
+    if(v==='grade') openBuilding(key); return;
+  }
+  const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">${X(it.name)}</h2>
+    <p class="dlgP">${X(P.n)}は まだ できていないよ。<br>あと <b>${leftStr(readyAt(key, P) - Date.now())}</b>で とれるよ。</p>
+    <p class="dlgP facNote">${P.every}じかんごとに ${P.n}が ${n}こ とれるよ。グレードアップすると ふえるよ。</p>`,
+    [{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='grade') openBuilding(key);
+}
+
+/* ---------- ⑤ テントに あそびに 来る どうぶつ ---------- */
+const TENT_SLOT = 20*60000;
+function tentGuest(key){
+  const slot = Math.floor(Date.now()/TENT_SLOT), h = hashS(key + '|' + slot);
+  if(h % 100 >= 40) return null;
+  const live = new Set((save.town?.res||[]).map(r => r.sp)), pool = SPECIES.filter(s => !s.human && (s.w||0) > 0 && !live.has(s.id) && s.home!=='water');
+  if(!pool.length) return null;
+  const sp = pool[(h >>> 7) % pool.length];
+  return {id:'tv'+slot, sp:sp.id, name:NAMES[(h >>> 3) % NAMES.length], star:1, ab:{}, slot};
+}
+const TENT_LINES = ['キャンプって たのしいね！ この まち、すてきだなあ','たびの とちゅうで よったんだ。ここの ほしぞら、きれいだね','たきびの においが すき！ また あそびに 来ても いい？','この まちに すんでる みんな、なかよしだね','テントで おひるね しちゃった。きもちいい〜'];
+async function openTent(key){
+  const g = tentGuest(key), it = ITEM('d_tent');
+  if(!g){ const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">テント</h2><p class="dlgP">いまは だれも いないみたい。<br><small>ときどき まちに すんでいない どうぶつが あそびに 来るよ</small></p>`, [{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide'); if(v==='grade') openBuilding(key); return; }
+  const S = save.tent61 || (save.tent61 = {}), first = S[key] !== g.slot; persOf && persOf(g);
+  const sp = SP(g.sp);
+  if(first){ S[key] = g.slot; givePts(15, `テントに 来た ${sp.name}と おはなし`); save.fac = save.fac || {}; save.fac.pals = save.fac.pals || {}; save.fac.pals[g.sp] = (save.fac.pals[g.sp]||0) + 1; persist(); sound('fan'); }
+  await dialog(`<div class="tentScene61"><div class="tsBg"></div><div class="tsTent">${picHTML(it)}</div><div class="tsChar">${resPic(g)}</div></div>
+    <h2 class="dlgT">🏕 ${X(g.name)}（${X(sp.name)}）が あそびに 来ているよ！</h2>
+    <div class="talkBubble"><b>${X(g.name)}</b>${X(speak(g, choice(TENT_LINES)))}</div>
+    ${first ? `<p class="dlgP"><span class="coin sm">P</span> +15　💞 レターを つかった とき ${X(sp.name)}が 来やすく なったよ</p>` : '<p class="dlgP facNote">しばらく したら かえっちゃうよ</p>'}`, [{label:'またね！', cls:'gold', v:1}], 'wide');
+}
+
+/* ---------- ⑧ むじんの お店 ---------- */
+const STALL = {
+  d_vegstand:{n:'やさいの むじんはんばい', items:['f_carrot','f_cabbage','f_eggplant'], disc:.9, line:'とれたての やさい。おかねは はこに いれてね'},
+  d_vending:{n:'じどうはんばいき', items:['f_kb_juice','f_kb_tea'], disc:1, line:'ピッ！ ガコン！'},
+  d_icestand:{n:'アイスやさん', items:['f_icecream'], disc:1, line:'つめたくて おいしいよ'},
+  d_takoyaki:{n:'たこやきやさん', items:['f_takoyaki'], disc:1, line:'あつあつの たこやき！'},
+  d_crepe:{n:'クレープやさん', items:['f_crepe','f_crepe_ba'], disc:1, line:'あまい クレープ いかが？'}
+};
+const priceOf61 = (id, S) => Math.max(10, Math.round((FD(id)?.price||50) * S.disc / 5) * 5);
+function stallBody(id){
+  const S = STALL[id], B = foodBag();
+  return `<div class="stall61"><div class="dlgArt">${picHTML(ITEM(id))}</div><h2 class="dlgT">${X(S.n)}</h2><p class="dlgP facNote">${X(S.line)}<br>だれも はたらかなくても かえる お店だよ（しゅるいは すくなめ）</p>
+    <div class="stGrid61">${S.items.filter(FD).map(f => { const F = FD(f), p = priceOf61(f, S); return `<button data-b61="${id}|${f}" ${save.points.bal >= p ? '' : 'disabled'}><img src="${X(artSrc(F.art))}" alt=""><b>${X(F.n)}</b><small><span class="coin sm">P</span> ${p}</small><em>もっている ${B[f]||0}</em></button>`; }).join('')}</div>
+    <p class="dlgP facNote">かった ものは ホームの「おやつ」で たべられるよ</p></div>`;
+}
+async function openStall(key, id){ const v = await dialog(stallBody(id), [{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide'); if(v==='grade') openBuilding(key); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-b61]'); if(!b || !b.closest('#dlgBody') || b.disabled) return; e.stopImmediatePropagation();
+  const [id, f] = b.dataset.b61.split('|'), S = STALL[id], p = priceOf61(f, S); if(save.points.bal < p){ toast('ポイントが たりないよ'); return; }
+  const B = foodBag(); B[f] = (B[f]||0) + 1; givePts(-p, `${S.n}で ${FD(f).n}を かった`); persist(); sound('ok');
+  $('#dlgBody').innerHTML = stallBody(id); toast(`${FD(f).n}を かったよ！`);
+}, true);
+/* おみくじ */
+const KUJI = [['大吉',100,'さいこうの 一日に なるよ！ べんきょうも ばっちり！',8],['中吉',60,'いいこと ありそう！ ちょうせんすると ◎',18],['小吉',40,'こつこつ がんばると いいことが あるよ',26],['吉',30,'にこにこ すごせば いいことが あるよ',30],['末吉',20,'これから だんだん よくなるよ！',18]];
+async function openKuji(key){
+  const it = ITEM('d_omikuji'), K = save.kuji61 || (save.kuji61 = {}), done = K.d===dayKey(), cost = 30;
+  const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">🎋 おみくじ</h2><p class="dlgP">${done ? `きょうは もう ひいたよ：<b>${X(K.r)}</b><br>また あした ひいてね` : `1日 1かい ひけるよ（<span class="coin sm">P</span> ${cost}）<br>けっかに よって ポイントが もらえるよ`}</p>`,
+    (done ? [] : [{label:`🎋 ひく（${cost}pt）`, cls:'gold', v:'draw'}]).concat([{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(v!=='draw') return; if(save.points.bal < cost){ toast('ポイントが たりないよ'); return; }
+  givePts(-cost, 'おみくじを ひいた'); let r = Math.random()*100, k = KUJI[KUJI.length-1]; for(const x of KUJI){ r -= x[3]; if(r <= 0){ k = x; break; } }
+  K.d = dayKey(); K.r = k[0]; const p = givePts(k[1], `おみくじ ${k[0]}`); persist(); sound('fan'); if(k[0]==='大吉') confetti(2000);
+  await dialog(`<div class="kuji61"><span>${X(k[0])}</span></div><h2 class="dlgT">${X(k[0])}！</h2><p class="dlgP">${X(k[2])}<br><span class="coin sm">P</span> +${p}</p>`, [{label:'ありがとう！', cls:'gold', v:1}], k[0]==='大吉' ? 'gold' : '');
+}
+
+/* ---------- ⑨ ほしぞら デッキ ---------- */
+const STAR_LINES = ['あの 明るい 3つの 星が「夏の 大三角」だよ。ベガ・アルタイル・デネブ！','北斗七星の さきを 5ばい のばすと 北極星が 見つかるんだって','ぼうえんきょうで 見ると、月の クレーターが はっきり 見えるね！','オリオン座の 赤い 星は ベテルギウス。白い 星は リゲルだよ','ながれぼしだ！ ねがいごと、まにあった？','土星の わっか、ぼうえんきょうで 見えるかな？','星の 色が ちがうのは、温度が ちがうからなんだって'];
+async function openStarDeck(key){
+  const g = (typeof girl==='function' && girl()) || {id:'hana', sp:'girl', name:'ハナ', star:1, ab:{}, outfit:'res_girl'};
+  sound('fan');
+  const v = await dialog(`<div class="scCard pose-look star61"><img class="scBg" src="${X(artSrc('sc_stars'))}" alt=""><div class="scFx">⭐ ✨ ⭐ ✨ ⭐</div>
+      <div class="scope61">🔭</div><div class="scChar">${resPic(g)}</div><img class="bird61" src="${X(artSrc('bird_think')||'')}" alt="">
+      <div class="scTitle">ほしぞら かんさつ</div><div class="scLine"><b>${X(g.name||'ハナ')}</b>${X(choice(STAR_LINES))}</div></div>`,
+    [{label:'もっと 見る ⭐', cls:'gold', v:'more'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide scDlg');
+  if(v==='more') return openStarDeck(key);
+  if(v==='grade') openBuilding(key);
+}
+
+/* ---------- ⑩ てんもんだい：ほしの クイズ ---------- */
+function starPool(){ return [].concat((SCI_BANK.sky||[]).map(r => ['r_sky', r]), (SCI_BANK.moonsun||[]).map(r => ['r_moon', r]), (SCI_BANK.earth||[]).slice(22).map(r => ['r_earth', r])); }
+const crystals = () => save.crystal || 0;
+const CRY = emo('💎');
+DEFAULT_ART.itm_crystal = DEFAULT_ART.itm_crystal || CRY;
+async function openObservatory(key){
+  const it = ITEM('observatory'), O = save.obs61 || (save.obs61 = {}), done = O.d===dayKey();
+  const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">🔭 てんもんだい</h2>
+    <p class="dlgP">ほしの クイズに <b>3もん れんぞく</b>で せいかいすると<br><b>水晶</b>が もらえるよ（1日 1かい）</p>
+    <div class="cry61"><img src="${X(artSrc('itm_crystal'))}" alt=""><b>水晶 ×${crystals()}</b><small>${done ? 'きょうの 水晶は もらったよ' : 'きょうは まだ もらっていないよ'}</small></div>`,
+    [{label:'⭐ ほしの クイズに ちょうせん', cls:'gold', v:'quiz'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(v!=='quiz') return;
+  const L = shuffle(starPool().slice()).slice(0, 3);
+  for(let i=0; i<3; i++){
+    const [u, r] = L[i], opts = shuffle(r.slice(1));
+    const m = {html:`<div class="obsQ61">${'⭐'.repeat(i+1)}${'☆'.repeat(2-i)}</div><div class="mqSent">${X(r[0])}</div>`, ans:r[1], opts, key:'obs|'+r[0]};
+    const res = await askMQ(m, `<b>🔭 ほしの クイズ（${i+1}/3）</b>`);
+    if(!res.ok){
+      let ex = ''; try{ ex = window.__explain56 ? window.__explain56({u, type:'choice', q:r[0], ans:r[1], sub:r[0], opts}, '', {}) : ''; }catch(e){}
+      await dialog(`<h2 class="dlgT">おしい！ ${i}もん れんぞく</h2><p class="dlgP">こたえは <b>${X(r[1])}</b> だったよ。</p>${ex}`, [{label:'また ちょうせんする', cls:'gold', v:1}], 'wide');
+      return;
+    }
+    sound('ok');
+  }
+  const give = O.d !== dayKey();
+  if(give){ O.d = dayKey(); save.crystal = crystals() + 1; }
+  const p = givePts(30, 'てんもんだい ほしの クイズ 3もん れんぞく'); persist(); sound('fan'); confetti(1800);
+  await dialog(`<div class="cry61 big"><img src="${X(artSrc('itm_crystal'))}" alt=""></div><h2 class="dlgT">3もん れんぞく せいかい！</h2>
+    <p class="dlgP">${give ? '<b>水晶を 1こ</b> もらったよ！' : 'きょうの 水晶は もう もらったよ。また あした！'}<br><span class="coin sm">P</span> +${p}<br>水晶 ×${crystals()}</p>
+    <p class="dlgP facNote">水晶は どうぶつえん・すいぞくかん・クリスタルタワーでも あつめられるように なる よていだよ</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+}
+/* 住民の ページに 水晶を ひょうじ */
+renderResidents = (orig => function(){ const o = orig.apply(this, arguments); try{ const b = $('#resBag'); if(b && !b.querySelector('.cry61b')) b.insertAdjacentHTML('beforeend', `<div class="bagIt cry61b"><img src="${X(artSrc('itm_crystal'))}" alt=""><div><b>水晶 ×${crystals()}</b><small>てんもんだいの ほしの クイズで もらえる</small></div></div>`); }catch(e){} return o; })(renderResidents);
+
+/* ---------- まちの 上の ひょうじ ---------- */
+function drawOv(){
+  if(curScreen!=='town' || !save.town) return;
+  const map = $('#townMap'); if(!map) return; map.querySelectorAll('.ov61').forEach(e => e.remove());
+  Object.entries(save.town.cells).forEach(([k,id]) => {
+    let h = '';
+    if(PROD[id] && isReady(k, id)) h = `<span class="facOv ready ov61">!</span><img class="ov61 prodIc61" src="${X(artSrc(PROD[id].art))}" alt="">`;
+    if(id==='d_tent'){ const g = tentGuest(k); if(g) h = `<span class="ov61 tentVis61">${resPic(g)}</span>`; }
+    if(id==='observatory' && (save.obs61||{}).d!==dayKey()) h = '<span class="facOv ready ov61">⭐</span>';
+    if(!h) return; const [x,y] = k.split(','); const c = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); if(c) c.insertAdjacentHTML('beforeend', h);
+  });
+}
+renderMap = (orig => function(){ const o = orig.apply(this, arguments); try{ drawOv(); }catch(e){ console.warn(e); } return o; })(renderMap);
+setInterval(() => { if(!document.hidden) try{ drawOv(); }catch(e){} }, 15000);
+
+/* ---------- タッチ ---------- */
+const TAP = {d_tent:openTent, d_omikuji:openKuji, d_stardeck:openStarDeck, observatory:openObservatory};
+Object.keys(PROD).forEach(id => { TAP[id] = k => openProd(k, id); });
+Object.keys(STALL).forEach(id => { TAP[id] = k => openStall(k, id); });
+const FEST = new Set(['d_takoyaki','d_crepe','d_icestand','d_omikuji']);
+window.addEventListener('click', async e => {
+  if(curScreen!=='town' || townEdit || !save.town) return;
+  const c = e.target.closest('#townMap .cell'); if(!c || e.target.closest('.walker,.car2')) return;
+  const key = `${c.dataset.x},${c.dataset.y}`, id = save.town.cells[key], fn = TAP[id]; if(!fn) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  if(FEST.has(id) && await tryScene(id)) return;
+  fn(key);
+}, true);
+
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER61}`; }catch(e){} return o; })(renderSettings);
+window.__v61 = {PROD, STALL, tentGuest, openObservatory, openStarDeck, drawOv, VSIZE};
 })();

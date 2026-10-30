@@ -68,6 +68,11 @@ Object.assign(DEFAULT_ART, {doc_bunny:'./assets/images/v54/doc_bunny.webp', veg_
 [{id:'f_potato', n:'じゃがいも', price:50, m:1.1, min:15, art:'veg_potato'}, {id:'f_coffee', n:'コーヒーまめ', price:90, m:1.2, min:15, art:'veg_coffee'}]
   .forEach(f => { if(!FD(f.id)) FOOD.push(f); });
 try{ const M = SHOP_FOOD.market; if(!M.includes('f_potato')) M.splice(2, 0, 'f_potato'); if(!M.includes('f_coffee')) M.push('f_coffee'); }catch(e){}
+/* v6.1：畑の グレード（★）で そだてられる やさいが ふえる。なす・キャベツを ついか */
+CROPS.push({id:'cabbage', f:'f_cabbage', n:'キャベツ', seed:30, min:35, y:[1,3], lv:1}, {id:'eggplant', f:'f_eggplant', n:'なす', seed:40, min:50, y:[2,3], lv:2});
+const CROP_G = {carrot:0, tomato:0, cabbage:0, potato:0, corn:1, eggplant:1, strawberry:1, pumpkin:2, coffee:2, watermelon:3};
+CROPS.forEach(c => { c.g = CROP_G[c.id] || 0; });
+CROPS.sort((a,b) => a.g - b.g || a.lv - b.lv);
 const CROP = id => CROPS.find(c => c.id===id);
 const cropArt = c => FD(c.f)?.art || 'bld_field';
 const millRate = () => 1 - 0.15*Math.min(2, cellsOf('windmill').length);
@@ -77,10 +82,10 @@ async function openField(key){
   const f = F(), p = f.farm[key], lv = save.town.lv + 1;
   if(!p){
     const v = await pickDialog(head('bld_field', '🥕 はたけ', 'たねを まいて やさいを そだてよう')
-      + `<div class="facGrid">${CROPS.map(c => { const lock = c.lv > lv, poor = save.points.bal < c.seed;
+      + `<div class="facGrid">${CROPS.map(c => { const gl = c.g > glv(key), lock = c.lv > lv || gl, poor = save.points.bal < c.seed;
         return `<button class="facCard" data-pick="${c.id}" ${lock||poor ? 'disabled' : ''}><img src="${esc(artSrc(cropArt(c)))}" alt=""><b>${c.n}</b>
-          <small>${lock ? `🔒 まちLv${c.lv}` : `⏱ ${left(c.min*MIN*millRate())}`}</small><small><span class="coin sm">P</span> ${c.seed}</small></button>`; }).join('')}</div>
-        <p class="dlgP facNote">しゅうかくした やさいは ホームの「おやつ」で たべられるよ。ホテルの おきゃくさんにも あげられるよ！${cellsOf('windmill').length ? '<br>🌬️ 風車の おかげで はやく そだつよ' : ''}</p>`,
+          <small>${c.lv > lv ? `🔒 まちLv${c.lv}` : gl ? `🔒 畑 ★${c.g}` : `⏱ ${left(c.min*MIN*millRate())}`}</small><small><span class="coin sm">P</span> ${c.seed}</small></button>`; }).join('')}</div>
+        <p class="dlgP facNote">⬆ 畑を グレードアップすると そだてられる やさいが ふえるよ（いまの 畑：${'★'.repeat(glv(key))}${'☆'.repeat(Math.max(0,3-glv(key)))}）<br>しゅうかくした やさいは ホームの「おやつ」で たべられるよ。ホテルの おきゃくさんにも あげられるよ！${cellsOf('windmill').length ? '<br>🌬️ 風車の おかげで はやく そだつよ' : ''}</p>`,
       [gradeBtn, closeBtn], 'wide');
     if(v==='grade') return openBuilding(key);
     if(!v || !String(v).startsWith('pick:')) return;
