@@ -4601,3 +4601,11 @@ window.addEventListener('click', async e => {
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER61}`; }catch(e){} return o; })(renderSettings);
 window.__v61 = {PROD, STALL, tentGuest, openObservatory, openStarDeck, drawOv, VSIZE};
 })();
+
+/* v6.2：かりの 絵を イラストに さしかえ */
+(function(){
+'use strict';
+const I = './assets/images/v62/';
+['itm_crystal','cf_honey','dc_bananatree','dc_appletree'].forEach(k => { DEFAULT_ART[k] = I + k + '.webp'; });
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.2.0'; }catch(e){} return o; })(renderSettings);
+})();
