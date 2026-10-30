@@ -4526,10 +4526,9 @@ const STAR_LINES = ['あの 明るい 3つの 星が「夏の 大三角」だよ
 async function openStarDeck(key){
   const g = (typeof girl==='function' && girl()) || {id:'hana', sp:'girl', name:'ハナ', star:1, ab:{}, outfit:'res_girl'};
   sound('fan');
-  const v = await dialog(`<div class="scCard pose-look star61"><img class="scBg" src="${X(artSrc('sc_stars'))}" alt=""><div class="scFx">⭐ ✨ ⭐ ✨ ⭐</div>
-      <div class="scope61">🔭</div><div class="scChar">${resPic(g)}</div><img class="bird61" src="${X(artSrc('bird_think')||'')}" alt="">
-      <div class="scTitle">ほしぞら かんさつ</div><div class="scLine"><b>${X(g.name||'ハナ')}</b>${X(choice(STAR_LINES))}</div></div>`,
-    [{label:'もっと 見る ⭐', cls:'gold', v:'more'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide scDlg');
+  const v = await dialog(`<div class="star62"><img src="./assets/images/v62/sc_hana_stars.webp" alt=""><div class="st62t">⭐ ほしぞら かんさつ</div></div>
+      <div class="talkBubble" style="margin:8px auto 0"><b>${X(g.name||'ハナ')}</b>${X(choice(STAR_LINES))}</div>`,
+    [{label:'もっと 見る ⭐', cls:'gold', v:'more'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
   if(v==='more') return openStarDeck(key);
   if(v==='grade') openBuilding(key);
 }

@@ -560,3 +560,8 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .obsQ61{text-align:center;font-size:18px;letter-spacing:4px;color:#E0A100}
 .cry61b img{width:44px;height:44px}
 .resume61{background:#E8F3FF!important;color:#1C5A99!important}
+/* v6.2 ほしぞら デッキ */
+.star62{position:relative;border-radius:14px;overflow:hidden;line-height:0;box-shadow:0 3px 10px rgba(30,40,90,.35)}
+.star62 img{width:100%;display:block;animation:st62 6s ease-in-out infinite alternate}
+.star62 .st62t{position:absolute;left:50%;top:8px;transform:translateX(-50%);line-height:1.4;background:rgba(255,255,255,.88);color:#3A3F8F;font-weight:900;font-size:13px;border-radius:12px;padding:2px 12px}
+@keyframes st62{from{transform:scale(1)}to{transform:scale(1.06)}}
