@@ -514,3 +514,9 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .ft58{display:flex;gap:8px;align-items:flex-start;border-radius:12px;padding:6px;border:2.5px solid #E8414B;background:#FFF6F6}.ft58.ng{border-color:#4C97FF;background:#F1F7FF}
 .ft58 .ftPic{flex:0 0 74px}.ft58 .ftPic img{width:74px;height:74px;object-fit:contain;background:#fff;border-radius:8px}
 .ft58 b{font-size:13.5px}.ft58 ul{margin:2px 0;padding-left:18px;font-size:12.5px;line-height:1.45}.ft58 small{font-size:11px;color:#7A5A3A}
+
+/* v5.9 しゃかい */
+.fl59w{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.fl59{display:flex;flex-direction:column;align-items:center;gap:2px;border:2.5px solid #E8414B;border-radius:10px;padding:5px;background:#FFF6F6;width:140px}.fl59.ng{border-color:#4C97FF;background:#F1F7FF}
+.fl59 svg{width:110px !important;height:auto !important;max-height:74px;border:1px solid #ddd}.fl59 b{font-size:12.5px}.fl59 small{font-size:10px;color:#7A5A3A;text-align:center}
+.ld59{display:flex;gap:10px;justify-content:center}.ld59 figure{margin:0;text-align:center;border:2.5px solid #E8414B;border-radius:10px;padding:4px;background:#fff}.ld59 figure.ng{border-color:#4C97FF}.ld59 figcaption{font-size:12px;font-weight:800}
