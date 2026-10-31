@@ -612,3 +612,22 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 #ptPill .cryIn65 b{font-size:.8em;color:#5B4BC4}
 @media (max-width:600px){ #ptPill .cryIn65{margin-left:3px;padding:0 6px 0 2px} #ptPill .cryIn65 img{width:16px;height:16px} }
 #townMap.edit .ship65,#townMap.edit .air65,#townMap.edit .airSh65{pointer-events:none;opacity:.45}
+
+/* =====================================================================
+   v6.6 中学地理・元素・1日1回・超レア
+   ===================================================================== */
+.qfig66{display:flex;flex-direction:column;align-items:center;margin:4px auto}
+.qfig66 .wMap,.qfig66 .jpMap{width:100%;max-width:300px;height:auto}
+.chart66{max-width:100%;height:auto;background:#fff;border-radius:8px}
+.lg66{display:flex;gap:10px;justify-content:center;font-size:11px;font-weight:800}.lg66 .t{color:#E8414B}.lg66 .p{color:#1C6AAE}
+.cmp66{display:flex;flex-direction:column;align-items:center;border:2.5px solid #4C97FF;border-radius:10px;padding:4px;background:#F1F7FF}.cmp66 b{font-size:12px;color:#1C6AAE}
+.tiles66{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.tile66.ng66 rect:first-of-type,.mol66.ng66 rect:first-of-type{stroke:#4C97FF;stroke-width:4}
+.tile66:not(.ng66) rect:first-of-type{stroke:#E8414B;stroke-width:4}
+.atomLg66{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font-size:11px;font-weight:800;margin-top:4px}
+.atomLg66 i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1px solid #4A3A2A;margin-right:2px;vertical-align:-1px}
+.done66{background:#E9F8E3;border:2px solid #8FD07A;border-radius:12px;padding:6px 10px;margin:6px auto;max-width:300px;text-align:center;font-weight:900;color:#2E7D32;font-size:14px}
+.done66 small{font-weight:700;color:#4E7A43;font-size:11.5px}
+.done66.big{font-size:20px;padding:12px}
+.abRow.ur66 .abBar i{background:linear-gradient(90deg,#FFD54A,#FF8FB1,#B39DDB,#7FB6E6)!important}
+.abRow.ur66 b{color:#C8901A}
