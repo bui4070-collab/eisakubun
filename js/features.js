@@ -5687,5 +5687,145 @@ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try
 (function(){
 'use strict';
 ['onsen','library','pond','tree','festival'].forEach(k => { DEFAULT_ART['scu_unicorn_'+k] = './assets/images/v69/scu_unicorn_'+k+'.webp'; });
-renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.10.0'; }catch(e){} return o; })(renderSettings);
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.11.0'; }catch(e){} return o; })(renderSettings);
+})();
+
+/* =====================================================================
+   まなびタウン v6.11：元素 118こ（オガネソンまで）・なかまごとの 色分け
+   ※ index.html で features.js の あとに 読みこむ
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.11.0';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const strip = h => String(h||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+const pick4 = (ans, pool) => { const a = String(ans), s = new Set([a]); shuffle(pool.map(String).filter(x => x!==a)).forEach(x => { if(s.size < 4) s.add(x); }); return shuffle([...s]); };
+
+/* ---------- 118この 元素 ---------- */
+const RAW = 'H水素 Heヘリウム Liリチウム Beベリリウム Bホウ素 C炭素 N窒素 O酸素 Fフッ素 Neネオン Naナトリウム Mgマグネシウム Alアルミニウム Siケイ素 Pリン S硫黄 Cl塩素 Arアルゴン Kカリウム Caカルシウム '
+ + 'Scスカンジウム Tiチタン Vバナジウム Crクロム Mnマンガン Fe鉄 Coコバルト Niニッケル Cu銅 Zn亜鉛 Gaガリウム Geゲルマニウム Asヒ素 Seセレン Br臭素 Krクリプトン Rbルビジウム Srストロンチウム Yイットリウム Zrジルコニウム '
+ + 'Nbニオブ Moモリブデン Tcテクネチウム Ruルテニウム Rhロジウム Pdパラジウム Ag銀 Cdカドミウム Inインジウム SnスズSbアンチモン Teテルル Iヨウ素 Xeキセノン Csセシウム Baバリウム Laランタン Ceセリウム Prプラセオジム Ndネオジム '
+ + 'Pmプロメチウム Smサマリウム Euユウロピウム Gdガドリニウム Tbテルビウム Dyジスプロシウム Hoホルミウム Erエルビウム Tmツリウム Ybイッテルビウム Luルテチウム Hfハフニウム Taタンタル Wタングステン Reレニウム Osオスミウム Irイリジウム Pt白金 Au金 Hg水銀 '
+ + 'Tlタリウム Pb鉛 Biビスマス Poポロニウム Atアスタチン Rnラドン Frフランシウム Raラジウム Acアクチニウム Thトリウム Paプロトアクチニウム Uウラン Npネプツニウム Puプルトニウム Amアメリシウム Cmキュリウム Bkバークリウム Cfカリホルニウム Esアインスタイニウム Fmフェルミウム '
+ + 'Mdメンデレビウム Noノーベリウム Lrローレンシウム Rfラザホージウム Dbドブニウム Sgシーボーギウム Bhボーリウム Hsハッシウム Mtマイトネリウム Dsダームスタチウム Rgレントゲニウム Cnコペルニシウム Nhニホニウム Flフレロビウム Mcモスコビウム Lvリバモリウム Tsテネシン Ogオガネソン';
+const ALL = RAW.replace('スズSb','スズ Sb').split(' ').map((t, i) => { const m = t.match(/^([A-Z][a-z]?)(.+)$/); return {s:m[1], n:m[2], z:i+1}; });
+
+/* しゅうき・ぞく（ランタノイド・アクチノイドは 下の 2れつ） */
+function place(z){
+  if(z<=2) return [1, z===1 ? 1 : 18];
+  if(z<=10) return [2, z<=4 ? z-2 : z+8];
+  if(z<=18) return [3, z<=12 ? z-10 : z];
+  if(z<=36) return [4, z-18];
+  if(z<=54) return [5, z-36];
+  if(z<=86) return z<=56 ? [6, z-54] : z<=71 ? [6, null] : [6, z-68];
+  return z<=88 ? [7, z-86] : z<=103 ? [7, null] : [7, z-100];
+}
+/* なかま */
+const CAT = {
+  h:{n:'水素', c:'#D3D6DB'}, alk:{n:'アルカリ金属', c:'#D6B08A'}, noble:{n:'希ガス', c:'#8ED9CF'}, non:{n:'非金属', c:'#A6DE8E'},
+  semi:{n:'半金属', c:'#D7EB7A'}, base:{n:'卑金属', c:'#A9DCF5'}, tr:{n:'遷移金属', c:'#FFE27A'}, lan:{n:'ランタノイド', c:'#FFBF80'}, act:{n:'アクチノイド', c:'#CDB4F2'}
+};
+const SEMI = new Set(['B','Si','Ge','As','Sb','Te','At','Ts']), NON = new Set(['C','N','O','F','P','S','Cl','Se','Br','I']);
+const NOBLE = new Set(['He','Ne','Ar','Kr','Xe','Rn','Og']), ALK = new Set(['Li','Na','K','Rb','Cs','Fr']);
+function catOf(e){
+  if(e.s==='H') return 'h'; if(ALK.has(e.s)) return 'alk'; if(NOBLE.has(e.s)) return 'noble'; if(NON.has(e.s)) return 'non'; if(SEMI.has(e.s)) return 'semi';
+  if(e.z>=57 && e.z<=71) return 'lan'; if(e.z>=89 && e.z<=103) return 'act';
+  if(e.g>=3 && e.g<=12) return 'tr';
+  return 'base';   // アルカリ土類金属・アルミニウム・スズ・鉛など
+}
+const GAS = new Set(['H','He','N','O','F','Ne','Cl','Ar','Kr','Xe','Rn']), LIQ = new Set(['Br','Hg']);
+const OLD = {}; try{ (window.__el66 && window.__el66.EL || []).forEach(r => { OLD[r[0]] = r[7]; }); }catch(e){}
+const NOTE = Object.assign({}, OLD, {
+  Ti:'軽くて じょうぶ。めがねの フレームや 飛行機に 使う', Cr:'さびを ふせぐ めっき（クロムめっき）に 使う', Co:'青い 色の ガラスや 電池に 使う',
+  Kr:'ヘッドライトなどの 電球に 使う 希ガス', Sr:'花火の 赤い 色を 出す', W:'電球の フィラメントに 使われた とけにくい 金属',
+  U:'原子力発電の 燃料', Pu:'原子力に 関係する 人工の 元素', Nh:'日本の 研究チームが 見つけ、日本の 名前が ついた 元素（ニホニウム）',
+  Og:'いまの 周期表で いちばん 最後の 118番の 元素', Ne:'ネオンサインで 赤く 光る', Rn:'放射線を 出す 希ガス。ラドン温泉で 知られる',
+  Li:'スマホの 電池（リチウムイオン電池）に 使う', Ga:'手の 温度でも とける 金属', Nd:'とても 強い じしゃく（ネオジム磁石）に 使う',
+  Eu:'お札の 光る インクに 使われる', Cs:'正確な 時計（原子時計）に 使う', Am:'けむり感知器に 使われることが ある', Ge:'半導体に 使われた 半金属', As:'毒が あることで 知られる 半金属'
+});
+ALL.forEach(e => { const [p, g] = place(e.z); e.p = p; e.g = g; e.cat = catOf(e); e.st = GAS.has(e.s) ? '気体' : LIQ.has(e.s) ? '液体' : '固体'; e.note = NOTE[e.s] || ''; });
+const BYS = s => ALL.find(e => e.s===s), BYN = n => ALL.find(e => e.n===n);
+const COMMON = ALL.filter(e => e.z<=36 || ['Ag','Sn','I','Xe','Ba','Pt','Au','Hg','Pb','U','Rn','Cs','Nh','Og','W','Sr'].includes(e.s));
+const posTxt = e => e.g ? `第${e.p}周期・${e.g}族` : `第${e.p}周期（${CAT[e.cat].n}）`;
+
+/* ---------- 絵 ---------- */
+function tileSVG(e, hide, ng){
+  const C = CAT[e.cat];
+  return `<svg class="fig56 tile66 ${ng ? 'ng66' : ''}" viewBox="0 0 120 134" width="120"><rect x="4" y="4" width="112" height="126" rx="12" fill="${C.c}" stroke="${ng ? '#4C97FF' : hide ? '#8A7560' : '#E8414B'}" stroke-width="${hide ? 2.5 : 4}"/>
+    <text x="14" y="26" font-size="16" font-weight="900" fill="#4A3A2A">${e.z}</text>
+    <text x="60" y="78" font-size="${e.s.length>1 ? 40 : 46}" font-weight="900" text-anchor="middle" fill="${hide==='sym' ? '#E8414B' : '#2C2C2C'}">${hide==='sym' ? '？' : e.s}</text>
+    <text x="60" y="104" font-size="${e.n.length>7 ? 11 : e.n.length>5 ? 13 : 15}" font-weight="900" text-anchor="middle" fill="${hide==='name' ? '#E8414B' : '#4A3A2A'}">${hide==='name' ? '？？？' : e.n}</text>
+    <rect x="16" y="111" width="88" height="14" rx="7" fill="rgba(255,255,255,.75)"/><text x="60" y="122" font-size="9.5" font-weight="900" text-anchor="middle" fill="#4A3A2A">${C.n}</text></svg>`;
+}
+function ptSVG(ok, ng, star){
+  const cs = 17, W = 18*cs + 8, fy = 7*cs + 14, H = fy + 2*cs + 34; let g = '';
+  const cell = (e, x, y) => { const isOk = ok && e.s===ok, isNg = ng && e.s===ng;
+    return `<rect x="${x}" y="${y}" width="${cs-1.5}" height="${cs-1.5}" rx="2" fill="${CAT[e.cat].c}" stroke="${isOk ? '#E8414B' : isNg ? '#1C6AAE' : 'rgba(0,0,0,.12)'}" stroke-width="${isOk||isNg ? 2.2 : .6}"/>`
+      + `<text x="${x + cs/2 - .8}" y="${y + cs*.68}" font-size="${e.s.length>1 ? 7 : 8.5}" font-weight="900" text-anchor="middle" fill="#2C2C2C">${star && isOk ? '★' : e.s}</text>`; };
+  ALL.forEach(e => {
+    if(e.g){ g += cell(e, 4 + (e.g-1)*cs, 4 + (e.p-1)*cs); return; }
+    const row = e.p===6 ? 0 : 1, i = e.z - (e.p===6 ? 57 : 89); g += cell(e, 4 + (i+2)*cs, fy + row*cs);
+  });
+  [[6,'lan'],[7,'act']].forEach(([p,k]) => { g += `<rect x="${4+2*cs}" y="${4+(p-1)*cs}" width="${cs-1.5}" height="${cs-1.5}" rx="2" fill="${CAT[k].c}" opacity=".6"/><text x="${4+2.5*cs-.8}" y="${4+(p-1)*cs+cs*.7}" font-size="8" text-anchor="middle" fill="#6B5540">${p===6?'*':'**'}</text>`; });
+  g += `<text x="${4+1.5*cs}" y="${fy+cs*.7}" font-size="8" text-anchor="middle" fill="#6B5540">*</text><text x="${4+1.5*cs}" y="${fy+cs*1.7}" font-size="8" text-anchor="middle" fill="#6B5540">**</text>`;
+  let lx = 4, ly = H - 18;
+  Object.values(CAT).forEach((c, i) => { if(i===5){ lx = 4; ly += 11; } const w = c.n.length*8 + 16; g += `<rect x="${lx}" y="${ly-7}" width="8" height="8" rx="1.5" fill="${c.c}" stroke="rgba(0,0,0,.2)" stroke-width=".5"/><text x="${lx+10}" y="${ly}" font-size="7.5" fill="#4A3A2A">${c.n}</text>`; lx += w; });
+  return `<svg class="fig56 pt66" viewBox="0 0 ${W} ${H}" width="${Math.min(340, W*1.1)}">${g}</svg>`;
+}
+const legendHTML = cats => `<div class="catLg611">${cats.map(k => `<span><i style="background:${CAT[k].c}"></i>${CAT[k].n}</span>`).join('')}</div>`;
+
+/* ---------- 問題 ---------- */
+const pickEl = () => Math.random() < .55 ? choice(ALL) : choice(COMMON);
+function symOpts(e){ const same = ALL.filter(z => z!==e && (z.s[0]===e.s[0] || z.n[0]===e.n[0])); return pick4(e.s, same.length >= 3 ? same.map(z => z.s) : ALL.filter(z => Math.abs(z.z-e.z) <= 6).map(z => z.s)); }
+function nameOpts(e){ const near = ALL.filter(z => z!==e && (z.cat===e.cat || Math.abs(z.z-e.z) <= 4)); return pick4(e.n, near.map(z => z.n)); }
+function el1Gen(){
+  const e = pickEl(), k = rint(0, 4);
+  if(k<=1) return {type:'choice', q:`元素記号 <b>${e.s}</b> は どの 元素？`, ans:e.n, opts:nameOpts(e), disp:tileSVG(e, 'name'), hint:'色で なかまが わかるよ', sub:'e|'+e.s};
+  if(k<=3) return {type:'choice', q:`<b>${e.n}</b> の 元素記号は？`, ans:e.s, opts:symOpts(e), disp:tileSVG(e, 'sym'), hint:'1文字めは 大文字、2文字めは 小文字', sub:'e|'+e.s};
+  return {type:'choice', q:`原子番号 <b>${e.z}</b> の 元素記号は？`, ans:e.s, opts:pick4(e.s, ALL.filter(z => z!==e && Math.abs(z.z-e.z) <= 5).map(z => z.s)), disp:tileSVG(e, 'sym'), hint:'原子番号は 陽子の 数', sub:'e|'+e.s};
+}
+function el2Gen(){
+  const k = rint(0, 6);
+  if(k===0){ const e = Math.random() < .6 ? choice(ALL.filter(z => z.z<=36)) : choice(ALL); return {type:'choice', q:'周期表の ★の 位置に ある 元素は？', ans:e.n, opts:nameOpts(e), disp:ptSVG(e.s, null, true), hint:'たての 列（族）は 性質が にている', sub:'e|'+e.s}; }
+  if(k===1){ const e = choice(ALL.filter(z => z.z<=54)); return {type:'choice', q:`原子番号 <b>${e.z}</b> の 元素は？`, ans:e.n, opts:pick4(e.n, ALL.filter(z => z!==e && Math.abs(z.z-e.z) <= 4).map(z => z.n)), disp:'', hint:'原子番号は 陽子の 数', sub:'e|'+e.s}; }
+  if(k===2){ const e = pickEl(), ans = CAT[e.cat].n; return {type:'choice', q:`<b>${e.n}（${e.s}）</b> は どの なかま？`, ans, opts:pick4(ans, Object.values(CAT).map(c => c.n)), disp:legendHTML(Object.keys(CAT)), hint:'周期表の どこに あるか 考えよう', sub:'e|'+e.s}; }
+  if(k===3){ const c = choice(['alk','noble','non','semi','tr','lan','act','base']), a = choice(ALL.filter(e => e.cat===c)), w = shuffle(ALL.filter(e => e.cat!==c)).slice(0,3);
+    return {type:'choice', q:`次の うち <b>${CAT[c].n}</b> の なかまは？`, ans:a.n, opts:shuffle([a.n].concat(w.map(e => e.n))), disp:legendHTML([c]), hint:'', sub:'e|'+a.s}; }
+  if(k===4){ const gs = choice([['気体','ふつうの 温度（20℃くらい）で <b>気体</b> の 元素は？'],['液体','ふつうの 温度で <b>液体</b> の 元素は？']]), a = choice(ALL.filter(e => e.st===gs[0])), w = shuffle(ALL.filter(e => e.st==='固体' && e.z<=56)).slice(0,3);
+    return {type:'choice', q:gs[1], ans:a.n, opts:shuffle([a.n].concat(w.map(e => e.n))), disp:'', hint:'', sub:'e|'+a.s}; }
+  if(k===5){ const base = choice(ALL.filter(e => e.g && [1,2,17,18,11,14].includes(e.g) && e.z<=54)), same = ALL.filter(e => e.g===base.g && e!==base), a = choice(same), w = shuffle(ALL.filter(e => e.g && e.g!==base.g && e.z<=54)).slice(0,3);
+    return {type:'choice', q:`周期表で <b>${base.n}</b> と 同じ たての 列（族）に ある 元素は？`, ans:a.n, opts:shuffle([a.n].concat(w.map(e => e.n))), disp:'', hint:'同じ 族の 元素は 性質が にている', sub:'e|'+a.s+'|'+base.s}; }
+  const Q = choice([['周期表で、たての 列を 何という？','族','周期/原子番号/分子'],['周期表で、よこの 行を 何という？','周期','族/原子番号/質量'],['周期表は 元素を 何の 順に ならべた もの？','原子番号','名前の あいうえお/発見された 年/重さの 大きい 順'],['周期表を はじめて つくった 科学者は？','メンデレーエフ','メンデル/ニュートン/エジソン'],['希ガス（ヘリウム・ネオンなど）の 性質は？','ほかの 物質と ほとんど 反応しない','水と はげしく 反応する/すべて 液体/じしゃくに つく'],['アルカリ金属（ナトリウムなど）の 性質は？','水と はげしく 反応する','ほとんど 反応しない/すべて 気体/電気を 通さない'],['周期表の 下に 2列 ならんでいる なかまは？','ランタノイドと アクチノイド','希ガスと 非金属/アルカリ金属と 水素/半金属と 卑金属'],['日本の 研究チームが 見つけ、名前を つけた 113番の 元素は？','ニホニウム','オガネソン/テネシン/モスコビウム']]);
+  return {type:'choice', q:Q[0], ans:Q[1], opts:shuffle([Q[1]].concat(Q[2].split('/'))), disp:ptSVG(null,null,false), hint:'', sub:'pt|'};
+}
+function elExp(p, v){
+  const s = String(p.sub||'').split('|'), out = {figs:[], steps:[], tip:'', why:''};
+  if(s[0]==='e'){ const e = BYS(s[1]); if(!e) return null; const ve = v ? (BYN(v) || BYS(v)) : null;
+    out.figs.push(`<div class="tiles66">${tileSVG(e)}${ve && ve!==e ? tileSVG(ve, null, true) : ''}</div>`, ptSVG(e.s, ve && ve!==e ? ve.s : null));
+    out.steps.push(`<b class="okc">${X(e.n)}（${e.s}）</b>：原子番号 ${e.z}・${posTxt(e)}・<b>${CAT[e.cat].n}</b>・ふつうの 温度で ${e.st}`);
+    if(e.note) out.steps.push(X(e.note));
+    if(s[2]){ const b = BYS(s[2]); out.steps.push(`${X(b.n)}（${b.s}）も ${b.g}族。同じ 族は 性質が にているよ`); }
+    if(ve && ve!==e) out.why = `きみが えらんだ「${X(ve.n)}（${ve.s}）」は 原子番号 ${ve.z}・${CAT[ve.cat].n}${ve.note ? '：' + X(ve.note) : ''}`;
+    else if(v && CAT[Object.keys(CAT).find(k => CAT[k].n===v)]) out.why = `「${X(v)}」では なく、${X(e.n)}は ${CAT[e.cat].n}の なかまだよ`;
+    out.tip = '元素記号は 1文字めが 大文字、2文字めが 小文字（例：Na・Cl・Cu）。周期表の 色で なかまを おぼえよう'; return out; }
+  if(s[0]==='pt'){ out.figs.push(ptSVG(null,null,false)); out.steps.push(`<b>${X(strip(p.q))}</b> → <b class="okc">${X(p.ans)}</b>`, '周期表は 原子番号の 順に ならび、たての 列を「族」、よこの 行を「周期」という', '1族（水素いがい）＝アルカリ金属、18族＝希ガス、3〜12族＝遷移金属'); return out; }
+  return null;
+}
+
+/* ---------- とうろく ---------- */
+function setUnit(k, gen){ const U = (window.RI && RI[k]) || MATH_UNITS[k]; if(!U) return; const oldExp = U.exp; U.gen = gen;
+  U.exp = function(p, v){ const r = elExp(p, v); return r || (oldExp ? oldExp(p, v) : null); }; MATH_UNITS[k] = U; }
+setUnit('r_el1', el1Gen); setUnit('r_el2', el2Gen);
+try{ const U3 = MATH_UNITS.r_el3, o3 = U3.exp; U3.exp = function(p, v){ const s = String(p.sub||''); if(s.startsWith('el|')){ const q = Object.assign({}, p, {sub:'e|'+s.split('|')[1]}); return elExp(q, v); } return o3 ? o3(p, v) : null; }; }catch(e){}
+try{ MATH_UNITS.r_el1.n = '元素記号（118こ）'; }catch(e){}
+
+/* ---------- 見た目 ---------- */
+const css = document.createElement('style');
+css.textContent = `.catLg611{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:4px auto;max-width:330px}
+.catLg611 span{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:800;color:#4A3A2A;background:#fff;border-radius:8px;padding:1px 6px}
+.catLg611 i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.2)}
+.tiles66{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.pt66{max-width:100%;height:auto}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__genso611 = {ALL, CAT, tileSVG, ptSVG, el1Gen, el2Gen, elExp};
 })();
