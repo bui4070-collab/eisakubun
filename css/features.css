@@ -631,3 +631,11 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .done66.big{font-size:20px;padding:12px}
 .abRow.ur66 .abBar i{background:linear-gradient(90deg,#FFD54A,#FF8FB1,#B39DDB,#7FB6E6)!important}
 .abRow.ur66 b{color:#C8901A}
+
+/* v6.7 海の 絵・船の 大きさ・ピンチ */
+#townMap .seaCv67{position:absolute;z-index:0;pointer-events:none;image-rendering:auto}
+#townMap .cell.sea65,#townMap .cell.harbor65{background:none!important}
+#townMap .ship65{display:block}
+#townMap .ship65 img,#townMap .air65 img{width:100%!important;height:100%!important;object-fit:contain}
+#townMap .ship65 .wake65{display:none}
+#townWorld{touch-action:pan-x pan-y}

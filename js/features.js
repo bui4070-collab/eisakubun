@@ -4549,7 +4549,7 @@ async function openObservatory(key){
   const L = shuffle(starPool().slice()).slice(0, 3);
   for(let i=0; i<3; i++){
     const [u, r] = L[i], opts = shuffle(r.slice(1));
-    const m = {html:`<div class="obsQ61">${'⭐'.repeat(i+1)}${'☆'.repeat(2-i)}</div><div class="mqSent">${X(r[0])}</div>`, ans:r[1], opts, key:'obs|'+r[0]};
+    const m = {html:`<div class="obsQ61">${'⭐'.repeat(i+1)}${'☆'.repeat(2-i)}</div><div class="mqSent math">${X(r[0])}</div>`, ans:r[1], opts, key:'obs|'+r[0]};
     const res = await askMQ(m, `<b>🔭 ほしの クイズ（${i+1}/3）</b>`);
     if(!res.ok){
       let ex = ''; try{ ex = window.__explain56 ? window.__explain56({u, type:'choice', q:r[0], ans:r[1], sub:r[0], opts}, '', {}) : ''; }catch(e){}
@@ -4690,7 +4690,7 @@ function qChallenge(o){
     const L = shuffle(o.bank.slice()).slice(0, 3);
     for(let i=0; i<3; i++){
       const r = L[i], opts = shuffle(r.slice(1, 5));
-      const res = await askMQ({html:`<div class="obsQ61">${o.icon.repeat(i+1)}${'・'.repeat(2-i)}</div><div class="mqSent">${X(r[0])}</div>`, ans:r[1], opts, key:o.save+'|'+r[0]}, `<b>${o.icon} ${X(o.qname)}（${i+1}/3）</b>`);
+      const res = await askMQ({html:`<div class="obsQ61">${o.icon.repeat(i+1)}${'・'.repeat(2-i)}</div><div class="mqSent math">${X(r[0])}</div>`, ans:r[1], opts, key:o.save+'|'+r[0]}, `<b>${o.icon} ${X(o.qname)}（${i+1}/3）</b>`);
       if(!res.ok){
         await dialog(`<h2 class="dlgT">おしい！ ${i}もん れんぞく</h2><div class="ex56"><div class="ex56Ans"><span class="ok">⭕ 正しい こたえ <b>${X(r[1])}</b></span></div><ol class="ex56Steps"><li>${X(r[5])}</li></ol></div>`, [{label:'また ちょうせんする', cls:'gold', v:1}], 'wide');
         return;
@@ -4992,9 +4992,46 @@ function drawSea(){
   Object.entries(save.town.cells).forEach(([k,id]) => {
     if(id!==SEA && id!==HARBOR) return; const [x,y] = k.split(',').map(Number), c = cellAt(x,y); if(!c) return;
     c.querySelectorAll('.bimg,.sea65svg,.hb65').forEach(e => e.remove()); c.style.zIndex = 1;
-    if(id===SEA){ const d = DEPTH[k], S = seaStyle(x,y,d); c.classList.add('sea65', d===1 ? 'beach65' : 'water65'); c.style.cssText += S.bg; c.insertAdjacentHTML('afterbegin', seaDeco(x,y,d,S.foam)); }
-    else { c.classList.add('harbor65'); c.style.backgroundColor = hex(C.sand); c.insertAdjacentHTML('afterbegin', `<img class="hb65" src="${X(artSrc('harbor_top'))}" alt="" style="${harborStyle(x,y)}">`); }
+    if(id===SEA){ const d = DEPTH[k]; c.classList.add('sea65', d===1 ? 'beach65' : 'water65'); c.insertAdjacentHTML('afterbegin', seaDeco(x,y,d,[])); }
+    else { c.classList.add('harbor65'); c.insertAdjacentHTML('afterbegin', `<img class="hb65" src="${X(artSrc('harbor_top'))}" alt="" style="${harborStyle(x,y)}">`); }
   });
+  seaCanvas(map);
+}
+/* v6.7：海を 1まいの 絵として かく（マスの つなぎめが 出ない・しぜんな グラデーション） */
+function seaCanvas(map){
+  map.querySelectorAll('.seaCv67').forEach(e => e.remove());
+  const t = save.town, L = townCalc().L, cells = t.cells;
+  if(!Object.values(cells).some(id => id===SEA)) return;
+  const c0 = map.querySelector('.cell[data-x="0"][data-y="0"]'); if(!c0) return;
+  const cs = c0.offsetWidth, R = 20, W = L.cols*R, H = L.rows*R;
+  const DD = [], MK = [];
+  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ const k = `${x},${y}`, id = cells[k], i = y*L.cols + x;
+    if(id===SEA){ DD[i] = Math.min(5, DEPTH[k]||5); MK[i] = 1; }
+    else if(id===HARBOR){ DD[i] = 2.6; MK[i] = 1; }
+    else if(id===RIVER || id===BRIDGE){ DD[i] = 2.6; MK[i] = 0; }
+    else { DD[i] = 0; MK[i] = 0; } }
+  const at = (A, x, y) => A[Math.max(0, Math.min(L.rows-1, y))*L.cols + Math.max(0, Math.min(L.cols-1, x))];
+  const bil = (A, u, v) => { const x = u - .5, y = v - .5, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+    return (at(A,x0,y0)*(1-fx) + at(A,x0+1,y0)*fx)*(1-fy) + (at(A,x0,y0+1)*(1-fx) + at(A,x0+1,y0+1)*fx)*fy; };
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.className = 'seaCv67';
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(W, H), D = img.data;
+  const SAND = [243,226,172], WET = [222,204,150], SHAL = [124,214,222], MID = [74,184,226], DEEP = [40,132,200], FOAM = [255,255,255];
+  const mixc = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+  const sst = (a, b, x) => { const t = Math.max(0, Math.min(1, (x-a)/(b-a))); return t*t*(3-2*t); };
+  for(let py=0; py<H; py++) for(let px=0; px<W; px++){
+    const u = (px+.5)/R, v = (py+.5)/R, m = bil(MK, u, v); const o = (py*W + px)*4;
+    const al = sst(.4, .6, m); if(al <= 0){ D[o+3] = 0; continue; }
+    const dd = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9);
+    let c;
+    if(dd < 1.32) c = mixc(SAND, WET, sst(1.1, 1.32, dd));
+    else if(dd < 1.62){ c = mixc(WET, SHAL, sst(1.38, 1.62, dd)); const f = 1 - Math.abs(dd - 1.42)/.06; if(f > 0) c = mixc(c, FOAM, Math.min(.9, f)); }
+    else if(dd < 2.6) c = mixc(SHAL, MID, sst(1.62, 2.6, dd));
+    else c = mixc(MID, DEEP, sst(2.6, 4.5, dd));
+    D[o] = c[0]; D[o+1] = c[1]; D[o+2] = c[2]; D[o+3] = Math.round(al*255);
+  }
+  ctx.putImageData(img, 0, 0);
+  Object.assign(cv.style, {left:c0.offsetLeft+'px', top:c0.offsetTop+'px', width:(L.cols*cs)+'px', height:(L.rows*cs)+'px'});
+  map.insertBefore(cv, map.firstChild);
 }
 
 /* ---------- はしの ゆか（船が 下を くぐる） ---------- */
@@ -5012,7 +5049,7 @@ function cellXY(x, y){ const map = $('#townMap'), c = map && map.querySelector(`
 function placeMover(m, instant){
   const p = cellXY(m.x, m.y); if(!p || !m.el) return; const [px,py,cs] = p;
   if(instant) m.el.style.transition = 'none';
-  m.el.style.left = px + 'px'; m.el.style.top = py + 'px'; m.el.style.height = Math.round(cs * m.h) + 'px';
+  const hh = Math.round(cs * m.h); m.el.style.left = px + 'px'; m.el.style.top = py + 'px'; m.el.style.height = hh + 'px'; m.el.style.width = Math.round(hh * (m.ratio || 1.2)) + 'px';
   m.el.style.zIndex = Math.max(m.y, m.py ?? m.y)*10 + 2; m.el.classList.toggle('flip', !!m.flip);
   if(instant){ void m.el.offsetWidth; m.el.style.transition = ''; }
 }
@@ -5022,9 +5059,11 @@ function buildShips(){
   const old = SH.keep || {}; SH.keep = {};
   t.veh.filter(isShip).slice(0, 8).forEach((id, i) => {
     let [x,y] = hb[i % hb.length].split(',').map(Number); const el = document.createElement('button');
-    el.className = 'ship65'; el.dataset.id = id; el.innerHTML = `<img src="${X(artSrc(ITEM(id).art))}" alt=""><i class="wake65"></i>`; map.appendChild(el);
+    el.className = 'ship65'; el.dataset.id = id; el.innerHTML = `<img src="${X(artSrc(ITEM(id).art))}" alt="">`; map.appendChild(el);
     const o = old[id+'#'+i], m = o && water(o.x, o.y) ? Object.assign(o, {el, py:o.y}) : {id, x, y, px:x, py:y, dx:0, dy:0, h:ITEM(id).ship, el, wait:i*2};
     SH.keep[id+'#'+i] = m; SH.list.push(m); placeMover(m, true);
+    const im = el.querySelector('img'), fit = () => { if(im.naturalWidth){ m.ratio = im.naturalWidth / im.naturalHeight; placeMover(m, true); } };
+    if(im.complete) fit(); else im.onload = fit;
   });
 }
 function stepShips(){
@@ -5055,6 +5094,7 @@ function buildAir(){
     const k = id+'#'+i, o = old[k]; delete old[k];
     const a = o || {id, kind}; Object.assign(a, {hx:hx + (kind==='plane' ? 1 : 0), hy:hy + (kind==='plane' ? 1 : 0), el, sh});
     AIR.keep[k] = a; AIR.list.push(a);
+    { const im = el.querySelector('img'), fit = () => { if(im.naturalWidth){ a.ratio = im.naturalWidth / im.naturalHeight; if(a.last) airPos(a, ...a.last, 0); } }; if(im.complete) fit(); else im.onload = fit; }
     if(o && o.last){ if(o.fly) el.classList.add('fly'); if(o.flip) el.classList.add('flip'); airPos(a, ...o.last, 0); }
     else { airHome(a, true); a.to = setTimeout(() => airGo(a), 2500 + i*4000); }
   });
@@ -5065,7 +5105,7 @@ function airPos(a, gx, gy, alt, dur){
   const cs = cellSize(), x = gx*cs + cs/2, y = gy*cs + cs*0.6;
   a.el.style.transition = dur ? `left ${dur}ms ease-in-out, top ${dur}ms ease-in-out, transform ${dur}ms ease-in-out` : 'none';
   a.sh.style.transition = a.el.style.transition;
-  a.el.style.left = x + 'px'; a.el.style.top = (y - alt*cs) + 'px'; a.el.style.height = Math.round(cs * (a.kind==='plane' ? .95 : .7) * (1 + alt*.25)) + 'px';
+  const ah = Math.round(cs * (a.kind==='plane' ? .95 : .7) * (1 + alt*.25)); a.el.style.left = x + 'px'; a.el.style.top = (y - alt*cs) + 'px'; a.el.style.height = ah + 'px'; a.el.style.width = Math.round(ah * (a.ratio || 1.1)) + 'px';
   a.sh.style.left = x + 'px'; a.sh.style.top = y + 'px'; a.sh.style.width = Math.round(cs*(a.kind==='plane' ? .8 : .55)) + 'px'; a.sh.style.opacity = alt ? .22 : .32;
 }
 function airHome(a, instant){ a.el.classList.remove('fly'); airPos(a, a.hx, a.hy, 0, instant ? 0 : 2600); }
@@ -5555,4 +5595,54 @@ try{ upgradeUR(); }catch(e){}
 show = (orig => function(name){ const o = orig.apply(this, arguments); if(name==='town' || name==='residents') try{ upgradeUR(); }catch(e){} return o; })(show);
 
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER66}`; }catch(e){} return o; })(renderSettings);
+})();
+
+/* =====================================================================
+   まなびタウン v6.7：まちを 2本ゆびで ひろげる・ちぢめる（ピンチ）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER67 = '6.7.0', ZMIN = 0.35, ZMAX = 2;
+const P = {on:false, d0:0, z0:1, cx:0, cy:0, sx:0, sy:0, scale:1};
+const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+const wrap = () => $('#townMapWrap'), world = () => $('#townWorld');
+function start(e){
+  if(curScreen!=='town' || e.touches.length!==2) return;
+  const w = wrap(), wo = world(); if(!w || !wo) return;
+  e.preventDefault();
+  const r = wo.getBoundingClientRect();
+  P.on = true; P.d0 = dist(e.touches); P.z0 = save.town.zoom || 1; P.scale = 1;
+  P.cx = (e.touches[0].clientX + e.touches[1].clientX)/2; P.cy = (e.touches[0].clientY + e.touches[1].clientY)/2;
+  P.ox = (P.cx - r.left) / r.width; P.oy = (P.cy - r.top) / r.height;           // ゆびの まんなかが まちの どこか（わりあい）
+  wo.style.transformOrigin = `${(P.cx - r.left)}px ${(P.cy - r.top)}px`;
+  wo.style.willChange = 'transform';
+}
+function move(e){
+  if(!P.on || e.touches.length!==2) return;
+  e.preventDefault();
+  const z = Math.max(ZMIN, Math.min(ZMAX, P.z0 * dist(e.touches) / P.d0));
+  P.scale = z / P.z0; world().style.transform = `scale(${P.scale})`;
+}
+function end(e){
+  if(!P.on || (e.touches && e.touches.length >= 2)) return;
+  P.on = false; const wo = world(), z = Math.round(Math.max(ZMIN, Math.min(ZMAX, P.z0 * P.scale)) * 100) / 100;
+  wo.style.transform = ''; wo.style.transformOrigin = ''; wo.style.willChange = '';
+  if(Math.abs(z - P.z0) < 0.02) return;
+  save.town.zoom = z; persist(); renderMap();
+  /* ゆびの まんなかに あった ところが おなじ ばしょに くるように スクロール */
+  requestAnimationFrame(() => { const r = wo.getBoundingClientRect(), w = wrap();
+    const dx = (r.left + P.ox * r.width) - P.cx, dy = (r.top + P.oy * r.height) - P.cy;
+    if(w) w.scrollLeft += dx; window.scrollBy(0, dy); });
+  toast(`🔍 ${Math.round(z*100)}%`);
+}
+document.addEventListener('touchstart', e => { if(e.target.closest && e.target.closest('#townMapWrap')) start(e); }, {passive:false});
+document.addEventListener('touchmove', e => { if(P.on) move(e); }, {passive:false});
+document.addEventListener('touchend', end, {passive:true});
+document.addEventListener('touchcancel', end, {passive:true});
+['gesturestart','gesturechange'].forEach(n => document.addEventListener(n, e => { if(curScreen==='town') e.preventDefault(); }, {passive:false}));
+/* ＋－ボタンも おなじ はんいに */
+setZoom = function(z){ save.town.zoom = Math.max(ZMIN, Math.min(ZMAX, Math.round(z*100)/100)); persist(); renderMap(); };
+try{ const sm = $('.zoomBar small'); if(sm) sm.textContent = '2本ゆびで ひろげたり ちぢめたり できるよ'; }catch(e){}
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER67}`; }catch(e){} return o; })(renderSettings);
+window.__v67 = {P};
 })();
