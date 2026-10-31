@@ -571,3 +571,9 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .ex63 button:disabled{opacity:.45}.ex63 img{width:56px;height:56px;object-fit:contain}.ex63 b{font-size:13px}.ex63 small{font-size:11px;color:#5B4BC4;font-weight:800}.ex63 em{font-style:normal;font-size:10px;color:#8A7560}
 .ctGlow63 img{filter:drop-shadow(0 0 12px #B9A8FF)}
 .cry61b{cursor:pointer}
+/* v6.4 大きな たてもの */
+#townMap .cell.big64 .bimg{left:-4%;width:calc(108% * var(--bw));bottom:calc(2% - (var(--bh) - 1) * 100%);max-width:none}
+#townMap.edit .cell.big64::after,#townMap.edit .cell.cov64::after{content:"";position:absolute;inset:2px;border:2.5px dashed rgba(255,150,40,.95);background:rgba(255,190,90,.18);border-radius:6px;pointer-events:none;z-index:1}
+.big64List{list-style:none;padding:0;margin:6px 0;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.big64List li{width:96px;display:flex;flex-direction:column;align-items:center;background:#FFF8EA;border:2px solid #F4D58D;border-radius:12px;padding:4px}
+.big64List li img{width:60px;height:60px;object-fit:contain}.big64List li b{font-size:11.5px}.big64List li small{font-size:10px;color:#8A7560}

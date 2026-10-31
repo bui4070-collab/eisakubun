@@ -4779,3 +4779,112 @@ renderResidents = (orig => function(){ const o = orig.apply(this, arguments); tr
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER63}`; }catch(e){} return o; })(renderSettings);
 window.__v63 = {openZoo, openAqua, openCrystalTower, openTea, openShima, openExchange};
 })();
+
+/* =====================================================================
+   まなびタウン v6.4：2マス・4マスの 大きな たてもの
+   ・どうぶつえん・すいぞくかん・ゆうえんち・くうこう・スタジアム・おしろ・うちゅうセンター は 2×2マス
+   ・ランドマークタワー・デパート は 2×1マス
+   ・Lv12から 大きな たてものを 8しゅるい ついか
+   ・まえから おいてあった たてものは いちど トレイに しまう（★グレードは のこる）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER64 = '6.4.0', IMG = './assets/images/v64/';
+const SZ = {zoo:[2,2], aquarium:[2,2], ferris:[2,2], airport:[2,2], stadium:[2,2], castle:[2,2], space:[2,2], landmark:[2,1], dept:[2,1]};
+const NEW = [
+  {id:'bg_hospital',   name:'そうごう びょういん', emoji:'🏥', lv:12, price:16000, dev:240, income:60,  sz:[2,1], info:'たくさんの おいしゃさんが いる 大きな びょういん。'},
+  {id:'bg_university', name:'だいがく',           emoji:'🎓', lv:12, price:20000, dev:280, know:0.10, sz:[2,2], info:'いろいろな ことを ふかく まなべる ところ。ちしきが ぐんと ふえる。'},
+  {id:'bg_science',    name:'かがくかん',         emoji:'🚀', lv:13, price:22000, dev:300, know:0.08, sz:[2,1], info:'プラネタリウムや ロケットの もけいが ある。'},
+  {id:'bg_botanical',  name:'しょくぶつえん',     emoji:'🌺', lv:13, price:24000, dev:320, pop:0.04,  sz:[2,2], info:'ガラスの おんしつで せかいの しょくぶつが そだつ。'},
+  {id:'bg_onsen',      name:'おんせん りょかん',  emoji:'♨️', lv:14, price:26000, dev:330, income:120, pop:0.03, sz:[2,1], info:'ろてんぶろが ある おやど。かんこうきゃくに 大人気。'},
+  {id:'bg_mall',       name:'ショッピングモール', emoji:'🛍️', lv:14, price:30000, dev:360, income:180, sz:[2,2], info:'たくさんの お店が あつまった 大きな しょうてんがい。'},
+  {id:'bg_concert',    name:'コンサートホール',   emoji:'🎼', lv:15, price:32000, dev:380, pop:0.05,  sz:[2,1], info:'すてきな おんがくが ひびく ホール。'},
+  {id:'bg_plaza',      name:'ふんすい ひろば',    emoji:'⛲', lv:15, price:28000, dev:350, pop:0.03,  sz:[2,2], info:'大きな ふんすいの ある まちの まんなかの ひろば。'}
+];
+const rate = () => { try{ return window.__v56 ? window.__v56.inflRate() : 1; }catch(e){ return 1; } };
+NEW.forEach(n => {
+  DEFAULT_ART[n.id] = IMG + n.id + '.webp';
+  if(TOWN_ITEMS.some(x => x.id===n.id)) return;
+  const it = Object.assign({type:'bld', cat:'bld', art:n.id}, n); delete it.info;
+  it.price0 = n.price; it.price = Math.round(n.price * rate() / 50) * 50;
+  TOWN_ITEMS.push(it);
+  try{ ZUKAN_INFO[n.id] = n.info; }catch(e){}
+});
+Object.entries(SZ).forEach(([id, s]) => { const it = ITEM(id); if(it) it.sz = s; });
+const sz = id => { const it = id && ITEM(id); return it && it.sz ? it.sz : null; };
+window.__big64 = {SZ, NEW, sz};
+
+/* ---------- おおきさの マス ---------- */
+let COV = {};
+function covMap(){
+  const m = {}, t = save.town; if(!t) return m;
+  Object.entries(t.cells).forEach(([k, id]) => { const s = sz(id); if(!s) return; const [x, y] = k.split(',').map(Number);
+    for(let dy=0; dy<s[1]; dy++) for(let dx=0; dx<s[0]; dx++) if(dx || dy) m[`${x+dx},${y+dy}`] = k; });
+  return m;
+}
+const _isWalk64 = isWalk;
+isWalk = function(x, y){ return _isWalk64(x, y) && !COV[`${x},${y}`]; };
+
+/* ---------- まえから おいてあった たてもの → トレイへ ---------- */
+function migrate(){
+  const t = save.town; if(!t || t.big64) return;
+  const moved = [];
+  Object.keys(t.cells).forEach(k => { const id = t.cells[k]; if(!SZ[id]) return;
+    t.inv[id] = (t.inv[id]||0) + 1;
+    const g = (t.glv||{})[k]; if(g){ t.glvKeep = t.glvKeep || {}; (t.glvKeep[id] = t.glvKeep[id] || []).push(g); delete t.glv[k]; }
+    delete t.cells[k]; moved.push(id); });
+  t.big64 = 1; if(moved.length) t.big64msg = moved; persist();
+}
+async function notice(){
+  const t = save.town; if(!t || !t.big64msg || $('#dlg').classList.contains('show')) return;
+  const L = t.big64msg; delete t.big64msg; persist();
+  const names = [...new Set(L)].map(id => { const it = ITEM(id), s = sz(id); return `<li>${picHTML(it)}<b>${esc(it.name)}</b><small>${s[0]}×${s[1]}マス</small></li>`; }).join('');
+  await dialog(`<h2 class="dlgT">📐 大きな たてものが できたよ！</h2>
+    <p class="dlgP">アップデートで、つぎの たてものが <b>2マスや 4マスの 大きな たてもの</b>に なったよ。<br>おいてあった たてものは いちど <b>トレイ（もようがえ）</b>に しまったので、ひろい ところに おきなおしてね。</p>
+    <ul class="big64List">${names}</ul>
+    <p class="dlgP facNote">★グレードは そのまま のこっているよ。おきなおすと もとに もどるよ。<br>まちLv12からは あたらしい 大きな たてものも かえるように なるよ！</p>`, [{label:'わかった！', cls:'gold', v:1}], 'wide');
+}
+
+/* ---------- まちの 表示 ---------- */
+renderMap = (orig => function(){
+  migrate(); COV = covMap();
+  const o = orig.apply(this, arguments);
+  try{
+    const t = save.town, map = $('#townMap'), cols = townCalc().L.cols, kids = map.children;
+    const cellAt = (x, y) => { const c = kids[y*cols + x]; return c && c.classList.contains('cell') && c.style.getPropertyValue('--cx')==String(x) ? c : map.querySelector(`.cell[style*="--cx:${x};--cy:${y};"]`); };
+    Object.entries(t.cells).forEach(([k, id]) => { const s = sz(id); if(!s) return; const [x, y] = k.split(',').map(Number), c = cellAt(x, y); if(!c) return;
+      c.classList.add('big64'); c.style.setProperty('--bw', s[0]); c.style.setProperty('--bh', s[1]); c.style.zIndex = (y + s[1] - 1)*10 + 3; });
+    Object.entries(COV).forEach(([ck, ak]) => { const [x, y] = ck.split(',').map(Number), c = cellAt(x, y); if(!c) return; const [ax, ay] = ak.split(',');
+      c.classList.add('cov64'); c.dataset.x = ax; c.dataset.y = ay; c.innerHTML = ''; });
+  }catch(e){ console.warn(e); }
+  return o;
+})(renderMap);
+
+/* ---------- おくとき：ぜんぶの マスが あいているか ---------- */
+window.addEventListener('click', e => {
+  if(!townEdit || !hand) return;
+  const c = e.target.closest('#townMap .cell'); if(!c) return;
+  const s = sz(hand.id); if(!s) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const t = save.town, L = townCalc().L, x = +c.dataset.x, y = +c.dataset.y, key = `${x},${y}`, it = ITEM(hand.id);
+  for(let dy=0; dy<s[1]; dy++) for(let dx=0; dx<s[0]; dx++){
+    const nx = x+dx, ny = y+dy, k = `${nx},${ny}`;
+    if(nx >= L.cols || ny >= L.rows){ toast(`📐 ${it.name}は ${s[0]}×${s[1]}マス。はみだしちゃうよ（タッチした マスが 左上に なるよ）`); return; }
+    if(t.cells[k] || COV[k]){ toast(`📐 ${it.name}は ${s[0]}×${s[1]}マス あいている ところに おいてね（タッチした マスが 左上）`); return; }
+  }
+  t.cells[key] = hand.id; sound('tap');
+  if(hand.from==='map'){ if(t.glv && t.glv[hand.key]){ t.glv[key] = t.glv[hand.key]; delete t.glv[hand.key]; } hand = null; }
+  else {
+    const K = t.glvKeep && t.glvKeep[hand.id]; if(K && K.length){ t.glv = t.glv || {}; t.glv[key] = K.shift(); if(!K.length) delete t.glvKeep[hand.id]; }
+    t.inv[hand.id]--; if(t.inv[hand.id] <= 0){ delete t.inv[hand.id]; hand = null; }
+  }
+  persist(); renderTown();
+}, true);
+
+/* ---------- せつめい ---------- */
+itemEffect = (orig => function(it){ const s0 = orig.apply(this, arguments), s = it && it.sz; return s ? `📐 ${s[0]}×${s[1]}マス・${s0}` : s0; })(itemEffect);
+show = (orig => function(name){ const o = orig.apply(this, arguments); if(name==='town') setTimeout(() => { try{ migrate(); notice(); }catch(e){} }, 600); return o; })(show);
+try{ migrate(); }catch(e){}
+setInterval(() => { if(curScreen==='town' && save.town && save.town.big64msg && !document.hidden) notice(); }, 3000);
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER64}`; }catch(e){} return o; })(renderSettings);
+})();
