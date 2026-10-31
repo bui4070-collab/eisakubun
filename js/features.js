@@ -5015,8 +5015,16 @@ function seaCanvas(map){
   for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ const k = `${x},${y}`, id = cells[k], i = y*L.cols + x;
     if(id===SEA){ DD[i] = Math.min(5, DEPTH[k]||5); MK[i] = 1; }
     else if(id===HARBOR){ DD[i] = 2.05; MK[i] = 1; }
-    else if(id===RIVER || id===BRIDGE){ DD[i] = 2.6; MK[i] = 0; }
+    else if(id===RIVER || id===BRIDGE){ DD[i] = 2.0; MK[i] = 0; }
     else { DD[i] = 0; MK[i] = 0; } }
+  /* v6.12：川が 海に そそぐ 河口（かこう）：川の はばから 海へ ひろがりながら 色が かわる */
+  const MOUTH = {};
+  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ const id = cells[`${x},${y}`]; if(id!==RIVER && id!==BRIDGE) continue;
+    const d = [[0,1],[1,0],[0,-1],[-1,0]].find(([dx,dy]) => cells[`${x+dx},${y+dy}`]===SEA); if(!d) continue;
+    const isW = (a,b) => [RIVER,BRIDGE,HARBOR].includes(cells[`${a},${b}`]);
+    const nb = [[0,1],[1,0],[0,-1],[-1,0]].filter(([dx,dy]) => isW(x+dx,y+dy)).length;
+    if(isW(x-d[0], y-d[1]) || nb <= 1) MOUTH[y*L.cols + x] = d; }
+  window.__mouth612 = MOUTH;
   const at = (A, x, y) => A[Math.max(0, Math.min(L.rows-1, y))*L.cols + Math.max(0, Math.min(L.cols-1, x))];
   const bil = (A, u, v) => { const x = u - .5, y = v - .5, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
     return (at(A,x0,y0)*(1-fx) + at(A,x0+1,y0)*fx)*(1-fy) + (at(A,x0,y0+1)*(1-fx) + at(A,x0+1,y0+1)*fx)*fy; };
@@ -5025,8 +5033,18 @@ function seaCanvas(map){
   const SAND = [243,226,172], WET = [222,204,150], SHAL = [124,214,222], MID = [74,184,226], DEEP = [40,132,200], FOAM = [255,255,255];
   const mixc = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
   const sst = (a, b, x) => { const t = Math.max(0, Math.min(1, (x-a)/(b-a))); return t*t*(3-2*t); };
+  const RIVW = [138,211,243], BANK = [230,214,162], END = mixc(SHAL, MID, sst(1.62, 2.6, 2.0));
   for(let py=0; py<H; py++) for(let px=0; px<W; px++){
-    const u = bx0 + (px+.5)/R, v = by0 + (py+.5)/R, m = bil(MK, u, v); const o = (py*W + px)*4;
+    const u = bx0 + (px+.5)/R, v = by0 + (py+.5)/R; const o = (py*W + px)*4;
+    const cx = Math.floor(u), cy = Math.floor(v), MD = MOUTH[cy*L.cols + cx];
+    if(MD){ const fx = u - cx, fy = v - cy, [mx,my] = MD;
+      const tt = mx===1 ? fx : mx===-1 ? 1-fx : my===1 ? fy : 1-fy, sa = Math.abs((mx ? fy : fx) - .5);
+      const k = sst(.35, 1, tt), wH = .27 + .25*k*k, bH = wH + .06*(1 - k);
+      if(sa >= bH + .04){ D[o+3] = 0; continue; }
+      const wat = 1 - sst(wH - .05, wH + .01, sa), cw = mixc(RIVW, END, sst(.2, 1, tt)), cb = mixc(BANK, SAND, k);
+      const c = mixc(cb, cw, wat), al = 1 - sst(bH - .02, bH + .04, sa);
+      D[o] = c[0]; D[o+1] = c[1]; D[o+2] = c[2]; D[o+3] = Math.round(al*255); continue; }
+    const m = bil(MK, u, v);
     const al = sst(.4, .6, m); if(al <= 0){ D[o+3] = 0; continue; }
     const dd = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9);
     let c;
@@ -5037,6 +5055,9 @@ function seaCanvas(map){
     D[o] = c[0]; D[o+1] = c[1]; D[o+2] = c[2]; D[o+3] = Math.round(al*255);
   }
   ctx.putImageData(img, 0, 0);
+  Object.entries(MOUTH).forEach(([i, [mx,my]]) => { const x = i % L.cols, y = Math.floor(i / L.cols), cc = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]:not(.cov64)`); if(!cc) return;
+    const dir = mx===1 ? 'to left' : mx===-1 ? 'to right' : my===1 ? 'to top' : 'to bottom', mk = `linear-gradient(${dir}, transparent 0%, transparent 38%, #000 82%)`;
+    cc.querySelectorAll('.rv52').forEach(e => { e.style.webkitMaskImage = mk; e.style.maskImage = mk; }); });
   Object.assign(cv.style, {left:(c0.offsetLeft + (bx0-ax)*cs)+'px', top:(c0.offsetTop + (by0-ay)*cs)+'px', width:((bx1-bx0+1)*cs)+'px', height:((by1-by0+1)*cs)+'px'});
   map.insertBefore(cv, map.firstChild);
 }
@@ -5828,4 +5849,53 @@ css.textContent = `.catLg611{display:flex;flex-wrap:wrap;gap:5px;justify-content
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 window.__genso611 = {ALL, CAT, tileSVG, ptSVG, el1Gen, el2Gen, elExp};
+})();
+
+/* =====================================================================
+   まなびタウン v6.12
+   ・お店の 品ぞろえを 総点検（その お店らしい ものだけ）
+   ・コンビニの 食べものを イラストに
+   ・パーキングに 船・ひこうきが とまらない
+   ・たてものの 上の アイコン：じどう／表示／非表示
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.12.0', I = './assets/images/v612/';
+/* ---------- イラスト ---------- */
+['onigiri','tea','pudding','bento','oden','juice','choco'].forEach(k => { DEFAULT_ART['kb_'+k] = I + 'kb_' + k + '.webp'; });
+DEFAULT_ART.kb_karaage = './assets/images/v48/cm_roast_chicken.webp';
+/* ---------- お店の 品ぞろえ ---------- */
+const BREAD = ['melon','anpan','croissant','curry','choco','sand','baguette','donut','cream','cinna','cake','toast'].filter(id => FD(id));
+SHOP_FOOD.bakery = BREAD;
+SHOP_FOOD.market = (SHOP_FOOD.market || []).filter(id => id!=='f_coffee');
+if(SHOP_FOOD.konbini && FD('f_coffee') && !SHOP_FOOD.konbini.includes('f_coffee')) SHOP_FOOD.konbini.push('f_coffee');
+const NOT_IN = {market:['cf_milk'], konbini:['cf_chicken','cf_pork','cf_beef']};
+catalog = (orig => function(b){ const L = orig.apply(this, arguments); const ng = NOT_IN[b]; return ng ? L.filter(c => !ng.includes(c.id)) : L; })(catalog);
+/* ---------- パーキング ---------- */
+function cleanLots(){ try{ const P = (save.fac||{}).parking || {}; let ch = false; Object.keys(P).forEach(k => { const it = ITEM(P[k].v); if(it && (it.ship || it.air)){ delete P[k]; ch = true; } }); if(ch) persist(); }catch(e){} }
+cleanLots();
+/* ---------- アイコンの 表示 ---------- */
+const ICON_CS = 44;                                     // これより マスが 小さいと「じどう」で かくす
+const mode = () => (save.settings && save.settings.icon612) || 'auto';
+const MODES = {auto:['🏷','じどう'], on:['🏷','表示'], off:['🚫','非表示']};
+function iconsHidden(){ const m = mode(); if(m==='on') return false; if(m==='off') return true; try{ return cellSize() < ICON_CS; }catch(e){ return false; } }
+function applyIcons(){
+  const map = $('#townMap'); if(!map) return; map.classList.toggle('noIcon612', iconsHidden());
+  const bar = $('.zoomBar'); if(!bar) return; let b = bar.querySelector('.icBtn612');
+  if(!b){ bar.insertAdjacentHTML('beforeend', '<button class="roundBtn icBtn612" type="button"></button>'); b = bar.querySelector('.icBtn612'); }
+  const [ic, n] = MODES[mode()]; b.innerHTML = `${ic}<small>アイコン<br>${n}</small>`; b.classList.toggle('hid', iconsHidden());
+}
+document.addEventListener('click', e => { if(!e.target.closest('.icBtn612')) return; e.stopImmediatePropagation(); e.preventDefault();
+  save.settings = save.settings || {}; const order = ['auto','on','off'], m = order[(order.indexOf(mode()) + 1) % 3]; save.settings.icon612 = m; persist(); applyIcons(); sound('tap');
+  toast(m==='auto' ? '🏷 アイコン：じどう（ちいさく 見る ときは かくす）' : m==='on' ? '🏷 アイコン：いつも 表示' : '🚫 アイコン：いつも 非表示'); }, true);
+renderMap = (orig => function(){ const o = orig.apply(this, arguments); try{ applyIcons(); cleanLots(); }catch(e){} return o; })(renderMap);
+setTimeout(() => { try{ applyIcons(); }catch(e){} }, 800);
+const css = document.createElement('style');
+css.textContent = `#townMap.noIcon612 :is(.inHome,.glvBadge,.facOv,.ov61:not(.tentVis61),.ov63,.shopSign,.shopWorker,.reqMark,.facHurt,.wact){display:none!important}
+.zoomBar .icBtn612{width:auto!important;min-width:44px;padding:0 8px!important;display:inline-flex;align-items:center;gap:4px;font-size:15px;line-height:1}
+.zoomBar .icBtn612 small{font-size:9px;font-weight:800;line-height:1.15;text-align:left;color:#6B5540}
+.zoomBar .icBtn612.hid{opacity:.7}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__v612 = {applyIcons, iconsHidden};
 })();

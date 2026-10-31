@@ -172,7 +172,7 @@ async function openSchool(key){
 /* =====================================================================
    パーキング：たまに 車が とまりに 来る
    ===================================================================== */
-const guestCars = () => TOWN_ITEMS.filter(it => it.type==='veh' && it.art && (it.lv||1) <= save.town.lv + 3 && !['bicycle','tractor'].includes(it.id));
+const guestCars = () => TOWN_ITEMS.filter(it => it.type==='veh' && it.art && !it.ship && !it.air && (it.lv||1) <= save.town.lv + 3 && !['bicycle','tractor'].includes(it.id));
 function refreshParking(){
   const P = F().parking; let ch = false;
   Object.keys(P).forEach(k => { if(save.town.cells[k]!=='parking' || P[k].until < now()){ delete P[k]; ch = true; } });
