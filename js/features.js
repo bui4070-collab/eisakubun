@@ -5003,8 +5003,14 @@ function seaCanvas(map){
   map.querySelectorAll('.seaCv67').forEach(e => e.remove());
   const t = save.town, L = townCalc().L, cells = t.cells;
   if(!Object.values(cells).some(id => id===SEA)) return;
-  const c0 = map.querySelector('.cell[data-x="0"][data-y="0"]'); if(!c0) return;
-  const cs = c0.offsetWidth, R = 20, W = L.cols*R, H = L.rows*R;
+  /* v6.10：じっさいの 海の マスを きじゅんに 位置を きめる（1マス ずれない）。画面の 細かさに あわせて こまかく かく */
+  const seaKeys = Object.keys(cells).filter(k => cells[k]===SEA), [ax, ay] = seaKeys[0].split(',').map(Number);
+  const c0 = map.querySelector(`.cell[data-x="${ax}"][data-y="${ay}"]:not(.cov64)`); if(!c0) return;
+  const cs = c0.offsetWidth, R = Math.max(24, Math.min(72, Math.round(cs * (window.devicePixelRatio||1))));
+  let bx0 = L.cols, by0 = L.rows, bx1 = 0, by1 = 0;
+  seaKeys.forEach(k => { const [x,y] = k.split(',').map(Number); bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y); });
+  bx0 = Math.max(0, bx0-1); by0 = Math.max(0, by0-1); bx1 = Math.min(L.cols-1, bx1+1); by1 = Math.min(L.rows-1, by1+1);
+  const W = (bx1-bx0+1)*R, H = (by1-by0+1)*R;
   const DD = [], MK = [];
   for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ const k = `${x},${y}`, id = cells[k], i = y*L.cols + x;
     if(id===SEA){ DD[i] = Math.min(5, DEPTH[k]||5); MK[i] = 1; }
@@ -5020,7 +5026,7 @@ function seaCanvas(map){
   const mixc = (a, b, t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
   const sst = (a, b, x) => { const t = Math.max(0, Math.min(1, (x-a)/(b-a))); return t*t*(3-2*t); };
   for(let py=0; py<H; py++) for(let px=0; px<W; px++){
-    const u = (px+.5)/R, v = (py+.5)/R, m = bil(MK, u, v); const o = (py*W + px)*4;
+    const u = bx0 + (px+.5)/R, v = by0 + (py+.5)/R, m = bil(MK, u, v); const o = (py*W + px)*4;
     const al = sst(.4, .6, m); if(al <= 0){ D[o+3] = 0; continue; }
     const dd = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9);
     let c;
@@ -5031,7 +5037,7 @@ function seaCanvas(map){
     D[o] = c[0]; D[o+1] = c[1]; D[o+2] = c[2]; D[o+3] = Math.round(al*255);
   }
   ctx.putImageData(img, 0, 0);
-  Object.assign(cv.style, {left:c0.offsetLeft+'px', top:c0.offsetTop+'px', width:(L.cols*cs)+'px', height:(L.rows*cs)+'px'});
+  Object.assign(cv.style, {left:(c0.offsetLeft + (bx0-ax)*cs)+'px', top:(c0.offsetTop + (by0-ay)*cs)+'px', width:((bx1-bx0+1)*cs)+'px', height:((by1-by0+1)*cs)+'px'});
   map.insertBefore(cv, map.firstChild);
 }
 
@@ -5681,5 +5687,5 @@ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try
 (function(){
 'use strict';
 ['onsen','library','pond','tree','festival'].forEach(k => { DEFAULT_ART['scu_unicorn_'+k] = './assets/images/v69/scu_unicorn_'+k+'.webp'; });
-renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.9.0'; }catch(e){} return o; })(renderSettings);
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.10.0'; }catch(e){} return o; })(renderSettings);
 })();
