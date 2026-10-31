@@ -4982,8 +4982,9 @@ function seaDeco(x, y, d, foam){
 function harborStyle(x, y){
   const t = save.town, L = townCalc().L, m = [];
   const land = (a,b) => a>=0 && b>=0 && a<L.cols && b<L.rows && !isWater(t.cells[`${a},${b}`]);
-  SIDES.forEach(([s,dx,dy,dir]) => { if(land(x+dx,y+dy)) m.push(`linear-gradient(${dir}, transparent 0%, #000 26%)`); });
-  return m.length ? `-webkit-mask-image:${m.join(',')};mask-image:${m.join(',')};-webkit-mask-composite:source-in;mask-composite:intersect;` : '';
+  /* v6.8：海がわも ふちを ぼかして、下に かいた 海と なじませる */
+  SIDES.forEach(([s,dx,dy,dir]) => { m.push(land(x+dx,y+dy) ? `linear-gradient(${dir}, transparent 0%, transparent 6%, #000 30%)` : `linear-gradient(${dir}, transparent 0%, rgba(0,0,0,.35) 9%, #000 22%)`); });
+  return `-webkit-mask-image:${m.join(',')};mask-image:${m.join(',')};-webkit-mask-composite:source-in;mask-composite:intersect;`;
 }
 function drawSea(){
   const map = $('#townMap'); if(!map || !save.town) return;
@@ -5007,7 +5008,7 @@ function seaCanvas(map){
   const DD = [], MK = [];
   for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ const k = `${x},${y}`, id = cells[k], i = y*L.cols + x;
     if(id===SEA){ DD[i] = Math.min(5, DEPTH[k]||5); MK[i] = 1; }
-    else if(id===HARBOR){ DD[i] = 2.6; MK[i] = 1; }
+    else if(id===HARBOR){ DD[i] = 2.05; MK[i] = 1; }
     else if(id===RIVER || id===BRIDGE){ DD[i] = 2.6; MK[i] = 0; }
     else { DD[i] = 0; MK[i] = 0; } }
   const at = (A, x, y) => A[Math.max(0, Math.min(L.rows-1, y))*L.cols + Math.max(0, Math.min(L.cols-1, x))];
@@ -5645,4 +5646,33 @@ setZoom = function(z){ save.town.zoom = Math.max(ZMIN, Math.min(ZMAX, Math.round
 try{ const sm = $('.zoomBar small'); if(sm) sm.textContent = '2本ゆびで ひろげたり ちぢめたり できるよ'; }catch(e){}
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER67}`; }catch(e){} return o; })(renderSettings);
 window.__v67 = {P};
+})();
+
+/* =====================================================================
+   まなびタウン v6.8：高層ビルを 2×1マスに・港を 海に なじませる
+   ===================================================================== */
+(function(){
+'use strict';
+const VER68 = '6.8.0', BIG = {office:[2,1]};
+Object.entries(BIG).forEach(([id, s]) => { const it = ITEM(id); if(it) it.sz = s; try{ window.__big64.SZ[id] = s; }catch(e){} });
+function migrate(){
+  const t = save.town; if(!t || t.big68) return;
+  const moved = [];
+  Object.keys(t.cells).forEach(k => { const id = t.cells[k]; if(!BIG[id]) return;
+    t.inv[id] = (t.inv[id]||0) + 1;
+    const g = (t.glv||{})[k]; if(g){ t.glvKeep = t.glvKeep || {}; (t.glvKeep[id] = t.glvKeep[id] || []).push(g); delete t.glv[k]; }
+    delete t.cells[k]; moved.push(id); });
+  t.big68 = 1; if(moved.length) t.big68msg = moved; persist();
+}
+async function notice(){
+  const t = save.town; if(!t || !t.big68msg || $('#dlg').classList.contains('show')) return;
+  delete t.big68msg; persist(); const it = ITEM('office');
+  await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">🏢 高層ビルが 大きく なったよ！</h2>
+    <p class="dlgP">高層ビルが <b>2×1マス</b>の 大きな たてものに なったよ。<br>おいてあった 高層ビルは いちど <b>トレイ（もようがえ）</b>に しまったので、2マス あいている ところに おきなおしてね。</p>
+    <p class="dlgP facNote">★グレードは そのまま のこっているよ。<br>100かいタワーは 高層ビルを おきなおすと また あそべるよ。</p>`, [{label:'わかった！', cls:'gold', v:1}], 'wide');
+}
+renderMap = (orig => function(){ try{ migrate(); }catch(e){} return orig.apply(this, arguments); })(renderMap);
+try{ migrate(); }catch(e){}
+setInterval(() => { if(curScreen==='town' && save.town && save.town.big68msg && !document.hidden) notice(); }, 3000);
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER68}`; }catch(e){} return o; })(renderSettings);
 })();
