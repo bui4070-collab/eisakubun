@@ -5676,3 +5676,10 @@ try{ migrate(); }catch(e){}
 setInterval(() => { if(curScreen==='town' && save.town && save.town.big68msg && !document.hidden) notice(); }, 3000);
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER68}`; }catch(e){} return o; })(renderSettings);
 })();
+
+/* v6.9：ユニコーン（超レア）の 専用イラスト 5まい */
+(function(){
+'use strict';
+['onsen','library','pond','tree','festival'].forEach(k => { DEFAULT_ART['scu_unicorn_'+k] = './assets/images/v69/scu_unicorn_'+k+'.webp'; });
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.9.0'; }catch(e){} return o; })(renderSettings);
+})();
