@@ -5929,7 +5929,7 @@ window.__v612 = {applyIcons, iconsHidden};
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.13.0', IMG = './assets/images/v613/';
+const VER = '6.13.1', IMG = './assets/images/v613/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const crystals = () => save.crystal || 0;
 const cryImg = () => `<img src="${X(artSrc('itm_crystal'))}" alt="">`;
@@ -6079,7 +6079,7 @@ async function challenge(key, id){
 /* =====================================================================
    3) 温泉旅館
    ===================================================================== */
-const ONSEN = [['onsen_1','いただきまーす！ おんせんの あとの ごはんは さいこう！'],['onsen_1','ゆうやけの 山、きれいだね〜'],['onsen_1','シマくんも いっしょに たべよう！']];
+const ONSEN = [['onsen_1','いただきまーす！ おんせんの あとの ごはんは さいこう！'],['onsen_1','ゆうやけの 山、きれいだね〜'],['onsen_2','おふろあがりの ぎゅうにゅう、ぷはーっ！'],['onsen_2','シマくんも こしに 手を あてて のむの？'],['onsen_3','あったかい〜。もみじが きれいだね'],['onsen_3','シマくん、おけの おふろ ちょうど いい？']].filter(x => x[0]!=='onsen_3' || window.__onsen3);
 async function openOnsen(key){
   const L = choice(ONSEN);
   const v = await dialog(`<div class="star62"><img src="${IMG}${L[0]}.webp" alt=""><div class="st62t">♨️ おんせん りょかん</div></div><div class="talkBubble" style="margin:8px auto 0"><b>ハナ</b>${X(L[1])}</div>`,
