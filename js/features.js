@@ -4608,3 +4608,174 @@ const I = './assets/images/v62/';
 ['itm_crystal','cf_honey','dc_bananatree','dc_appletree'].forEach(k => { DEFAULT_ART[k] = I + k + '.webp'; });
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = 'まなびタウン v6.2.0'; }catch(e){} return o; })(renderSettings);
 })();
+
+/* =====================================================================
+   まなびタウン v6.3
+   ⑪ どうぶつえん：りくの どうぶつクイズ 3もん れんぞくで 水晶（1日1回）
+   ⑫ すいぞくかん：水の 生き物クイズ 3もん れんぞくで 水晶（1日1回）
+   ⑬ クリスタルタワー：ときどき 水晶（1日3回）。水晶 3こ → おまねきレター、10こ → きらきらレター
+   ⑭ ちいさな おしろ：ハナと シマエナガの アフタヌーンティー
+   ⑮ シマエナガの ぞう：シマエナガと おしゃべり（せんようの 絵 3まい）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER63 = '6.3.0', IMG = './assets/images/v63/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const crystals = () => save.crystal || 0;
+const cryImg = () => `<img src="${X(artSrc('itm_crystal'))}" alt="">`;
+
+/* ---------- クイズの もんだい ---------- */
+const LAND = [
+ ['首が いちばん 長い どうぶつは？','キリン','ゾウ','ラクダ','シマウマ','キリンは 首が 長く、高い 木の 葉を 食べられるよ'],
+ ['陸に すむ どうぶつで いちばん 大きいのは？','アフリカゾウ','キリン','サイ','カバ','アフリカゾウは 体重が 6トン いじょうにも なるよ'],
+ ['「百獣の王」と よばれる どうぶつは？','ライオン','トラ','ゴリラ','クマ','おすの ライオンには りっぱな たてがみが あるよ'],
+ ['おなかの ふくろで 子どもを 育てる どうぶつは？','カンガルー','パンダ','サル','ウサギ','カンガルーや コアラは「有袋類（ゆうたいるい）」の なかま'],
+ ['ジャイアントパンダが おもに 食べるものは？','ササ（竹）','魚','肉','くだもの','パンダは 1日に 10kg いじょう ササを 食べるよ'],
+ ['せなかに こぶが ある どうぶつは？','ラクダ','ウマ','ウシ','ヤギ','こぶには あぶらが たくわえられ、食べものが ない ときに つかうよ'],
+ ['いちばん 足が 速い 陸の どうぶつは？','チーター','ライオン','ウマ','シマウマ','チーターは 時速 100km いじょうで 走れるよ'],
+ ['コアラが 食べる 葉っぱは？','ユーカリ','ササ','クワ','サクラ','コアラは ユーカリの 葉を 食べて 1日 20時間くらい ねるよ'],
+ ['しろと くろの しま もようの どうぶつは？','シマウマ','パンダ','トラ','キリン','しま もようは 1頭ずつ ちがうんだよ'],
+ ['オランウータンが すんでいる ところは？','森の 木の 上','さばく','南極','海','オランウータンは 東南アジアの 森で 木の 上に すむよ'],
+ ['ゾウの 鼻は 何に つかう？','水を すう・ものを つかむ','空を とぶ','音を 出すだけ','つかわない','ゾウの 鼻は 手の ように 器用に うごくよ'],
+ ['冬に 冬眠する どうぶつは？','クマ','ライオン','キリン','シマウマ','クマは 冬の あいだ 巣穴で ねむって すごすよ'],
+ ['夜に 活動する（夜行性の）鳥は？','フクロウ','ニワトリ','スズメ','ハト','フクロウは 夜でも よく 見える 大きな 目を もっているよ'],
+ ['とべない 大きな 鳥は？','ダチョウ','ワシ','ツバメ','カラス','ダチョウは とべないけど 時速 70kmで 走るよ'],
+ ['カバが 昼間 すごす ところは？','水の 中','木の 上','さばくの 砂','雪の 中','カバは 昼は 水に つかり、夜に 草を 食べに 陸に 上がるよ'],
+ ['サイの 鼻の 上に ある ものは？','つの','耳','きば','はね','サイの つのは 毛と 同じ なかまで できているよ'],
+ ['ナマケモノの とくちょうは？','とても ゆっくり うごく','とても 速く 走る','水の 中に すむ','空を とぶ','ナマケモノは 木に ぶら下がって ゆっくり くらすよ'],
+ ['トラの とくちょうは？','黄色に 黒の しま もよう','首が 長い','ふくろが ある','はねが ある','トラは ネコの なかまで いちばん 大きいよ'],
+ ['ヒトに いちばん 近い なかまの どうぶつは？','チンパンジー','イヌ','ネコ','ウマ','チンパンジーは どうぐを つかうことも できるよ'],
+ ['レッサーパンダの しっぽの もようは？','しま もよう','水玉','まっ白','まっ黒','ふさふさの しっぽに 赤茶色と こげ茶の しまが あるよ'],
+ ['ペンギンは 何の なかま？','鳥','魚','ほ乳類','は虫類','ペンギンは 空は とべないけど、羽が ある 鳥の なかまだよ'],
+ ['ワニは 何の なかま？','は虫類','両生類','魚','ほ乳類','ワニ・ヘビ・トカゲ・カメは は虫類の なかまだよ'],
+ ['たまごを うむ ほ乳類は？','カモノハシ','イヌ','ウシ','ゾウ','カモノハシは ほ乳類なのに たまごを うむ めずらしい どうぶつ'],
+ ['ラッコと ちがって 陸に すむ どうぶつは？','タヌキ','アザラシ','イルカ','クジラ','タヌキは 日本の 山や 町の 近くにも すんでいるよ']
+];
+const WATER = [
+ ['世界で いちばん 大きな 生き物は？','シロナガスクジラ','ジンベエザメ','アフリカゾウ','マッコウクジラ','シロナガスクジラは 体長 30m 近くにも なるよ'],
+ ['イルカは 何の なかま？','ほ乳類','魚','両生類','は虫類','イルカや クジラは 肺で こきゅうする ほ乳類だよ'],
+ ['魚が 水の 中で こきゅうする ところは？','えら','肺','ひれ','うろこ','えらで 水に とけた 酸素を とりこむよ'],
+ ['足が 8本 ある 海の 生き物は？','タコ','イカ','カニ','エビ','タコは 8本、イカは 10本の 足（うで）が あるよ'],
+ ['足が 10本 ある 海の 生き物は？','イカ','タコ','ヒトデ','クラゲ','イカは 10本の うでの うち 2本が 長いよ'],
+ ['すみを はいて にげる 生き物は？','タコ','クラゲ','ウニ','カメ','タコや イカは すみを はいて 敵の 目を くらませるよ'],
+ ['ラッコが おなかの 上で つかう 道具は？','石','木の 枝','貝がら','海そう','ラッコは おなかに のせた 石で 貝を わって 食べるよ'],
+ ['魚で いちばん 大きいのは？','ジンベエザメ','マグロ','シロナガスクジラ','サケ','ジンベエザメは 大きいけど、小さな プランクトンを 食べる'],
+ ['川で 生まれて 海で 育ち、また 川に もどる 魚は？','サケ','マグロ','タイ','イワシ','サケは 生まれた 川に もどって たまごを うむよ'],
+ ['クマノミが いっしょに くらす 生き物は？','イソギンチャク','サメ','ウニ','クラゲ','イソギンチャクの 毒の 手が クマノミを 守るよ'],
+ ['ふくらんで まるく なる 魚は？','フグ','マグロ','カツオ','サンマ','フグは 水を すいこんで ふくらみ、身を 守るよ'],
+ ['ほとんどが 水で できていて ふわふわ ただよう 生き物は？','クラゲ','カニ','ウニ','ヒトデ','クラゲの 体は 95% いじょうが 水だよ'],
+ ['ヒトデの 腕は ふつう 何本？','5本','4本','6本','8本','ヒトデは 腕が 切れても また 生えてくるよ'],
+ ['ウミガメが たまごを うむ ところは？','すなはま','海の そこ','川','岩の 上','夜に すなはまに あがって あなを ほり、たまごを うむよ'],
+ ['ペンギンが すんでいるのは おもに？','南半球','北極','さばく','熱帯の 森','ペンギンは 南極や 南半球の 海に すむよ。北極には いない'],
+ ['アザラシと アシカの ちがいは？','アシカには 耳たぶが ある','アザラシは 魚','アシカは 鳥','ちがいは ない','アシカは 耳たぶが あり、前あしで 体を ささえて 歩けるよ'],
+ ['タツノオトシゴの おもしろい ところは？','おすが おなかで 子を 育てる','空を とぶ','足が ある','肺で こきゅうする','おすの おなかの ふくろで たまごが かえるよ'],
+ ['チンアナゴが すんでいる ところは？','すなの 中から 顔を 出す','木の 上','川の 石の 下','クジラの 背中','チンアナゴは すなに あなを ほって 顔だけ 出しているよ'],
+ ['深い 海に すみ、頭の ちょうちんを 光らせる 魚は？','チョウチンアンコウ','マグロ','サンマ','クマノミ','光で 小さな 魚を さそって 食べるよ'],
+ ['カニの 歩きかたの とくちょうは？','よこに 歩く','うしろだけ','とぶ','歩かない','カニは あしの 関節の しくみで よこに 歩くよ'],
+ ['ジュゴンや マナティーが 食べる ものは？','海草','魚','貝','クラゲ','ジュゴンは 海の 草を 食べる おとなしい ほ乳類'],
+ ['シャチは 何の なかま？','クジラ（ほ乳類）','サメ（魚）','アザラシ','ペンギン','シャチは イルカに 近い クジラの なかまだよ'],
+ ['ウニの 体の まわりに ある ものは？','とげ','うろこ','毛','はね','とげで 身を 守り、とげを うごかして 歩くよ'],
+ ['メダカの たまごが かえるまで（水温 25℃）の 日数は？','約11日','約1日','約3か月','約1年','メダカの たまごは 約11日で かえるよ']
+];
+function qChallenge(o){
+  return (async () => {
+    const it = ITEM(o.id), S = save[o.save] || (save[o.save] = {}), done = S.d===dayKey();
+    const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">${o.icon} ${X(it?.name||o.name)}</h2>
+      <p class="dlgP">${o.desc}<br>クイズに <b>3もん れんぞく</b>で せいかいすると<br><b>水晶</b>が もらえるよ（1日 1かい）</p>
+      <div class="cry61">${cryImg()}<b>水晶 ×${crystals()}</b><small>${done ? 'きょうの 水晶は もらったよ' : 'きょうは まだ もらっていないよ'}</small></div>`,
+      [{label:`${o.icon} クイズに ちょうせん`, cls:'gold', v:'quiz'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+    if(v==='grade') return openBuilding(o.key);
+    if(v!=='quiz') return;
+    const L = shuffle(o.bank.slice()).slice(0, 3);
+    for(let i=0; i<3; i++){
+      const r = L[i], opts = shuffle(r.slice(1, 5));
+      const res = await askMQ({html:`<div class="obsQ61">${o.icon.repeat(i+1)}${'・'.repeat(2-i)}</div><div class="mqSent">${X(r[0])}</div>`, ans:r[1], opts, key:o.save+'|'+r[0]}, `<b>${o.icon} ${X(o.qname)}（${i+1}/3）</b>`);
+      if(!res.ok){
+        await dialog(`<h2 class="dlgT">おしい！ ${i}もん れんぞく</h2><div class="ex56"><div class="ex56Ans"><span class="ok">⭕ 正しい こたえ <b>${X(r[1])}</b></span></div><ol class="ex56Steps"><li>${X(r[5])}</li></ol></div>`, [{label:'また ちょうせんする', cls:'gold', v:1}], 'wide');
+        return;
+      }
+      await dialog(`<h2 class="dlgT">⭕ せいかい！</h2><p class="dlgP">${X(r[5])}</p>`, [{label: i<2 ? 'つぎの もんだい ▶' : 'けっかを 見る ▶', cls:'gold', v:1}]);
+    }
+    const give = S.d !== dayKey(); if(give){ S.d = dayKey(); save.crystal = crystals() + 1; }
+    const p = givePts(30, `${o.qname} 3もん れんぞく`); persist(); sound('fan'); confetti(1800);
+    await dialog(`<div class="cry61 big">${cryImg()}</div><h2 class="dlgT">3もん れんぞく せいかい！</h2>
+      <p class="dlgP">${give ? '<b>水晶を 1こ</b> もらったよ！' : 'きょうの 水晶は もう もらったよ。また あした！'}<br><span class="coin sm">P</span> +${p}<br>水晶 ×${crystals()}</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+  })();
+}
+const openZoo = key => qChallenge({key, id:'zoo', name:'どうぶつえん', icon:'🦒', qname:'りくの どうぶつクイズ', desc:'ここでは りくの どうぶつに ついて まなべるよ。', bank:LAND, save:'zoo63'});
+const openAqua = key => qChallenge({key, id:'aquarium', name:'すいぞくかん', icon:'🐬', qname:'水の 生き物クイズ', desc:'ここでは 水の 中の 生き物に ついて まなべるよ。', bank:WATER, save:'aqua63'});
+
+/* ---------- ⑬ クリスタルタワー・水晶の こうかん ---------- */
+const EX = [{id:'letter', n:'おまねきレター', cost:3}, {id:'goldletter', n:'きらきらレター', cost:10}];
+function exHTML(){ return `<div class="cry61">${cryImg()}<b>水晶 ×${crystals()}</b></div><div class="ex63">${EX.map(e => `<button data-ex63="${e.id}" ${crystals() >= e.cost ? '' : 'disabled'}><img src="${X(artSrc(ITEM(e.id)?.art))}" alt=""><b>${e.n}</b><small>水晶 ${e.cost}こ と こうかん</small><em>もっている ${save.town.bag[e.id]||0}まい</em></button>`).join('')}</div>`; }
+async function openExchange(){ await dialog(`<h2 class="dlgT">💎 水晶の こうかん</h2>${exHTML()}<p class="dlgP facNote">水晶は てんもんだい・どうぶつえん・すいぞくかんの クイズや、クリスタルタワーで あつめられるよ</p>`, [{label:'とじる', v:null}], 'wide'); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-ex63]'); if(!b || b.disabled || !b.closest('#dlgBody')) return; e.stopImmediatePropagation();
+  const E = EX.find(x => x.id===b.dataset.ex63); if(crystals() < E.cost) return;
+  save.crystal = crystals() - E.cost; const t = save.town; t.bag[E.id] = (t.bag[E.id]||0) + 1; persist(); sound('fan'); confetti(1200);
+  const body = b.closest('#dlgBody'); body.querySelectorAll('.cry61,.ex63').forEach(x => x.remove()); body.querySelector('.dlgT').insertAdjacentHTML('afterend', exHTML());
+  toast(`💌 ${E.n}を 1まい もらったよ！`);
+}, true);
+async function openCrystalTower(key){
+  const it = ITEM('d_crystaltower'), C = save.ct63 && save.ct63.d===dayKey() ? save.ct63 : (save.ct63 = {d:dayKey(), n:0}), left = 3 - C.n;
+  const v = await dialog(`<div class="dlgArt big ctGlow63">${picHTML(it)}</div><h2 class="dlgT">💎 クリスタルタワー</h2>
+    <p class="dlgP">タワーに さわると ときどき 水晶が 見つかるよ<br>きょう さわれるのは あと <b>${left}かい</b></p><div class="cry61">${cryImg()}<b>水晶 ×${crystals()}</b></div>`,
+    (left > 0 ? [{label:'✨ タワーに さわる', cls:'gold', v:'touch'}] : []).concat([{label:'💎 水晶を こうかん', cls:'pink', v:'ex'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(v==='ex') return openExchange();
+  if(v!=='touch') return;
+  C.n++; const chance = 0.35 + 0.1*((save.town.glv||{})[key]||0), hit = Math.random() < chance;
+  if(hit) save.crystal = crystals() + 1; persist(); sound(hit ? 'fan' : 'tap'); if(hit) confetti(1200);
+  await dialog(hit ? `<div class="cry61 big">${cryImg()}</div><h2 class="dlgT">水晶を 見つけた！</h2><p class="dlgP">水晶 ×${crystals()}<br><small>きょうは あと ${3-C.n}かい</small></p>`
+    : `<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">きらきら…</h2><p class="dlgP">こんどは 見つからなかった。<br><small>きょうは あと ${3-C.n}かい</small></p>`, [{label:'OK', cls:'gold', v:1}]);
+  if(3 - C.n > 0) openCrystalTower(key);
+}
+
+/* ---------- ⑭ ちいさな おしろ ---------- */
+const TEA = ['この スコーン、まだ あったかいね！','シマくん、ジャムと クリーム どっちから のせる？','おしろで おちゃなんて、おひめさまみたい！','この マカロン、いちご あじだ〜','つぎは みんなも よぼうね！'];
+async function openTea(key){
+  const v = await dialog(`<div class="star62"><img src="${IMG}sc_tea.webp" alt=""><div class="st62t">☕ おしろの アフタヌーンティー</div></div>
+    <div class="talkBubble" style="margin:8px auto 0"><b>ハナ</b>${X(choice(TEA))}</div>`,
+    [{label:'もっと 見る ☕', cls:'gold', v:'more'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='more') return openTea(key); if(v==='grade') openBuilding(key);
+}
+
+/* ---------- ⑮ シマエナガの ぞう ---------- */
+const SHIMA = [
+ ['shima_wave','やあ！ ぼくの ぞうを つくってくれて ありがとう！'],['shima_wave','きょうも べんきょう がんばってる？ ぼく、ちゃんと 見てるよ！'],['shima_wave','まちが どんどん にぎやかに なってきたね！'],
+ ['shima_think','うーん… つぎは どんな たてものが いいかなあ？'],['shima_think','まちがえた 問題は、もういちど とくと しっかり おぼえられるんだって'],['shima_think','シマエナガって、ふゆに なると もっと まるく なるんだよ。しってた？'],['shima_think','にがてな 問題、いっしょに やっつけよう！'],
+ ['shima_jump','わーい！ きみと いっしょだと たのしいな！'],['shima_jump','れんぞく せいかい、すごかったね！ ぼくも うれしい！'],['shima_jump','この まち、だいすき！ ずっと いっしょに つくっていこうね！']];
+async function openShima(key){
+  const S = save.shima63 || (save.shima63 = {}), first = S.d !== dayKey(), L = choice(SHIMA);
+  if(first){ S.d = dayKey(); givePts(10, 'シマエナガの ぞうと おしゃべり'); persist(); }
+  const v = await dialog(`<div class="star62"><img src="${IMG}${L[0]}.webp" alt=""></div>
+    <div class="talkBubble" style="margin:8px auto 0"><b>シマくん</b>${X(L[1])}</div>${first ? '<p class="dlgP"><span class="coin sm">P</span> +10（1日1かい）</p>' : ''}`,
+    [{label:'💬 もっと はなす', cls:'gold', v:'more'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='more') return openShima(key); if(v==='grade') openBuilding(key);
+}
+
+/* ---------- まちの 上の ひょうじ・タッチ ---------- */
+function drawOv63(){
+  if(curScreen!=='town' || !save.town) return; const map = $('#townMap'); if(!map) return; map.querySelectorAll('.ov63').forEach(e => e.remove());
+  const ct = save.ct63 && save.ct63.d===dayKey() ? save.ct63.n : 0;
+  Object.entries(save.town.cells).forEach(([k,id]) => {
+    let h = '';
+    if(id==='zoo' && (save.zoo63||{}).d!==dayKey()) h = '🦒'; if(id==='aquarium' && (save.aqua63||{}).d!==dayKey()) h = '🐬';
+    if(id==='d_crystaltower' && ct < 3) h = '💎';
+    if(!h) return; const [x,y] = k.split(','); const c = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); if(c) c.insertAdjacentHTML('beforeend', `<span class="facOv ready ov63">${h}</span>`);
+  });
+}
+renderMap = (orig => function(){ const o = orig.apply(this, arguments); try{ drawOv63(); }catch(e){} return o; })(renderMap);
+const TAP = {zoo:openZoo, aquarium:openAqua, d_crystaltower:openCrystalTower, d_minicastle:openTea, d_shimastatue:openShima};
+window.addEventListener('click', e => {
+  if(curScreen!=='town' || townEdit || !save.town) return;
+  const c = e.target.closest('#townMap .cell'); if(!c || e.target.closest('.walker,.car2')) return;
+  const key = `${c.dataset.x},${c.dataset.y}`, fn = TAP[save.town.cells[key]]; if(!fn) return;
+  e.stopImmediatePropagation(); e.preventDefault(); fn(key).then(() => { try{ drawOv63(); }catch(e){} });
+}, true);
+/* バッグの 水晶：タッチで こうかん */
+document.addEventListener('click', e => { if(e.target.closest('.cry61b')){ e.stopImmediatePropagation(); openExchange(); } }, true);
+renderResidents = (orig => function(){ const o = orig.apply(this, arguments); try{ const b = $('.cry61b small'); if(b) b.textContent = 'タッチで レターと こうかん（3こ → おまねき、10こ → きらきら）'; }catch(e){} return o; })(renderResidents);
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER63}`; }catch(e){} return o; })(renderSettings);
+window.__v63 = {openZoo, openAqua, openCrystalTower, openTea, openShima, openExchange};
+})();

@@ -565,3 +565,9 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .star62 img{width:100%;display:block;animation:st62 6s ease-in-out infinite alternate}
 .star62 .st62t{position:absolute;left:50%;top:8px;transform:translateX(-50%);line-height:1.4;background:rgba(255,255,255,.88);color:#3A3F8F;font-weight:900;font-size:13px;border-radius:12px;padding:2px 12px}
 @keyframes st62{from{transform:scale(1)}to{transform:scale(1.06)}}
+/* v6.3 */
+.ex63{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0}
+.ex63 button{width:130px;border:2px solid #C9C2FF;background:#F7F5FF;border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;font:inherit;color:inherit;cursor:pointer}
+.ex63 button:disabled{opacity:.45}.ex63 img{width:56px;height:56px;object-fit:contain}.ex63 b{font-size:13px}.ex63 small{font-size:11px;color:#5B4BC4;font-weight:800}.ex63 em{font-style:normal;font-size:10px;color:#8A7560}
+.ctGlow63 img{filter:drop-shadow(0 0 12px #B9A8FF)}
+.cry61b{cursor:pointer}
