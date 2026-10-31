@@ -1015,7 +1015,7 @@ const D4 = [[0,-1,'n'],[1,0,'e'],[0,1,'s'],[-1,0,'w']];
 const RIVER = 'river', BRIDGE = 'road_bridge';
 const RV = {L:null};
 const curL = () => RV.L || (save.town ? townCalc().L : {cols:6, rows:6});
-const isWaterId = id => id===RIVER || id===BRIDGE;
+const isWaterId = id => id===RIVER || id===BRIDGE || id==='sea' || id==='harbor';   // v6.5：海・みなとも 水
 window.isWaterId52 = isWaterId;
 
 /* となりが 水か（画面の そとは「水が つづく」あつかい） */
@@ -1065,7 +1065,7 @@ function riverSVG(x, y, L, opt={}){
 function bridgeAxis(x, y){
   const t = save.town.cells, L = curL();
   const road = (a,b) => isRoadId(t[`${a},${b}`]) && t[`${a},${b}`]!==BRIDGE;
-  const wat = (a,b) => a>=0 && b>=0 && a<L.cols && b<L.rows && t[`${a},${b}`]===RIVER;
+  const wat = (a,b) => a>=0 && b>=0 && a<L.cols && b<L.rows && (t[`${a},${b}`]===RIVER || t[`${a},${b}`]==='sea');
   const hR = road(x-1,y) || road(x+1,y), vR = road(x,y-1) || road(x,y+1);
   const hW = wat(x-1,y) || wat(x+1,y), vW = wat(x,y-1) || wat(x,y+1);
   const hB = t[`${x-1},${y}`]===BRIDGE || t[`${x+1},${y}`]===BRIDGE, vB = t[`${x},${y-1}`]===BRIDGE || t[`${x},${y+1}`]===BRIDGE;
@@ -1132,7 +1132,7 @@ roadHTML = (orig => function(x, y){
   const c = save.town.cells;
   if(c[`${x},${y}`]===BRIDGE) return bridgeHTML(x, y);
   let h = orig(x, y);
-  D4.forEach(([dx,dy,d]) => { if(c[`${x+dx},${y+dy}`]===RIVER) h = h.replace(`<i class="x x-${d}"></i>`, ''); });
+  D4.forEach(([dx,dy,d]) => { if(c[`${x+dx},${y+dy}`]===RIVER || c[`${x+dx},${y+dy}`]==='sea') h = h.replace(`<i class="x x-${d}"></i>`, ''); });
   return h;
 })(roadHTML);
 
@@ -4887,4 +4887,234 @@ show = (orig => function(name){ const o = orig.apply(this, arguments); if(name==
 try{ migrate(); }catch(e){}
 setInterval(() => { if(curScreen==='town' && save.town && save.town.big64msg && !document.hidden) notice(); }, 3000);
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER64}`; }catch(e){} return o; })(renderSettings);
+})();
+
+/* =====================================================================
+   まなびタウン v6.5
+   ⑰ ヘリコプター（ヘリポートが ひつよう）・ひこうき（くうこうが ひつよう）
+   ⑱ 海（Lv10）：りくの となりは すなはま → 1マス はなれると 青い 海。グラデーションで なじむ
+      みなと：まちでは 上から 見た 絵。川・海と つながる
+      船（Lv10・みなとが ひつよう）：海・川を すすむ。はしの 下を くぐる
+   ＋ ポイントの ところに 水晶の かず（タッチで こうかんじょ）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER65 = '6.5.0', IMG = './assets/images/v65/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const SEA = 'sea', HARBOR = 'harbor', BRIDGE = 'road_bridge', RIVER = 'river';
+
+/* ---------- アイテム ---------- */
+const tileIcon = inner => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A8DC86"/><stop offset=".22" stop-color="#F3E0A8"/><stop offset=".45" stop-color="#F3E0A8"/><stop offset=".62" stop-color="#74D2DB"/><stop offset="1" stop-color="#3AA2DA"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="22" fill="url(#g)" stroke="#fff" stroke-width="5"/>${inner}</svg>`);
+DEFAULT_ART.bld_sea = tileIcon('<g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"><path d="M66 40q6 -6 12 0t12 0"/><path d="M74 78q6 -6 12 0t12 0"/></g><circle cx="38" cy="78" r="4" fill="#F6B4A0"/><path d="M34 46l4 -8l4 8l-8 -5h8z" fill="#F28C6A"/>');
+Object.assign(DEFAULT_ART, {veh_heli:IMG+'veh_heli.webp', veh_plane:IMG+'veh_plane.webp', veh_yacht:IMG+'veh_yacht.webp', veh_fishboat:IMG+'veh_fishboat.webp', veh_ferry:IMG+'veh_ferry.webp', harbor_top:IMG+'harbor_top.webp'});
+const ADD = [
+  {id:SEA, type:'bld', cat:'road', name:'うみ', art:'bld_sea', emoji:'🌊', price:20, lv:10, dev:1, desc:'りくの となりは すなはま・1マス はなれると 青い 海・船が とおれる'},
+  {id:'heli',     type:'veh', name:'ヘリコプター', art:'veh_heli',     emoji:'🚁', price:3500,  lv:7,  traffic:6,  pop:0.02, air:'heli',  req:{has:{heliport:1}}},
+  {id:'plane',    type:'veh', name:'ひこうき',     art:'veh_plane',    emoji:'✈️', price:9000,  lv:11, traffic:12, pop:0.05, air:'plane', req:{has:{airport:1}}},
+  {id:'yacht',    type:'veh', name:'ヨット',       art:'veh_yacht',    emoji:'⛵', price:2500,  lv:10, traffic:4,  pop:0.02, ship:.62, req:{has:{harbor:1}}},
+  {id:'fishboat', type:'veh', name:'りょうせん',   art:'veh_fishboat', emoji:'🚤', price:3000,  lv:10, traffic:5,  income:20, ship:.62, req:{has:{harbor:1}}},
+  {id:'ferry',    type:'veh', name:'フェリー',     art:'veh_ferry',    emoji:'⛴️', price:6000,  lv:10, traffic:10, pop:0.03, ship:.82, req:{has:{harbor:1}}}
+];
+const rate = () => { try{ return window.__v56 ? window.__v56.inflRate() : 1; }catch(e){ return 1; } };
+ADD.forEach(a => { if(TOWN_ITEMS.some(x => x.id===a.id)) return; const it = Object.assign({}, a); it.price0 = a.price; const v = a.price * rate(); it.price = v < 100 ? Math.max(5, Math.round(v/5)*5) : Math.round(v/50)*50; TOWN_ITEMS.push(it); });
+try{ Object.assign(ZUKAN_INFO, {sea:'しおかぜの ふく 海。りくの となりは すなはまに なるよ。', heli:'ヘリポートから まちの 空を とびまわる。', plane:'くうこうから とびたって とおくの まちへ。',
+  yacht:'風を うけて すすむ 白い ヨット。', fishboat:'海で 魚を とる 船。', ferry:'人や 車を のせて はこぶ 大きな 船。'}); }catch(e){}
+const isShip = id => !!ITEM(id)?.ship, isAir = id => !!ITEM(id)?.air;
+itemEffect = (orig => function(it){
+  const s = orig.apply(this, arguments);
+  if(it && it.id===HARBOR) return `${s}・⛵ 船が でいりする（川や 海と つながる）`;
+  if(it && it.ship) return `${s}・⛵ 海や 川を すすむ（みなとが ひつよう）`;
+  if(it && it.air==='heli') return `${s}・🚁 まちの 空を とぶ（ヘリポートが ひつよう）`;
+  if(it && it.air==='plane') return `${s}・✈️ くうこうから とびたつ（くうこうが ひつよう）`;
+  return s;
+})(itemEffect);
+openBuilding = (orig => async function(key){
+  if(save.town?.cells?.[key]===SEA){ const it = ITEM(SEA); await dialog(`<div class="dlgArt">${picHTML(it)}</div><h2 class="dlgT">うみ</h2><p class="dlgP" style="font-size:14px">${esc(itemEffect(it))}</p>`, [{label:'とじる', cls:'white', v:null}], 'wide'); return; }
+  return orig.apply(this, arguments);
+})(openBuilding);
+
+/* ---------- 海の 色（りくからの きょり） ---------- */
+const C = {land:[168,220,134], sand:[243,224,168], sea:[77,187,224], sea2:[58,162,218], deep:[44,140,203]};
+const hex = c => `rgb(${c.map(Math.round).join(',')})`, mix = (a,b,t=.5) => a.map((v,i) => v + (b[i]-v)*t);
+const rgba = (c,a) => `rgba(${c.map(Math.round).join(',')},${a})`;
+const isWater = id => id===SEA || id===RIVER || id===HARBOR || id===BRIDGE;
+let DEPTH = {};
+function calcDepth(){
+  const t = save.town, L = townCalc().L, D = {}, q = [];
+  const W = (x,y) => x<0 || y<0 || x>=L.cols || y>=L.rows || isWater(t.cells[`${x},${y}`]);
+  Object.entries(t.cells).forEach(([k,id]) => { if(id!==SEA) return; const [x,y] = k.split(',').map(Number);
+    for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++) if((dx||dy) && !W(x+dx,y+dy)){ if(D[k]==null){ D[k] = 1; q.push([x,y]); } } });
+  while(q.length){ const [x,y] = q.shift(), d = D[`${x},${y}`];
+    for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++){ const k = `${x+dx},${y+dy}`; if(t.cells[k]===SEA && D[k]==null){ D[k] = d + 1; q.push([x+dx,y+dy]); } } }
+  Object.entries(t.cells).forEach(([k,id]) => { if(id===SEA && D[k]==null) D[k] = 9; });
+  /* 川・みなと・はしの となりは「かこう」：すなはまに しないで 水に する（船が とおれる） */
+  Object.keys(D).forEach(k => { if(D[k]!==1) return; const [x,y] = k.split(',').map(Number);
+    if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => { const id = t.cells[`${x+dx},${y+dy}`]; return id===RIVER || id===HARBOR || id===BRIDGE; })) D[k] = 2; });
+  return D;
+}
+const colOf = d => d===1 ? C.sand : d===2 ? C.sea : d<=4 ? C.sea2 : C.deep;
+const SIDES = [['n',0,-1,'to bottom'],['s',0,1,'to top'],['w',-1,0,'to right'],['e',1,0,'to left']];
+function seaStyle(x, y, d){
+  const t = save.town, L = townCalc().L, me = colOf(d), layers = [], foam = [];
+  const nb = (a,b) => { if(a<0||b<0||a>=L.cols||b>=L.rows) return 'out'; const id = t.cells[`${a},${b}`]; return id===SEA ? colOf(DEPTH[`${a},${b}`]) : isWater(id) ? 'water' : 'land'; };
+  SIDES.forEach(([s,dx,dy,dir]) => { const n = nb(x+dx, y+dy); if(n==='out' || n==='water') return;
+    if(n==='land'){ layers.push(`linear-gradient(${dir}, ${hex(C.land)} 0%, ${rgba(me,0)} 42%)`); return; }
+    if(n!==me){ const m = mix(me, n); layers.push(`linear-gradient(${dir}, ${hex(m)} 0%, ${rgba(m,0)} 50%)`); if(d>=2 && n===C.sand) foam.push(s); } });
+  [[-1,-1,'0% 0%'],[1,-1,'100% 0%'],[-1,1,'0% 100%'],[1,1,'100% 100%']].forEach(([dx,dy,pos]) => {
+    if(nb(x+dx,y+dy)==='land' && nb(x+dx,y)!=='land' && nb(x,y+dy)!=='land') layers.push(`radial-gradient(circle at ${pos}, ${hex(C.land)} 0%, ${rgba(C.sand,0)} 46%)`);
+    if(d>=2 && nb(x+dx,y+dy)===C.sand && nb(x+dx,y)!==C.sand && nb(x,y+dy)!==C.sand && nb(x+dx,y)!=='land' && nb(x,y+dy)!=='land') layers.push(`radial-gradient(circle at ${pos}, ${hex(mix(me,C.sand))} 0%, ${rgba(me,0)} 48%)`); });
+  return {bg:`background-color:${hex(me)};${layers.length ? `background-image:${layers.join(',')};` : ''}`, foam};
+}
+const FOAM_ROT = {n:0, e:90, s:180, w:270};
+const hash = (x,y,k=0) => ((x*73856093) ^ (y*19349663) ^ (k*83492791)) >>> 0;
+function seaDeco(x, y, d, foam){
+  const h = hash(x,y), parts = [];
+  foam.forEach(s => parts.push(`<g transform="rotate(${FOAM_ROT[s]} 50 50)"><path class="fm65" d="M-2 9q7 -6 13 0t13 0t13 0t13 0t13 0t13 0t13 0t13 0"/><path class="fm65 b" d="M-2 17q7 -5 13 0t13 0t13 0t13 0t13 0t13 0t13 0t13 0"/></g>`));
+  if(d===1){ if(h%5===0) parts.push(`<path d="M${30+h%40} ${30+(h>>4)%40}l3.5 -7l3.5 7l-7 -4.5h7z" fill="#F28C6A"/>`); if(h%7===1) parts.push(`<ellipse cx="${25+h%50}" cy="${60+(h>>3)%25}" rx="4" ry="3" fill="#F7C6B6"/>`);
+    for(let i=0;i<5;i++){ const hh = hash(x,y,i); parts.push(`<circle cx="${hh%100}" cy="${(hh>>7)%100}" r="1.1" fill="#D9C08A" opacity=".6"/>`); } }
+  else { if(h%2===0) parts.push(`<path class="wv65" d="M${22+h%40} ${30+(h>>3)%40}q4 -4 8 0t8 0"/>`); if(h%3===0) parts.push(`<circle class="spk65" cx="${20+(h>>2)%60}" cy="${20+(h>>5)%60}" r="1.6"/>`); }
+  return parts.length ? `<svg class="sea65svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${parts.join('')}</svg>` : '';
+}
+function harborStyle(x, y){
+  const t = save.town, L = townCalc().L, m = [];
+  const land = (a,b) => a>=0 && b>=0 && a<L.cols && b<L.rows && !isWater(t.cells[`${a},${b}`]);
+  SIDES.forEach(([s,dx,dy,dir]) => { if(land(x+dx,y+dy)) m.push(`linear-gradient(${dir}, transparent 0%, #000 26%)`); });
+  return m.length ? `-webkit-mask-image:${m.join(',')};mask-image:${m.join(',')};-webkit-mask-composite:source-in;mask-composite:intersect;` : '';
+}
+function drawSea(){
+  const map = $('#townMap'); if(!map || !save.town) return;
+  DEPTH = calcDepth();
+  const cellAt = (x,y) => map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]:not(.cov64)`);
+  Object.entries(save.town.cells).forEach(([k,id]) => {
+    if(id!==SEA && id!==HARBOR) return; const [x,y] = k.split(',').map(Number), c = cellAt(x,y); if(!c) return;
+    c.querySelectorAll('.bimg,.sea65svg,.hb65').forEach(e => e.remove()); c.style.zIndex = 1;
+    if(id===SEA){ const d = DEPTH[k], S = seaStyle(x,y,d); c.classList.add('sea65', d===1 ? 'beach65' : 'water65'); c.style.cssText += S.bg; c.insertAdjacentHTML('afterbegin', seaDeco(x,y,d,S.foam)); }
+    else { c.classList.add('harbor65'); c.style.backgroundColor = hex(C.sand); c.insertAdjacentHTML('afterbegin', `<img class="hb65" src="${X(artSrc('harbor_top'))}" alt="" style="${harborStyle(x,y)}">`); }
+  });
+}
+
+/* ---------- はしの ゆか（船が 下を くぐる） ---------- */
+function drawDecks(){
+  const map = $('#townMap'); if(!map) return; map.querySelectorAll('.deck65').forEach(e => e.remove());
+  map.querySelectorAll('.cell .brg52').forEach(b => { const c = b.closest('.cell'), y = +c.dataset.y;
+    const d = document.createElement('div'); d.className = 'deck65'; d.innerHTML = b.outerHTML;
+    Object.assign(d.style, {left:c.offsetLeft+'px', top:c.offsetTop+'px', width:c.offsetWidth+'px', height:c.offsetHeight+'px', zIndex:y*10+3}); map.appendChild(d); });
+}
+
+/* ---------- 船 ---------- */
+const SH = {list:[], timer:null};
+const water = (x,y) => { const L = townCalc().L; if(x<0 || y<0 || x>=L.cols || y>=L.rows) return false; const id = save.town.cells[`${x},${y}`]; return id===SEA ? (DEPTH[`${x},${y}`]||9) >= 2 : isWater(id); };
+function cellXY(x, y){ const map = $('#townMap'), c = map && map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]:not(.cov64)`); return c ? [c.offsetLeft + c.offsetWidth/2, c.offsetTop + c.offsetHeight*0.62, c.offsetWidth] : null; }
+function placeMover(m, instant){
+  const p = cellXY(m.x, m.y); if(!p || !m.el) return; const [px,py,cs] = p;
+  if(instant) m.el.style.transition = 'none';
+  m.el.style.left = px + 'px'; m.el.style.top = py + 'px'; m.el.style.height = Math.round(cs * m.h) + 'px';
+  m.el.style.zIndex = Math.max(m.y, m.py ?? m.y)*10 + 2; m.el.classList.toggle('flip', !!m.flip);
+  if(instant){ void m.el.offsetWidth; m.el.style.transition = ''; }
+}
+function buildShips(){
+  const map = $('#townMap'); SH.list.forEach(s => s.el && s.el.remove()); SH.list = [];
+  const t = save.town, hb = Object.keys(t.cells).filter(k => t.cells[k]===HARBOR); if(!hb.length) return;
+  const old = SH.keep || {}; SH.keep = {};
+  t.veh.filter(isShip).slice(0, 8).forEach((id, i) => {
+    let [x,y] = hb[i % hb.length].split(',').map(Number); const el = document.createElement('button');
+    el.className = 'ship65'; el.dataset.id = id; el.innerHTML = `<img src="${X(artSrc(ITEM(id).art))}" alt=""><i class="wake65"></i>`; map.appendChild(el);
+    const o = old[id+'#'+i], m = o && water(o.x, o.y) ? Object.assign(o, {el, py:o.y}) : {id, x, y, px:x, py:y, dx:0, dy:0, h:ITEM(id).ship, el, wait:i*2};
+    SH.keep[id+'#'+i] = m; SH.list.push(m); placeMover(m, true);
+  });
+}
+function stepShips(){
+  SH.list.forEach(m => {
+    if(m.wait > 0){ m.wait--; return; }
+    const opts = [[1,0],[-1,0],[0,1],[0,-1]].filter(([dx,dy]) => water(m.x+dx, m.y+dy));
+    if(!opts.length) return;
+    let ch = opts.filter(([dx,dy]) => !(dx===-m.dx && dy===-m.dy)); if(!ch.length) ch = opts;
+    const st = ch.find(([dx,dy]) => dx===m.dx && dy===m.dy); const [dx,dy] = st && Math.random() < .7 ? st : choice(ch);
+    m.px = m.x; m.py = m.y; m.x += dx; m.y += dy; m.dx = dx; m.dy = dy; if(dx) m.flip = dx < 0;
+    if(save.town.cells[`${m.x},${m.y}`]===HARBOR && Math.random() < .5) m.wait = rint(2,4);
+    placeMover(m);
+  });
+}
+
+/* ---------- ヘリコプター・ひこうき ---------- */
+const AIR = {list:[]};
+function buildAir(){
+  const map = $('#townMap'), old = AIR.keep || {}; AIR.keep = {}; AIR.list = [];
+  const t = save.town, L = townCalc().L, cells = t.cells;
+  const base = id => Object.keys(cells).filter(k => cells[k]===id);
+  const hp = base('heliport'), ap = base('airport');
+  t.veh.filter(isAir).slice(0, 4).forEach((id, i) => {
+    const kind = ITEM(id).air, homes = kind==='heli' ? hp : ap; if(!homes.length) return;
+    const [hx,hy] = homes[i % homes.length].split(',').map(Number), el = document.createElement('button'), sh = document.createElement('i');
+    el.className = `air65 ${kind}`; el.dataset.id = id; el.innerHTML = `<img src="${X(artSrc(ITEM(id).art))}" alt="">`; sh.className = 'airSh65';
+    map.appendChild(sh); map.appendChild(el);
+    const k = id+'#'+i, o = old[k]; delete old[k];
+    const a = o || {id, kind}; Object.assign(a, {hx:hx + (kind==='plane' ? 1 : 0), hy:hy + (kind==='plane' ? 1 : 0), el, sh});
+    AIR.keep[k] = a; AIR.list.push(a);
+    if(o && o.last){ if(o.fly) el.classList.add('fly'); if(o.flip) el.classList.add('flip'); airPos(a, ...o.last, 0); }
+    else { airHome(a, true); a.to = setTimeout(() => airGo(a), 2500 + i*4000); }
+  });
+  Object.values(old).forEach(a => clearTimeout(a.to));
+}
+function airPos(a, gx, gy, alt, dur){
+  a.last = [gx, gy, alt]; a.fly = a.el.classList.contains('fly'); a.flip = a.el.classList.contains('flip');
+  const cs = cellSize(), x = gx*cs + cs/2, y = gy*cs + cs*0.6;
+  a.el.style.transition = dur ? `left ${dur}ms ease-in-out, top ${dur}ms ease-in-out, transform ${dur}ms ease-in-out` : 'none';
+  a.sh.style.transition = a.el.style.transition;
+  a.el.style.left = x + 'px'; a.el.style.top = (y - alt*cs) + 'px'; a.el.style.height = Math.round(cs * (a.kind==='plane' ? .95 : .7) * (1 + alt*.25)) + 'px';
+  a.sh.style.left = x + 'px'; a.sh.style.top = y + 'px'; a.sh.style.width = Math.round(cs*(a.kind==='plane' ? .8 : .55)) + 'px'; a.sh.style.opacity = alt ? .22 : .32;
+}
+function airHome(a, instant){ a.el.classList.remove('fly'); airPos(a, a.hx, a.hy, 0, instant ? 0 : 2600); }
+function airGo(a){
+  if(!a.el.isConnected) return; const L = townCalc().L;
+  if(a.kind==='heli'){
+    let n = rint(2,4); a.el.classList.add('fly'); airPos(a, a.hx, a.hy, .8, 1600);
+    const hop = () => { if(!a.el.isConnected) return; if(n-- <= 0){ airHome(a); a.to = setTimeout(() => airGo(a), rint(9000,16000)); return; }
+      const gx = rint(0, L.cols-1), gy = rint(0, L.rows-1); a.el.classList.toggle('flip', gx < parseFloat(a.el.style.left)/(cellSize())); airPos(a, gx, gy, 1.1, 3800); a.to = setTimeout(hop, 4200); };
+    a.to = setTimeout(hop, 1700);
+  } else {
+    const dir = Math.random() < .5 ? 1 : -1, ox = dir > 0 ? L.cols + 2 : -3, oy = clamp(a.hy + rint(-3,3), -2, L.rows + 1);
+    a.el.classList.add('fly'); a.el.classList.toggle('flip', dir < 0);
+    airPos(a, a.hx + dir*1.5, a.hy, .3, 2200);
+    a.to = setTimeout(() => { airPos(a, ox, oy, 2, 5200); a.to = setTimeout(() => {
+      a.el.classList.toggle('flip', dir > 0); a.to = setTimeout(() => { airPos(a, a.hx - dir*1.5, a.hy, .3, 5200); a.to = setTimeout(() => { airHome(a); a.to = setTimeout(() => airGo(a), rint(12000,20000)); }, 5300); }, rint(6000,10000));
+    }, 5300); }, 2300);
+  }
+}
+
+/* ---------- 道を はしる 車から 船・ひこうきを のぞく ---------- */
+buildCars = (orig => function(){
+  const o = orig.apply(this, arguments);
+  try{ CAR.list = CAR.list.filter(c => { if(isShip(c.id) || isAir(c.id)){ c.el && c.el.remove(); return false; } return true; }); }catch(e){}
+  return o;
+})(buildCars);
+renderMap = (orig => function(){
+  const o = orig.apply(this, arguments);
+  try{ drawSea(); drawDecks(); buildShips(); buildAir(); }catch(e){ console.warn(e); }
+  return o;
+})(renderMap);
+setInterval(() => { if(curScreen==='town' && !document.hidden && !townEdit) try{ stepShips(); }catch(e){} }, 1700);
+document.addEventListener('click', e => {
+  const b = e.target.closest('.ship65,.air65'); if(!b || curScreen!=='town' || townEdit) return;
+  e.stopImmediatePropagation(); e.preventDefault(); const it = ITEM(b.dataset.id); sound('tap');
+  toast(`${it.emoji||''} ${it.name}：${b.classList.contains('ship65') ? 'ゆらゆら 海を すすんでいるよ' : b.classList.contains('heli') ? 'まちを 空から 見まもっているよ' : 'とおくの まちへ ひとっとび！'}`);
+}, true);
+
+/* ---------- 水晶の かず（ポイントの ところ） ---------- */
+function cryPill(){
+  const p = $('#ptPill'); if(!p) return;
+  let c = p.querySelector('.cryIn65');
+  if(!c){ p.insertAdjacentHTML('beforeend', `<span class="cryIn65" title="水晶の こうかんじょ"><img src="${X(artSrc('itm_crystal'))}" alt=""><b id="cryNum65">0</b></span>`); c = p.querySelector('.cryIn65'); }
+  const n = save.crystal || 0, el = c.querySelector('b'); if(el.textContent !== String(n)) el.textContent = n;
+}
+updatePill = (orig => function(){ const o = orig.apply(this, arguments); try{ cryPill(); }catch(e){} return o; })(updatePill);
+setInterval(() => { try{ cryPill(); }catch(e){} }, 1500);
+document.addEventListener('click', e => {
+  if(!e.target.closest('#ptPill .cryIn65')) return; e.stopImmediatePropagation(); e.preventDefault(); sound('tap');
+  if(window.__v63 && window.__v63.openExchange) window.__v63.openExchange().then(() => cryPill());
+}, true);
+try{ cryPill(); }catch(e){}
+
+renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER65}`; }catch(e){} return o; })(renderSettings);
+window.__v65 = {calcDepth, SH, AIR, stepShips, cryPill};
 })();

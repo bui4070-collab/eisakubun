@@ -577,3 +577,38 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 .big64List{list-style:none;padding:0;margin:6px 0;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .big64List li{width:96px;display:flex;flex-direction:column;align-items:center;background:#FFF8EA;border:2px solid #F4D58D;border-radius:12px;padding:4px}
 .big64List li img{width:60px;height:60px;object-fit:contain}.big64List li b{font-size:11.5px}.big64List li small{font-size:10px;color:#8A7560}
+
+/* =====================================================================
+   v6.5 海・みなと・船・ヘリ・ひこうき・水晶
+   ===================================================================== */
+#townMap .cell.sea65{overflow:hidden}
+#townMap .sea65svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.sea65svg .fm65{fill:none;stroke:rgba(255,255,255,.85);stroke-width:3;stroke-linecap:round;animation:fm65 3.2s ease-in-out infinite}
+.sea65svg .fm65.b{stroke-width:2;opacity:.55;animation-delay:-1.6s}
+@keyframes fm65{0%,100%{transform:translateY(0);opacity:.9}50%{transform:translateY(4px);opacity:.45}}
+.sea65svg .wv65{fill:none;stroke:rgba(255,255,255,.7);stroke-width:2.4;stroke-linecap:round;animation:wv65 4s ease-in-out infinite}
+@keyframes wv65{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+.sea65svg .spk65{fill:#fff;animation:spk65 2.6s ease-in-out infinite}@keyframes spk65{0%,100%{opacity:0}50%{opacity:.9}}
+#townMap .cell.harbor65{overflow:hidden}
+#townMap .cell.harbor65 .hb65{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+#townMap .deck65{position:absolute;pointer-events:none}
+#townMap .deck65 .brg52{position:absolute;inset:0}
+#townMap .deck65 .bank,#townMap .deck65 .rim,#townMap .deck65 .wat,#townMap .deck65 .wv,#townMap .deck65 .lily,#townMap .deck65 .spk{display:none}
+#townMap .ship65{position:absolute;border:none;background:none;padding:0;transform:translate(-50%,-78%);transition:left 1.6s linear,top 1.6s linear;cursor:pointer}
+#townMap .ship65 img{height:100%;width:auto;display:block;animation:sway65 2.4s ease-in-out infinite;filter:drop-shadow(0 2px 2px rgba(0,40,80,.25))}
+#townMap .ship65.flip img{transform:scaleX(-1)}
+@keyframes sway65{0%,100%{rotate:-2deg;translate:0 0}50%{rotate:2deg;translate:0 2px}}
+#townMap .ship65 .wake65{position:absolute;left:10%;right:10%;bottom:4%;height:14%;border-radius:50%;background:rgba(255,255,255,.45);z-index:-1;animation:fm65 2s ease-in-out infinite}
+#townMap .air65{position:absolute;border:none;background:none;padding:0;transform:translate(-50%,-80%);z-index:3000;cursor:pointer}
+#townMap .air65 img{height:100%;width:auto;display:block;filter:drop-shadow(0 4px 3px rgba(0,0,0,.25))}
+#townMap .air65.fly.heli img{animation:hover65 .9s ease-in-out infinite alternate}
+#townMap .air65.flip img{transform:scaleX(-1)}
+#townMap .air65.flip.fly.heli img{animation:hover65f .9s ease-in-out infinite alternate}
+@keyframes hover65{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-4px) rotate(-1deg)}}
+@keyframes hover65f{from{transform:scaleX(-1) translateY(0) rotate(-3deg)}to{transform:scaleX(-1) translateY(-4px) rotate(-1deg)}}
+#townMap .airSh65{position:absolute;height:12px;border-radius:50%;background:rgba(0,0,0,.6);transform:translate(-50%,-50%);z-index:2999;pointer-events:none;filter:blur(2px)}
+#ptPill .cryIn65{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 8px 1px 4px;border-radius:999px;background:linear-gradient(180deg,#F1EEFF,#DCD4FF);border:2px solid #B9A8FF;cursor:pointer;line-height:1.2}
+#ptPill .cryIn65 img{width:20px;height:20px;object-fit:contain}
+#ptPill .cryIn65 b{font-size:.8em;color:#5B4BC4}
+@media (max-width:600px){ #ptPill .cryIn65{margin-left:3px;padding:0 6px 0 2px} #ptPill .cryIn65 img{width:16px;height:16px} }
+#townMap.edit .ship65,#townMap.edit .air65,#townMap.edit .airSh65{pointer-events:none;opacity:.45}
