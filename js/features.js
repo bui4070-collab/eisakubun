@@ -4943,7 +4943,8 @@ const hex = c => `rgb(${c.map(Math.round).join(',')})`, mix = (a,b,t=.5) => a.ma
 const rgba = (c,a) => `rgba(${c.map(Math.round).join(',')},${a})`;
 const isWater = id => id===SEA || id===RIVER || id===HARBOR || id===BRIDGE;
 let DEPTH = {};
-function calcDepth(){
+let CHAN613 = {};
+function calcDepth(){ CHAN613 = {};
   const t = save.town, L = townCalc().L, D = {}, q = [];
   const W = (x,y) => x<0 || y<0 || x>=L.cols || y>=L.rows || isWater(t.cells[`${x},${y}`]);
   Object.entries(t.cells).forEach(([k,id]) => { if(id!==SEA) return; const [x,y] = k.split(',').map(Number);
@@ -4953,7 +4954,7 @@ function calcDepth(){
   Object.entries(t.cells).forEach(([k,id]) => { if(id===SEA && D[k]==null) D[k] = 9; });
   /* 川・みなと・はしの となりは「かこう」：すなはまに しないで 水に する（船が とおれる） */
   Object.keys(D).forEach(k => { if(D[k]!==1) return; const [x,y] = k.split(',').map(Number);
-    if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => { const id = t.cells[`${x+dx},${y+dy}`]; return id===RIVER || id===HARBOR || id===BRIDGE; })) D[k] = 2; });
+    if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => { const id = t.cells[`${x+dx},${y+dy}`]; return id===RIVER || id===HARBOR || id===BRIDGE; })){ CHAN613[k] = 1; D[k] = 2; } });
   return D;
 }
 const colOf = d => d===1 ? C.sand : d===2 ? C.sea : d<=4 ? C.sea2 : C.deep;
@@ -5017,14 +5018,21 @@ function seaCanvas(map){
     else if(id===HARBOR){ DD[i] = 2.05; MK[i] = 1; }
     else if(id===RIVER || id===BRIDGE){ DD[i] = 2.0; MK[i] = 0; }
     else { DD[i] = 0; MK[i] = 0; } }
-  /* v6.12：川が 海に そそぐ 河口（かこう）：川の はばから 海へ ひろがりながら 色が かわる */
-  const MOUTH = {};
-  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ const id = cells[`${x},${y}`]; if(id!==RIVER && id!==BRIDGE) continue;
-    const d = [[0,1],[1,0],[0,-1],[-1,0]].find(([dx,dy]) => cells[`${x+dx},${y+dy}`]===SEA); if(!d) continue;
-    const isW = (a,b) => [RIVER,BRIDGE,HARBOR].includes(cells[`${a},${b}`]);
-    const nb = [[0,1],[1,0],[0,-1],[-1,0]].filter(([dx,dy]) => isW(x+dx,y+dy)).length;
-    if(isW(x-d[0], y-d[1]) || nb <= 1) MOUTH[y*L.cols + x] = d; }
-  window.__mouth612 = MOUTH;
+  /* v6.13：河口は「水の すじ（チャンネル）」として かく。いくつの 方向から つながっても 1つの 水に まとまる */
+  const isRv = id => id===RIVER || id===BRIDGE, D4 = [[0,1],[1,0],[0,-1],[-1,0]], cid = (x,y) => cells[`${x},${y}`];
+  const EST = {}, SEG = [];
+  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ if(!isRv(cid(x,y))) continue; if(D4.some(([dx,dy]) => cid(x+dx,y+dy)===SEA)) EST[y*L.cols + x] = 1; }
+  Object.keys(EST).forEach(i => { i = +i; const x = i % L.cols, y = Math.floor(i / L.cols), cx = x + .5, cy = y + .5;
+    D4.forEach(([dx,dy]) => { const n = cid(x+dx, y+dy);
+      if(n===SEA || n===HARBOR) SEG.push([cx, cy, cx+dx*1.5, cy+dy*1.5]);                         // うみへ：となりの マスの まんなかまで
+      else if(isRv(n)) SEG.push([cx, cy, EST[(y+dy)*L.cols + x+dx] ? cx+dx : cx+dx*.5, EST[(y+dy)*L.cols + x+dx] ? cy+dy : cy+dy*.5]); }); });
+  const segAt = {}; SEG.forEach(sg => { const x0 = Math.floor(Math.min(sg[0],sg[2]))-1, x1 = Math.floor(Math.max(sg[0],sg[2]))+1, y0 = Math.floor(Math.min(sg[1],sg[3]))-1, y1 = Math.floor(Math.max(sg[1],sg[3]))+1;
+    for(let y=y0; y<=y1; y++) for(let x=x0; x<=x1; x++) (segAt[y*L.cols + x] = segAt[y*L.cols + x] || []).push(sg); });
+  const segD = (u, v, L2) => { let sum = 0, mn = 9; for(const [x1,y1,x2,y2] of L2){ const dx = x2-x1, dy = y2-y1, l = dx*dx + dy*dy, t = l ? Math.max(0, Math.min(1, ((u-x1)*dx + (v-y1)*dy)/l)) : 0, ex = x1 + t*dx - u, ey = y1 + t*dy - v, d = Math.sqrt(ex*ex + ey*ey); mn = Math.min(mn, d); sum += Math.exp(-7*d); } return mn; };
+  const segS = (u, v, L2, k) => { let sum = 0, mn = 9; for(const [x1,y1,x2,y2] of L2){ const dx = x2-x1, dy = y2-y1, l = dx*dx + dy*dy, t = l ? Math.max(0, Math.min(1, ((u-x1)*dx + (v-y1)*dy)/l)) : 0, ex = x1 + t*dx - u, ey = y1 + t*dy - v, d = Math.sqrt(ex*ex + ey*ey); mn = Math.min(mn, d); sum += Math.exp(-7*d); }
+    const sm = Math.min(mn, -Math.log(sum)/7 + .02); return mn + (sm - mn)*sst(.02, .35, k); };   // うみに ちかい ところだけ なめらかに くっつける
+  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++) if(EST[y*L.cols + x]) DD[y*L.cols + x] = 1.0;
+  window.__est613 = EST;
   const at = (A, x, y) => A[Math.max(0, Math.min(L.rows-1, y))*L.cols + Math.max(0, Math.min(L.cols-1, x))];
   const bil = (A, u, v) => { const x = u - .5, y = v - .5, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
     return (at(A,x0,y0)*(1-fx) + at(A,x0+1,y0)*fx)*(1-fy) + (at(A,x0,y0+1)*(1-fx) + at(A,x0+1,y0+1)*fx)*fy; };
@@ -5036,14 +5044,27 @@ function seaCanvas(map){
   const RIVW = [138,211,243], BANK = [230,214,162], END = mixc(SHAL, MID, sst(1.62, 2.6, 2.0));
   for(let py=0; py<H; py++) for(let px=0; px<W; px++){
     const u = bx0 + (px+.5)/R, v = by0 + (py+.5)/R; const o = (py*W + px)*4;
-    const cx = Math.floor(u), cy = Math.floor(v), MD = MOUTH[cy*L.cols + cx];
-    if(MD){ const fx = u - cx, fy = v - cy, [mx,my] = MD;
-      const tt = mx===1 ? fx : mx===-1 ? 1-fx : my===1 ? fy : 1-fy, sa = Math.abs((mx ? fy : fx) - .5);
-      const k = sst(.35, 1, tt), wH = .27 + .25*k*k, bH = wH + .06*(1 - k);
-      if(sa >= bH + .04){ D[o+3] = 0; continue; }
-      const wat = 1 - sst(wH - .05, wH + .01, sa), cw = mixc(RIVW, END, sst(.2, 1, tt)), cb = mixc(BANK, SAND, k);
-      const c = mixc(cb, cw, wat), al = 1 - sst(bH - .02, bH + .04, sa);
-      D[o] = c[0]; D[o+1] = c[1]; D[o+2] = c[2]; D[o+3] = Math.round(al*255); continue; }
+    const ci = Math.floor(v)*L.cols + Math.floor(u), SG = segAt[ci];
+    /* 1) うみの そう */
+    let r = 0, g = 0, b = 0, a = 0;
+    { const m = bil(MK, u, v), al = sst(.4, .6, m);
+      if(al > 0){ const dd = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9); let c;
+        if(dd < 1.32) c = mixc(SAND, WET, sst(1.1, 1.32, dd));
+        else if(dd < 1.62){ c = mixc(WET, SHAL, sst(1.38, 1.62, dd)); const f = 1 - Math.abs(dd - 1.42)/.06; if(f > 0 && !SG) c = mixc(c, FOAM, Math.min(.9, f)); }
+        else if(dd < 2.6) c = mixc(SHAL, MID, sst(1.62, 2.6, dd)); else c = mixc(MID, DEEP, sst(2.6, 4.5, dd));
+        if(EST[ci] && dd < 1.62) c = SAND;
+        [r,g,b] = c; a = al; } }
+    /* 2) 川の すじ（うえに かさねる） */
+    if(SG){ const k = sst(.1, .8, bil(MK, u, v)), sd = segS(u, v, SG, k), w = .27 + .32*k, rim = .025*(1-k), bank = .06*(1-k) + .015;
+      if(sd < w + rim + bank + .02){
+        const ddv = Math.max(1.75, bil(DD, u, v)), seaW = ddv < 2.6 ? mixc(SHAL, MID, sst(1.62, 2.6, ddv)) : mixc(MID, DEEP, sst(2.6, 4.5, ddv));
+        const cw = mixc(RIVW, seaW, sst(.1, 1, k)), crim = mixc([79,169,218], cw, k), cbank = mixc(BANK, SAND, k);
+        const tw = 1 - sst(w - .012, w + .008, sd), tr = 1 - sst(w + rim - .01, w + rim + .008, sd), tb = 1 - sst(w + rim + bank - .015, w + rim + bank + .015, sd);
+        let c = mixc(cbank, crim, tr); c = mixc(c, cw, tw);
+        const t2 = a > 0 ? tw + (tb - tw)*(1 - k) : tb;                          // うみの 上では 岸を かかない
+        if(t2 > 0){ if(a <= 0){ r = c[0]; g = c[1]; b = c[2]; } else { r = r*(1-t2) + c[0]*t2; g = g*(1-t2) + c[1]*t2; b = b*(1-t2) + c[2]*t2; } a = Math.max(a, t2); } } }
+    if(a <= 0){ D[o+3] = 0; continue; }
+    D[o] = r; D[o+1] = g; D[o+2] = b; D[o+3] = Math.round(a*255); continue;
     const m = bil(MK, u, v);
     const al = sst(.4, .6, m); if(al <= 0){ D[o+3] = 0; continue; }
     const dd = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9);
@@ -5055,9 +5076,8 @@ function seaCanvas(map){
     D[o] = c[0]; D[o+1] = c[1]; D[o+2] = c[2]; D[o+3] = Math.round(al*255);
   }
   ctx.putImageData(img, 0, 0);
-  Object.entries(MOUTH).forEach(([i, [mx,my]]) => { const x = i % L.cols, y = Math.floor(i / L.cols), cc = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]:not(.cov64)`); if(!cc) return;
-    const dir = mx===1 ? 'to left' : mx===-1 ? 'to right' : my===1 ? 'to top' : 'to bottom', mk = `linear-gradient(${dir}, transparent 0%, transparent 38%, #000 82%)`;
-    cc.querySelectorAll('.rv52').forEach(e => { e.style.webkitMaskImage = mk; e.style.maskImage = mk; }); });
+  Object.keys(EST).forEach(i => { i = +i; const x = i % L.cols, y = Math.floor(i / L.cols), cc = map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]:not(.cov64)`); if(!cc) return;
+    cc.querySelectorAll('.rv52').forEach(e => { e.style.visibility = 'hidden'; }); });
   Object.assign(cv.style, {left:(c0.offsetLeft + (bx0-ax)*cs)+'px', top:(c0.offsetTop + (by0-ay)*cs)+'px', width:((bx1-bx0+1)*cs)+'px', height:((by1-by0+1)*cs)+'px'});
   map.insertBefore(cv, map.firstChild);
 }
@@ -5072,7 +5092,7 @@ function drawDecks(){
 
 /* ---------- 船 ---------- */
 const SH = {list:[], timer:null};
-const water = (x,y) => { const L = townCalc().L; if(x<0 || y<0 || x>=L.cols || y>=L.rows) return false; const id = save.town.cells[`${x},${y}`]; return id===SEA ? (DEPTH[`${x},${y}`]||9) >= 2 : isWater(id); };
+const water = (x,y) => { const L = townCalc().L; if(x<0 || y<0 || x>=L.cols || y>=L.rows) return false; const id = save.town.cells[`${x},${y}`]; return id===SEA ? ((DEPTH[`${x},${y}`]||9) >= 2 || !!CHAN613[`${x},${y}`]) : isWater(id); };
 function cellXY(x, y){ const map = $('#townMap'), c = map && map.querySelector(`.cell[data-x="${x}"][data-y="${y}"]:not(.cov64)`); return c ? [c.offsetLeft + c.offsetWidth/2, c.offsetTop + c.offsetHeight*0.62, c.offsetWidth] : null; }
 function placeMover(m, instant){
   const p = cellXY(m.x, m.y); if(!p || !m.el) return; const [px,py,cs] = p;
@@ -5898,4 +5918,271 @@ css.textContent = `#townMap.noIcon612 :is(.inHome,.glvBadge,.facOv,.ov61:not(.te
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 window.__v612 = {applyIcons, iconsHidden};
+})();
+
+/* =====================================================================
+   まなびタウン v6.13
+   ・河口：いくつの 方向から 海と つながっても しぜんに（seaCanvas）
+   ・ズームの まわりを すっきり（アイコンの 切りかえを イラストに）
+   ・大きな たてもの：大学・科学館・植物園・コンサートホール（3もん れんぞくで 水晶）
+     温泉旅館（ハナと シマくん）・ショッピングモール（いろいろな お店）・ふんすい広場（ねがいの コイン）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.13.0', IMG = './assets/images/v613/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const crystals = () => save.crystal || 0;
+const cryImg = () => `<img src="${X(artSrc('itm_crystal'))}" alt="">`;
+DEFAULT_ART.kb_karaage = './assets/images/v612/kb_karaage.webp';
+
+/* =====================================================================
+   1) ズームの まわり
+   ===================================================================== */
+const ICON_SVG = st => `<svg viewBox="0 0 48 48" class="ic613" aria-hidden="true">
+  <path d="M8 10h32a5 5 0 0 1 5 5v15a5 5 0 0 1-5 5H22l-8 7v-7H8a5 5 0 0 1-5-5V15a5 5 0 0 1 5-5z" fill="${st==='off' ? '#E9E4DC' : '#FFFDF5'}" stroke="#9B7A55" stroke-width="2.4"/>
+  <g transform="translate(24 22)" ${st==='off' ? 'opacity=".45"' : ''}><circle r="7.5" fill="#FFD84A" stroke="#C9961A" stroke-width="1.8"/><rect x="-3.6" y="6.2" width="7.2" height="5" rx="1.4" fill="#B9B2A6" stroke="#8A8278" stroke-width="1.2"/>
+  <path d="M-2.5 -1.5l2.5 3l2.5 -3" fill="none" stroke="#C9961A" stroke-width="1.4" stroke-linecap="round"/><path d="M-11 -9l-3 -3M11 -9l3 -3M0 -11v-4" stroke="#FFB300" stroke-width="2" stroke-linecap="round"/></g>
+  ${st==='off' ? '<path d="M9 40L40 9" stroke="#E8414B" stroke-width="4.2" stroke-linecap="round"/>' : ''}
+  ${st==='auto' ? '<circle cx="39" cy="38" r="8" fill="#5BBF6A" stroke="#fff" stroke-width="2"/><text x="39" y="42.2" font-size="11" font-weight="900" text-anchor="middle" fill="#fff" font-family="sans-serif">A</text>' : ''}</svg>`;
+const LEAF_SVG = `<svg viewBox="0 0 24 24" class="lf613" aria-hidden="true"><path d="M5 19C4 11 9 5 20 4c0 10-6 16-14 15z" fill="#8FD07A" stroke="#3C8A2E" stroke-width="1.6"/><path d="M6 18c4-5 7-8 11-11" stroke="#3C8A2E" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`;
+const ST_TXT = {auto:'じどう', on:'表示', off:'非表示'};
+function tidyBar(){
+  const bar = $('.zoomBar'); if(!bar) return;
+  bar.querySelectorAll(':scope > small').forEach(e => e.remove());
+  const b = bar.querySelector('.icBtn612');
+  if(b){ const m = (save.settings && save.settings.icon612) || 'auto'; const html = `${ICON_SVG(m)}<span>${ST_TXT[m]}</span>`; if(b.dataset.st !== m || !b.querySelector('.ic613')){ b.innerHTML = html; b.dataset.st = m; b.title = 'たてものの 上の アイコン'; } }
+  const lt = bar.querySelector('.lite56Tag'); if(lt && !lt.dataset.v613){ lt.dataset.v613 = 1; lt.innerHTML = `${LEAF_SVG}<span>かるい</span>`; }
+}
+renderMap = (orig => function(){ const o = orig.apply(this, arguments); try{ tidyBar(); }catch(e){} return o; })(renderMap);
+document.addEventListener('click', e => { if(e.target.closest('.icBtn612')) setTimeout(tidyBar, 0); }, true);
+setInterval(() => { if(curScreen==='town') try{ tidyBar(); }catch(e){} }, 1500);
+
+/* =====================================================================
+   2) 3もん れんぞくで 水晶（大学・科学館・植物園・コンサートホール）
+   ===================================================================== */
+let PICK = null;
+document.addEventListener('click', e => { const b = e.target.closest('#dlgBtns button'); if(b) PICK = b.textContent.trim(); }, true);
+function numOpts(a){
+  const n = Number(a); if(!isFinite(n)) return null;
+  const d = String(a).includes('.') ? (String(a).split('.')[1]||'').length : 0, f = v => d ? v.toFixed(d).replace(/\.?0+$/,'') : String(Math.round(v));
+  const c = [n+1, n-1, n*2, n/2, n+10, n-10, n*10, n/10, n+5].filter(v => v > 0 && f(v) !== f(n)).map(f);
+  const s = new Set([f(n)]); shuffle(c).forEach(v => { if(s.size < 4) s.add(v); }); return s.size===4 ? shuffle([...s]) : null;
+}
+function fromUnits(units){
+  for(let t=0; t<40; t++){
+    const u = choice(units); if(!MATH_UNITS[u]) continue;
+    let p; try{ p = Object.assign({u}, MATH_UNITS[u].gen()); }catch(e){ continue; }
+    let opts = null, ans = String(p.ans);
+    if(p.type==='choice' && p.opts && p.opts.length >= 2) opts = p.opts.slice();
+    else if(p.type==='num') opts = numOpts(p.ans);
+    if(!opts) continue;
+    return {html:`<div class="mqSent math">${p.q}</div>${p.disp||''}`, ans, opts, exp:v => { try{ return window.__explain56 ? window.__explain56(p, v, {}) : ''; }catch(e){ return ''; } }};
+  }
+  return null;
+}
+/* 音楽の 問題 */
+const NOTE = {
+  whole:`<ellipse cx="30" cy="40" rx="10" ry="7" fill="none" stroke="#2C2C2C" stroke-width="3.2" transform="rotate(-20 30 40)"/>`,
+  half:`<ellipse cx="26" cy="46" rx="9" ry="6.5" fill="none" stroke="#2C2C2C" stroke-width="3" transform="rotate(-20 26 46)"/><path d="M34 44V10" stroke="#2C2C2C" stroke-width="2.6"/>`,
+  dhalf:`<ellipse cx="26" cy="46" rx="9" ry="6.5" fill="none" stroke="#2C2C2C" stroke-width="3" transform="rotate(-20 26 46)"/><path d="M34 44V10" stroke="#2C2C2C" stroke-width="2.6"/><circle cx="44" cy="46" r="3" fill="#2C2C2C"/>`,
+  quarter:`<ellipse cx="26" cy="46" rx="9" ry="6.5" fill="#2C2C2C" transform="rotate(-20 26 46)"/><path d="M34 44V10" stroke="#2C2C2C" stroke-width="2.6"/>`,
+  eighth:`<ellipse cx="26" cy="46" rx="9" ry="6.5" fill="#2C2C2C" transform="rotate(-20 26 46)"/><path d="M34 44V10" stroke="#2C2C2C" stroke-width="2.6"/><path d="M34 10q12 8 8 22q0-10-8-14" fill="#2C2C2C"/>`,
+  dquarter:`<ellipse cx="26" cy="46" rx="9" ry="6.5" fill="#2C2C2C" transform="rotate(-20 26 46)"/><path d="M34 44V10" stroke="#2C2C2C" stroke-width="2.6"/><circle cx="44" cy="46" r="3" fill="#2C2C2C"/>`
+};
+const sym = t => `<text x="30" y="44" font-size="30" font-weight="900" font-style="italic" font-family="Georgia,serif" text-anchor="middle" fill="#2C2C2C">${t}</text>`;
+const SYMS = {
+  p:sym('p'), f:sym('f'), mp:sym('mp'), mf:sym('mf'), pp:sym('pp'), ff:sym('ff'),
+  cresc:`<path d="M54 22L8 32L54 42" fill="none" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>`.replace('M54 22L8 32L54 42','M8 22L54 32L8 42').replace('M8 22L54 32L8 42','M54 22L8 32L54 42'),
+  decresc:`<path d="M8 22L54 32L8 42" fill="none" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>`,
+  sharp:`<g stroke="#2C2C2C" stroke-width="2.6"><path d="M24 12V54M36 8V50"/><path d="M16 28L44 22M16 40L44 34" stroke-width="5"/></g>`,
+  flat:`<path d="M24 8V52q16-4 16-14q0-8-8-8q-5 0-8 5" fill="none" stroke="#2C2C2C" stroke-width="3"/>`,
+  fermata:`<path d="M10 40q20-30 40 0" fill="none" stroke="#2C2C2C" stroke-width="3.4"/><circle cx="30" cy="36" r="3.4" fill="#2C2C2C"/>`,
+  staccato:`<ellipse cx="26" cy="46" rx="9" ry="6.5" fill="#2C2C2C" transform="rotate(-20 26 46)"/><path d="M34 44V14" stroke="#2C2C2C" stroke-width="2.6"/><circle cx="25" cy="30" r="3" fill="#2C2C2C"/>`,
+  repeat:`<g fill="#2C2C2C"><rect x="40" y="10" width="3" height="44"/><rect x="47" y="10" width="7" height="44"/><circle cx="32" cy="26" r="3.4"/><circle cx="32" cy="38" r="3.4"/></g>`
+};
+SYMS.cresc = `<path d="M54 20L8 32L54 44" fill="none" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>`;
+SYMS.decresc = `<path d="M8 20L54 32L8 44" fill="none" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>`;
+const msvg = k => `<svg viewBox="0 0 62 62" class="mus613"><rect x="1" y="1" width="60" height="60" rx="10" fill="#FFFDF6" stroke="#E6D3B3"/>${NOTE[k] || SYMS[k] || ''}</svg>`;
+const MUSIC = [
+ ['この 音符（おんぷ）は 何拍？','1拍','2拍/4拍/半拍','4分音符は 1拍。黒い たまに ぼうが 1本。','quarter'],
+ ['この 音符は 何拍？','2拍','1拍/4拍/3拍','2分音符は 2拍。白い たまに ぼう。','half'],
+ ['この 音符は 何拍？','4拍','2拍/1拍/3拍','全音符は 4拍。ぼうが ない 白い たま。','whole'],
+ ['この 音符は 何拍？','半拍','1拍/2拍/4拍','8分音符は 半拍（4分音符の 半分）。はたが 1本 つく。','eighth'],
+ ['この 音符（てんの ついた 2分音符）は 何拍？','3拍','2拍/4拍/2拍半','付点（ふてん）は もとの 半分を たす。2 ＋ 1 ＝ 3拍。','dhalf'],
+ ['この 音符（てんの ついた 4分音符）は 何拍？','1拍半','1拍/2拍/3拍','付点4分音符は 1 ＋ 半分 ＝ 1拍半。','dquarter'],
+ ['この 記号の いみは？','弱く','強く/少し強く/とても強く','p（ピアノ）は「弱く」。','p'],
+ ['この 記号の いみは？','強く','弱く/少し弱く/とても弱く','f（フォルテ）は「強く」。','f'],
+ ['この 記号の いみは？','少し強く','少し弱く/とても強く/弱く','mf（メゾフォルテ）は「少し強く」。','mf'],
+ ['この 記号の いみは？','少し弱く','少し強く/とても弱く/強く','mp（メゾピアノ）は「少し弱く」。','mp'],
+ ['この 記号の いみは？','とても弱く','とても強く/少し弱く/強く','pp（ピアニッシモ）は「とても弱く」。','pp'],
+ ['この 記号の いみは？','とても強く','とても弱く/少し強く/弱く','ff（フォルティッシモ）は「とても強く」。','ff'],
+ ['この 記号の いみは？','だんだん強く','だんだん弱く/急に強く/くりかえす','クレシェンド：口が ひらく ほうへ だんだん 強く。','cresc'],
+ ['この 記号の いみは？','だんだん弱く','だんだん強く/急に弱く/のばす','デクレシェンド：だんだん 弱く。','decresc'],
+ ['この 記号の いみは？','半音 上げる','半音 下げる/もとの 高さに もどす/くりかえす','♯（シャープ）は 半音 上げる。','sharp'],
+ ['この 記号の いみは？','半音 下げる','半音 上げる/もとの 高さに もどす/のばす','♭（フラット）は 半音 下げる。','flat'],
+ ['この 記号の いみは？','ほどよく のばす','短く 切る/だんだん 弱く/くりかえす','フェルマータ：その 音を ほどよく のばす。','fermata'],
+ ['音符の 上や 下の 点（てん）の いみは？','短く 切って','ほどよく のばす/強く/なめらかに','スタッカート：音を 短く 切って えんそうする。','staccato'],
+ ['この 記号の いみは？','くりかえす','おわり/のばす/強く','反復記号（はんぷくきごう）：前に もどって くりかえす。','repeat'],
+ ['バイオリンは 何の なかまの 楽器？','弦楽器','金管楽器/木管楽器/打楽器','弦（げん）を 弓で こすって 音を 出す。',''],
+ ['トランペットは 何の なかまの 楽器？','金管楽器','弦楽器/木管楽器/打楽器','くちびるを ふるわせて 音を 出す 金属の 楽器。',''],
+ ['フルートは 何の なかまの 楽器？','木管楽器','金管楽器/弦楽器/打楽器','金属で できているが、木管楽器の なかま。',''],
+ ['ティンパニは 何の なかまの 楽器？','打楽器','弦楽器/金管楽器/木管楽器','大きな たいこ。たたいて 音を 出す。',''],
+ ['日本の 楽器で、13本の 弦が ある ものは？','こと（箏）','しゃくはち（尺八）/しゃみせん（三味線）/たいこ','琴（箏）は ことじで 音の 高さを きめる。三味線は 3本、尺八は 竹の ふえ。',''],
+ ['交響曲 第5番「運命」を つくった 作曲家は？','ベートーベン','モーツァルト/バッハ/ショパン','「ジャジャジャジャーン」で 有名。',''],
+ ['「音楽の 父」と よばれる 作曲家は？','バッハ','ベートーベン/モーツァルト/ヘンデル','ドイツの 作曲家。「G線上の アリア」など。',''],
+ ['「魔王（まおう）」を つくった 作曲家は？','シューベルト','バッハ/ショパン/ヴィヴァルディ','「歌曲の 王」と よばれる。',''],
+ ['バイオリン協奏曲「四季（しき）」を つくった 作曲家は？','ヴィヴァルディ','バッハ/ベートーベン/シューベルト','「春」「夏」「秋」「冬」の 4曲。',''],
+ ['「春の海」を つくった 日本の 作曲家・箏曲家は？','宮城道雄','滝廉太郎/山田耕筰/武満徹','箏と 尺八の ための 曲。お正月に よく 流れる。',''],
+ ['「荒城の月（こうじょうの つき）」を つくった 作曲家は？','滝廉太郎','宮城道雄/山田耕筰/中田喜直','「花」「お正月」も 滝廉太郎の 曲。',''],
+ ['ワルツは ふつう 何拍子？','3拍子','2拍子/4拍子/6拍子','「ズン・チャッ・チャッ」の 3拍子。',''],
+ ['ハ長調の「ド」の 英語の 音名は？','C','A/D/G','C（ド）D（レ）E（ミ）F（ファ）G（ソ）A（ラ）B（シ）。','']
+];
+function musicQ(){ const r = choice(MUSIC), opts = shuffle([r[1]].concat(r[2].split('/')));
+  return {html:`${r[4] ? `<div class="musQ613">${msvg(r[4])}</div>` : ''}<div class="mqSent math">${X(r[0])}</div>`, ans:r[1], opts,
+    exp:v => `<div class="ex56"><div class="ex56Hd"><b>📖 かいせつ</b><small>おんがく</small></div><div class="ex56Ans"><span class="ok">⭕ 正しい こたえ <b>${X(r[1])}</b></span>${v && v!==r[1] ? `<span class="ng">❌ きみの こたえ <b>${X(v)}</b></span>` : ''}</div>${r[4] ? `<div class="ex56Fig">${msvg(r[4])}</div>` : ''}<ol class="ex56Steps"><li>${X(r[3])}</li></ol></div>`}; }
+
+const UNI_U = ['decmd','divisor','ave','ratio','vol','cg_clim','cg_world','cg_japan','cg_skill','civ2','w_geo','j_year','j_order','r_bio','r_chem','r_phys','r_earth','r_calc','r_el1','r_el2','r_el3'];
+const SCI_U = ['r_sun','r_mag','r_sky','r_water','r_sol','r_lever','r_emag','r_land','r_burn','r_moon','r_chem','r_phys','r_earth','r_el1','r_el2','r_el3','r_calc'];
+const BOT_U = ['r_plantpic','r_plant','r_flower'];
+const QB = {
+  bg_university:{icon:'🎓', name:'だいがく', save:'uni613', qname:'だいがくの むずかしい 問題', desc:'ふつうの 学校より むずかしい 問題が 出るよ。', make:() => fromUnits(UNI_U)},
+  bg_science:{icon:'🔬', name:'かがくかん', save:'sci613', qname:'かがくの 問題', desc:'りか・かがくの 問題が 出るよ。', make:() => fromUnits(SCI_U)},
+  bg_botanical:{icon:'🌺', name:'しょくぶつえん', save:'bot613', qname:'しょくぶつの 問題', desc:'しょくぶつの 問題が 出るよ。', make:() => fromUnits(BOT_U)},
+  bg_concert:{icon:'🎼', name:'コンサートホール', save:'con613', qname:'おんがくの 問題', desc:'おんがくの 問題が 出るよ。', make:musicQ}
+};
+async function challenge(key, id){
+  const o = QB[id], it = ITEM(id), S = save[o.save] || (save[o.save] = {}), done = S.d===dayKey();
+  const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">${o.icon} ${X(it?.name||o.name)}</h2>
+    <p class="dlgP">${o.desc}<br>クイズに <b>3もん れんぞく</b>で せいかいすると<br><b>水晶</b>が もらえるよ（1日 1かい）</p>
+    <div class="cry61">${cryImg()}<b>水晶 ×${crystals()}</b><small>${done ? 'きょうの 水晶は もらったよ' : 'きょうは まだ もらっていないよ'}</small></div>
+    ${done ? '<div class="done66">✅ きょうの 水晶は もう もらったよ<br><small>水晶は 1日1回。いまは れんしゅう（水晶・ポイントなし）だよ</small></div>' : ''}`,
+    [{label: done ? `${o.icon} れんしゅう する（水晶なし）` : `${o.icon} クイズに ちょうせん（水晶 1こ）`, cls: done ? 'white' : 'gold', v:'quiz'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(v!=='quiz') return;
+  for(let i=0; i<3; i++){
+    const q = o.make(); if(!q){ toast('問題が つくれなかったよ'); return; }
+    PICK = null;
+    const res = await askMQ({html:`<div class="obsQ61">${o.icon.repeat(i+1)}${'・'.repeat(2-i)}</div>${q.html}`, ans:q.ans, opts:q.opts, key:o.save+'|'+i+'|'+Date.now()}, `<b>${o.icon} ${X(o.qname)}（${i+1}/3）</b>`);
+    if(!res.ok){
+      await dialog(`<h2 class="dlgT">おしい！ ${i}もん れんぞく</h2>${q.exp(PICK) || `<p class="dlgP">こたえは <b>${X(q.ans)}</b></p>`}`, [{label:'また ちょうせんする', cls:'gold', v:1}], 'wide ex56Dlg');
+      return;
+    }
+    await dialog(`<h2 class="dlgT">⭕ せいかい！</h2><p class="dlgP">${i < 2 ? `あと ${2-i}もん！` : 'さいごの 問題も せいかい！'}</p>`, [{label: i<2 ? 'つぎの もんだい ▶' : 'けっかを 見る ▶', cls:'gold', v:1}]);
+  }
+  const give = S.d !== dayKey();
+  if(give){ S.d = dayKey(); save.crystal = crystals() + 1; const p = givePts(30, `${o.qname} 3もん れんぞく`); persist(); sound('fan'); confetti(1800);
+    await dialog(`<div class="cry61 big">${cryImg()}</div><h2 class="dlgT">3もん れんぞく せいかい！</h2><p class="dlgP"><b>水晶を 1こ</b> もらったよ！<br><span class="coin sm">P</span> +${p}<br>水晶 ×${crystals()}</p><p class="dlgP facNote">水晶は 1日1回。あしたも ちょうせんしてね！</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold'); }
+  else { persist(); sound('ok');
+    await dialog(`<div class="done66 big">✅ れんしゅう クリア！</div><h2 class="dlgT">3もん れんぞく せいかい！</h2><p class="dlgP">きょうの 水晶は もう もらっているので、<b>水晶は ふえないよ</b>。<br>つぎに もらえるのは <b>あした</b>。</p>`, [{label:'OK', cls:'white', v:1}]); }
+}
+
+/* =====================================================================
+   3) 温泉旅館
+   ===================================================================== */
+const ONSEN = [['onsen_1','いただきまーす！ おんせんの あとの ごはんは さいこう！'],['onsen_1','ゆうやけの 山、きれいだね〜'],['onsen_1','シマくんも いっしょに たべよう！']];
+async function openOnsen(key){
+  const L = choice(ONSEN);
+  const v = await dialog(`<div class="star62"><img src="${IMG}${L[0]}.webp" alt=""><div class="st62t">♨️ おんせん りょかん</div></div><div class="talkBubble" style="margin:8px auto 0"><b>ハナ</b>${X(L[1])}</div>`,
+    [{label:'もっと 見る ♨️', cls:'gold', v:'more'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='more') return openOnsen(key); if(v==='grade') openBuilding(key);
+}
+
+/* =====================================================================
+   4) ショッピングモール
+   ===================================================================== */
+function pickDialog(html, btns, cls){
+  return new Promise(res => { let done = false; const end = v => { if(done) return; done = true; $('#dlgBody').onclick = null; res(v); };
+    dialog(html, btns, cls).then(end);
+    $('#dlgBody').onclick = e => { const b = e.target.closest('[data-pick]'); if(!b || b.disabled) return; $('#dlg').classList.remove('show'); end('pick:' + b.dataset.pick); }; });
+}
+const MALL_ORDER = ['bakery','market','konbini','dept','library','hotel','dealer','post','takoyaki','crepe','icecream','ramen'];
+const mallShops = () => MALL_ORDER.filter(b => SHOPS[b]);
+function mallStaff(key){
+  const M = save.mall613 || (save.mall613 = {}), S = M[key] || (M[key] = {}), res = save.town.res.filter(r => !SP(r.sp).human);
+  const used = new Set(Object.values(workers()));
+  mallShops().forEach(b => { if(S[b] && res.some(r => r.id===S[b])) return; const free = res.filter(r => !used.has(r.id) && !Object.values(S).includes(r.id)); const r = (free.length ? choice(free) : choice(res)); if(r) S[b] = r.id; });
+  return S;
+}
+function cleanMall(){ const t = save.town; if(!t) return; let ch = false;
+  Object.keys(t.cells).forEach(k => { if(k.startsWith('mall|')){ delete t.cells[k]; ch = true; } });
+  Object.keys(workers()).forEach(k => { if(k.startsWith('mall|')){ delete workers()[k]; ch = true; } });
+  Object.keys(t.glv||{}).forEach(k => { if(k.startsWith('mall|')){ delete t.glv[k]; ch = true; } });
+  if(ch) persist(); }
+let MALL_ON = 0;
+const inMallShop = () => !!document.querySelector('#dlg.show .shopIn, #dlg.show .pickW');
+setInterval(() => { if(!MALL_ON) return; if(!inMallShop()){ if(++MALL_ON > 3){ MALL_ON = 0; cleanMall(); } } else MALL_ON = 1; }, 600);
+async function openMall(key){
+  cleanMall(); const S = mallStaff(key); persist();
+  const by = id => save.town.res.find(r => r.id===id);
+  const v = await pickDialog(`<div class="facHead"><img src="${X(artSrc('bg_mall'))}" alt=""><div><h2 class="dlgT">🛍️ ショッピングモール</h2><small>いろいろな お店が 入っているよ。どこに 行く？</small></div></div>
+    <div class="mall613">${mallShops().map(b => { const r = by(S[b]), it = ITEM(b);
+      return `<button class="facCard" data-pick="${b}"><img src="${X(artSrc(it?.art||''))}" alt=""><b>${SHOPS[b].i} ${X(SHOPS[b].n)}</b><span class="mw613">${r ? `<img src="${X(SP(r.sp).img || artSrc(SP(r.sp).art))}" alt="">` : ''}<small>${r ? X(r.name) : ''}</small></span></button>`; }).join('')}</div>
+    <p class="dlgP facNote">モールの お店は ぜんぶ ★3（品ぞろえ さいだい）。はたらいている 住民は 日に よって かわるよ。</p>`,
+    [{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(!v || !String(v).startsWith('pick:')) return;
+  const b = v.slice(5), vk = `mall|${key}|${b}`, t = save.town;
+  t.cells[vk] = b; workers()[vk] = S[b]; t.glv = t.glv || {}; t.glv[vk] = 3; MALL_ON = 1;
+  SHOP_KEY = vk; window.__noScene613 = 1; try{ await openShop(vk); }finally{ window.__noScene613 = 0; setTimeout(() => { if(!inMallShop()){ MALL_ON = 0; cleanMall(); } }, 400); }
+}
+openBuilding = (orig => function(key){ if(String(key).startsWith('mall|')){ const real = key.split('|')[1]; cleanMall(); return orig.call(this, real); } return orig.apply(this, arguments); })(openBuilding);
+try{ cleanMall(); }catch(e){}
+tryScene = (orig => async function(){ if(window.__noScene613) return false; return orig.apply(this, arguments); })(tryScene);
+
+/* =====================================================================
+   5) ふんすい広場：ねがいの コイン（1日1かい）
+   ===================================================================== */
+const WISH = [[55,'pt'],[20,'food'],[15,'crystal'],[8,'letter'],[2,'gold']];
+async function openPlaza(key){
+  const W = save.wish613 || (save.wish613 = {}), done = W.d===dayKey(), cost = 10, it = ITEM('bg_plaza');
+  const v = await dialog(`<div class="dlgArt big">${picHTML(it)}</div><h2 class="dlgT">⛲ ふんすい ひろば</h2>
+    <p class="dlgP">${done ? `きょうの ねがいごとは もう したよ<br><small>また あした コインを なげてね</small>` : `ふんすいに コインを なげて ねがいごとを しよう！<br><span class="coin sm">P</span> ${cost}で 1日 1かい。<br><small>ポイント・おやつ・水晶・レターが もらえるかも？</small>`}</p>`,
+    (done ? [] : [{label:'🪙 コインを なげる', cls:'gold', v:'toss'}]).concat([{label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(v!=='toss') return; if(save.points.bal < cost){ toast('ポイントが たりないよ'); return; }
+  givePts(-cost, 'ふんすいに コインを なげた'); W.d = dayKey();
+  let r = Math.random()*100, kind = 'pt'; for(const [w,k] of WISH){ r -= w; if(r <= 0){ kind = k; break; } }
+  let got = '';
+  if(kind==='pt'){ const p = givePts(rint(5,15)*10, 'ふんすいの ねがいごと'); got = `<span class="coin sm">P</span> <b>+${p}</b>`; }
+  if(kind==='food'){ const L = (SHOP_FOOD.bakery||[]).map(FD).filter(Boolean), f = choice(L); const B = foodBag(); B[f.id] = (B[f.id]||0) + 1; got = `<img src="${X(artSrc(f.art))}" alt="" style="width:64px;height:64px;object-fit:contain"><br><b>${X(f.n)}</b>`; }
+  if(kind==='crystal'){ save.crystal = crystals() + 1; got = `${cryImg().replace('<img','<img style="width:64px;height:64px"')}<br><b>水晶 1こ</b>`; }
+  if(kind==='letter' || kind==='gold'){ const id = kind==='gold' ? 'goldletter' : 'letter', t = save.town; t.bag[id] = (t.bag[id]||0) + 1; got = `<img src="${X(artSrc(ITEM(id).art))}" alt="" style="width:64px;height:64px;object-fit:contain"><br><b>${X(ITEM(id).name)}</b>`; }
+  persist(); sound('fan'); confetti(kind==='gold' ? 2600 : 1300);
+  await dialog(`<div class="wish613"><span>🪙</span><i>✨</i></div><h2 class="dlgT">ねがいごとが とどいた！</h2><p class="dlgP">${got}</p>`, [{label:'ありがとう！', cls:'gold', v:1}], kind==='gold' ? 'gold' : '');
+}
+
+/* =====================================================================
+   タッチ
+   ===================================================================== */
+const TAP = {bg_university:k => challenge(k,'bg_university'), bg_science:k => challenge(k,'bg_science'), bg_botanical:k => challenge(k,'bg_botanical'), bg_concert:k => challenge(k,'bg_concert'),
+  bg_onsen:openOnsen, bg_mall:openMall, bg_plaza:openPlaza};
+window.addEventListener('click', e => {
+  if(curScreen!=='town' || townEdit || !save.town) return;
+  const c = e.target.closest('#townMap .cell'); if(!c || e.target.closest('.walker,.car2,.ship65,.air65')) return;
+  const key = `${c.dataset.x},${c.dataset.y}`, fn = TAP[save.town.cells[key]]; if(!fn) return;
+  e.stopImmediatePropagation(); e.preventDefault(); fn(key);
+}, true);
+try{ Object.assign(ZUKAN_INFO, {bg_hospital:'けがを した 住民が たくさん 来る 大きな びょういん。', bg_university:'むずかしい 問題に ちょうせんできる。3もん れんぞくで 水晶。', bg_science:'かがくの 問題で 水晶が もらえる。', bg_botanical:'しょくぶつの 問題で 水晶が もらえる。',
+  bg_onsen:'ハナと シマくんが くつろぐ おやど。', bg_mall:'いろいろな お店が 入っていて、ほとんど なんでも かえる。', bg_concert:'おんがくの 問題で 水晶が もらえる。', bg_plaza:'ふんすいに コインを なげて ねがいごと。'}); }catch(e){}
+itemEffect = (orig => function(it){ const s = orig.apply(this, arguments), D = {bg_hospital:'🏥 けがを した 住民が ふえる（なおすと なかよし）', bg_university:'🎓 むずかしい 問題 3もんで 水晶', bg_science:'🔬 かがくの 問題 3もんで 水晶', bg_botanical:'🌺 しょくぶつの 問題 3もんで 水晶', bg_concert:'🎼 おんがくの 問題 3もんで 水晶', bg_onsen:'♨️ ハナと シマくんの おんせん', bg_mall:'🛍️ いろいろな お店で かいもの', bg_plaza:'⛲ 1日1かい ねがいの コイン'};
+  return it && D[it.id] ? `${s}・${D[it.id]}` : s; })(itemEffect);
+
+const css = document.createElement('style');
+css.textContent = `.zoomBar{display:flex!important;align-items:center;gap:8px;flex-wrap:nowrap!important}
+.zoomBar>small{display:none!important}
+.zoomBar .icBtn612{display:inline-flex!important;align-items:center;gap:4px;height:40px;padding:0 10px 0 6px!important;border-radius:999px!important;white-space:nowrap;font-size:12px;font-weight:900;color:#6B5540;min-width:0!important;width:auto!important}
+.zoomBar .icBtn612 .ic613{width:30px;height:30px;flex:none}
+.zoomBar .icBtn612 span{font-size:12px;line-height:1;white-space:nowrap}
+.zoomBar .icBtn612.hid{opacity:1}
+.zoomBar .lite56Tag{display:inline-flex!important;align-items:center;gap:3px;white-space:nowrap!important;padding:4px 9px!important;font-size:12px!important;line-height:1!important;border-radius:999px!important;margin-left:0!important;flex:none}
+.zoomBar .lite56Tag .lf613{width:16px;height:16px;flex:none}
+.musQ613{display:flex;justify-content:center;margin:2px 0}.mus613{width:80px;height:80px}.ex56Fig .mus613{width:96px;height:96px}
+.mall613{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mall613 .facCard{position:relative;padding-bottom:22px}.mall613 .facCard img{width:58px;height:58px;object-fit:contain}.mall613 .facCard b{font-size:11.5px}
+.mw613{position:absolute;left:4px;right:4px;bottom:3px;display:flex;align-items:center;gap:3px;justify-content:center}.mw613 img{width:22px!important;height:22px!important;object-fit:contain}.mw613 small{font-size:10px;color:#7A5A3A}
+.wish613{position:relative;height:90px;display:flex;justify-content:center;align-items:center;font-size:56px}.wish613 span{animation:wish613 1.1s ease-out}.wish613 i{position:absolute;font-style:normal;font-size:30px;top:4px;right:38%;animation:spk65 1.2s ease-in-out infinite}
+@keyframes wish613{0%{transform:translateY(40px) scale(.4) rotate(0);opacity:0}60%{transform:translateY(-10px) scale(1.1) rotate(540deg);opacity:1}100%{transform:none}}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__v613 = {challenge, openMall, openPlaza, openOnsen, QB, MUSIC, tidyBar, cleanMall};
 })();

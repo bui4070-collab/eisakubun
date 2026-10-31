@@ -27,6 +27,7 @@ function F(){
 const MIN = 60000, now = () => Date.now();
 const cellsOf = id => save.town ? Object.entries(save.town.cells).filter(([k,v]) => v===id).map(([k]) => k) : [];
 const has = id => cellsOf(id).length > 0;
+const hasC = () => has('clinic') || has('bg_hospital');                 // v6.13：そうごう びょういんも 病院
 const glv = key => (save.town.glv||{})[key] || 0;
 const maxGlv = id => cellsOf(id).reduce((a,k) => Math.max(a, glv(k)), 0);
 const resBy = id => save.town.res.find(r => r.id===id);
@@ -202,15 +203,16 @@ function hurtCheck(){
   const f = F(), t = save.town, d = dayKey(); let ch = false;
   if(f.hurtDay!==d){ f.hurtDay = d; f.hurtN = 0; }
   hurtList().forEach(r => { if(now() - r.hurt.at > 24*60*MIN){ delete r.hurt; ch = true; } });   // 1日で しぜんに なおる
-  const able = has('clinic') || t.lv >= 5;
-  if(able && !hurtList().length && f.hurtN < 2 && Math.random() < 0.025){
+  const able = hasC() || t.lv >= 5;
+  const hosp = cellsOf('bg_hospital').length, maxNow = hosp ? 1 + Math.min(2, hosp) : 1, maxDay = hosp ? 4 + 2*hosp : 2, rate = hosp ? 0.06 : 0.025;   // そうごう病院：かんじゃが ふえる
+  if(able && hurtList().length < maxNow && f.hurtN < maxDay && Math.random() < rate){
     const c = freeRes(); if(c.length){ const r = choice(c); r.hurt = {at:now(), line:choice(HURT_LINES)}; f.hurtN++; ch = true;
-      setTimeout(() => toast(`🤕 ${r.name}が けがを しちゃった！ タッチして ${has('clinic') ? '病院へ つれていこう' : 'ようすを 見よう'}`), 300); }
+      setTimeout(() => toast(`🤕 ${r.name}が けがを しちゃった！ タッチして ${hasC() ? '病院へ つれていこう' : 'ようすを 見よう'}`), 300); }
   }
   return ch;
 }
 async function heal(r){
-  if(!has('clinic')){ toast('🏥 病院が ないよ。ショップで「病院」を おこう'); return; }
+  if(!hasC()){ toast('🏥 病院が ないよ。ショップで「病院」を おこう'); return; }
   sound('tap');
   /* v5.4：だれが はなしているか わかるように、せんせいと 住民を わけて ひょうじ */
   await dialog(head('bld_clinic', '🏥 病院に ついたよ', '') + `<div class="docTalk54">
@@ -226,14 +228,14 @@ async function heal(r){
 async function hurtTap(r){
   const v = await dialog(`<div class="dlgArt big">${resPic(r)}</div><h2 class="dlgT">🤕 ${esc(r.name)}が けがを しているよ</h2>
     <div class="talkBubble"><b>${esc(r.name)}</b>${esc(r.hurt.line || HURT_LINES[0])}</div>
-    ${has('clinic') ? '' : '<p class="dlgP facNote">まちに 病院が あれば なおして もらえるのに…<br>（ショップで「病院」を おこう。1日 たつと しぜんに なおるよ）</p>'}`,
-    (has('clinic') ? [{label:'🏥 病院へ つれていく', cls:'gold', v:'go'}] : []).concat([{label:'💬 はなす', cls:'white', v:'talk'}, closeBtn]), 'wide');
+    ${hasC() ? '' : '<p class="dlgP facNote">まちに 病院が あれば なおして もらえるのに…<br>（ショップで「病院」を おこう。1日 たつと しぜんに なおるよ）</p>'}`,
+    (hasC() ? [{label:'🏥 病院へ つれていく', cls:'gold', v:'go'}] : []).concat([{label:'💬 はなす', cls:'white', v:'talk'}, closeBtn]), 'wide');
   if(v==='go') heal(r);
   if(v==='talk') talkTo(r.id);
 }
 async function openClinic(key){
   const f = F(), L = hurtList(), done = f.checkDay===dayKey();
-  const v = await pickDialog(head('bld_clinic', '🏥 病院', L.length ? `けがを している 住民が ${L.length}人 いるよ` : 'みんな げんき！')
+  const isH = save.town.cells[key]==='bg_hospital'; const v = await pickDialog(head(isH ? 'bg_hospital' : 'bld_clinic', isH ? '🏥 そうごう びょういん' : '🏥 病院', L.length ? `けがを している 住民が ${L.length}人 いるよ` : 'みんな げんき！')
     + (L.length ? `<div class="facGrid">${L.map(r => `<button class="facCard" data-pick="${r.id}">${resPic(r)}<b>${esc(r.name)}</b><small>🩹 なおしてもらう</small></button>`).join('')}</div>` : '')
     + `<p class="dlgP facNote">${done ? '🩺 きょうの けんこうしんだんは おわったよ' : '🩺 1日1かい みんなの けんこうしんだんが できるよ'}</p>`,
     (done ? [] : [{label:'🩺 けんこうしんだん', cls:'gold', v:'check'}]).concat([gradeBtn, closeBtn]), 'wide');
@@ -489,7 +491,7 @@ walkTick = function(){
 };
 
 /* ---------- タッチ ---------- */
-const FAC = {field:openField, park:openPark, school:openSchool, parking:openParking, clinic:openClinic, cityhall:openHall, hotel:openHotel, library:openLibrary, museum:openMuseum};
+const FAC = {bg_hospital:openClinic, field:openField, park:openPark, school:openSchool, parking:openParking, clinic:openClinic, cityhall:openHall, hotel:openHotel, library:openLibrary, museum:openMuseum};
 window.addEventListener('click', async e => {
   if(curScreen!=='town' || townEdit || !save.town) return;
   const w = e.target.closest('#townMap .walker');
