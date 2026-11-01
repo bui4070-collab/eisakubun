@@ -6565,7 +6565,7 @@ window.__v614 = {openFishing, closeFishing, FISH, fishSVG, get F(){ return F; }}
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.18.0', IMG = './assets/images/v618/';
+const VER = '6.19.0', IMG = './assets/images/v618/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const W = ms => new Promise(r => setTimeout(r, ms));
 try{ const it = ITEM('stadium'); if(it){ it.lv = 8; it.price0 = it.price0 || 4500; } ZUKAN_INFO.stadium = '住民たちと 野球の ミニゲームが できる。投球は 1問、はやく 答えるほど 遠くへ 飛ぶ！'; }catch(e){}
@@ -6592,12 +6592,44 @@ function fielders(lineup){
 }
 
 /* ---------- 問題 ---------- */
-function question(){
-  let m = null; for(let t=0; t<10 && !m; t++){ try{ m = makeMQ({}); }catch(e){ m = null; } if(m && (!m.opts || m.opts.length < 2)) m = null; }
+/* ===== STEP3：球種・得意教科・にがてノート ===== */
+const SUBJ = {math:'さんすう', jp:'こくご', sci:'りか', soc:'しゃかい', en:'えいご'};
+const SUBJ_IC = {math:'🔢', jp:'📖', sci:'🔬', soc:'🗾', en:'🔤'};
+const subjOf = u => { const g = MATH_UNITS[u]?.g; return typeof g==='number' || g==='low' ? 'math' : g==='sci' ? 'sci' : g==='soc' ? 'soc' : g==='bun' ? 'jp' : g==='ek' ? 'en' : null; };
+function fav(r){ if(!r.favSubject){ r.favSubject = choice(Object.keys(SUBJ)); persist(); } return r.favSubject; }
+const userG = () => Number(save.settings?.grade56 || 0) || 3;
+const gName = g => g >= 7 ? '中学' : `${Math.round(g)}年`;
+const PITCH = {st:{n:'ストレート', mul:.5, d:-1, cls:'st'}, cv:{n:'カーブ', mul:1, d:0, cls:'cv'}, mk:{n:'まきゅう', mul:2, d:1, cls:'mk'}};
+const ug = u => { try{ return window.__v57 ? window.__v57.unitGrade(u) : 0; }catch(e){ return 0; } };
+let POOLU = null;
+const poolU = () => POOLU || (POOLU = Object.keys(MATH_UNITS).filter(u => subjOf(u) && ug(u) > 0));
+function unitsFor(T, subj){ for(const tol of [.6, 1.1, 1.6, 2.6, 9]){ const L = poolU().filter(u => Math.abs(ug(u) - T) <= tol && (!subj || subjOf(u)===subj)); if(L.length) return L; } return []; }
+const kanjiFor = T => BUILTIN.filter(q => Math.abs((q.grade||3) - T) <= .6);
+function genFromUnit(u){ for(let t=0; t<8; t++){ let m = null; try{ m = mqFromP(MATH_UNITS[u].gen(), u); }catch(e){} if(m && m.opts && m.opts.length >= 2){ m.u = u; return m; } } return null; }
+function kanjiQ(q){ const m = kanjiMQ(q, false); if(m){ m.u = 'kanji'; m.kid = q.id; } return m; }
+function pickPitch(){ const g = userG(), r = Math.random(); if(g <= 1) return r < .65 ? 'cv' : 'mk'; if(g >= 7) return r < .35 ? 'st' : 'cv'; return r < .3 ? 'st' : r < .8 ? 'cv' : 'mk'; }
+function question(br){
+  const S = ST(), WN = S.weak || (S.weak = []), g = userG(); let m = null;
+  if(G.revenge){ const R = G.revenge; m = R.u==='kanji' ? kanjiQ(choice(kanjiFor(R.qg).length ? kanjiFor(R.qg) : BUILTIN)) : genFromUnit(R.u); if(m) m.isRev = 1; }
+  if(!m && WN.length && Math.random() < .3){ const w = choice(WN); m = w.u==='kanji' ? kanjiQ(BUILTIN.find(q => q.id===w.id) || choice(BUILTIN)) : (MATH_UNITS[w.u] ? genFromUnit(w.u) : null); if(m) m.weak = w; }
+  if(!m){ const T = Math.max(1, Math.min(7, g + PITCH[pickPitch()].d)), subj = Math.random() < .4 ? fav(br) : choice(Object.keys(SUBJ));
+    if(subj==='jp' && kanjiFor(T).length && Math.random() < .5) m = kanjiQ(choice(kanjiFor(T)));
+    if(!m){ const near = (sb, tol) => poolU().filter(u => Math.abs(ug(u) - T) <= tol && (!sb || subjOf(u)===sb));
+      let L = near(subj, .6); if(!L.length) L = near(null, .6); if(!L.length) L = near(subj, 1.1); if(!L.length) L = near(null, 1.1); if(!L.length) L = unitsFor(T);      // その学年に ない 教科は ほかの 教科に かえる
+      for(let t=0; t<6 && !m; t++) m = genFromUnit(choice(L)); } }
+  if(!m){ m = makeMQ({}); m.u = m.kq56 ? 'kanji' : m.p56?.u; }
+  m.subj = m.u==='kanji' || m.kq56 ? 'jp' : subjOf(m.u) || 'math';
+  m.qg = m.kq56 ? (m.kq56.grade||3) : (ug(m.u) || g);
+  m.pitch = m.qg < g - .5 ? 'st' : m.qg > g + .5 ? 'mk' : 'cv';
   const txt = String(m.html).replace(/<[^>]+>/g,''), hard = /[×÷]/.test(txt) && /\d{3,}/.test(txt) || /\d{2,}\s*[×÷]\s*\d{2,}/.test(txt);
-  m.timeLimit = hard ? 22 : /<svg|<img/.test(m.html) ? 15 : 12;
+  m.timeLimit = (hard ? 22 : /<svg|<img/.test(m.html) ? 15 : 12) + (m.pitch==='mk' ? 3 : 0);
   return m;
 }
+window.__q619 = br => question(br);
+function noteMiss(m){ const S = ST(), WN = S.weak || (S.weak = []), k = m.u==='kanji' ? 'k:' + (m.kid || m.kq56?.id) : 'u:' + m.u;
+  let w = WN.find(x => x.key===k); if(!w){ w = {key:k, u:m.u, id:m.kid || m.kq56?.id || null, missCount:0}; WN.unshift(w); }
+  w.missCount++; w.lastMiss = Date.now(); if(WN.length > 40) WN.length = 40; persist(); }
+function clearMiss(w){ const S = ST(); S.weak = (S.weak||[]).filter(x => x.key!==w.key); persist(); }
 function explainHTML(m, v){
   try{ if(m.kq56) return window.__explain56({}, '', {kq:m.kq56, kind:'read'}); if(m.p56) return window.__explain56(m.p56, v, {}); }catch(e){}
   return `<p class="dlgP">こたえは <b>${X(m.ansF || m.ans)}</b></p>`;
@@ -6613,7 +6645,8 @@ async function openStadium(key){
   const S = ST();
   const v = await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2>
     <p class="dlgP">投げられた ボールは 1問！ <b>正解</b>すると 打てるよ。<br><b>はやく 答えるほど</b> 遠くへ 飛ぶ！ 3イニングで あいてより 多く 点を とろう。</p>
-    <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small></span>`).join('')}</div>
+    <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small><em>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}</em></span>`).join('')}</div>
+    <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！</p>
     <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本</p>`,
     [{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
   if(v==='grade') return openBuilding(key);
@@ -6654,14 +6687,15 @@ async function nextInning(){
 /* ---------- 投球 ---------- */
 let TIMER = null;
 function pitch(){
-  if(!G) return; G.busy = false; const m = question(); G.q = m; G.t0 = performance.now(); board();
-  const ball = G.$('.bbBall618'); ball.className = 'bbBall618'; ball.style.transition = 'none';
+  if(!G) return; G.busy = false; const m = question(batter()); G.q = m; G.t0 = performance.now(); board(); pitchTag(m);
+  const ball = G.$('.bbBall618'); ball.className = 'bbBall618 p-' + m.pitch; ball.style.transition = 'none';
   Object.assign(ball.style, {left:FIELD_POS.P[0]+'%', top:(FIELD_POS.P[1]-1)+'%', transform:'translate(-50%,-50%) scale(.7)', opacity:1});
   void ball.offsetWidth; ball.style.transition = `left ${m.timeLimit}s linear, top ${m.timeLimit}s linear, transform ${m.timeLimit}s linear`;
   Object.assign(ball.style, {left:BASE[0][0]+'%', top:(BASE[0][1]-1)+'%', transform:'translate(-50%,-50%) scale(1.15)'});
   const pEl = G.el.querySelector('.bbF618[data-pos="P"]'); pEl.classList.remove('throw'); void pEl.offsetWidth; pEl.classList.add('throw');
   const opts = m.optHtml ? m.opts : m.opts;
-  G.$('.bbPanel618').innerHTML = `<div class="bbQ618">${m.html}</div><div class="bbOpts618">${opts.map((o,i) => `<button data-a="${X(o)}" class="c${i%4}">${m.optHtml && m.optHtml[o] ? m.optHtml[o] : X(o)}</button>`).join('')}</div>
+  const P = PITCH[m.pitch], fv = fav(batter())===m.subj;
+  G.$('.bbPanel618').innerHTML = `<div class="bbPt619 ${P.cls}"><b>${P.n}</b><small>${gName(m.qg)}の ${SUBJ_IC[m.subj]}${SUBJ[m.subj]}・とくてん ×${P.mul}</small>${fv ? '<em>とくい教科！</em>' : ''}${m.isRev ? '<em class="rv">リベンジ打席</em>' : m.weak ? '<em class="wk">にがてノート</em>' : ''}</div><div class="bbQ618">${m.html}</div><div class="bbOpts618">${opts.map((o,i) => `<button data-a="${X(o)}" class="c${i%4}">${m.optHtml && m.optHtml[o] ? m.optHtml[o] : X(o)}</button>`).join('')}</div>
     <div class="bbTime618"><i></i><span>はやく 答えるほど 大きく 飛ぶ！</span></div>`;
   const bar = G.$('.bbTime618 i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${m.timeLimit}s linear`; bar.style.width = '0%';
   clearTimeout(TIMER); TIMER = setTimeout(() => answer(null), m.timeLimit*1000);
@@ -6672,11 +6706,15 @@ async function answer(v){
   const ball = G.$('.bbBall618'), cs = getComputedStyle(ball); ball.style.transition = 'none'; ball.style.left = cs.left; ball.style.top = cs.top; ball.style.transform = cs.transform;
   G.$('.bbPanel618').querySelectorAll('button').forEach(b => { b.disabled = true; if(b.dataset.a===String(m.ansF || m.ans)) b.classList.add('ok'); else if(b.dataset.a===String(v)) b.classList.add('ng'); });
   const r = batter(), st = G.stats[r.id] || (G.stats[r.id] = {hits:0, rbi:0, hr:0});
-  if(ok){ sound('ok'); await hit(frac, r, st); }
-  else { sound('ng'); await strike(m, v); }
+  if(ok){ sound('ok'); if(m.weak){ clearMiss(m.weak); G.revHits = (G.revHits||0) + 1; } const rev = !!m.isRev; G.revenge = null; await hit(frac, r, st, m, rev); }
+  else { sound('ng'); noteMiss(m); if(m.isRev){ G.revenge = null; await revengeOut(m, v); } else await strike(m, v); }
 }
-async function hit(frac, r, st){
-  const [, n, label, cls] = HIT.find(h => frac < h[0]);
+async function hit(frac, r, st, m, rev){
+  let [, n, label, cls] = HIT.find(h => frac < h[0]); const fv = m && fav(r)===m.subj;
+  if(fv && n < 4){ n++; [, , label, cls] = HIT.find(h => h[1]===n); }
+  const P = PITCH[m?.pitch || 'cv'], pt = Math.max(1, Math.round(n*10*P.mul)); G.pts = (G.pts||0) + pt;
+  if(fv) setTimeout(() => G && msg(`とくい教科で パワーアップ！ ${SUBJ_IC[m.subj]}`, 'run'), 1000);
+  if(rev) label = 'リベンジ ' + label; else if(m?.weak) label = 'にがて こくふく！ ' + label;
   const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing');
   const ball = G.$('.bbBall618'), side = Math.random()*2 - 1;
   const tgt = n===4 ? [50.9 + side*16, 8] : n===3 ? [50.9 + side*14, 26] : n===2 ? [50.9 + side*15, 33] : [50.9 + side*12, 42];
@@ -6700,26 +6738,34 @@ async function strike(m, v){
   const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
   G.strikes++; board(); msg(v==null ? '時間切れ… ストライク！' : 'ストライク！', 'k'); await W(900); if(!G) return;
   if(G.strikes < 3){ pitch(); return; }
-  msg('さんしん…', 'k'); G.outs++; G.strikes = 0; G.bat++; board(); await W(700); if(!G) return;
-  await dialog(`<h2 class="dlgT">⚾ さんしん… いっしょに たしかめよう</h2>${explainHTML(m, v)}`, [{label:'つぎの バッターへ', cls:'gold', v:1}], 'wide ex56Dlg');
+  msg('さんしん…', 'k'); board(); await W(700); if(!G) return;
+  await dialog(`<h2 class="dlgT">⚾ さんしん… いっしょに たしかめよう</h2>${explainHTML(m, v)}<p class="dlgP facNote">つぎは <b>リベンジ打席</b>！ 同じ タイプの 問題が 出るよ。正解すれば アウトに ならない！</p>`, [{label:'🔥 リベンジ打席へ', cls:'gold', v:1}], 'wide ex56Dlg');
+  if(!G) return;
+  G.revenge = {u:m.u, qg:m.qg}; G.strikes = 2; board(); msg('リベンジ打席！', 'big'); await W(1100); if(G) pitch();
+}
+async function revengeOut(m, v){
+  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
+  G.outs++; G.strikes = 0; G.bat++; board(); msg('アウト…', 'k'); await W(900); if(!G) return;
+  await dialog(`<h2 class="dlgT">おしい！ こたえは <b>${X(m.ansF || m.ans)}</b></h2><p class="dlgP">この タイプの 問題は「にがてノート」に のこしたよ。<br>つぎの 試合で また 出るから、こんどこそ 打とう！</p>`, [{label:'つぎの バッターへ', cls:'gold', v:1}], 'wide');
   if(!G) return;
   if(G.outs >= 3){ msg('スリーアウト チェンジ！', 'big'); await W(1300); G.inning++; return nextInning(); }
   pitch();
 }
+function pitchTag(m){ const P = PITCH[m.pitch]; msg(`${P.n}！`, 'pt-' + P.cls); }
 async function endGame(){
   const opp = G.opp.reduce((a,b) => a+b, 0), win = G.score > opp, draw = G.score === opp, S = ST();
   S.games = (S.games||0) + 1; if(win) S.wins = (S.wins||0) + 1;
   const hrs = Object.values(G.stats).reduce((a,s) => a + s.hr, 0); S.homeRuns = (S.homeRuns||0) + hrs; S.lastPlayDate = dayKey();
-  const p = win ? givePts(40 + G.score*10, 'まなびスタジアムで かった') : givePts(10 + G.score*5, 'まなびスタジアムで しあい'); persist();
+  const base = win ? 40 + G.score*10 : 10 + G.score*5, hp = G.pts||0, p = givePts(base + hp, win ? 'まなびスタジアムで かった' : 'まなびスタジアムで しあい'); persist(); LAST_EXTRA = {hp, rev:G.revHits||0, weak:(S.weak||[]).length};
   if(win){ confetti(2500); sound('fan'); }
   const mvp = G.lineup.slice().sort((a,b) => { const sa = G.stats[a.id]||{hits:0,rbi:0}, sb = G.stats[b.id]||{hits:0,rbi:0}; return (sb.rbi*2 + sb.hits) - (sa.rbi*2 + sa.hits); })[0];
   const key = G.key; closeGame();
   await dialog(`<h2 class="dlgT">${win ? '🎉 しょうり！' : draw ? '🤝 ひきわけ' : '😢 まけちゃった…'}</h2>
     <div class="bbScore618"><span>あいて<b>${opp}</b></span><i>−</i><span class="me">じぶん<b>${LAST_SCORE}</b></span></div>
-    <p class="dlgP">ホームラン ${hrs}本　<span class="coin sm">P</span> +${p}</p>
+    <p class="dlgP">ホームラン ${hrs}本　<span class="coin sm">P</span> +${p}<br><small>（ヒットの とくてん ${LAST_EXTRA.hp}pt ふくむ・下の学年の 問題は ×0.5、上の学年は ×2）</small>${LAST_EXTRA.rev ? `<br>📒 にがて こくふく ${LAST_EXTRA.rev}こ！` : ''}</p>${LAST_EXTRA.weak ? `<p class="dlgP facNote">にがてノート：のこり ${LAST_EXTRA.weak}こ（つぎの 試合で 出るよ）</p>` : ''}
     ${mvp && G_STATS(mvp) ? `<div class="bbMvp618">${resImg(mvp)}<div><b>MVP：${X(mvp.name)}</b><small>${G_STATS(mvp)}</small></div></div>` : ''}`, [{label:'もう いちど ⚾', cls:'gold', v:'again'}, {label:'まちへ もどる', v:null}], win ? 'gold' : 'wide').then(v => { if(v==='again') openStadium(key); });
 }
-let LAST_STATS = {}, LAST_SCORE = 0;
+let LAST_STATS = {}, LAST_SCORE = 0, LAST_EXTRA = {hp:0, rev:0, weak:0};
 const G_STATS = r => { const s = LAST_STATS[r.id]; return s && (s.hits || s.rbi) ? `ヒット ${s.hits}本・打点 ${s.rbi}${s.hr ? `・ホームラン ${s.hr}本` : ''}` : ''; };
 function closeGame(){ if(!G) return; clearTimeout(TIMER); LAST_STATS = G.stats; LAST_SCORE = G.score; const el = G.el; G = null; el.classList.remove('on'); setTimeout(() => el.remove(), 250); }
 async function onClick(e){
@@ -6757,6 +6803,15 @@ css.textContent = `#bb618{position:fixed;inset:0;z-index:66;background:rgba(18,4
 @keyframes bat618{0%{transform:rotate(-30deg)}100%{transform:rotate(200deg)}}
 .bbBall618{position:absolute;width:2.4%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#E6E1D8);border:1px solid #C9C2B4;box-shadow:0 2px 3px rgba(0,0,0,.3);z-index:4;transform:translate(-50%,-50%)}
 .bbBall618.hr{box-shadow:0 0 12px 4px #FFE27A}
+.bbBall618.p-cv{animation:cv619 1.2s ease-in-out infinite alternate}@keyframes cv619{from{margin-left:-1.2%}to{margin-left:1.2%}}
+.bbBall618.p-mk{background:radial-gradient(circle at 35% 35%,#fff,#FFE27A);box-shadow:0 0 10px 5px #FFB3F0,0 0 18px 8px #B39DFF;animation:mk619 .18s linear infinite}@keyframes mk619{0%,100%{margin-left:-.5%;margin-top:0}50%{margin-left:.5%;margin-top:-.4%}}
+.bbPt619{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;justify-content:center;border-radius:12px;padding:3px 8px;background:#EEF4FF;border:2px solid #9FC3F0}
+.bbPt619 b{font-size:15px;color:#1C5A99}.bbPt619 small{font-size:11px;font-weight:800;color:#4A3A2A}.bbPt619 em{font-style:normal;font-size:11px;font-weight:900;background:#FFE27A;color:#B5701C;border-radius:8px;padding:0 6px}
+.bbPt619 em.rv{background:#FFB3B3;color:#C0392B}.bbPt619 em.wk{background:#E3D3FF;color:#5B3BA8}
+.bbPt619.st{background:#F2F2F2;border-color:#C9C9C9}.bbPt619.st b{color:#666}
+.bbPt619.mk{background:linear-gradient(90deg,#FFE9FB,#EDE6FF);border-color:#C9A8FF}.bbPt619.mk b{color:#8A3BC4}
+.bbMsg618.pt-st{border-color:#AAA;color:#666}.bbMsg618.pt-cv{border-color:#4C97FF;color:#1C5A99}.bbMsg618.pt-mk{border-color:#B39DFF;color:#8A3BC4;background:linear-gradient(90deg,#FFF7FE,#F3EEFF)}
+.bbLine618 em{font-style:normal;font-size:8.5px;font-weight:800;color:#6B5540;white-space:nowrap}
 .bbBoard618{position:absolute;left:2%;top:3%;z-index:6;background:rgba(24,36,70,.88);color:#fff;border-radius:12px;padding:4px 10px;font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.35}
 .bbBoard618 span{display:block}.bbBoard618 em{font-style:normal;font-size:1.25em;color:#FFD84A}.bbBoard618 em.me{color:#8FE3FF}
 .bbBoard618 div{display:flex;align-items:center;gap:3px}.bbBoard618 small{font-size:.8em;margin-left:4px}.bbBoard618 div i{width:.8em;height:.8em;border-radius:50%;border:1.5px solid #fff}
