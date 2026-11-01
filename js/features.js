@@ -6195,7 +6195,7 @@ window.__v613 = {challenge, openMall, openPlaza, openOnsen, QB, MUSIC, tidyBar, 
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.17.0', IMG = './assets/images/v614/';
+const VER = '6.17.1', IMG = './assets/images/v614/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 /* ---------- artSrc：ファイルの パスを そのまま 使えるように（□ の 原因） ---------- */
@@ -6260,7 +6260,7 @@ FISH.splice(0, FISH.length,
   {id:'madai',  n:'マダイ',   w:3,  c1:'#E86A86', c2:'#FBD7DF', size:'40〜80cm', note:'あざやかな 赤色で「魚の 王さま」と よばれる。おいわいに 食べる。'},
   {id:'maguro', n:'マグロ',   w:2,  c1:'#24407A', c2:'#E6EBF2', size:'1〜3m', note:'とても 大きく、泳ぐのが 速い。泳ぐのを やめると 息が できない。'}
 );
-['sanma','katsuo','maguro','sake','hirame','buri','ayu','unagi','tako'].forEach(k => { FIMG[k] = 1; });
+['sanma','katsuo','maguro','sake','hirame','buri','ayu','unagi','tako','haze','kisu','mebaru','ika','suzuki'].forEach(k => { FIMG[k] = 1; });
 const FQ20 = {
  aji:[
   ['アジの からだの よこに ある、かたい うろこを 何という？','ぜいご','ひれ/えら/うろこ玉'],['アジを 開いて ほした 食べものは？','アジの ひもの','かまぼこ/ちくわ/つくだに'],
