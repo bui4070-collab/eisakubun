@@ -6556,3 +6556,237 @@ document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 window.__v614 = {openFishing, closeFishing, FISH, fishSVG, get F(){ return F; }};
 })();
+
+/* =====================================================================
+   まなびタウン v6.18：まなびスタジアム（STEP1・STEP2）
+   STEP1：スタジアムを タッチ → チーム紹介 → 背景に 住民が 守備位置に ならぶ
+   STEP2：投球＝1問。正解の はやさで 打球が きまる（HR/三塁打/二塁打/単打）、不正解・時間切れは ストライク
+          3ストライクで 三振、3アウトで 交代、3イニング（攻撃のみ）。あいての 点は 各回の「表」で 発表
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.18.0', IMG = './assets/images/v618/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const W = ms => new Promise(r => setTimeout(r, ms));
+try{ const it = ITEM('stadium'); if(it){ it.lv = 8; it.price0 = it.price0 || 4500; } ZUKAN_INFO.stadium = '住民たちと 野球の ミニゲームが できる。投球は 1問、はやく 答えるほど 遠くへ 飛ぶ！'; }catch(e){}
+
+/* ---------- 座標（背景に たいする %） ---------- */
+const FIELD_POS = {P:[50.9,57.5], C:[50.9,86], '1B':[63.5,56], '2B':[57.5,46], SS:[44.3,46], '3B':[38.3,56], LF:[36,33], CF:[50.9,27], RF:[65.8,33]};
+const BASE = {0:[50.9,78], 1:[62.4,59.8], 2:[51.1,47.6], 3:[39.4,59.8]};
+const BAT = [46.6,79.5], FENCE_Y = 22;
+const ST = () => save.stadium || (save.stadium = {level:1, wins:0, games:0, homeRuns:0, crystalsToday:0, lastPlayDate:'', decorations:[]});
+const picSrc = s => s.img || artSrc(s.art) || '';
+const resImg = r => `<img src="${X(picSrc(SP(r.sp)))}" alt="">`;
+
+/* ---------- チーム ---------- */
+function team(){
+  const L = (save.town?.res||[]).filter(r => picSrc(SP(r.sp)));
+  const hana = L.find(r => SP(r.sp).human), others = L.filter(r => !SP(r.sp).human);
+  const lineup = shuffle(others.slice()).slice(0, 8); if(hana) lineup.unshift(hana); else if(others[8]) lineup.push(others[8]);
+  return lineup;
+}
+function fielders(lineup){
+  const used = new Set(lineup.map(r => r.id)), pool = (save.town?.res||[]).filter(r => !used.has(r.id) && !SP(r.sp).human && picSrc(SP(r.sp)));
+  const sp = shuffle(SPECIES.filter(s => !s.human && (s.rar||1) <= 2 && picSrc(s)).slice());
+  return Object.keys(FIELD_POS).map((pos, i) => { const r = pool[i]; return r ? {pos, name:r.name, src:picSrc(SP(r.sp))} : {pos, name:sp[i].name, src:picSrc(sp[i])}; });
+}
+
+/* ---------- 問題 ---------- */
+function question(){
+  let m = null; for(let t=0; t<10 && !m; t++){ try{ m = makeMQ({}); }catch(e){ m = null; } if(m && (!m.opts || m.opts.length < 2)) m = null; }
+  const txt = String(m.html).replace(/<[^>]+>/g,''), hard = /[×÷]/.test(txt) && /\d{3,}/.test(txt) || /\d{2,}\s*[×÷]\s*\d{2,}/.test(txt);
+  m.timeLimit = hard ? 22 : /<svg|<img/.test(m.html) ? 15 : 12;
+  return m;
+}
+function explainHTML(m, v){
+  try{ if(m.kq56) return window.__explain56({}, '', {kq:m.kq56, kind:'read'}); if(m.p56) return window.__explain56(m.p56, v, {}); }catch(e){}
+  return `<p class="dlgP">こたえは <b>${X(m.ansF || m.ans)}</b></p>`;
+}
+
+/* ---------- 試合の じょうたい ---------- */
+let G = null;
+const HIT = [[.25,4,'ホームラン！','hr'],[.5,3,'スリーベース！','t3'],[.75,2,'ツーベース！','t2'],[1.01,1,'ヒット！','t1']];
+
+async function openStadium(key){
+  if(G) return; const lineup = team();
+  if(lineup.length < 3){ await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2><p class="dlgP">野球を するには 住民が <b>3人いじょう</b> ひつようだよ。<br>おまねきレターで なかまを ふやそう！</p>`, [{label:'とじる', v:null}], 'wide'); return; }
+  const S = ST();
+  const v = await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2>
+    <p class="dlgP">投げられた ボールは 1問！ <b>正解</b>すると 打てるよ。<br><b>はやく 答えるほど</b> 遠くへ 飛ぶ！ 3イニングで あいてより 多く 点を とろう。</p>
+    <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small></span>`).join('')}</div>
+    <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本</p>`,
+    [{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+  if(v==='grade') return openBuilding(key);
+  if(v==='play') startGame(key, lineup);
+}
+function startGame(key, lineup){
+  const opp = [0,0,0]; let tot = rint(2, 5); while(tot-- > 0) opp[rint(0,2)]++;
+  G = {key, lineup, field:fielders(lineup), inning:0, outs:0, strikes:0, bases:[null,null,null], score:0, opp, oppShown:0, bat:0, stats:{}, busy:false};
+  const el = document.createElement('div'); el.id = 'bb618';
+  el.innerHTML = `<div class="bbWrap618"><div class="bbScene618"><img class="bbBg618" src="${IMG}stadium_bg.webp" alt="">
+      ${G.field.map(f => `<div class="bbF618" data-pos="${f.pos}" style="left:${FIELD_POS[f.pos][0]}%;top:${FIELD_POS[f.pos][1]}%"><img src="${X(f.src)}" alt=""></div>`).join('')}
+      <div class="bbRun618"></div><div class="bbBat618" style="left:${BAT[0]}%;top:${BAT[1]}%"></div>
+      <div class="bbBall618"></div><div class="bbBoard618"></div><div class="bbMsg618"></div></div>
+    <div class="bbPanel618"></div></div>
+    <div class="bbBtns618"><button data-bb="quit">✕ しあいを やめる</button></div>`;
+  document.body.appendChild(el); G.el = el; G.$ = s => el.querySelector(s);
+  el.addEventListener('click', onClick);
+  requestAnimationFrame(() => el.classList.add('on'));
+  board(); nextInning();
+}
+const batter = () => G.lineup[G.bat % G.lineup.length];
+function board(){
+  const dots = (n, max, c) => [...Array(max)].map((_,i) => `<i class="${i < n ? c : ''}"></i>`).join('');
+  G.$('.bbBoard618').innerHTML = `<b>${G.inning+1}回うら</b><span>あいて <em>${G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0)}</em> − <em class="me">${G.score}</em> じぶん</span>
+    <div><small>S</small>${dots(G.strikes, 3, 'y')}<small>O</small>${dots(G.outs, 3, 'r')}</div>`;
+  G.$('.bbRun618').innerHTML = [1,2,3].map(b => { const r = G.bases[b-1]; return r ? `<div class="bbR618" style="left:${BASE[b][0]}%;top:${BASE[b][1]}%">${resImg(r)}</div>` : ''; }).join('');
+  const r = batter(); G.$('.bbBat618').innerHTML = `${resImg(r)}<svg class="bbBatBat618" viewBox="0 0 20 60"><path d="M8 58h4l3-44q1-10-5-12q-6 2-5 12z" fill="#D9A066" stroke="#8A5A2B" stroke-width="1.6"/><rect x="7" y="50" width="6" height="8" rx="1" fill="#4A3A2A"/></svg><small>${X(r.name)}</small>`;
+}
+function msg(t, cls=''){ const m = G.$('.bbMsg618'); m.className = 'bbMsg618 ' + cls; m.innerHTML = t; m.classList.remove('show'); void m.offsetWidth; m.classList.add('show'); }
+async function nextInning(){
+  if(!G) return;
+  if(G.inning >= 3) return endGame();
+  G.oppShown = G.inning + 1; G.outs = 0; G.strikes = 0; G.bases = [null,null,null]; board();
+  msg(`${G.inning+1}回おもて：あいてが <b>${G.opp[G.inning]}点</b> とったよ`, 'big'); await W(1700); if(!G) return;
+  msg(`${G.inning+1}回うら：きみの こうげき！`, 'big'); await W(1300); if(!G) return;
+  pitch();
+}
+/* ---------- 投球 ---------- */
+let TIMER = null;
+function pitch(){
+  if(!G) return; G.busy = false; const m = question(); G.q = m; G.t0 = performance.now(); board();
+  const ball = G.$('.bbBall618'); ball.className = 'bbBall618'; ball.style.transition = 'none';
+  Object.assign(ball.style, {left:FIELD_POS.P[0]+'%', top:(FIELD_POS.P[1]-1)+'%', transform:'translate(-50%,-50%) scale(.7)', opacity:1});
+  void ball.offsetWidth; ball.style.transition = `left ${m.timeLimit}s linear, top ${m.timeLimit}s linear, transform ${m.timeLimit}s linear`;
+  Object.assign(ball.style, {left:BASE[0][0]+'%', top:(BASE[0][1]-1)+'%', transform:'translate(-50%,-50%) scale(1.15)'});
+  const pEl = G.el.querySelector('.bbF618[data-pos="P"]'); pEl.classList.remove('throw'); void pEl.offsetWidth; pEl.classList.add('throw');
+  const opts = m.optHtml ? m.opts : m.opts;
+  G.$('.bbPanel618').innerHTML = `<div class="bbQ618">${m.html}</div><div class="bbOpts618">${opts.map((o,i) => `<button data-a="${X(o)}" class="c${i%4}">${m.optHtml && m.optHtml[o] ? m.optHtml[o] : X(o)}</button>`).join('')}</div>
+    <div class="bbTime618"><i></i><span>はやく 答えるほど 大きく 飛ぶ！</span></div>`;
+  const bar = G.$('.bbTime618 i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${m.timeLimit}s linear`; bar.style.width = '0%';
+  clearTimeout(TIMER); TIMER = setTimeout(() => answer(null), m.timeLimit*1000);
+}
+async function answer(v){
+  if(!G || G.busy) return; G.busy = true; clearTimeout(TIMER);
+  const m = G.q, ok = v!=null && String(v)===String(m.ansF || m.ans), frac = Math.min(1, (performance.now() - G.t0)/1000/m.timeLimit);
+  const ball = G.$('.bbBall618'), cs = getComputedStyle(ball); ball.style.transition = 'none'; ball.style.left = cs.left; ball.style.top = cs.top; ball.style.transform = cs.transform;
+  G.$('.bbPanel618').querySelectorAll('button').forEach(b => { b.disabled = true; if(b.dataset.a===String(m.ansF || m.ans)) b.classList.add('ok'); else if(b.dataset.a===String(v)) b.classList.add('ng'); });
+  const r = batter(), st = G.stats[r.id] || (G.stats[r.id] = {hits:0, rbi:0, hr:0});
+  if(ok){ sound('ok'); await hit(frac, r, st); }
+  else { sound('ng'); await strike(m, v); }
+}
+async function hit(frac, r, st){
+  const [, n, label, cls] = HIT.find(h => frac < h[0]);
+  const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing');
+  const ball = G.$('.bbBall618'), side = Math.random()*2 - 1;
+  const tgt = n===4 ? [50.9 + side*16, 8] : n===3 ? [50.9 + side*14, 26] : n===2 ? [50.9 + side*15, 33] : [50.9 + side*12, 42];
+  ball.classList.add(n===4 ? 'hr' : 'fly'); void ball.offsetWidth;
+  ball.style.transition = `left .9s cubic-bezier(.2,.7,.4,1), top .9s cubic-bezier(.2,.7,.4,1), transform .9s ease-out`;
+  Object.assign(ball.style, {left:tgt[0]+'%', top:tgt[1]+'%', transform:`translate(-50%,-50%) scale(${n===4 ? 1.9 : 1.3})`});
+  msg(label, cls); if(n===4){ confetti(1800); sound('fan'); } await W(950); if(!G) return;
+  ball.style.opacity = n===4 ? 0 : 1;
+  /* 近くの 守備が とりに いく */
+  if(n < 4){ let best = null, bd = 1e9; G.el.querySelectorAll('.bbF618').forEach(f => { const p = FIELD_POS[f.dataset.pos], d = (p[0]-tgt[0])**2 + (p[1]-tgt[1])**2; if(d < bd){ bd = d; best = f; } }); if(best){ best.classList.remove('hop'); void best.offsetWidth; best.classList.add('hop'); } }
+  /* 進塁 */
+  let runs = 0; const nb = [null,null,null];
+  for(let b=3; b>=1; b--){ const rr = G.bases[b-1]; if(!rr) continue; const to = b + n; if(to >= 4) runs++; else nb[to-1] = rr; }
+  if(n >= 4) runs++; else nb[n-1] = r;
+  G.bases = nb; G.score += runs; st.hits++; st.rbi += runs; if(n===4){ st.hr++; }
+  G.strikes = 0; G.bat++; board();
+  if(runs) { await W(300); msg(`${runs}点 はいった！`, 'run'); sound('fan'); }
+  await W(1300); if(G) pitch();
+}
+async function strike(m, v){
+  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
+  G.strikes++; board(); msg(v==null ? '時間切れ… ストライク！' : 'ストライク！', 'k'); await W(900); if(!G) return;
+  if(G.strikes < 3){ pitch(); return; }
+  msg('さんしん…', 'k'); G.outs++; G.strikes = 0; G.bat++; board(); await W(700); if(!G) return;
+  await dialog(`<h2 class="dlgT">⚾ さんしん… いっしょに たしかめよう</h2>${explainHTML(m, v)}`, [{label:'つぎの バッターへ', cls:'gold', v:1}], 'wide ex56Dlg');
+  if(!G) return;
+  if(G.outs >= 3){ msg('スリーアウト チェンジ！', 'big'); await W(1300); G.inning++; return nextInning(); }
+  pitch();
+}
+async function endGame(){
+  const opp = G.opp.reduce((a,b) => a+b, 0), win = G.score > opp, draw = G.score === opp, S = ST();
+  S.games = (S.games||0) + 1; if(win) S.wins = (S.wins||0) + 1;
+  const hrs = Object.values(G.stats).reduce((a,s) => a + s.hr, 0); S.homeRuns = (S.homeRuns||0) + hrs; S.lastPlayDate = dayKey();
+  const p = win ? givePts(40 + G.score*10, 'まなびスタジアムで かった') : givePts(10 + G.score*5, 'まなびスタジアムで しあい'); persist();
+  if(win){ confetti(2500); sound('fan'); }
+  const mvp = G.lineup.slice().sort((a,b) => { const sa = G.stats[a.id]||{hits:0,rbi:0}, sb = G.stats[b.id]||{hits:0,rbi:0}; return (sb.rbi*2 + sb.hits) - (sa.rbi*2 + sa.hits); })[0];
+  const key = G.key; closeGame();
+  await dialog(`<h2 class="dlgT">${win ? '🎉 しょうり！' : draw ? '🤝 ひきわけ' : '😢 まけちゃった…'}</h2>
+    <div class="bbScore618"><span>あいて<b>${opp}</b></span><i>−</i><span class="me">じぶん<b>${LAST_SCORE}</b></span></div>
+    <p class="dlgP">ホームラン ${hrs}本　<span class="coin sm">P</span> +${p}</p>
+    ${mvp && G_STATS(mvp) ? `<div class="bbMvp618">${resImg(mvp)}<div><b>MVP：${X(mvp.name)}</b><small>${G_STATS(mvp)}</small></div></div>` : ''}`, [{label:'もう いちど ⚾', cls:'gold', v:'again'}, {label:'まちへ もどる', v:null}], win ? 'gold' : 'wide').then(v => { if(v==='again') openStadium(key); });
+}
+let LAST_STATS = {}, LAST_SCORE = 0;
+const G_STATS = r => { const s = LAST_STATS[r.id]; return s && (s.hits || s.rbi) ? `ヒット ${s.hits}本・打点 ${s.rbi}${s.hr ? `・ホームラン ${s.hr}本` : ''}` : ''; };
+function closeGame(){ if(!G) return; clearTimeout(TIMER); LAST_STATS = G.stats; LAST_SCORE = G.score; const el = G.el; G = null; el.classList.remove('on'); setTimeout(() => el.remove(), 250); }
+async function onClick(e){
+  const b = e.target.closest('[data-a]'); if(b && !b.disabled){ e.stopPropagation(); return answer(b.dataset.a); }
+  const q = e.target.closest('[data-bb="quit"]'); if(q){ e.stopPropagation(); const v = await dialog('<h2 class="dlgT">しあいを やめる？</h2><p class="dlgP">とちゅうで やめると ポイントは もらえないよ。</p>', [{label:'やめる', cls:'white', v:1}, {label:'つづける', cls:'gold', v:null}]); if(v){ closeGame(); } else if(G && !G.busy){ /* つづき */ } }
+}
+
+/* ---------- タッチ ---------- */
+window.addEventListener('click', e => {
+  if(curScreen!=='town' || townEdit || !save.town || G) return;
+  const c = e.target.closest('#townMap .cell'); if(!c || e.target.closest('.walker,.car2,.ship65,.air65')) return;
+  const key = `${c.dataset.x},${c.dataset.y}`; if(save.town.cells[key]!=='stadium') return;
+  e.stopImmediatePropagation(); e.preventDefault(); openStadium(key);
+}, true);
+itemEffect = (orig => function(it){ const s = orig.apply(this, arguments); return it && it.id==='stadium' ? `${s}・⚾ タッチで 野球の ミニゲーム` : s; })(itemEffect);
+
+const css = document.createElement('style');
+css.textContent = `#bb618{position:fixed;inset:0;z-index:66;background:rgba(18,40,70,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;opacity:0;transition:opacity .25s;padding:8px}
+#bb618.on{opacity:1}
+.bbWrap618{display:flex;gap:8px;align-items:stretch;width:min(98vw,1000px)}
+.bbScene618{position:relative;flex:1 1 auto;aspect-ratio:3/2;border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.bbBg618{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bbF618,.bbR618,.bbBat618{position:absolute;transform:translate(-50%,-88%);height:11%;z-index:2;pointer-events:none}
+.bbF618 img,.bbR618 img,.bbBat618 img{height:100%;width:auto;display:block;filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))}
+.bbF618::after,.bbR618::after,.bbBat618::after{content:"";position:absolute;left:15%;right:15%;bottom:-6%;height:14%;border-radius:50%;background:rgba(0,0,0,.22);z-index:-1}
+.bbF618.throw{animation:throw618 .5s ease-out}.bbF618.hop{animation:hop618 .6s ease-out}
+@keyframes throw618{0%{transform:translate(-50%,-88%)}40%{transform:translate(-50%,-100%) rotate(-12deg)}100%{transform:translate(-50%,-88%)}}
+@keyframes hop618{0%,100%{transform:translate(-50%,-88%)}50%{transform:translate(-50%,-125%)}}
+.bbR618{height:9%;transition:left .6s,top .6s}
+.bbBat618{height:13%;z-index:3}
+.bbBat618 small{position:absolute;left:50%;bottom:-30%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:900;background:rgba(255,255,255,.9);border-radius:8px;padding:0 6px;color:#6B5540}
+.bbBatBat618{position:absolute;right:-22%;top:0;height:80%;width:auto;transform-origin:50% 95%;transform:rotate(-35deg)}
+.bbBat618.swing{animation:swing618 .6s ease-out}.bbBat618.swing .bbBatBat618{animation:bat618 .4s ease-out}
+@keyframes swing618{0%{transform:translate(-50%,-88%)}30%{transform:translate(-40%,-100%) rotate(12deg)}100%{transform:translate(-50%,-88%)}}
+@keyframes bat618{0%{transform:rotate(-30deg)}100%{transform:rotate(200deg)}}
+.bbBall618{position:absolute;width:2.4%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#E6E1D8);border:1px solid #C9C2B4;box-shadow:0 2px 3px rgba(0,0,0,.3);z-index:4;transform:translate(-50%,-50%)}
+.bbBall618.hr{box-shadow:0 0 12px 4px #FFE27A}
+.bbBoard618{position:absolute;left:2%;top:3%;z-index:6;background:rgba(24,36,70,.88);color:#fff;border-radius:12px;padding:4px 10px;font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.35}
+.bbBoard618 span{display:block}.bbBoard618 em{font-style:normal;font-size:1.25em;color:#FFD84A}.bbBoard618 em.me{color:#8FE3FF}
+.bbBoard618 div{display:flex;align-items:center;gap:3px}.bbBoard618 small{font-size:.8em;margin-left:4px}.bbBoard618 div i{width:.8em;height:.8em;border-radius:50%;border:1.5px solid #fff}
+.bbBoard618 div i.y{background:#FFD84A;border-color:#FFD84A}.bbBoard618 div i.r{background:#E8414B;border-color:#E8414B}
+.bbMsg618{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) scale(.6);z-index:7;opacity:0;pointer-events:none;background:rgba(255,255,255,.95);border:3px solid #F2A33A;color:#B5701C;border-radius:16px;padding:6px 16px;font-weight:900;font-size:clamp(14px,3.6vw,26px);white-space:nowrap}
+.bbMsg618.show{animation:msg618 1.6s ease-out forwards}
+.bbMsg618.big{font-size:clamp(12px,2.8vw,20px);border-color:#4C97FF;color:#1C5A99}
+.bbMsg618.hr{background:linear-gradient(90deg,#FFE27A,#FF9EB5);color:#C0392B;border-color:#fff;font-size:clamp(18px,5vw,36px)}
+.bbMsg618.k{border-color:#E8414B;color:#C0392B}.bbMsg618.run{border-color:#59C059;color:#2E7D32;top:28%}
+@keyframes msg618{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}25%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+.bbPanel618{flex:0 0 300px;background:#FFFDF6;border:4px solid #fff;border-radius:18px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 30px rgba(0,0,0,.3);overflow:auto;max-height:min(70vh,640px)}
+.bbQ618{font-weight:900;color:#4A3A2A;font-size:16px;text-align:center}.bbQ618 .mqSent{font-size:20px!important;margin:4px 0}.bbQ618 svg,.bbQ618 img{max-width:100%;height:auto;max-height:140px;object-fit:contain}
+.bbOpts618{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bbOpts618 button{border:none;border-radius:12px;padding:10px 4px;font:inherit;font-weight:900;font-size:16px;color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.18);cursor:pointer;min-height:48px;word-break:break-word}
+.bbOpts618 button.c0{background:#5B9BE6}.bbOpts618 button.c1{background:#E8606A}.bbOpts618 button.c2{background:#4FB57A}.bbOpts618 button.c3{background:#F2A33A}
+.bbOpts618 button:disabled{opacity:.45}.bbOpts618 button.ok{opacity:1;outline:4px solid #FFD84A}.bbOpts618 button.ng{opacity:1;filter:grayscale(.6)}
+.bbOpts618 button img,.bbOpts618 button svg{max-height:44px;max-width:100%}
+.bbTime618{position:relative;height:26px;background:#FFF0B8;border-radius:999px;overflow:hidden}
+.bbTime618 i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#FF8A3D,#FFB347)}
+.bbTime618 span{position:relative;display:block;text-align:center;font-size:12px;font-weight:900;color:#6B3A1A;line-height:26px}
+.bbBtns618 button{border:3px solid #fff;background:#FFF8EA;border-radius:14px;padding:6px 14px;font:inherit;font-weight:900;color:#6B5540;box-shadow:0 3px 0 #D9C3A0}
+.bbLine618{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0}
+.bbLine618 span{position:relative;width:58px;display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2px solid #BFE3FB;border-radius:10px;padding:2px}
+.bbLine618 img{width:42px;height:42px;object-fit:contain}.bbLine618 small{font-size:9.5px;font-weight:800;white-space:nowrap;overflow:hidden;max-width:54px}
+.bbLine618 i{position:absolute;left:2px;top:0;font-style:normal;font-size:10px;font-weight:900;color:#1C6AAE}
+.bbScore618{display:flex;justify-content:center;align-items:center;gap:10px;font-weight:900}.bbScore618 span{display:flex;flex-direction:column;align-items:center;font-size:12px}.bbScore618 b{font-size:36px;color:#C0392B}.bbScore618 .me b{color:#1C6AAE}.bbScore618 i{font-style:normal;font-size:28px}
+.bbMvp618{display:flex;align-items:center;gap:10px;justify-content:center;background:#FFF6D8;border:2px solid #F4D58D;border-radius:14px;padding:6px 10px;margin:6px auto;max-width:320px}
+.bbMvp618 img{width:90px;height:90px;object-fit:contain;animation:bump .8s}.bbMvp618 b{display:block;font-size:15px;color:#B5701C}.bbMvp618 small{font-size:12px}
+@media (max-width:760px){.bbWrap618{flex-direction:column}.bbPanel618{flex:0 0 auto;max-height:none}.bbOpts618 button{min-height:44px;font-size:15px}}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__v618 = {openStadium, get G(){ return G; }, FIELD_POS, answer};
+})();
