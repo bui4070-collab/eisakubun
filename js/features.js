@@ -6195,7 +6195,7 @@ window.__v613 = {challenge, openMall, openPlaza, openOnsen, QB, MUSIC, tidyBar, 
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.15.0', IMG = './assets/images/v614/';
+const VER = '6.16.0', IMG = './assets/images/v614/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 /* ---------- artSrc：ファイルの パスを そのまま 使えるように（□ の 原因） ---------- */
@@ -6210,7 +6210,7 @@ const FISH = [
   {id:'fugu',  n:'フグ',   w:6,  c1:'#D9C36A', c2:'#F7F2DC', sp:4, size:'20〜40cm', note:'おどろくと 水を すって ふくらむ。毒を もつ ものが 多い。'},
   {id:'madai', n:'マダイ', w:4,  c1:'#E86A86', c2:'#FBD7DF', sp:5, size:'40〜80cm', note:'あざやかな 赤色で「魚の 王さま」と よばれる。おいわいに 食べる。'}
 ];
-const FIMG = {iwashi:1, saba:1, kasago:1, fugu:1, madai:1};
+const FIMG = {aji:1, iwashi:1, saba:1, kasago:1, fugu:1, madai:1};
 const fishSVG = (f, w=90, mode='') => {
   if(FIMG[f.id]) return `<img class="fishIc614 ${mode}" src="${IMG.replace('v614','v615')}fish_${f.id}.webp" alt="" style="width:${w}px;height:auto">`;
   const body = f.id==='fugu' ? `<ellipse cx="54" cy="40" rx="30" ry="26" fill="${f.c1}"/><ellipse cx="56" cy="50" rx="24" ry="14" fill="${f.c2}"/>${[...Array(9)].map((_,i) => `<circle cx="${36+(i%3)*14}" cy="${26+Math.floor(i/3)*8}" r="2.4" fill="#6B5A2A" opacity=".55"/>`).join('')}`
@@ -6239,9 +6239,12 @@ const GQ = [
 
 /* ---------- だれが つりを するか（日ごとに きまる） ---------- */
 const S = () => save.fish70 || (save.fish70 = {caught:{}, day:'', pt:0});
-function angler(){   // v6.15：つりを するのは タンチョウ（まちに いれば その 住民）
-  const r = (save.town?.res||[]).find(x => x.sp==='crane');
-  return {name: r ? r.name : 'タンチョウ', title: r ? 'つり名人' : 'つり名人の タンチョウ', res:r};
+/* v6.16：つり人は タンチョウ・カモノハシ・クマの 3にん（日がわり。ボタンで こうたい） */
+const ANGLERS = [{sp:'crane', n:'タンチョウ'}, {sp:'platypus', n:'カモノハシ'}, {sp:'bear', n:'クマ'}];
+function angler(){
+  const st = S(); if(st.angDay !== dayKey()){ st.angDay = dayKey(); st.ang = [...dayKey()].reduce((a,c) => a + c.charCodeAt(0), 0) % ANGLERS.length; persist(); }
+  const A = ANGLERS[st.ang % ANGLERS.length], r = (save.town?.res||[]).find(x => x.sp===A.sp);
+  return {sp:A.sp, name: r ? r.name : A.n, title: r ? 'つり名人' : `つり名人の ${A.n}`, res:r};
 }
 
 /* ---------- 画面 ---------- */
@@ -6270,7 +6273,7 @@ async function openFishing(key){
   const root = document.createElement('div'); root.id = 'fish614';
   root.innerHTML = `<div class="fScene614">
       <img class="fBg614" src="${IMG}fish_bg.webp" alt="">
-      <div class="fWho614"><img src="${IMG.replace('v614','v615')}angler_crane.webp" alt=""><b>${X(who.res ? `${who.title} ${who.name}` : who.title)}</b></div>
+      <div class="fWho614 sp-${who.sp}"><img src="${IMG.replace('v614','v615')}angler_${who.sp}.webp" alt=""><b>${X(who.res ? `${who.title} ${who.name}` : who.title)}</b></div>
       <svg class="fSvg614" viewBox="0 0 ${VB.w} ${VB.h}" preserveAspectRatio="xMidYMid slice">
         <g class="fFish614"><ellipse cx="0" cy="0" rx="11" ry="3.8" fill="#0E3158" opacity=".62"/><path d="M-11 0l-6-3.6v7.2z" fill="#0E3158" opacity=".62"/></g>
         <g class="rip614"><ellipse cx="${BOB.x}" cy="${BOB.y+1}" rx="4" ry="1.4" fill="none" stroke="#fff" stroke-width=".6"/></g>
@@ -6282,7 +6285,7 @@ async function openFishing(key){
       <div class="fMsg614"><i>🐟</i><span>うきを なげたよ…</span></div>
       <div class="fHit614">タッチ！</div>
     </div>
-    <div class="fBtns614"><button data-f="quit">🎣 つりを やめる</button><button data-f="zukan">🐟 さかなずかん</button></div>`;
+    <div class="fBtns614"><button data-f="quit">🎣 つりを やめる</button><button data-f="zukan">🐟 さかなずかん</button><button data-f="swap">🔄 つり人を かえる</button></div>`;
   document.body.appendChild(root);
   const $q = s => root.querySelector(s);
   F = {root, key, b:0, sink:0, fx:170, fy:90, fa:0, fdir:-1, state:'idle', rod:$q('.fRod'), rod2:$q('.fRod2'), line:$q('.fLine'), bob:$q('.fBob'), ex:$q('.fEx'), fish:$q('.fFish614')};
@@ -6323,7 +6326,7 @@ async function missed(t){ if(!F) return; const me = F; me.state = 'miss'; me.ex.
 async function onTap(e){
   if(!F) return;
   const bt = e.target.closest('[data-f]');
-  if(bt){ e.stopPropagation(); if(bt.dataset.f==='quit') return closeFishing(); if(bt.dataset.f==='zukan') return fishZukan(); }
+  if(bt){ e.stopPropagation(); if(bt.dataset.f==='quit') return closeFishing(); if(bt.dataset.f==='zukan') return fishZukan(); if(bt.dataset.f==='swap'){ const st = S(); st.ang = ((st.ang||0) + 1) % ANGLERS.length; persist(); const k = F.key; closeFishing(); setTimeout(() => openFishing(k), 280); return; } }
   if(!e.target.closest('.fScene614')) return;
   const me = F;
   if(me.state==='nibble' || me.state==='wait'){ cancelAnimationFrame(me.raf); clearTimeout(me.to); return missed(me.state==='nibble' ? 'はやすぎた！ ぐいっと しなるまで まとう' : 'まだ 魚が きていないよ'); }
@@ -6370,6 +6373,7 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 .fBg614{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .fSvg614{position:absolute;inset:0;width:100%;height:100%}
 .fWho614{position:absolute;left:8.9%;top:35%;height:38%;display:flex;flex-direction:column;align-items:center;z-index:2;pointer-events:none}
+.fWho614.sp-bear{left:10.5%;top:33%;height:40%}.fWho614.sp-platypus{left:7%;top:41%;height:32%}
 .fWho614>img{height:100%;width:auto;filter:drop-shadow(0 3px 2px rgba(0,0,0,.25))}
 .fWho614 b{position:absolute;left:0;bottom:-16%;white-space:nowrap;background:rgba(255,255,255,.9);border-radius:10px;padding:0 8px;font-size:12px;color:#6B5540}
 .fSvg614 .fBob{transition:none}
@@ -6382,7 +6386,7 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 .fScene614.hit .fHit614{opacity:1;transform:scale(1)}
 .fMsg614{position:absolute;left:3%;bottom:4%;right:30%;display:flex;align-items:center;gap:8px;background:rgba(24,48,80,.82);color:#fff;border-radius:999px;padding:6px 14px;font-weight:900;font-size:14px;pointer-events:none}
 .fMsg614 i{font-style:normal}
-.fBtns614{display:flex;gap:10px}
+.fBtns614{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .fBtns614 button{border:3px solid #fff;background:#FFF8EA;border-radius:16px;padding:8px 16px;font:inherit;font-weight:900;color:#6B5540;box-shadow:0 3px 0 #D9C3A0;cursor:pointer}
 .fQ614{display:flex;flex-direction:column;align-items:center}.fishIc614.shadow{opacity:.75;filter:blur(1px)}.fQ614 small{font-size:11px;color:#6B5540}
 .fGot614{position:relative;display:flex;justify-content:center;animation:bump .6s}.new614{position:absolute;right:22%;top:0;background:#E8414B;color:#fff;border-radius:10px;padding:0 8px;font-size:12px}
