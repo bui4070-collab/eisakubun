@@ -6195,7 +6195,7 @@ window.__v613 = {challenge, openMall, openPlaza, openOnsen, QB, MUSIC, tidyBar, 
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.16.0', IMG = './assets/images/v614/';
+const VER = '6.16.1', IMG = './assets/images/v614/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 /* ---------- artSrc：ファイルの パスを そのまま 使えるように（□ の 原因） ---------- */
@@ -6352,7 +6352,7 @@ function pickFish(){ let r = Math.random()*FISH.reduce((a,f) => a + f.w, 0); for
 async function fishZukan(){
   const st = S(), got = FISH.filter(f => st.caught[f.id]).length;
   await dialog(`<h2 class="dlgT">🐟 さかなずかん（${got}/${FISH.length}）</h2><div class="fz614">${FISH.map(f => { const n = st.caught[f.id]||0;
-    return `<div class="${n ? '' : 'lock'}">${n ? fishSVG(f, 70) : (FIMG[f.id] ? fishSVG(f, 70, 'lock') : fishSVG({...f, c1:'#B9B2A6', c2:'#D9D4CB'}, 70))}<b>${n ? X(f.n) : '？？？'}</b><small>${n ? `${n}ひき` : 'まだ つっていない'}</small></div>`; }).join('')}</div>
+    return `<div class="${n ? '' : 'nf615'}">${n ? fishSVG(f, 70) : (FIMG[f.id] ? fishSVG(f, 70, 'fl615') : fishSVG({...f, c1:'#B9B2A6', c2:'#D9D4CB'}, 70))}<b>${n ? X(f.n) : '？？？'}</b><small>${n ? `${n}ひき` : 'まだ つっていない'}</small></div>`; }).join('')}</div>
     <p class="dlgP facNote">これから 魚の しゅるいは ふえていく よていだよ</p>`, [{label:'とじる', v:null}], 'wide');
 }
 
@@ -6372,8 +6372,8 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 .fScene614{position:relative;width:min(96vw,720px);aspect-ratio:3/2;border-radius:20px;overflow:hidden;border:4px solid #fff;box-shadow:0 8px 30px rgba(0,0,0,.35);touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .fBg614{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .fSvg614{position:absolute;inset:0;width:100%;height:100%}
-.fWho614{position:absolute;left:8.9%;top:35%;height:38%;display:flex;flex-direction:column;align-items:center;z-index:2;pointer-events:none}
-.fWho614.sp-bear{left:10.5%;top:33%;height:40%}.fWho614.sp-platypus{left:7%;top:41%;height:32%}
+.fWho614{position:absolute;left:8.9%;top:29%;height:38%;display:flex;flex-direction:column;align-items:center;z-index:2;pointer-events:none}
+.fWho614.sp-bear{left:10.5%;top:27%;height:40%}.fWho614.sp-platypus{left:7%;top:35%;height:32%}
 .fWho614>img{height:100%;width:auto;filter:drop-shadow(0 3px 2px rgba(0,0,0,.25))}
 .fWho614 b{position:absolute;left:0;bottom:-16%;white-space:nowrap;background:rgba(255,255,255,.9);border-radius:10px;padding:0 8px;font-size:12px;color:#6B5540}
 .fSvg614 .fBob{transition:none}
@@ -6391,8 +6391,8 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 .fQ614{display:flex;flex-direction:column;align-items:center}.fishIc614.shadow{opacity:.75;filter:blur(1px)}.fQ614 small{font-size:11px;color:#6B5540}
 .fGot614{position:relative;display:flex;justify-content:center;animation:bump .6s}.new614{position:absolute;right:22%;top:0;background:#E8414B;color:#fff;border-radius:10px;padding:0 8px;font-size:12px}
 .fz614{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.fz614>div{display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2px solid #BFE3FB;border-radius:12px;padding:4px}
-.fishIc614.lock{filter:brightness(0) opacity(.25)}.fishIc614.shadow{filter:brightness(0) opacity(.45) blur(1px)!important}
-.fz614>div.lock{background:#F2EFEA;border-color:#E3DDD2}.fz614 b{font-size:13px}.fz614 small{font-size:10px;color:#6B5540}
+.fishIc614.fl615{filter:brightness(0) opacity(.25)}.fishIc614.shadow{filter:brightness(0) opacity(.45) blur(1px)!important}
+.fz614>div.nf615{background:#F2EFEA;border-color:#E3DDD2}.fz614 b{font-size:13px}.fz614 small{font-size:10px;color:#6B5540}
 @media (max-width:600px){.fMsg614{font-size:12px;right:4%}.fWho614 b{font-size:10px}}`;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
