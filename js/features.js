@@ -6195,7 +6195,7 @@ window.__v613 = {challenge, openMall, openPlaza, openOnsen, QB, MUSIC, tidyBar, 
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.17.1', IMG = './assets/images/v614/';
+const VER = '6.17.2', IMG = './assets/images/v614/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 /* ---------- artSrc：ファイルの パスを そのまま 使えるように（□ の 原因） ---------- */
@@ -6437,7 +6437,11 @@ async function openFishing(key){
       <div class="fMsg614"><i>🐟</i><span>うきを なげたよ…</span></div>
       <div class="fHit614">タッチ！</div>
     </div>
-    <div class="fBtns614"><button data-f="quit">🎣 つりを やめる</button><button data-f="zukan">🐟 さかなずかん</button><button data-f="swap">🔄 つり人を かえる</button></div>`;
+    <div class="fBtns614">
+      <button data-f="quit"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="13" width="34" height="26" rx="5" fill="#7FB6E6" stroke="#2F6DB5" stroke-width="2.4"/><path d="M7 21h34" stroke="#2F6DB5" stroke-width="2.4"/><rect x="18" y="9" width="12" height="6" rx="2" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/><path d="M14 31q5-5 10 0t10 0" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="37" cy="37" r="9" fill="#E8414B" stroke="#fff" stroke-width="2.4"/><path d="M33 33l8 8M41 33l-8 8" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/></svg><span>やめる</span></button>
+      <button data-f="zukan"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 10q9-3 18 2q9-5 18-2v28q-9-3-18 2q-9-5-18-2z" fill="#FFF3D6" stroke="#B5701C" stroke-width="2.4" stroke-linejoin="round"/><path d="M24 12v28" stroke="#B5701C" stroke-width="2"/><path d="M10 25q5-5 10 0q-5 5-10 0z" fill="#7FB6E6" stroke="#2F6DB5" stroke-width="1.6"/><path d="M10 25l-3-3v6z" fill="#2F6DB5"/><path d="M28 25q5-5 10 0q-5 5-10 0z" fill="#FF9EB5" stroke="#C0392B" stroke-width="1.6"/><path d="M38 25l3-3v6z" fill="#C0392B"/></svg><span>ずかん</span></button>
+      <button data-f="swap"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="16" cy="20" r="8" fill="#FFE2A8" stroke="#B5701C" stroke-width="2.2"/><path d="M5 38q11-14 22 0" fill="#BFD9F5" stroke="#2F6DB5" stroke-width="2.2"/><path d="M28 12a12 12 0 0 1 12 12" fill="none" stroke="#59C059" stroke-width="3.2" stroke-linecap="round"/><path d="M36 22l4 5 4-5" fill="#59C059" stroke="#59C059" stroke-width="1.5" stroke-linejoin="round"/><path d="M40 32a12 12 0 0 1-10 7" fill="none" stroke="#59C059" stroke-width="3.2" stroke-linecap="round"/><path d="M32 35l-4 4 5 2" fill="#59C059" stroke="#59C059" stroke-width="1.5" stroke-linejoin="round"/></svg><span>こうたい</span></button>
+    </div>`;
   document.body.appendChild(root);
   const $q = s => root.querySelector(s);
   F = {root, key, b:0, sink:0, fx:170, fy:90, fa:0, fdir:-1, state:'idle', rod:$q('.fRod'), rod2:$q('.fRod2'), line:$q('.fLine'), bob:$q('.fBob'), ex:$q('.fEx'), fish:$q('.fFish614')};
@@ -6538,8 +6542,10 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 .fScene614.hit .fHit614{opacity:1;transform:scale(1)}
 .fMsg614{position:absolute;left:3%;bottom:4%;right:30%;display:flex;align-items:center;gap:8px;background:rgba(24,48,80,.82);color:#fff;border-radius:999px;padding:6px 14px;font-weight:900;font-size:14px;pointer-events:none}
 .fMsg614 i{font-style:normal}
-.fBtns614{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.fBtns614 button{border:3px solid #fff;background:#FFF8EA;border-radius:16px;padding:8px 16px;font:inherit;font-weight:900;color:#6B5540;box-shadow:0 3px 0 #D9C3A0;cursor:pointer}
+.fBtns614{display:flex;gap:8px;flex-wrap:nowrap;justify-content:center;width:min(96vw,720px)}
+.fBtns614 button{flex:1 1 0;min-width:0;max-width:200px;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border:3px solid #fff;background:#FFF8EA;border-radius:16px;padding:6px 8px;font:inherit;font-size:14px;font-weight:900;color:#6B5540;box-shadow:0 3px 0 #D9C3A0;cursor:pointer}
+.fBtns614 button svg{width:30px;height:30px;flex:none}
+@media (max-width:400px){.fBtns614 button{font-size:12px;gap:3px;padding:5px 4px}.fBtns614 button svg{width:24px;height:24px}}
 .fQ614{display:flex;flex-direction:column;align-items:center}.fishIc614.shadow{opacity:.75;filter:blur(1px)}.fQ614 small{font-size:11px;color:#6B5540}
 .fGot614{position:relative;display:flex;justify-content:center;animation:bump .6s}.new614{position:absolute;right:22%;top:0;background:#E8414B;color:#fff;border-radius:10px;padding:0 8px;font-size:12px}
 .fz614{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:58vh;overflow:auto}.fz614>div{display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2px solid #BFE3FB;border-radius:12px;padding:4px}
