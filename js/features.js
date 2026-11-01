@@ -6565,7 +6565,7 @@ window.__v614 = {openFishing, closeFishing, FISH, fishSVG, get F(){ return F; }}
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.21.0', IMG = './assets/images/v618/';
+const VER = '6.22.0', IMG = './assets/images/v618/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const W = ms => new Promise(r => setTimeout(r, ms));
 try{ const it = ITEM('stadium'); if(it){ it.lv = 8; it.price0 = it.price0 || 4500; } ZUKAN_INFO.stadium = '住民たちと 野球の ミニゲームが できる。投球は 1問、はやく 答えるほど 遠くへ 飛ぶ！'; }catch(e){}
@@ -6661,7 +6661,7 @@ async function openStadium(key){
   const v = await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2>
     <p class="dlgP">投げられた ボールは 1問！ <b>正解</b>すると 打てるよ。<br><b>はやく 答えるほど</b> 遠くへ 飛ぶ！ 3イニングで あいてより 多く 点を とろう。</p>
     <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small><em>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}</em><u>💪${pw(r)}</u></span>`).join('')}</div>
-    <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！<br>問題が 出るのは 1回に 2〜3打席。ほかは 住民の 能力で 🤖おまかせ。<br>1回の 得点は ${RUN_CAP}点まで・7点さ（3回まえ）か 10点さで コールド！</p>
+    <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！<br>問題が 出るのは 1回に 1打席だけ（まちがえると アウト）。ほかは 住民の 能力で 🤖おまかせ。<br>1回の 得点は ${RUN_CAP}点まで・7点さ（3回まえ）か 10点さで コールド！</p>
     <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本<br>💎 ホームランで 水晶（きょう ${cryToday()}/${CRY_MAX}）・👥 観客 ${crowdN()}人<br>🏟 改装：${DECOS.map(d => (S.decorations||[]).includes(d.id) ? d.ic : '🔒').join(' ')}（つぎは ${(DECOS.find(d => !(S.decorations||[]).includes(d.id))||{w:'-'}).w}しょう）</p>
     ${bossReady() ? `<div class="boss620"><b>👑 にがて大王チームが あらわれた！</b><small>かつと まちの わすれものを 1つ とりもどせる（${S.bossWins||0}/${FORGOT.length}）</small></div>` : ''}`,
     (bossReady() ? [{label:'👑 にがて大王と たいせん！', cls:'pink', v:'boss'}] : []).concat([{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
@@ -6669,7 +6669,7 @@ async function openStadium(key){
   if(v==='play' || v==='boss') startGame(key, lineup, v==='boss');
 }
 function startGame(key, lineup, boss){
-  const opp = [0,0,0]; let tot = boss ? rint(4, 6) : rint(2, 5); opp[2] = 1; tot--; while(tot-- > 0) opp[rint(0,2)]++;   // 最終回にも 点を 入れて ぎゃくてんの 場面を つくる
+  const opp = [0,0,0]; let tot = boss ? rint(4, 7) : rint(2, 6); opp[2] = 1; tot--; while(tot-- > 0) opp[rint(0,2)]++;   // 最終回にも 点を 入れて ぎゃくてんの 場面を つくる
   G = {key, lineup, field:fielders(lineup), inning:0, outs:0, strikes:0, bases:[null,null,null], score:0, opp, oppShown:0, bat:0, stats:{}, busy:false, boss:!!boss, combo:0, zone:false, cry:0, grow:[]};
   const el = document.createElement('div'); el.id = 'bb618';
   const D = ST().decorations || [], crowd = Math.min(1, crowdN()/40);
@@ -6697,7 +6697,7 @@ async function nextInning(){
   if(!G) return;
   if(G.inning >= 3) return endGame();
   if(G.inning >= 2 && G.score - oppNow() >= COLD){ G.cold = true; msg(`⚡ ${COLD}点さで コールドゲーム！`, 'hr'); confetti(2400); sound('fan'); await W(1700); return G && endGame(); }
-  G.pa = 0; G.innRuns = 0;
+  G.pa = 0; G.innRuns = 0; G.qAt = rint(1, 3);   // v6.22：問題が 出るのは 1回に 1打席だけ（2〜4番め）
   G.oppShown = G.inning + 1; G.outs = 0; G.strikes = 0; G.bases = [null,null,null]; board();
   msg(`${G.inning+1}回おもて：あいてが <b>${G.opp[G.inning]}点</b> とったよ`, 'big'); await W(1700); if(!G) return;
   msg(`${G.inning+1}回うら：きみの こうげき！`, 'big'); await W(1300); if(!G) return;
@@ -6709,7 +6709,7 @@ const RUN_CAP = 5, COLD = 7;
 const oppNow = () => G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0);
 function nextPA(){
   if(!G) return;
-  const q = G.revenge || G.pa % 2 === 0 || (G.inning===2 && G.chance && G.pa < 2);
+  const q = (G.chance && G.inning===2) ? G.pa===0 : G.pa===G.qAt;
   G.pa++;
   if(q) pitch(); else autoBat();
 }
@@ -6718,7 +6718,7 @@ async function autoBat(){
   if(!G) return; G.busy = true; G.q = null; clearTimeout(TIMER); board();
   const r = batter(), st = G.stats[r.id] || (G.stats[r.id] = {hits:0, rbi:0, hr:0});
   const power = pw(r), skill = (abOf(r,'work') + abOf(r,'know') + abOf(r,'drive'))/3;   // 住民の 能力で きまる
-  const pHit = Math.max(.22, Math.min(.62, .26 + skill*.012 + power*.025));
+  const pHit = Math.max(.18, Math.min(.45, .20 + skill*.008 + power*.015));
   G.$('.bbPanel618').innerHTML = `<div class="auto621"><b>🤖 おまかせ打席</b><div>${resImg(r)}<span><b>${X(r.name)}</b><small>💪パワー ${power}・🔨${Math.round(abOf(r,'work'))} 📘${Math.round(abOf(r,'know'))}</small></span></div><i style="--p:${Math.round(pHit*100)}%"></i><small>ヒットの かくりつ 約${Math.round(pHit*100)}%</small><em>つぎの 問題の 打席を まってね…</em></div>`;
   const ball = G.$('.bbBall618'); ball.className = 'bbBall618'; ball.style.transition = 'none';
   Object.assign(ball.style, {left:FIELD_POS.P[0]+'%', top:(FIELD_POS.P[1]-1)+'%', transform:'translate(-50%,-50%) scale(.7)', opacity:1});
@@ -6727,8 +6727,8 @@ async function autoBat(){
   Object.assign(ball.style, {left:BASE[0][0]+'%', top:(BASE[0][1]-1)+'%', transform:'translate(-50%,-50%) scale(1.15)'});
   await W(800); if(!G) return;
   if(Math.random() < pHit){
-    const pHR = Math.min(.3, .04 + power*.02 + skill*.004), x = Math.random();
-    const frac = x < pHR ? .1 : x < pHR + .07 ? .4 : x < pHR + .3 ? .6 : .9;
+    const pHR = Math.min(.12, .03 + power*.01 + skill*.002), x = Math.random();
+    const frac = x < pHR ? .1 : x < pHR + .05 ? .4 : x < pHR + .25 ? .6 : .9;
     return hit(frac, r, st, null, false);
   }
   /* アウト */
@@ -6766,7 +6766,7 @@ async function answer(v){
     if(growth(r)) G.grow.push(r); persist();
     if(G.combo >= 5 && !G.zone){ G.zone = true; G.el.querySelector('.bbScene618').classList.add('zone'); setTimeout(() => G && msg('🔥 ゾーン！ つぎの 打席は かならず 長打！', 'hr'), 900); }
     if(m.weak){ clearMiss(m.weak); G.revHits = (G.revHits||0) + 1; G.pts = (G.pts||0) + 20; } const rev = !!m.isRev; G.revenge = null; await hit(wasZone ? Math.min(frac, .49) : frac, r, st, m, rev); }
-  else { sound('ng'); G.combo = 0; if(G.zone){ G.zone = false; G.el.querySelector('.bbScene618').classList.remove('zone'); } noteMiss(m); if(m.isRev){ G.revenge = null; await revengeOut(m, v); } else await strike(m, v); }
+  else { sound('ng'); G.combo = 0; if(G.zone){ G.zone = false; G.el.querySelector('.bbScene618').classList.remove('zone'); } noteMiss(m); G.revenge = null; await missOut(m, v); }
 }
 async function hit(frac, r, st, m, rev){
   let [, n, label, cls] = HIT.find(h => frac < h[0]); const fv = m && fav(r)===m.subj;
@@ -6819,6 +6819,14 @@ async function revengeOut(m, v){
   const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
   G.outs++; G.strikes = 0; G.bat++; board(); msg('アウト…', 'k'); await W(900); if(!G) return;
   await dialog(`<h2 class="dlgT">おしい！ こたえは <b>${X(m.ansF || m.ans)}</b></h2><p class="dlgP">この タイプの 問題は「にがてノート」に のこしたよ。<br>つぎの 試合で また 出るから、こんどこそ 打とう！</p>`, [{label:'つぎの バッターへ', cls:'gold', v:1}], 'wide');
+  if(!G) return;
+  if(G.outs >= 3){ msg('スリーアウト チェンジ！', 'big'); await W(1300); G.inning++; return nextInning(); }
+  nextPA();
+}
+async function missOut(m, v){   // v6.22：問題は 1打席 1問。まちがえたら アウト（解説つき）
+  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
+  G.outs++; G.strikes = 0; G.bat++; board(); msg(v==null ? '時間切れ… アウト' : 'さんしん… アウト', 'k'); await W(900); if(!G) return;
+  await dialog(`<h2 class="dlgT">⚾ おしい！ いっしょに たしかめよう</h2>${explainHTML(m, v)}<p class="dlgP facNote">この 問題は「にがてノート」に のこしたよ。つぎの 試合で 出たら リベンジしよう！</p>`, [{label:'つぎへ', cls:'gold', v:1}], 'wide ex56Dlg');
   if(!G) return;
   if(G.outs >= 3){ msg('スリーアウト チェンジ！', 'big'); await W(1300); G.inning++; return nextInning(); }
   nextPA();
