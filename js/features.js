@@ -204,6 +204,7 @@ moveCars = function(){
   // パーキング・ガソリンスタンドに 入る
   act.forEach(c => { if(c.cool > 0){ c.cool--; return; } if(c.wait > 0) return;
     const L = adjLot(c); if(!L || Math.random() > L.D.rate) return;
+    if(save.town.cells[L.key]==='parking' && (window.NOPARK623 && NOPARK623.has(c.id) || ITEM(c.id)?.ship || ITEM(c.id)?.air)) return;
     c.lot = {key:L.key, slot:L.slot}; c.lotT = rint(L.D.min, L.D.max); if(c.el) c.el.style.visibility = 'hidden'; ch = true; });
   if(ch) drawLots();
 };
@@ -4944,6 +4945,23 @@ const rgba = (c,a) => `rgba(${c.map(Math.round).join(',')},${a})`;
 const isWater = id => id===SEA || id===RIVER || id===HARBOR || id===BRIDGE;
 let DEPTH = {};
 let CHAN613 = {};
+/* v6.23：川が 海に 入る ところ（河口）を さがす。1つの 河口は 1つの むきだけ（まっすぐ 海へ） */
+function mouths623(D){
+  const t = save.town, L = townCalc().L, c = (x,y) => t.cells[`${x},${y}`], D4 = [[0,1],[1,0],[0,-1],[-1,0]];
+  const isRv = id => id===RIVER || id===BRIDGE, isW = id => isRv(id) || id===HARBOR, out = [];
+  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){
+    if(!isRv(c(x,y))) continue;
+    const sea = D4.filter(([dx,dy]) => c(x+dx,y+dy)===SEA); if(!sea.length) continue;
+    const rv = D4.filter(([dx,dy]) => isW(c(x+dx,y+dy)));
+    let dir = sea.find(([dx,dy]) => rv.some(([ex,ey]) => ex===-dx && ey===-dy));          // まっすぐ 海へ
+    if(!dir && rv.length <= 1) dir = sea[0];                                             // 川の おわり
+    if(!dir) continue;                                                                   // 海ぞいを ながれる 川は そのまま
+    const path = []; let px = x + dir[0], py = y + dir[1];
+    for(let i=0; i<4 && c(px,py)===SEA && (D ? (D[`${px},${py}`]||9) : 1) <= 1; i++){ path.push([px,py]); px += dir[0]; py += dir[1]; }
+    out.push({x, y, dx:dir[0], dy:dir[1], path, end:[px,py]});
+  }
+  return out;
+}
 function calcDepth(){ CHAN613 = {};
   const t = save.town, L = townCalc().L, D = {}, q = [];
   const W = (x,y) => x<0 || y<0 || x>=L.cols || y>=L.rows || isWater(t.cells[`${x},${y}`]);
@@ -4953,8 +4971,10 @@ function calcDepth(){ CHAN613 = {};
     for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++){ const k = `${x+dx},${y+dy}`; if(t.cells[k]===SEA && D[k]==null){ D[k] = d + 1; q.push([x+dx,y+dy]); } } }
   Object.entries(t.cells).forEach(([k,id]) => { if(id===SEA && D[k]==null) D[k] = 9; });
   /* 川・みなと・はしの となりは「かこう」：すなはまに しないで 水に する（船が とおれる） */
+  /* 河口の すなはまは すなの まま（船は とおれる）・みなとの となりは 水 */
+  mouths623(D).forEach(m => m.path.forEach(([x,y]) => { CHAN613[`${x},${y}`] = 1; }));
   Object.keys(D).forEach(k => { if(D[k]!==1) return; const [x,y] = k.split(',').map(Number);
-    if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => { const id = t.cells[`${x+dx},${y+dy}`]; return id===RIVER || id===HARBOR || id===BRIDGE; })){ CHAN613[k] = 1; D[k] = 2; } });
+    if([[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy]) => t.cells[`${x+dx},${y+dy}`]===HARBOR)){ CHAN613[k] = 1; D[k] = 2; } });
   return D;
 }
 const colOf = d => d===1 ? C.sand : d===2 ? C.sea : d<=4 ? C.sea2 : C.deep;
@@ -5021,11 +5041,9 @@ function seaCanvas(map){
   /* v6.13：河口は「水の すじ（チャンネル）」として かく。いくつの 方向から つながっても 1つの 水に まとまる */
   const isRv = id => id===RIVER || id===BRIDGE, D4 = [[0,1],[1,0],[0,-1],[-1,0]], cid = (x,y) => cells[`${x},${y}`];
   const EST = {}, SEG = [];
-  for(let y=0; y<L.rows; y++) for(let x=0; x<L.cols; x++){ if(!isRv(cid(x,y))) continue; if(D4.some(([dx,dy]) => cid(x+dx,y+dy)===SEA)) EST[y*L.cols + x] = 1; }
-  Object.keys(EST).forEach(i => { i = +i; const x = i % L.cols, y = Math.floor(i / L.cols), cx = x + .5, cy = y + .5;
-    D4.forEach(([dx,dy]) => { const n = cid(x+dx, y+dy);
-      if(n===SEA || n===HARBOR) SEG.push([cx, cy, cx+dx*1.5, cy+dy*1.5]);                         // うみへ：となりの マスの まんなかまで
-      else if(isRv(n)) SEG.push([cx, cy, EST[(y+dy)*L.cols + x+dx] ? cx+dx : cx+dx*.5, EST[(y+dy)*L.cols + x+dx] ? cy+dy : cy+dy*.5]); }); });
+  mouths623(DEPTH).forEach(m => { EST[m.y*L.cols + m.x] = 1; const cx = m.x + .5, cy = m.y + .5;
+    SEG.push([cx, cy, m.end[0] + .5 + m.dx*.3, m.end[1] + .5 + m.dy*.3]);   // まっすぐな 1本の すじ
+    D4.forEach(([ex,ey]) => { const n = cid(m.x+ex, m.y+ey); if(isRv(n) || n===HARBOR) SEG.push([cx, cy, cx + ex*.5, cy + ey*.5]); }); });
   const segAt = {}; SEG.forEach(sg => { const x0 = Math.floor(Math.min(sg[0],sg[2]))-1, x1 = Math.floor(Math.max(sg[0],sg[2]))+1, y0 = Math.floor(Math.min(sg[1],sg[3]))-1, y1 = Math.floor(Math.max(sg[1],sg[3]))+1;
     for(let y=y0; y<=y1; y++) for(let x=x0; x<=x1; x++) (segAt[y*L.cols + x] = segAt[y*L.cols + x] || []).push(sg); });
   const segD = (u, v, L2) => { let sum = 0, mn = 9; for(const [x1,y1,x2,y2] of L2){ const dx = x2-x1, dy = y2-y1, l = dx*dx + dy*dy, t = l ? Math.max(0, Math.min(1, ((u-x1)*dx + (v-y1)*dy)/l)) : 0, ex = x1 + t*dx - u, ey = y1 + t*dy - v, d = Math.sqrt(ex*ex + ey*ey); mn = Math.min(mn, d); sum += Math.exp(-7*d); } return mn; };
@@ -5046,22 +5064,22 @@ function seaCanvas(map){
     const u = bx0 + (px+.5)/R, v = by0 + (py+.5)/R; const o = (py*W + px)*4;
     const ci = Math.floor(v)*L.cols + Math.floor(u), SG = segAt[ci];
     /* 1) うみの そう */
-    let r = 0, g = 0, b = 0, a = 0;
+    let r = 0, g = 0, b = 0, a = 0, ddH = 0;
     { const m = bil(MK, u, v), al = sst(.4, .6, m);
-      if(al > 0){ const dd = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9); let c;
+      if(al > 0){ const dd = ddH = bil(DD, u, v) + .07*Math.sin(u*5.1 + v*2.3) + .05*Math.sin(v*6.7 - u*1.9); let c;
         if(dd < 1.32) c = mixc(SAND, WET, sst(1.1, 1.32, dd));
         else if(dd < 1.62){ c = mixc(WET, SHAL, sst(1.38, 1.62, dd)); const f = 1 - Math.abs(dd - 1.42)/.06; if(f > 0 && !SG) c = mixc(c, FOAM, Math.min(.9, f)); }
         else if(dd < 2.6) c = mixc(SHAL, MID, sst(1.62, 2.6, dd)); else c = mixc(MID, DEEP, sst(2.6, 4.5, dd));
         if(EST[ci] && dd < 1.62) c = SAND;
         [r,g,b] = c; a = al; } }
     /* 2) 川の すじ（うえに かさねる） */
-    if(SG){ const k = sst(.1, .8, bil(MK, u, v)), sd = segS(u, v, SG, k), w = .27 + .32*k, rim = .025*(1-k), bank = .06*(1-k) + .015;
+    if(SG){ const k = sst(.1, .8, bil(MK, u, v)), sd = segD(u, v, SG), w = .27 + .08*k, rim = .025*(1-k), bank = .06*(1-k) + .015;
       if(sd < w + rim + bank + .02){
         const ddv = Math.max(1.75, bil(DD, u, v)), seaW = ddv < 2.6 ? mixc(SHAL, MID, sst(1.62, 2.6, ddv)) : mixc(MID, DEEP, sst(2.6, 4.5, ddv));
-        const cw = mixc(RIVW, seaW, sst(.1, 1, k)), crim = mixc([79,169,218], cw, k), cbank = mixc(BANK, SAND, k);
+        const cw = mixc(RIVW, SHAL, sst(.1, 1, k)), crim = mixc([79,169,218], cw, k), cbank = mixc(BANK, SAND, k);
         const tw = 1 - sst(w - .012, w + .008, sd), tr = 1 - sst(w + rim - .01, w + rim + .008, sd), tb = 1 - sst(w + rim + bank - .015, w + rim + bank + .015, sd);
         let c = mixc(cbank, crim, tr); c = mixc(c, cw, tw);
-        const t2 = a > 0 ? tw + (tb - tw)*(1 - k) : tb;                          // うみの 上では 岸を かかない
+        const t2 = (a > 0 ? tw + (tb - tw)*(1 - k) : tb) * (a > 0 ? 1 - sst(1.5, 1.85, ddH) : 1);   // うみの 上では 岸を かかない・ふかい 水では 海と なじませる
         if(t2 > 0){ if(a <= 0){ r = c[0]; g = c[1]; b = c[2]; } else { r = r*(1-t2) + c[0]*t2; g = g*(1-t2) + c[1]*t2; b = b*(1-t2) + c[2]*t2; } a = Math.max(a, t2); } } }
     if(a <= 0){ D[o+3] = 0; continue; }
     D[o] = r; D[o+1] = g; D[o+2] = b; D[o+3] = Math.round(a*255); continue;
@@ -6658,11 +6676,10 @@ async function openStadium(key){
   if(G) return; unlockDecos(); persist(); const lineup = team();
   if(lineup.length < 3){ await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2><p class="dlgP">野球を するには 住民が <b>3人いじょう</b> ひつようだよ。<br>おまねきレターで なかまを ふやそう！</p>`, [{label:'とじる', v:null}], 'wide'); return; }
   const S = ST();
-  const v = await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2>
-    <p class="dlgP">投げられた ボールは 1問！ <b>正解</b>すると 打てるよ。<br><b>はやく 答えるほど</b> 遠くへ 飛ぶ！ 3イニングで あいてより 多く 点を とろう。</p>
-    <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small><em>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}</em><u>💪${pw(r)}</u></span>`).join('')}</div>
-    <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！<br>問題が 出るのは 1回に 1打席だけ（まちがえると アウト）。ほかは 住民の 能力で 🤖おまかせ。<br>1回の 得点は ${RUN_CAP}点まで・7点さ（3回まえ）か 10点さで コールド！</p>
-    <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本<br>💎 ホームランで 水晶（きょう ${cryToday()}/${CRY_MAX}）・👥 観客 ${crowdN()}人<br>🏟 改装：${DECOS.map(d => (S.decorations||[]).includes(d.id) ? d.ic : '🔒').join(' ')}（つぎは ${(DECOS.find(d => !(S.decorations||[]).includes(d.id))||{w:'-'}).w}しょう）</p>
+  const v = await dialog(`<h2 class="dlgT">⚾ まなびスタジアム</h2>
+    <p class="dlgP">正解で ヒット！ はやいほど 遠くへ 飛ぶよ</p>
+    <div class="bbLine618 sm623">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<em>${SUBJ_IC[fav(r)]}</em></span>`).join('')}</div>
+    <p class="dlgP facNote">${S.wins||0}しょう／${S.games||0}しあい　💎 きょう ${cryToday()}/${CRY_MAX}</p>
     ${bossReady() ? `<div class="boss620"><b>👑 にがて大王チームが あらわれた！</b><small>かつと まちの わすれものを 1つ とりもどせる（${S.bossWins||0}/${FORGOT.length}）</small></div>` : ''}`,
     (bossReady() ? [{label:'👑 にがて大王と たいせん！', cls:'pink', v:'boss'}] : []).concat([{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
   if(v==='grade') return openBuilding(key);
@@ -6922,6 +6939,7 @@ css.textContent = `#bb618{position:fixed;inset:0;z-index:66;background:rgba(18,4
 .auto621>div{display:flex;align-items:center;gap:8px}.auto621 img{width:64px;height:64px;object-fit:contain}.auto621 span{display:flex;flex-direction:column;align-items:flex-start}.auto621 span small{font-size:11px}
 .auto621>i{width:90%;height:10px;border-radius:5px;background:linear-gradient(90deg,#59C059 var(--p),#E9E4DC var(--p))}.auto621>small{font-size:11px}.auto621 em{font-style:normal;font-size:11px;color:#8A7560}
 .cap621{display:block;font-size:.75em;color:#FFD84A}
+.bbLine618.sm623 span{width:40px;padding:1px}.bbLine618.sm623 img{width:32px;height:32px}.bbLine618.sm623 em{font-size:12px}
 .bbLine618 u{text-decoration:none;font-size:8.5px;font-weight:900;color:#C66F0A}
 .bbLine618 em{font-style:normal;font-size:8.5px;font-weight:800;color:#6B5540;white-space:nowrap}
 .bbBoard618{position:absolute;left:2%;top:3%;z-index:6;background:rgba(24,36,70,.88);color:#fff;border-radius:12px;padding:4px 10px;font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.35}
@@ -6956,4 +6974,26 @@ css.textContent = `#bb618{position:fixed;inset:0;z-index:66;background:rgba(18,4
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 window.__v618 = {openStadium, get G(){ return G; }, FIELD_POS, answer};
+})();
+
+/* =====================================================================
+   v6.23：テレビとうを 2×1マスに（おいてあったら トレイへ）・パーキングの そうじ
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.23.0', BIG = {tower:[2,1]};
+Object.entries(BIG).forEach(([id, sz]) => { const it = ITEM(id); if(it) it.sz = sz; try{ window.__big64.SZ[id] = sz; }catch(e){} });
+function migrate(){
+  const t = save.town; if(!t || t.big623) return; let n = 0;
+  Object.keys(t.cells).forEach(k => { const id = t.cells[k]; if(!BIG[id]) return;
+    t.inv[id] = (t.inv[id]||0) + 1; const g = (t.glv||{})[k]; if(g){ t.glvKeep = t.glvKeep || {}; (t.glvKeep[id] = t.glvKeep[id] || []).push(g); delete t.glv[k]; }
+    delete t.cells[k]; n++; });
+  t.big623 = 1; if(n) t.big623msg = 1; persist();
+}
+function cleanLots(){ try{ const P = (save.fac||{}).parking || {}; let ch = false; Object.keys(P).forEach(k => { if(window.NOPARK623 && NOPARK623.has(P[k].v)){ delete P[k]; ch = true; } }); if(ch) persist(); }catch(e){} }
+renderMap = (orig => function(){ try{ migrate(); cleanLots(); }catch(e){} return orig.apply(this, arguments); })(renderMap);
+try{ migrate(); cleanLots(); }catch(e){}
+setInterval(() => { const t = save.town; if(curScreen==='town' && t && t.big623msg && !$('#dlg').classList.contains('show') && !document.hidden){ delete t.big623msg; persist();
+  dialog(`<div class="dlgArt big">${picHTML(ITEM('tower'))}</div><h2 class="dlgT">📡 テレビとうが 大きく なったよ！</h2><p class="dlgP"><b>2×1マス</b>に なったので、いちど トレイ（もようがえ）に しまったよ。<br>2マス あいている ところに おきなおしてね（★は のこっているよ）。</p>`, [{label:'わかった！', cls:'gold', v:1}], 'wide'); } }, 3000);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 })();

@@ -1,4 +1,5 @@
-まなびタウン v6.22 UPDATE（v6.21 からの差分）
+まなびタウン v6.23 UPDATE（v6.22 からの差分）
 
 アップロードする ファイル（上書き）:
 - js/features.js
+- js/facilities.js

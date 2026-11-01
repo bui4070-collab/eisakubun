@@ -173,7 +173,8 @@ async function openSchool(key){
 /* =====================================================================
    パーキング：たまに 車が とまりに 来る
    ===================================================================== */
-const guestCars = () => TOWN_ITEMS.filter(it => it.type==='veh' && it.art && !it.ship && !it.air && (it.lv||1) <= save.town.lv + 3 && !['bicycle','tractor'].includes(it.id));
+window.NOPARK623 = new Set(['fire','ambulance','police','whitebike','ladder','rescue','command','mixer','crane','excavator','dump','roller','forklift','snowplow','tow','tractor','sweeper','compactor','garbage','tanker','carriage','partybus','kart','bicycle']);   // v6.23：きんきゅう車・工事車・イベント車は パーキングに とまらない
+const guestCars = () => TOWN_ITEMS.filter(it => it.type==='veh' && it.art && !it.ship && !it.air && (it.lv||1) <= save.town.lv + 3 && !NOPARK623.has(it.id));
 function refreshParking(){
   const P = F().parking; let ch = false;
   Object.keys(P).forEach(k => { if(save.town.cells[k]!=='parking' || P[k].until < now()){ delete P[k]; ch = true; } });
