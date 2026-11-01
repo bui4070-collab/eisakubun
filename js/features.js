@@ -6565,7 +6565,7 @@ window.__v614 = {openFishing, closeFishing, FISH, fishSVG, get F(){ return F; }}
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.19.0', IMG = './assets/images/v618/';
+const VER = '6.20.0', IMG = './assets/images/v618/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const W = ms => new Promise(r => setTimeout(r, ms));
 try{ const it = ITEM('stadium'); if(it){ it.lv = 8; it.price0 = it.price0 || 4500; } ZUKAN_INFO.stadium = '住民たちと 野球の ミニゲームが できる。投球は 1問、はやく 答えるほど 遠くへ 飛ぶ！'; }catch(e){}
@@ -6639,24 +6639,41 @@ function explainHTML(m, v){
 let G = null;
 const HIT = [[.25,4,'ホームラン！','hr'],[.5,3,'スリーベース！','t3'],[.75,2,'ツーベース！','t2'],[1.01,1,'ヒット！','t1']];
 
+/* ===== STEP4：ゾーン・チャンス・成長・観客・ボス・改装・水晶 ===== */
+const STREAK_PT = n => n===3 ? 5 : n===5 ? 15 : n===7 ? 20 : n===10 ? 50 : n > 10 && n % 5===0 ? 50 : 0;   // 既存の 連続正解ボーナスと おなじ
+const CRY_MAX = 3;
+function cryToday(){ const S = ST(); if(S.cryDay !== dayKey()){ S.cryDay = dayKey(); S.crystalsToday = 0; } return S.crystalsToday; }
+const DECOS = [
+  {id:'light', n:'ナイター照明', w:1, ic:'💡', css:'d-light'}, {id:'flag', n:'チームの 旗', w:3, ic:'🚩', css:'d-flag'},
+  {id:'turf', n:'あざやかな 芝', w:5, ic:'🌱', css:'d-turf'}, {id:'board', n:'でんこう 掲示板', w:8, ic:'📺', css:'d-board'},
+  {id:'fire', n:'花火', w:12, ic:'🎆', css:'d-fire'}, {id:'gold', n:'金の 照明', w:20, ic:'✨', css:'d-gold'}];
+const FORGOT = [['🎵','まちの うた'],['🎨','いろえんぴつの 色'],['📚','としょかんの 本の なまえ'],['🌸','さくらの 名所'],['⏰','時計台の かね'],['🍞','パン屋の レシピ'],['🎐','夏まつりの おはやし'],['⭐','星座の なまえ']];
+function unlockDecos(){ const S = ST(), D = S.decorations || (S.decorations = []), got = []; DECOS.forEach(d => { if((S.wins||0) >= d.w && !D.includes(d.id)){ D.push(d.id); got.push(d); } }); return got; }
+const bossReady = () => (save.story && Object.keys(save.story).length >= 2) && ((ST().games||0) >= 2) && ((ST().bossWins||0) < FORGOT.length);
+const pw = r => r.bbPower || 1;
+function growth(r){ r.bbExp = (r.bbExp||0) + 1; const need = 3 + pw(r)*2; if(r.bbExp >= need){ r.bbExp -= need; r.bbPower = pw(r) + 1; return true; } return false; }
+const crowdN = () => (save.town?.res||[]).length;
+const MVP_LINES = ['きょうの ヒーローは きみだ！','バットが ひかってたよ！','べんきょうの せいかが 出たね！','あしたも いっしょに がんばろう！'];
 async function openStadium(key){
-  if(G) return; const lineup = team();
+  if(G) return; unlockDecos(); persist(); const lineup = team();
   if(lineup.length < 3){ await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2><p class="dlgP">野球を するには 住民が <b>3人いじょう</b> ひつようだよ。<br>おまねきレターで なかまを ふやそう！</p>`, [{label:'とじる', v:null}], 'wide'); return; }
   const S = ST();
   const v = await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2>
     <p class="dlgP">投げられた ボールは 1問！ <b>正解</b>すると 打てるよ。<br><b>はやく 答えるほど</b> 遠くへ 飛ぶ！ 3イニングで あいてより 多く 点を とろう。</p>
-    <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small><em>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}</em></span>`).join('')}</div>
+    <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small><em>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}</em><u>💪${pw(r)}</u></span>`).join('')}</div>
     <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！</p>
-    <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本</p>`,
-    [{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}], 'wide');
+    <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本<br>💎 ホームランで 水晶（きょう ${cryToday()}/${CRY_MAX}）・👥 観客 ${crowdN()}人<br>🏟 改装：${DECOS.map(d => (S.decorations||[]).includes(d.id) ? d.ic : '🔒').join(' ')}（つぎは ${(DECOS.find(d => !(S.decorations||[]).includes(d.id))||{w:'-'}).w}しょう）</p>
+    ${bossReady() ? `<div class="boss620"><b>👑 にがて大王チームが あらわれた！</b><small>かつと まちの わすれものを 1つ とりもどせる（${S.bossWins||0}/${FORGOT.length}）</small></div>` : ''}`,
+    (bossReady() ? [{label:'👑 にがて大王と たいせん！', cls:'pink', v:'boss'}] : []).concat([{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
   if(v==='grade') return openBuilding(key);
-  if(v==='play') startGame(key, lineup);
+  if(v==='play' || v==='boss') startGame(key, lineup, v==='boss');
 }
-function startGame(key, lineup){
-  const opp = [0,0,0]; let tot = rint(2, 5); while(tot-- > 0) opp[rint(0,2)]++;
-  G = {key, lineup, field:fielders(lineup), inning:0, outs:0, strikes:0, bases:[null,null,null], score:0, opp, oppShown:0, bat:0, stats:{}, busy:false};
+function startGame(key, lineup, boss){
+  const opp = [0,0,0]; let tot = boss ? rint(4, 6) : rint(2, 5); opp[2] = 1; tot--; while(tot-- > 0) opp[rint(0,2)]++;   // 最終回にも 点を 入れて ぎゃくてんの 場面を つくる
+  G = {key, lineup, field:fielders(lineup), inning:0, outs:0, strikes:0, bases:[null,null,null], score:0, opp, oppShown:0, bat:0, stats:{}, busy:false, boss:!!boss, combo:0, zone:false, cry:0, grow:[]};
   const el = document.createElement('div'); el.id = 'bb618';
-  el.innerHTML = `<div class="bbWrap618"><div class="bbScene618"><img class="bbBg618" src="${IMG}stadium_bg.webp" alt="">
+  const D = ST().decorations || [], crowd = Math.min(1, crowdN()/40);
+  el.innerHTML = `<div class="bbWrap618"><div class="bbScene618 ${D.map(d => 'd-' + d).join(' ')} ${G.boss ? 'boss' : ''}" style="--crowd:${crowd.toFixed(2)}"><img class="bbBg618" src="${IMG}stadium_bg.webp" alt=""><div class="crowd620"></div>${D.includes('flag') ? '<div class="flags620">🚩<span>🚩</span></div>' : ''}${D.includes('board') ? '<div class="board620">📺 まなびタウン</div>' : ''}
       ${G.field.map(f => `<div class="bbF618" data-pos="${f.pos}" style="left:${FIELD_POS[f.pos][0]}%;top:${FIELD_POS[f.pos][1]}%"><img src="${X(f.src)}" alt=""></div>`).join('')}
       <div class="bbRun618"></div><div class="bbBat618" style="left:${BAT[0]}%;top:${BAT[1]}%"></div>
       <div class="bbBall618"></div><div class="bbBoard618"></div><div class="bbMsg618"></div></div>
@@ -6670,7 +6687,7 @@ function startGame(key, lineup){
 const batter = () => G.lineup[G.bat % G.lineup.length];
 function board(){
   const dots = (n, max, c) => [...Array(max)].map((_,i) => `<i class="${i < n ? c : ''}"></i>`).join('');
-  G.$('.bbBoard618').innerHTML = `<b>${G.inning+1}回うら</b><span>あいて <em>${G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0)}</em> − <em class="me">${G.score}</em> じぶん</span>
+  G.$('.bbBoard618').innerHTML = `<b>${G.inning+1}回うら${G.zone ? ' 🔥ゾーン' : ''}</b><span>${G.boss ? '👑大王' : 'あいて'} <em>${G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0)}</em> − <em class="me">${G.score}</em> じぶん</span>
     <div><small>S</small>${dots(G.strikes, 3, 'y')}<small>O</small>${dots(G.outs, 3, 'r')}</div>`;
   G.$('.bbRun618').innerHTML = [1,2,3].map(b => { const r = G.bases[b-1]; return r ? `<div class="bbR618" style="left:${BASE[b][0]}%;top:${BASE[b][1]}%">${resImg(r)}</div>` : ''; }).join('');
   const r = batter(); G.$('.bbBat618').innerHTML = `${resImg(r)}<svg class="bbBatBat618" viewBox="0 0 20 60"><path d="M8 58h4l3-44q1-10-5-12q-6 2-5 12z" fill="#D9A066" stroke="#8A5A2B" stroke-width="1.6"/><rect x="7" y="50" width="6" height="8" rx="1" fill="#4A3A2A"/></svg><small>${X(r.name)}</small>`;
@@ -6682,6 +6699,7 @@ async function nextInning(){
   G.oppShown = G.inning + 1; G.outs = 0; G.strikes = 0; G.bases = [null,null,null]; board();
   msg(`${G.inning+1}回おもて：あいてが <b>${G.opp[G.inning]}点</b> とったよ`, 'big'); await W(1700); if(!G) return;
   msg(`${G.inning+1}回うら：きみの こうげき！`, 'big'); await W(1300); if(!G) return;
+  if(G.inning===2 && G.score < G.opp.reduce((a,b) => a+b, 0)){ G.chance = true; G.bases = [G.lineup[(G.bat+6)%G.lineup.length], G.lineup[(G.bat+7)%G.lineup.length], null]; board(); G.el.querySelector('.bbScene618').classList.add('chance'); msg('🔥 チャンス打席！ ランナー1・2るい！', 'hr'); sound('fan'); await W(1700); if(!G) return; }
   pitch();
 }
 /* ---------- 投球 ---------- */
@@ -6701,13 +6719,16 @@ function pitch(){
   clearTimeout(TIMER); TIMER = setTimeout(() => answer(null), m.timeLimit*1000);
 }
 async function answer(v){
-  if(!G || G.busy) return; G.busy = true; clearTimeout(TIMER);
+  if(!G || G.busy) return; G.busy = true; clearTimeout(TIMER); const wasZone = G.zone;
   const m = G.q, ok = v!=null && String(v)===String(m.ansF || m.ans), frac = Math.min(1, (performance.now() - G.t0)/1000/m.timeLimit);
   const ball = G.$('.bbBall618'), cs = getComputedStyle(ball); ball.style.transition = 'none'; ball.style.left = cs.left; ball.style.top = cs.top; ball.style.transform = cs.transform;
   G.$('.bbPanel618').querySelectorAll('button').forEach(b => { b.disabled = true; if(b.dataset.a===String(m.ansF || m.ans)) b.classList.add('ok'); else if(b.dataset.a===String(v)) b.classList.add('ng'); });
   const r = batter(), st = G.stats[r.id] || (G.stats[r.id] = {hits:0, rbi:0, hr:0});
-  if(ok){ sound('ok'); if(m.weak){ clearMiss(m.weak); G.revHits = (G.revHits||0) + 1; } const rev = !!m.isRev; G.revenge = null; await hit(frac, r, st, m, rev); }
-  else { sound('ng'); noteMiss(m); if(m.isRev){ G.revenge = null; await revengeOut(m, v); } else await strike(m, v); }
+  if(ok){ sound('ok'); G.combo++; const sp = STREAK_PT(G.combo); if(sp) G.pts = (G.pts||0) + sp, G.streakPt = (G.streakPt||0) + sp;
+    if(growth(r)) G.grow.push(r); persist();
+    if(G.combo >= 5 && !G.zone){ G.zone = true; G.el.querySelector('.bbScene618').classList.add('zone'); setTimeout(() => G && msg('🔥 ゾーン！ つぎの 打席は かならず 長打！', 'hr'), 900); }
+    if(m.weak){ clearMiss(m.weak); G.revHits = (G.revHits||0) + 1; G.pts = (G.pts||0) + 20; } const rev = !!m.isRev; G.revenge = null; await hit(wasZone ? Math.min(frac, .49) : frac, r, st, m, rev); }
+  else { sound('ng'); G.combo = 0; if(G.zone){ G.zone = false; G.el.querySelector('.bbScene618').classList.remove('zone'); } noteMiss(m); if(m.isRev){ G.revenge = null; await revengeOut(m, v); } else await strike(m, v); }
 }
 async function hit(frac, r, st, m, rev){
   let [, n, label, cls] = HIT.find(h => frac < h[0]); const fv = m && fav(r)===m.subj;
@@ -6721,7 +6742,8 @@ async function hit(frac, r, st, m, rev){
   ball.classList.add(n===4 ? 'hr' : 'fly'); void ball.offsetWidth;
   ball.style.transition = `left .9s cubic-bezier(.2,.7,.4,1), top .9s cubic-bezier(.2,.7,.4,1), transform .9s ease-out`;
   Object.assign(ball.style, {left:tgt[0]+'%', top:tgt[1]+'%', transform:`translate(-50%,-50%) scale(${n===4 ? 1.9 : 1.3})`});
-  msg(label, cls); if(n===4){ confetti(1800); sound('fan'); } await W(950); if(!G) return;
+  if(G.chance && n){ label = '🔥 ' + label; }
+  msg(label, cls); cheer(n); if(n===4){ confetti(1800); sound('fan'); await homerun(); if(!G) return; } else await W(950); if(!G) return;
   ball.style.opacity = n===4 ? 0 : 1;
   /* 近くの 守備が とりに いく */
   if(n < 4){ let best = null, bd = 1e9; G.el.querySelectorAll('.bbF618').forEach(f => { const p = FIELD_POS[f.dataset.pos], d = (p[0]-tgt[0])**2 + (p[1]-tgt[1])**2; if(d < bd){ bd = d; best = f; } }); if(best){ best.classList.remove('hop'); void best.offsetWidth; best.classList.add('hop'); } }
@@ -6731,8 +6753,16 @@ async function hit(frac, r, st, m, rev){
   if(n >= 4) runs++; else nb[n-1] = r;
   G.bases = nb; G.score += runs; st.hits++; st.rbi += runs; if(n===4){ st.hr++; }
   G.strikes = 0; G.bat++; board();
-  if(runs) { await W(300); msg(`${runs}点 はいった！`, 'run'); sound('fan'); }
+  if(runs) { await W(300); const opp = G.opp.reduce((a,b) => a+b, 0), lead = G.score - runs <= opp && G.score > opp;
+    if(G.inning===2 && lead){ msg(G.chance ? '⚡ ぎゃくてん サヨナラ！' : '⚡ ぎゃくてん！', 'hr'); confetti(2600); sound('fan'); G.walkoff = true; await W(1500); if(G){ G.inning = 3; return endGame(); } return; }
+    msg(`${runs}点 はいった！`, 'run'); sound('fan'); }
   await W(1300); if(G) pitch();
+}
+function cheer(n){ const c = G && G.el.querySelector('.crowd620'); if(!c) return; c.classList.remove('wave'); void c.offsetWidth; c.classList.add('wave'); c.style.setProperty('--loud', n===4 ? 1 : .55); }
+async function homerun(){
+  const S = ST(), left = CRY_MAX - cryToday(), give = left > 0; if(give){ S.crystalsToday++; save.crystal = (save.crystal||0) + 1; G.cry++; persist(); }
+  const ov = document.createElement('div'); ov.className = 'hr620'; ov.innerHTML = `<img src="${IMG}hana_hr.webp" alt=""><b>ホームラン！</b><small>${give ? `💎 水晶 +1（きょう ${S.crystalsToday}/${CRY_MAX}）` : '💎 水晶は きょうは おしまい（1日3こまで）'}</small>`;
+  G.el.querySelector('.bbScene618').appendChild(ov); await W(2200); ov.classList.add('out'); await W(300); ov.remove();
 }
 async function strike(m, v){
   const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
@@ -6756,16 +6786,23 @@ async function endGame(){
   const opp = G.opp.reduce((a,b) => a+b, 0), win = G.score > opp, draw = G.score === opp, S = ST();
   S.games = (S.games||0) + 1; if(win) S.wins = (S.wins||0) + 1;
   const hrs = Object.values(G.stats).reduce((a,s) => a + s.hr, 0); S.homeRuns = (S.homeRuns||0) + hrs; S.lastPlayDate = dayKey();
-  const base = win ? 40 + G.score*10 : 10 + G.score*5, hp = G.pts||0, p = givePts(base + hp, win ? 'まなびスタジアムで かった' : 'まなびスタジアムで しあい'); persist(); LAST_EXTRA = {hp, rev:G.revHits||0, weak:(S.weak||[]).length};
+  const mul = (window.__v56 ? window.__v56.inflRate() : 1) * (G.boss ? 2 : 1), base = Math.round((win ? 40 + G.score*10 : 10 + G.score*5) * mul), hp = G.pts||0, p = givePts(base + hp, win ? 'まなびスタジアムで かった' : 'まなびスタジアムで しあい'); persist(); LAST_EXTRA = {hp, rev:G.revHits||0, weak:(S.weak||[]).length, cry:G.cry, sp:G.streakPt||0, grow:G.grow.slice(), boss:G.boss, walk:G.walkoff};
+  if(G.boss && win){ S.bossWins = (S.bossWins||0) + 1; LAST_EXTRA.forgot = FORGOT[S.bossWins - 1]; persist(); }
+  LAST_EXTRA.decos = win ? unlockDecos() : []; persist();
   if(win){ confetti(2500); sound('fan'); }
   const mvp = G.lineup.slice().sort((a,b) => { const sa = G.stats[a.id]||{hits:0,rbi:0}, sb = G.stats[b.id]||{hits:0,rbi:0}; return (sb.rbi*2 + sb.hits) - (sa.rbi*2 + sa.hits); })[0];
   const key = G.key; closeGame();
-  await dialog(`<h2 class="dlgT">${win ? '🎉 しょうり！' : draw ? '🤝 ひきわけ' : '😢 まけちゃった…'}</h2>
+  await dialog(`<h2 class="dlgT">${LAST_EXTRA.boss ? '👑 ' : ''}${win ? '🎉 しょうり！' : draw ? '🤝 ひきわけ' : '😢 まけちゃった…'}</h2>
     <div class="bbScore618"><span>あいて<b>${opp}</b></span><i>−</i><span class="me">じぶん<b>${LAST_SCORE}</b></span></div>
     <p class="dlgP">ホームラン ${hrs}本　<span class="coin sm">P</span> +${p}<br><small>（ヒットの とくてん ${LAST_EXTRA.hp}pt ふくむ・下の学年の 問題は ×0.5、上の学年は ×2）</small>${LAST_EXTRA.rev ? `<br>📒 にがて こくふく ${LAST_EXTRA.rev}こ！` : ''}</p>${LAST_EXTRA.weak ? `<p class="dlgP facNote">にがてノート：のこり ${LAST_EXTRA.weak}こ（つぎの 試合で 出るよ）</p>` : ''}
-    ${mvp && G_STATS(mvp) ? `<div class="bbMvp618">${resImg(mvp)}<div><b>MVP：${X(mvp.name)}</b><small>${G_STATS(mvp)}</small></div></div>` : ''}`, [{label:'もう いちど ⚾', cls:'gold', v:'again'}, {label:'まちへ もどる', v:null}], win ? 'gold' : 'wide').then(v => { if(v==='again') openStadium(key); });
+    ${LAST_EXTRA.walk ? '<p class="dlgP"><b>⚡ ぎゃくてん しょうり！</b></p>' : ''}
+    ${LAST_EXTRA.cry ? `<p class="dlgP">💎 ホームランで 水晶 +${LAST_EXTRA.cry}</p>` : ''}${LAST_EXTRA.sp ? `<p class="dlgP facNote">🔥 れんぞく せいかい ボーナス +${LAST_EXTRA.sp}pt（ふくむ）</p>` : ''}
+    ${LAST_EXTRA.forgot ? `<div class="boss620 got"><b>${LAST_EXTRA.forgot[0]} にがて大王から「${LAST_EXTRA.forgot[1]}」を とりもどした！</b><small>まちの みんなが 思い出したよ（${ST().bossWins}/${FORGOT.length}）</small></div>` : ''}
+    ${(LAST_EXTRA.decos||[]).map(d => `<p class="dlgP">🏟 改装パーツ「${d.ic} ${d.n}」を ゲット！</p>`).join('')}
+    ${LAST_EXTRA.grow.length ? `<p class="dlgP facNote">💪 パワーアップ：${[...new Set(LAST_EXTRA.grow.map(r => r.name))].map(X).join('・')}</p>` : ''}
+    ${mvp && G_STATS(mvp) ? `<div class="mvp620">${resImg(mvp)}<b>MVP</b><span>${X(mvp.name)}</span><small>${G_STATS(mvp)}・パワー ${pw(mvp)}</small><div class="talkBubble"><b>シマくん</b>${X(mvp.name)}、${choice(MVP_LINES)}</div></div>` : ''}`, [{label:'もう いちど ⚾', cls:'gold', v:'again'}, {label:'まちへ もどる', v:null}], win ? 'gold' : 'wide').then(v => { if(v==='again') openStadium(key); });
 }
-let LAST_STATS = {}, LAST_SCORE = 0, LAST_EXTRA = {hp:0, rev:0, weak:0};
+let LAST_STATS = {}, LAST_SCORE = 0, LAST_EXTRA = {hp:0, rev:0, weak:0, grow:[], decos:[]};
 const G_STATS = r => { const s = LAST_STATS[r.id]; return s && (s.hits || s.rbi) ? `ヒット ${s.hits}本・打点 ${s.rbi}${s.hr ? `・ホームラン ${s.hr}本` : ''}` : ''; };
 function closeGame(){ if(!G) return; clearTimeout(TIMER); LAST_STATS = G.stats; LAST_SCORE = G.score; const el = G.el; G = null; el.classList.remove('on'); setTimeout(() => el.remove(), 250); }
 async function onClick(e){
@@ -6811,6 +6848,27 @@ css.textContent = `#bb618{position:fixed;inset:0;z-index:66;background:rgba(18,4
 .bbPt619.st{background:#F2F2F2;border-color:#C9C9C9}.bbPt619.st b{color:#666}
 .bbPt619.mk{background:linear-gradient(90deg,#FFE9FB,#EDE6FF);border-color:#C9A8FF}.bbPt619.mk b{color:#8A3BC4}
 .bbMsg618.pt-st{border-color:#AAA;color:#666}.bbMsg618.pt-cv{border-color:#4C97FF;color:#1C5A99}.bbMsg618.pt-mk{border-color:#B39DFF;color:#8A3BC4;background:linear-gradient(90deg,#FFF7FE,#F3EEFF)}
+.bbScene618.zone{box-shadow:0 0 0 4px #FFD84A,0 0 26px 8px #FF9A3D inset,0 8px 30px rgba(0,0,0,.35);animation:zone620 .9s ease-in-out infinite alternate}
+@keyframes zone620{to{box-shadow:0 0 0 4px #FF8A3D,0 0 40px 14px #FFD84A inset,0 8px 30px rgba(0,0,0,.35)}}
+.bbScene618.chance{outline:4px solid #E8414B;outline-offset:-4px}
+.bbScene618.boss .bbBg618{filter:saturate(.75) hue-rotate(-12deg) brightness(.92)}
+.bbScene618.d-turf .bbBg618{filter:saturate(1.25)}.bbScene618.d-light::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 12%,rgba(255,250,200,.45),transparent 22%),radial-gradient(circle at 82% 12%,rgba(255,250,200,.45),transparent 22%);pointer-events:none;z-index:1}
+.bbScene618.d-gold::after{background:radial-gradient(circle at 18% 12%,rgba(255,215,90,.55),transparent 24%),radial-gradient(circle at 82% 12%,rgba(255,215,90,.55),transparent 24%)}
+.crowd620{position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse 46% 44% at 51% 52%,transparent 86%,rgba(255,230,140,calc(var(--crowd)*.35)) 90%,transparent 100%)}
+.crowd620.wave{animation:wave620 1s ease-out}@keyframes wave620{0%{filter:brightness(1)}30%{filter:brightness(calc(1 + var(--loud,.5)))}100%{filter:brightness(1)}}
+.flags620{position:absolute;left:47%;top:2%;font-size:clamp(10px,2vw,18px);z-index:2;animation:facBob 1.4s ease-in-out infinite}.flags620 span{margin-left:.6em}
+.board620{position:absolute;left:40%;top:9%;font-size:clamp(8px,1.5vw,12px);font-weight:900;background:#1C2B4A;color:#8FE3FF;border-radius:4px;padding:0 6px;z-index:2}
+.hr620{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.35);animation:hrin620 .35s ease-out}
+.hr620 img{width:82%;max-height:78%;object-fit:cover;border-radius:16px;border:4px solid #fff;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.hr620 b{margin-top:-8%;font-size:clamp(20px,5vw,40px);font-weight:900;color:#E8414B;-webkit-text-stroke:2px #fff;paint-order:stroke}
+.hr620 small{background:#fff;border-radius:10px;padding:2px 10px;font-weight:900;color:#5B4BC4;font-size:clamp(10px,2vw,14px)}
+.hr620.out{opacity:0;transition:opacity .3s}@keyframes hrin620{from{transform:scale(.6);opacity:0}}
+.boss620{background:linear-gradient(90deg,#3B2A5A,#6B3B8A);color:#fff;border-radius:12px;padding:6px 10px;margin:6px auto;max-width:330px;text-align:center}.boss620 b{display:block;font-size:14px}.boss620 small{font-size:11px;color:#E6D6FF}
+.boss620.got{background:linear-gradient(90deg,#FFE27A,#FFB3C1);color:#6B3A1A}.boss620.got small{color:#7A4A2A}
+.mvp620{display:flex;flex-direction:column;align-items:center;background:radial-gradient(circle at 50% 30%,#FFF6D8,#FFE7A8);border:3px solid #F2C94C;border-radius:16px;padding:8px;margin:6px auto;max-width:320px}
+.mvp620 img{width:150px;height:150px;object-fit:contain;animation:bump .8s;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
+.mvp620>b{font-size:20px;color:#E8414B;letter-spacing:4px}.mvp620 span{font-size:16px;font-weight:900}.mvp620 small{font-size:11.5px}.mvp620 .talkBubble{margin-top:6px;font-size:13px}
+.bbLine618 u{text-decoration:none;font-size:8.5px;font-weight:900;color:#C66F0A}
 .bbLine618 em{font-style:normal;font-size:8.5px;font-weight:800;color:#6B5540;white-space:nowrap}
 .bbBoard618{position:absolute;left:2%;top:3%;z-index:6;background:rgba(24,36,70,.88);color:#fff;border-radius:12px;padding:4px 10px;font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.35}
 .bbBoard618 span{display:block}.bbBoard618 em{font-style:normal;font-size:1.25em;color:#FFD84A}.bbBoard618 em.me{color:#8FE3FF}
