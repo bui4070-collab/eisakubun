@@ -5903,6 +5903,7 @@ function applyIcons(){
   const map = $('#townMap'); if(!map) return; map.classList.toggle('noIcon612', iconsHidden());
   const bar = $('.zoomBar'); if(!bar) return; let b = bar.querySelector('.icBtn612');
   if(!b){ bar.insertAdjacentHTML('beforeend', '<button class="roundBtn icBtn612" type="button"></button>'); b = bar.querySelector('.icBtn612'); }
+  if(window.__v613 && window.__v613.tidyBar){ b.classList.toggle('hid', iconsHidden()); window.__v613.tidyBar(); return; }   // v6.14：イラストの まま 切りかえ（ちらつかない）
   const [ic, n] = MODES[mode()]; b.innerHTML = `${ic}<small>アイコン<br>${n}</small>`; b.classList.toggle('hid', iconsHidden());
 }
 document.addEventListener('click', e => { if(!e.target.closest('.icBtn612')) return; e.stopImmediatePropagation(); e.preventDefault();
@@ -6185,4 +6186,207 @@ css.textContent = `.zoomBar{display:flex!important;align-items:center;gap:8px;fl
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 window.__v613 = {challenge, openMall, openPlaza, openOnsen, QB, MUSIC, tidyBar, cleanMall};
+})();
+
+/* =====================================================================
+   まなびタウン v6.14
+   ・みなとで つり（うきが ちょんちょん → ぐいっ！の しゅんかんに タッチ → 魚の クイズ）
+   ・食べものの こうか表示の 絵（カフェメニューの 絵が □ に なる）を なおす
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.14.0', IMG = './assets/images/v614/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ---------- artSrc：ファイルの パスを そのまま 使えるように（□ の 原因） ---------- */
+artSrc = (orig => function(key){ const v = orig.apply(this, arguments); if(v) return v; const k = String(key||''); return /^(\.\/|\/|data:|https?:)/.test(k) ? k : ''; })(artSrc);
+
+/* ---------- 魚 ---------- */
+const FISH = [
+  {id:'aji',   n:'アジ',   w:30, c1:'#9FB8CC', c2:'#E7EEF3', sp:0, size:'20〜30cm', note:'からだの よこに「ぜいご」と いう かたい うろこが ならぶ。'},
+  {id:'iwashi',n:'イワシ', w:30, c1:'#5E86B5', c2:'#E9EEF2', sp:1, size:'15〜20cm', note:'大きな むれで 泳ぐ。からだの よこに 黒い てんてんが ある。'},
+  {id:'saba',  n:'サバ',   w:20, c1:'#3E8F86', c2:'#EAF2EF', sp:2, size:'30〜40cm', note:'せなかに くねくねした しまもようが ある 青魚。'},
+  {id:'kasago',n:'カサゴ', w:10, c1:'#C0583B', c2:'#F1C7A8', sp:3, size:'20〜30cm', note:'岩の すきまに かくれて すむ。ひれに するどい トゲが ある。'},
+  {id:'fugu',  n:'フグ',   w:6,  c1:'#D9C36A', c2:'#F7F2DC', sp:4, size:'20〜40cm', note:'おどろくと 水を すって ふくらむ。毒を もつ ものが 多い。'},
+  {id:'madai', n:'マダイ', w:4,  c1:'#E86A86', c2:'#FBD7DF', sp:5, size:'40〜80cm', note:'あざやかな 赤色で「魚の 王さま」と よばれる。おいわいに 食べる。'}
+];
+const fishSVG = (f, w=90) => {
+  const body = f.id==='fugu' ? `<ellipse cx="54" cy="40" rx="30" ry="26" fill="${f.c1}"/><ellipse cx="56" cy="50" rx="24" ry="14" fill="${f.c2}"/>${[...Array(9)].map((_,i) => `<circle cx="${36+(i%3)*14}" cy="${26+Math.floor(i/3)*8}" r="2.4" fill="#6B5A2A" opacity=".55"/>`).join('')}`
+    : `<path d="M20 40Q40 ${f.id==='kasago'?12:18} 72 24Q90 30 92 40Q90 50 72 56Q40 ${f.id==='kasago'?66:62} 20 40Z" fill="${f.c1}"/><path d="M24 42Q46 58 74 52Q88 48 90 42Q70 46 24 42Z" fill="${f.c2}"/>`
+      + (f.id==='aji' ? '<path d="M36 38Q56 36 80 40" stroke="#E8EEF2" stroke-width="2.4" fill="none" stroke-dasharray="3 2"/>' : '')
+      + (f.id==='iwashi' ? [0,1,2,3,4,5].map(i => `<circle cx="${36+i*8}" cy="39" r="1.8" fill="#2B3A52"/>`).join('') : '')
+      + (f.id==='saba' ? '<path d="M34 28q6 6 12 0t12 0t12 0" stroke="#24564F" stroke-width="2.4" fill="none"/>' : '')
+      + (f.id==='kasago' ? '<path d="M38 24l4-10l4 9l4-10l4 9l4-9l4 10" stroke="#9A3B23" stroke-width="2" fill="#D9714F"/><circle cx="50" cy="40" r="3" fill="#8A3A24" opacity=".5"/><circle cx="62" cy="46" r="2.4" fill="#8A3A24" opacity=".5"/>' : '')
+      + (f.id==='madai' ? [0,1,2,3].map(i => `<circle cx="${40+i*10}" cy="${34+(i%2)*4}" r="1.6" fill="#7FC8F0"/>`).join('') : '');
+  const tail = f.id==='fugu' ? `<path d="M24 40L8 30L10 50Z" fill="${f.c1}"/>` : `<path d="M22 40L4 26L8 40L4 54Z" fill="${f.c1}"/>`;
+  return `<svg viewBox="0 0 100 80" width="${w}" class="fishIc614">${tail}${body}<circle cx="${f.id==='fugu'?72:80}" cy="${f.id==='fugu'?34:37}" r="5" fill="#fff"/><circle cx="${f.id==='fugu'?73:81}" cy="${f.id==='fugu'?34:37}" r="2.8" fill="#2C2C2C"/><circle cx="${f.id==='fugu'?74:82}" cy="${f.id==='fugu'?33:36}" r="1" fill="#fff"/></svg>`;
+};
+const FQ = {
+  aji:[['アジの からだの よこに ある、かたい うろこの ことを 何という？','ぜいご','ひれ/えら/うろこ玉'],['アジを 開いて ほした 食べものは？','アジの ひもの','かまぼこ/ちくわ/つくだに']],
+  iwashi:[['イワシが 大きな むれで 泳ぐのは なぜ？','敵から 身を 守るため','あそびたいから/ねむるため/たまごを かくすため'],['イワシの こどもを ゆでて ほした ものは？','しらす（ちりめんじゃこ）','かつおぶし/するめ/いくら']],
+  saba:[['サバのように せなかが 青い 魚を 何という？','青魚（あおざかな）','白身魚/赤身魚/深海魚'],['サバの せなかの もようは？','くねくねした しまもよう','水玉もよう/もようなし/たての しま']],
+  kasago:[['カサゴが よく かくれている ところは？','岩の すきま','すなはまの 上/川の 上流/木の 上'],['カサゴの ひれの とくちょうは？','するどい トゲが ある','やわらかくて 長い/光る/ない']],
+  fugu:[['フグが おどろいた ときに する ことは？','水を すって ふくらむ','色が 青く なる/空を とぶ/すなに もぐる'],['フグを 料理するのに ひつような ものは？','専門の しかく（免許）','とくべつな なべ/大きな 包丁だけ/なにも いらない']],
+  madai:[['マダイが「めでたい」魚と されるのは なぜ？','あざやかな 赤色で 名前も めでたいから','いちばん 小さいから/夜に 光るから/川に すむから'],['マダイの からだの 色は？','赤（さくら色）','青/黒/みどり']]
+};
+const GQ = [
+  ['魚が 水の 中で こきゅうする ところは？','えら','はい/ひれ/うろこ'],['魚の からだを おおっている うすい 板のような ものは？','うろこ','えら/ひれ/こうら'],
+  ['魚が 泳ぐ むきを かえる ときに おもに 使うのは？','ひれ','えら/目/うろこ'],['つりで 魚が えさに かかった ことを 何という？','アタリ（ヒット）','ボウズ/スカ/ネガカリ'],
+  ['つり糸に つける、うかんで アタリを 知らせる ものは？','うき','おもり/はり/リール'],['海水と 川の 水が まざる ところに すむ 魚も いる。この 水を 何という？','汽水（きすい）','真水/塩水/温水']
+];
+
+/* ---------- だれが つりを するか（日ごとに きまる） ---------- */
+const S = () => save.fish70 || (save.fish70 = {caught:{}, day:'', pt:0});
+function angler(){
+  const L = (save.town?.res||[]).filter(r => !SP(r.sp).human); if(!L.length) return null;
+  const st = S(); if(st.whoDay===dayKey() && L.some(r => r.id===st.who)) return L.find(r => r.id===st.who);
+  const w = L.find(r => SP(r.sp).home==='water') || L[Math.abs([...dayKey()].reduce((a,c) => a*31 + c.charCodeAt(0), 7)) % L.length];
+  st.who = w.id; st.whoDay = dayKey(); persist(); return w;
+}
+
+/* ---------- 画面 ---------- */
+const VB = {w:160, h:107};
+const BASE = {x:44, y:56}, TIP0 = {x:88, y:12}, BOB = {x:104, y:78};
+let F = null;
+function rodPath(b){
+  const tip = {x:TIP0.x + 8*b, y:TIP0.y + 24*b}, c = {x:(BASE.x + tip.x)/2 - 2 + 6*b, y:(BASE.y + tip.y)/2 - 6 + 16*b};
+  return {d:`M${BASE.x} ${BASE.y}Q${c.x} ${c.y} ${tip.x} ${tip.y}`, tip};
+}
+function draw(){
+  if(!F) return; const {b, sink, fx, fy, fa, fdir} = F, r = rodPath(b), by = BOB.y + sink;
+  F.rod.setAttribute('d', r.d); F.rod2.setAttribute('d', r.d);
+  F.line.setAttribute('d', `M${r.tip.x} ${r.tip.y}Q${(r.tip.x + BOB.x)/2 + 2} ${(r.tip.y + by)/2 + 6 - 8*b} ${BOB.x} ${by - 2.4}`);
+  F.bob.setAttribute('transform', `translate(${BOB.x} ${by})`);
+  F.ex.setAttribute('transform', `translate(${r.tip.x + 4} ${r.tip.y - 7})`);
+  F.fish.setAttribute('transform', `translate(${fx} ${fy}) scale(${fdir} 1)`); F.fish.setAttribute('opacity', fa);
+}
+function tween(ms, fn){ return new Promise(res => { const t0 = performance.now(); const step = t => { if(!F){ res(); return; } const k = Math.min(1, (t - t0)/ms); fn(k); draw(); if(k < 1) F.raf = requestAnimationFrame(step); else res(); }; F.raf = requestAnimationFrame(step); }); }
+const wait = ms => new Promise(r => { F && (F.to = setTimeout(r, ms)); });
+const ease = k => k<.5 ? 2*k*k : 1 - Math.pow(-2*k+2, 2)/2;
+function setMsg(t){ if(F) F.root.querySelector('.fMsg614 span').textContent = t; }
+
+async function openFishing(key){
+  if(F) return; const who = angler();
+  const root = document.createElement('div'); root.id = 'fish614';
+  root.innerHTML = `<div class="fScene614">
+      <img class="fBg614" src="${IMG}fish_bg.webp" alt="">
+      <div class="fWho614">${who ? resPic(who) : `<img src="${X(artSrc('bird_wave'))}" alt="">`}<b>${X(who ? who.name : 'シマくん')}</b></div>
+      <svg class="fSvg614" viewBox="0 0 ${VB.w} ${VB.h}" preserveAspectRatio="xMidYMid slice">
+        <g class="fFish614"><ellipse cx="0" cy="0" rx="9" ry="3.2" fill="#123B66" opacity=".45"/><path d="M-9 0l-5-3v6z" fill="#123B66" opacity=".45"/></g>
+        <g class="rip614"><ellipse cx="${BOB.x}" cy="${BOB.y+1}" rx="4" ry="1.4" fill="none" stroke="#fff" stroke-width=".6"/></g>
+        <path class="fRod2" stroke="#4A2C14" stroke-width="2.6" fill="none" stroke-linecap="round"/><path class="fRod" stroke="#A0662E" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <path class="fLine" stroke="#fff" stroke-width=".45" fill="none" opacity=".95"/>
+        <g class="fBob"><ellipse cx="0" cy="1.6" rx="3" ry="1" fill="#000" opacity=".15"/><path d="M-2.6 0a2.6 2.6 0 0 1 5.2 0z" fill="#E8414B"/><path d="M-2.6 0a2.6 2.6 0 0 0 5.2 0z" fill="#fff"/><rect x="-.4" y="-4.4" width=".8" height="2" fill="#E8414B"/></g>
+        <g class="fEx" opacity="0"><circle r="5" fill="#FFD84A" stroke="#E8414B" stroke-width=".9"/><text y="2.6" font-size="7.5" font-weight="900" text-anchor="middle" fill="#E8414B">！</text></g>
+      </svg>
+      <div class="fMsg614"><i>🐟</i><span>うきを なげたよ…</span></div>
+      <div class="fHit614">タッチ！</div>
+    </div>
+    <div class="fBtns614"><button data-f="quit">🎣 つりを やめる</button><button data-f="zukan">🐟 さかなずかん</button></div>`;
+  document.body.appendChild(root);
+  const $q = s => root.querySelector(s);
+  F = {root, key, b:0, sink:0, fx:170, fy:90, fa:0, fdir:-1, state:'idle', rod:$q('.fRod'), rod2:$q('.fRod2'), line:$q('.fLine'), bob:$q('.fBob'), ex:$q('.fEx'), fish:$q('.fFish614')};
+  draw(); requestAnimationFrame(() => root.classList.add('on'));
+  root.addEventListener('click', onTap);
+  loop();
+}
+function closeFishing(){ if(!F) return; cancelAnimationFrame(F.raf); clearTimeout(F.to); const r = F.root; F = null; r.classList.remove('on'); setTimeout(() => r.remove(), 250); }
+
+async function loop(){
+  if(!F) return; const me = F; me.state = 'cast'; me.b = .55; me.sink = -14; draw();
+  await tween(500, k => { me.b = .55*(1-ease(k)); me.sink = -14*(1-ease(k)); });
+  if(F!==me) return; me.state = 'wait'; setMsg('魚が くるのを まっています…');
+  await wait(rint(900, 2200)); if(F!==me) return;
+  /* 魚が ちかづく */
+  const fromR = Math.random() < .6; me.fdir = fromR ? -1 : 1; const sx = fromR ? 170 : 60, sy = rint(86, 100);
+  await tween(rint(1600, 2600), k => { const e = ease(k); me.fx = sx + (BOB.x + (fromR ? 6 : -6) - sx)*e; me.fy = sy + (BOB.y + 5 - sy)*e; me.fa = Math.min(1, k*2); });
+  if(F!==me) return;
+  /* ちょんちょん */
+  const n = rint(1, 3); me.state = 'nibble'; setMsg('…ちょん、ちょん');
+  for(let i=0; i<n; i++){ if(F!==me) return;
+    await tween(260, k => { const s = Math.sin(k*Math.PI); me.b = .22*s; me.sink = 1.4*s; me.fx += (fromR ? -.08 : .08); });
+    await wait(rint(450, 1100)); }
+  if(F!==me) return;
+  /* ヒット！ */
+  me.state = 'hit'; setMsg('いまだ！ タッチ！'); me.ex.setAttribute('opacity', 1); me.root.classList.add('hit');
+  const win = 1100; me.hitAt = performance.now();
+  await tween(win, k => { me.b = .95 + .05*Math.sin(k*Math.PI*8); me.sink = 4 + Math.sin(k*Math.PI*10); });
+  if(F!==me || me.state!=='hit') return;
+  missed('にげられちゃった… もう いちど！');
+}
+async function missed(t){ if(!F) return; const me = F; me.state = 'miss'; me.ex.setAttribute('opacity', 0); me.root.classList.remove('hit'); setMsg(t); sound && sound('tap');
+  await tween(500, k => { me.b *= .8; me.sink *= .8; me.fa = 1 - k; me.fx += me.fdir * -1.2; }); if(F!==me) return; await wait(700); if(F===me) loop(); }
+
+async function onTap(e){
+  if(!F) return;
+  const bt = e.target.closest('[data-f]');
+  if(bt){ e.stopPropagation(); if(bt.dataset.f==='quit') return closeFishing(); if(bt.dataset.f==='zukan') return fishZukan(); }
+  if(!e.target.closest('.fScene614')) return;
+  const me = F;
+  if(me.state==='nibble' || me.state==='wait'){ cancelAnimationFrame(me.raf); clearTimeout(me.to); return missed(me.state==='nibble' ? 'はやすぎた！ ぐいっと しなるまで まとう' : 'まだ 魚が きていないよ'); }
+  if(me.state!=='hit') return;
+  cancelAnimationFrame(me.raf); me.state = 'quiz'; me.ex.setAttribute('opacity', 0); me.root.classList.remove('hit'); sound && sound('ok');
+  setMsg('かかった！ 魚の 問題に こたえて つりあげよう！');
+  await tween(350, k => { me.b = 1 - .3*k; });
+  const f = pickFish(), all = (FQ[f.id]||[]).concat(GQ), Q = choice(Math.random() < .7 ? FQ[f.id] : all);
+  const res = await askMQ({html:`<div class="fQ614">${fishSVG({...f, c1:'#3A6E9E', c2:'#5B8DBA'}, 70).replace('class="fishIc614"','class="fishIc614 shadow"')}<small>どんな 魚かな…？</small></div><div class="mqSent math">${X(Q[0])}</div>`, ans:Q[1], opts:shuffle([Q[1]].concat(Q[2].split('/'))), key:'fish|'+Q[0]+'|'+Date.now()}, '<b>🎣 さかなの クイズ</b>');
+  if(F!==me) return;
+  if(res.ok){
+    const st = S(), first = !st.caught[f.id]; st.caught[f.id] = (st.caught[f.id]||0) + 1;
+    if(st.day!==dayKey()){ st.day = dayKey(); st.pt = 0; } let p = 0; if(st.pt < 10){ st.pt++; p = givePts(first ? 40 : 15, `つりで ${f.n}を つりあげた`); }
+    persist(); confetti(first ? 1800 : 900); sound && sound('fan');
+    await dialog(`<div class="fGot614">${fishSVG(f, 150)}${first ? '<b class="new614">NEW!</b>' : ''}</div><h2 class="dlgT">${X(f.n)}を つりあげた！</h2>
+      <p class="dlgP">${X(f.note)}<br><small>おおきさ：${X(f.size)}</small><br>${p ? `<span class="coin sm">P</span> +${p}` : '<small>きょうの ポイントは おしまい（つりは まだ できるよ）</small>'}</p>`, [{label:'つづける 🎣', cls:'gold', v:1}], 'wide');
+  } else {
+    await dialog(`<h2 class="dlgT">あっ… 糸が きれちゃった</h2><p class="dlgP">こたえは <b>${X(Q[1])}</b> だったよ。<br><small>${X(f.n)}だったみたい。${X(f.note)}</small></p>`, [{label:'もう いちど 🎣', cls:'gold', v:1}], 'wide');
+  }
+  if(F===me){ me.fa = 0; me.fx = 170; loop(); }
+}
+function pickFish(){ let r = Math.random()*FISH.reduce((a,f) => a + f.w, 0); for(const f of FISH){ r -= f.w; if(r <= 0) return f; } return FISH[0]; }
+async function fishZukan(){
+  const st = S(), got = FISH.filter(f => st.caught[f.id]).length;
+  await dialog(`<h2 class="dlgT">🐟 さかなずかん（${got}/${FISH.length}）</h2><div class="fz614">${FISH.map(f => { const n = st.caught[f.id]||0;
+    return `<div class="${n ? '' : 'lock'}">${n ? fishSVG(f, 70) : fishSVG({...f, c1:'#B9B2A6', c2:'#D9D4CB'}, 70)}<b>${n ? X(f.n) : '？？？'}</b><small>${n ? `${n}ひき` : 'まだ つっていない'}</small></div>`; }).join('')}</div>
+    <p class="dlgP facNote">これから 魚の しゅるいは ふえていく よていだよ</p>`, [{label:'とじる', v:null}], 'wide');
+}
+
+/* ---------- みなとを タッチ ---------- */
+window.addEventListener('click', e => {
+  if(curScreen!=='town' || townEdit || !save.town || F) return;
+  const c = e.target.closest('#townMap .cell'); if(!c || e.target.closest('.walker,.car2,.ship65,.air65')) return;
+  const key = `${c.dataset.x},${c.dataset.y}`; if(save.town.cells[key]!=='harbor') return;
+  e.stopImmediatePropagation(); e.preventDefault(); openFishing(key);
+}, true);
+try{ ZUKAN_INFO.harbor = '船が でいりする みなと。タッチすると つりが できるよ。'; }catch(e){}
+itemEffect = (orig => function(it){ const s = orig.apply(this, arguments); return it && it.id==='harbor' && !s.includes('つり') ? `${s}・🎣 タッチで つり` : s; })(itemEffect);
+
+const css = document.createElement('style');
+css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20,40,70,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;opacity:0;transition:opacity .25s;padding:10px}
+#fish614.on{opacity:1}
+.fScene614{position:relative;width:min(96vw,720px);aspect-ratio:3/2;border-radius:20px;overflow:hidden;border:4px solid #fff;box-shadow:0 8px 30px rgba(0,0,0,.35);touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fBg614{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fSvg614{position:absolute;inset:0;width:100%;height:100%}
+.fWho614{position:absolute;left:19%;top:22%;height:36%;display:flex;flex-direction:column;align-items:center;z-index:2;pointer-events:none}
+.fWho614 .rpic,.fWho614>img{height:100%}
+.fWho614 b{margin-top:-4px;background:rgba(255,255,255,.9);border-radius:10px;padding:0 8px;font-size:12px;color:#6B5540}
+.fSvg614 .fBob{transition:none}
+.rip614 ellipse{animation:rip614 2.2s ease-out infinite;transform-origin:${BOB.x}px ${BOB.y+1}px}
+@keyframes rip614{0%{transform:scale(.5);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+.fScene614.hit{animation:shake614 .12s linear infinite}
+@keyframes shake614{0%,100%{transform:translate(0,0)}25%{transform:translate(1.5px,-1px)}75%{transform:translate(-1.5px,1px)}}
+.fEx{transition:opacity .1s}
+.fHit614{position:absolute;right:6%;top:8%;background:#E8414B;color:#fff;font-weight:900;font-size:18px;border-radius:999px;padding:4px 14px;border:3px solid #fff;opacity:0;transform:scale(.6);transition:all .15s;pointer-events:none}
+.fScene614.hit .fHit614{opacity:1;transform:scale(1)}
+.fMsg614{position:absolute;left:3%;bottom:4%;right:30%;display:flex;align-items:center;gap:8px;background:rgba(24,48,80,.82);color:#fff;border-radius:999px;padding:6px 14px;font-weight:900;font-size:14px;pointer-events:none}
+.fMsg614 i{font-style:normal}
+.fBtns614{display:flex;gap:10px}
+.fBtns614 button{border:3px solid #fff;background:#FFF8EA;border-radius:16px;padding:8px 16px;font:inherit;font-weight:900;color:#6B5540;box-shadow:0 3px 0 #D9C3A0;cursor:pointer}
+.fQ614{display:flex;flex-direction:column;align-items:center}.fishIc614.shadow{opacity:.75;filter:blur(1px)}.fQ614 small{font-size:11px;color:#6B5540}
+.fGot614{position:relative;display:flex;justify-content:center;animation:bump .6s}.new614{position:absolute;right:22%;top:0;background:#E8414B;color:#fff;border-radius:10px;padding:0 8px;font-size:12px}
+.fz614{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.fz614>div{display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2px solid #BFE3FB;border-radius:12px;padding:4px}
+.fz614>div.lock{background:#F2EFEA;border-color:#E3DDD2}.fz614 b{font-size:13px}.fz614 small{font-size:10px;color:#6B5540}
+@media (max-width:600px){.fMsg614{font-size:12px;right:4%}.fWho614 b{font-size:10px}}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__v614 = {openFishing, closeFishing, FISH, fishSVG, get F(){ return F; }};
 })();
