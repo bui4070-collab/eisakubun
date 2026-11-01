@@ -6565,7 +6565,7 @@ window.__v614 = {openFishing, closeFishing, FISH, fishSVG, get F(){ return F; }}
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.20.0', IMG = './assets/images/v618/';
+const VER = '6.21.0', IMG = './assets/images/v618/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const W = ms => new Promise(r => setTimeout(r, ms));
 try{ const it = ITEM('stadium'); if(it){ it.lv = 8; it.price0 = it.price0 || 4500; } ZUKAN_INFO.stadium = '住民たちと 野球の ミニゲームが できる。投球は 1問、はやく 答えるほど 遠くへ 飛ぶ！'; }catch(e){}
@@ -6661,7 +6661,7 @@ async function openStadium(key){
   const v = await dialog(`<div class="dlgArt big">${picHTML(ITEM('stadium'))}</div><h2 class="dlgT">⚾ まなびスタジアム</h2>
     <p class="dlgP">投げられた ボールは 1問！ <b>正解</b>すると 打てるよ。<br><b>はやく 答えるほど</b> 遠くへ 飛ぶ！ 3イニングで あいてより 多く 点を とろう。</p>
     <div class="bbLine618">${lineup.map((r,i) => `<span><i>${i+1}</i>${resImg(r)}<small>${X(r.name)}</small><em>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}</em><u>💪${pw(r)}</u></span>`).join('')}</div>
-    <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！</p>
+    <p class="dlgP facNote">🎒 学年：<b>${save.settings?.grade56 ? gName(userG()) : '3年（せってい なし）'}</b>　ストレート＝下の学年 ×0.5・カーブ＝おなじ学年 ×1・まきゅう＝上の学年 ×2<br>バッターの とくい教科の 問題に 正解すると 打球が 1だん アップ！<br>問題が 出るのは 1回に 2〜3打席。ほかは 住民の 能力で 🤖おまかせ。<br>1回の 得点は ${RUN_CAP}点まで・7点さ（3回まえ）か 10点さで コールド！</p>
     <p class="dlgP facNote">これまで：${S.games||0}しあい ${S.wins||0}しょう・ホームラン ${S.homeRuns||0}本<br>💎 ホームランで 水晶（きょう ${cryToday()}/${CRY_MAX}）・👥 観客 ${crowdN()}人<br>🏟 改装：${DECOS.map(d => (S.decorations||[]).includes(d.id) ? d.ic : '🔒').join(' ')}（つぎは ${(DECOS.find(d => !(S.decorations||[]).includes(d.id))||{w:'-'}).w}しょう）</p>
     ${bossReady() ? `<div class="boss620"><b>👑 にがて大王チームが あらわれた！</b><small>かつと まちの わすれものを 1つ とりもどせる（${S.bossWins||0}/${FORGOT.length}）</small></div>` : ''}`,
     (bossReady() ? [{label:'👑 にがて大王と たいせん！', cls:'pink', v:'boss'}] : []).concat([{label:'⚾ プレイボール！', cls:'gold', v:'play'}, {label:'⬆ グレードアップ', cls:'white', v:'grade'}, {label:'とじる', v:null}]), 'wide');
@@ -6687,7 +6687,7 @@ function startGame(key, lineup, boss){
 const batter = () => G.lineup[G.bat % G.lineup.length];
 function board(){
   const dots = (n, max, c) => [...Array(max)].map((_,i) => `<i class="${i < n ? c : ''}"></i>`).join('');
-  G.$('.bbBoard618').innerHTML = `<b>${G.inning+1}回うら${G.zone ? ' 🔥ゾーン' : ''}</b><span>${G.boss ? '👑大王' : 'あいて'} <em>${G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0)}</em> − <em class="me">${G.score}</em> じぶん</span>
+  G.$('.bbBoard618').innerHTML = `<b>${G.inning+1}回うら${G.zone ? ' 🔥ゾーン' : ''}</b><small class="cap621">この回 ${G.innRuns||0}/${RUN_CAP}点</small><span>${G.boss ? '👑大王' : 'あいて'} <em>${G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0)}</em> − <em class="me">${G.score}</em> じぶん</span>
     <div><small>S</small>${dots(G.strikes, 3, 'y')}<small>O</small>${dots(G.outs, 3, 'r')}</div>`;
   G.$('.bbRun618').innerHTML = [1,2,3].map(b => { const r = G.bases[b-1]; return r ? `<div class="bbR618" style="left:${BASE[b][0]}%;top:${BASE[b][1]}%">${resImg(r)}</div>` : ''; }).join('');
   const r = batter(); G.$('.bbBat618').innerHTML = `${resImg(r)}<svg class="bbBatBat618" viewBox="0 0 20 60"><path d="M8 58h4l3-44q1-10-5-12q-6 2-5 12z" fill="#D9A066" stroke="#8A5A2B" stroke-width="1.6"/><rect x="7" y="50" width="6" height="8" rx="1" fill="#4A3A2A"/></svg><small>${X(r.name)}</small>`;
@@ -6696,11 +6696,49 @@ function msg(t, cls=''){ const m = G.$('.bbMsg618'); m.className = 'bbMsg618 ' +
 async function nextInning(){
   if(!G) return;
   if(G.inning >= 3) return endGame();
+  if(G.inning >= 2 && G.score - oppNow() >= COLD){ G.cold = true; msg(`⚡ ${COLD}点さで コールドゲーム！`, 'hr'); confetti(2400); sound('fan'); await W(1700); return G && endGame(); }
+  G.pa = 0; G.innRuns = 0;
   G.oppShown = G.inning + 1; G.outs = 0; G.strikes = 0; G.bases = [null,null,null]; board();
   msg(`${G.inning+1}回おもて：あいてが <b>${G.opp[G.inning]}点</b> とったよ`, 'big'); await W(1700); if(!G) return;
   msg(`${G.inning+1}回うら：きみの こうげき！`, 'big'); await W(1300); if(!G) return;
   if(G.inning===2 && G.score < G.opp.reduce((a,b) => a+b, 0)){ G.chance = true; G.bases = [G.lineup[(G.bat+6)%G.lineup.length], G.lineup[(G.bat+7)%G.lineup.length], null]; board(); G.el.querySelector('.bbScene618').classList.add('chance'); msg('🔥 チャンス打席！ ランナー1・2るい！', 'hr'); sound('fan'); await W(1700); if(!G) return; }
-  pitch();
+  nextPA();
+}
+/* ===== v6.21：1回の 得点上限・コールド・おまかせ打席 ===== */
+const RUN_CAP = 5, COLD = 7;
+const oppNow = () => G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0);
+function nextPA(){
+  if(!G) return;
+  const q = G.revenge || G.pa % 2 === 0 || (G.inning===2 && G.chance && G.pa < 2);
+  G.pa++;
+  if(q) pitch(); else autoBat();
+}
+const abOf = (r, k) => { try{ return effAb(r, k); }catch(e){ return (r.ab||{})[k] || 3; } };
+async function autoBat(){
+  if(!G) return; G.busy = true; G.q = null; clearTimeout(TIMER); board();
+  const r = batter(), st = G.stats[r.id] || (G.stats[r.id] = {hits:0, rbi:0, hr:0});
+  const power = pw(r), skill = (abOf(r,'work') + abOf(r,'know') + abOf(r,'drive'))/3;   // 住民の 能力で きまる
+  const pHit = Math.max(.22, Math.min(.62, .26 + skill*.012 + power*.025));
+  G.$('.bbPanel618').innerHTML = `<div class="auto621"><b>🤖 おまかせ打席</b><div>${resImg(r)}<span><b>${X(r.name)}</b><small>💪パワー ${power}・🔨${Math.round(abOf(r,'work'))} 📘${Math.round(abOf(r,'know'))}</small></span></div><i style="--p:${Math.round(pHit*100)}%"></i><small>ヒットの かくりつ 約${Math.round(pHit*100)}%</small><em>つぎの 問題の 打席を まってね…</em></div>`;
+  const ball = G.$('.bbBall618'); ball.className = 'bbBall618'; ball.style.transition = 'none';
+  Object.assign(ball.style, {left:FIELD_POS.P[0]+'%', top:(FIELD_POS.P[1]-1)+'%', transform:'translate(-50%,-50%) scale(.7)', opacity:1});
+  const pEl = G.el.querySelector('.bbF618[data-pos="P"]'); pEl.classList.remove('throw'); void pEl.offsetWidth; pEl.classList.add('throw');
+  void ball.offsetWidth; ball.style.transition = 'left .7s linear, top .7s linear, transform .7s linear';
+  Object.assign(ball.style, {left:BASE[0][0]+'%', top:(BASE[0][1]-1)+'%', transform:'translate(-50%,-50%) scale(1.15)'});
+  await W(800); if(!G) return;
+  if(Math.random() < pHit){
+    const pHR = Math.min(.3, .04 + power*.02 + skill*.004), x = Math.random();
+    const frac = x < pHR ? .1 : x < pHR + .07 ? .4 : x < pHR + .3 ? .6 : .9;
+    return hit(frac, r, st, null, false);
+  }
+  /* アウト */
+  const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing');
+  const pos = choice(['1B','2B','SS','3B','LF','CF','RF','P']), tg = FIELD_POS[pos];
+  ball.style.transition = 'left .7s ease-out, top .7s ease-out'; Object.assign(ball.style, {left:tg[0]+'%', top:(tg[1]-3)+'%'});
+  await W(700); if(!G) return; const f = G.el.querySelector(`.bbF618[data-pos="${pos}"]`); if(f){ f.classList.remove('hop'); void f.offsetWidth; f.classList.add('hop'); }
+  G.outs++; G.strikes = 0; G.bat++; board(); msg(choice(['フライ アウト','ゴロで アウト','ライナー アウト']), 'k'); await W(1100); if(!G) return;
+  if(G.outs >= 3){ msg('スリーアウト チェンジ！', 'big'); await W(1300); if(!G) return; G.inning++; return nextInning(); }
+  nextPA();
 }
 /* ---------- 投球 ---------- */
 let TIMER = null;
@@ -6733,7 +6771,7 @@ async function answer(v){
 async function hit(frac, r, st, m, rev){
   let [, n, label, cls] = HIT.find(h => frac < h[0]); const fv = m && fav(r)===m.subj;
   if(fv && n < 4){ n++; [, , label, cls] = HIT.find(h => h[1]===n); }
-  const P = PITCH[m?.pitch || 'cv'], pt = Math.max(1, Math.round(n*10*P.mul)); G.pts = (G.pts||0) + pt;
+  const P = PITCH[m?.pitch || 'cv'], pt = m ? Math.max(1, Math.round(n*10*P.mul)) : 0; G.pts = (G.pts||0) + pt;
   if(fv) setTimeout(() => G && msg(`とくい教科で パワーアップ！ ${SUBJ_IC[m.subj]}`, 'run'), 1000);
   if(rev) label = 'リベンジ ' + label; else if(m?.weak) label = 'にがて こくふく！ ' + label;
   const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing');
@@ -6751,12 +6789,16 @@ async function hit(frac, r, st, m, rev){
   let runs = 0; const nb = [null,null,null];
   for(let b=3; b>=1; b--){ const rr = G.bases[b-1]; if(!rr) continue; const to = b + n; if(to >= 4) runs++; else nb[to-1] = rr; }
   if(n >= 4) runs++; else nb[n-1] = r;
+  runs = Math.min(runs, RUN_CAP - (G.innRuns||0)); G.innRuns = (G.innRuns||0) + runs;   // 1回の 得点は 5点まで
   G.bases = nb; G.score += runs; st.hits++; st.rbi += runs; if(n===4){ st.hr++; }
   G.strikes = 0; G.bat++; board();
   if(runs) { await W(300); const opp = G.opp.reduce((a,b) => a+b, 0), lead = G.score - runs <= opp && G.score > opp;
     if(G.inning===2 && lead){ msg(G.chance ? '⚡ ぎゃくてん サヨナラ！' : '⚡ ぎゃくてん！', 'hr'); confetti(2600); sound('fan'); G.walkoff = true; await W(1500); if(G){ G.inning = 3; return endGame(); } return; }
     msg(`${runs}点 はいった！`, 'run'); sound('fan'); }
-  await W(1300); if(G) pitch();
+  await W(1300); if(!G) return;
+  if(G.inning >= 1 && G.score - oppNow() >= 10){ G.cold = true; msg('⚡ 10点さで コールドゲーム！', 'hr'); confetti(2400); sound('fan'); await W(1700); return G && endGame(); }
+  if(G.innRuns >= RUN_CAP){ msg(`この回の 得点は ${RUN_CAP}点まで！ チェンジ`, 'big'); await W(1600); if(!G) return; G.inning++; return nextInning(); }
+  nextPA();
 }
 function cheer(n){ const c = G && G.el.querySelector('.crowd620'); if(!c) return; c.classList.remove('wave'); void c.offsetWidth; c.classList.add('wave'); c.style.setProperty('--loud', n===4 ? 1 : .55); }
 async function homerun(){
@@ -6779,14 +6821,14 @@ async function revengeOut(m, v){
   await dialog(`<h2 class="dlgT">おしい！ こたえは <b>${X(m.ansF || m.ans)}</b></h2><p class="dlgP">この タイプの 問題は「にがてノート」に のこしたよ。<br>つぎの 試合で また 出るから、こんどこそ 打とう！</p>`, [{label:'つぎの バッターへ', cls:'gold', v:1}], 'wide');
   if(!G) return;
   if(G.outs >= 3){ msg('スリーアウト チェンジ！', 'big'); await W(1300); G.inning++; return nextInning(); }
-  pitch();
+  nextPA();
 }
 function pitchTag(m){ const P = PITCH[m.pitch]; msg(`${P.n}！`, 'pt-' + P.cls); }
 async function endGame(){
-  const opp = G.opp.reduce((a,b) => a+b, 0), win = G.score > opp, draw = G.score === opp, S = ST();
+  const opp = G.cold ? oppNow() : G.opp.reduce((a,b) => a+b, 0), win = G.score > opp, draw = G.score === opp, S = ST();
   S.games = (S.games||0) + 1; if(win) S.wins = (S.wins||0) + 1;
   const hrs = Object.values(G.stats).reduce((a,s) => a + s.hr, 0); S.homeRuns = (S.homeRuns||0) + hrs; S.lastPlayDate = dayKey();
-  const mul = (window.__v56 ? window.__v56.inflRate() : 1) * (G.boss ? 2 : 1), base = Math.round((win ? 40 + G.score*10 : 10 + G.score*5) * mul), hp = G.pts||0, p = givePts(base + hp, win ? 'まなびスタジアムで かった' : 'まなびスタジアムで しあい'); persist(); LAST_EXTRA = {hp, rev:G.revHits||0, weak:(S.weak||[]).length, cry:G.cry, sp:G.streakPt||0, grow:G.grow.slice(), boss:G.boss, walk:G.walkoff};
+  const mul = (window.__v56 ? window.__v56.inflRate() : 1) * (G.boss ? 2 : 1), base = Math.round((win ? 40 + G.score*10 : 10 + G.score*5) * mul), hp = G.pts||0, p = givePts(base + hp, win ? 'まなびスタジアムで かった' : 'まなびスタジアムで しあい'); persist(); LAST_EXTRA = {hp, rev:G.revHits||0, weak:(S.weak||[]).length, cry:G.cry, sp:G.streakPt||0, grow:G.grow.slice(), boss:G.boss, walk:G.walkoff, cold:G.cold};
   if(G.boss && win){ S.bossWins = (S.bossWins||0) + 1; LAST_EXTRA.forgot = FORGOT[S.bossWins - 1]; persist(); }
   LAST_EXTRA.decos = win ? unlockDecos() : []; persist();
   if(win){ confetti(2500); sound('fan'); }
@@ -6795,7 +6837,7 @@ async function endGame(){
   await dialog(`<h2 class="dlgT">${LAST_EXTRA.boss ? '👑 ' : ''}${win ? '🎉 しょうり！' : draw ? '🤝 ひきわけ' : '😢 まけちゃった…'}</h2>
     <div class="bbScore618"><span>あいて<b>${opp}</b></span><i>−</i><span class="me">じぶん<b>${LAST_SCORE}</b></span></div>
     <p class="dlgP">ホームラン ${hrs}本　<span class="coin sm">P</span> +${p}<br><small>（ヒットの とくてん ${LAST_EXTRA.hp}pt ふくむ・下の学年の 問題は ×0.5、上の学年は ×2）</small>${LAST_EXTRA.rev ? `<br>📒 にがて こくふく ${LAST_EXTRA.rev}こ！` : ''}</p>${LAST_EXTRA.weak ? `<p class="dlgP facNote">にがてノート：のこり ${LAST_EXTRA.weak}こ（つぎの 試合で 出るよ）</p>` : ''}
-    ${LAST_EXTRA.walk ? '<p class="dlgP"><b>⚡ ぎゃくてん しょうり！</b></p>' : ''}
+    ${LAST_EXTRA.walk ? '<p class="dlgP"><b>⚡ ぎゃくてん しょうり！</b></p>' : ''}${LAST_EXTRA.cold ? '<p class="dlgP"><b>⚡ コールド しょうり！</b></p>' : ''}
     ${LAST_EXTRA.cry ? `<p class="dlgP">💎 ホームランで 水晶 +${LAST_EXTRA.cry}</p>` : ''}${LAST_EXTRA.sp ? `<p class="dlgP facNote">🔥 れんぞく せいかい ボーナス +${LAST_EXTRA.sp}pt（ふくむ）</p>` : ''}
     ${LAST_EXTRA.forgot ? `<div class="boss620 got"><b>${LAST_EXTRA.forgot[0]} にがて大王から「${LAST_EXTRA.forgot[1]}」を とりもどした！</b><small>まちの みんなが 思い出したよ（${ST().bossWins}/${FORGOT.length}）</small></div>` : ''}
     ${(LAST_EXTRA.decos||[]).map(d => `<p class="dlgP">🏟 改装パーツ「${d.ic} ${d.n}」を ゲット！</p>`).join('')}
@@ -6868,6 +6910,10 @@ css.textContent = `#bb618{position:fixed;inset:0;z-index:66;background:rgba(18,4
 .mvp620{display:flex;flex-direction:column;align-items:center;background:radial-gradient(circle at 50% 30%,#FFF6D8,#FFE7A8);border:3px solid #F2C94C;border-radius:16px;padding:8px;margin:6px auto;max-width:320px}
 .mvp620 img{width:150px;height:150px;object-fit:contain;animation:bump .8s;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
 .mvp620>b{font-size:20px;color:#E8414B;letter-spacing:4px}.mvp620 span{font-size:16px;font-weight:900}.mvp620 small{font-size:11.5px}.mvp620 .talkBubble{margin-top:6px;font-size:13px}
+.auto621{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}.auto621>b{color:#1C5A99;font-size:15px}
+.auto621>div{display:flex;align-items:center;gap:8px}.auto621 img{width:64px;height:64px;object-fit:contain}.auto621 span{display:flex;flex-direction:column;align-items:flex-start}.auto621 span small{font-size:11px}
+.auto621>i{width:90%;height:10px;border-radius:5px;background:linear-gradient(90deg,#59C059 var(--p),#E9E4DC var(--p))}.auto621>small{font-size:11px}.auto621 em{font-style:normal;font-size:11px;color:#8A7560}
+.cap621{display:block;font-size:.75em;color:#FFD84A}
 .bbLine618 u{text-decoration:none;font-size:8.5px;font-weight:900;color:#C66F0A}
 .bbLine618 em{font-style:normal;font-size:8.5px;font-weight:800;color:#6B5540;white-space:nowrap}
 .bbBoard618{position:absolute;left:2%;top:3%;z-index:6;background:rgba(24,36,70,.88);color:#fff;border-radius:12px;padding:4px 10px;font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.35}
