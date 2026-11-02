@@ -1,7 +1,9 @@
-まなびタウン v6.29 UPDATE（v6.28 からの差分）
+まなびタウン v6.30 UPDATE（v6.29 からの差分）
 
 アップロードする ファイル:
-- js/features.js                     （上書き）
-- assets/images/v629/ui_event.webp   （新しい フォルダ：イベントの アイコン）
+- js/features.js                      （上書き）
+- assets/images/v630/ （新しい フォルダ：9まい）
+    hm_know.webp / hm_fur.webp / hm_guest.webp      … わたしの家 ちしき・家具・おきゃくさん
+    rm_living / rm_cafe / rm_kids / rm_bed / rm_hobby / rm_attic .webp … 部屋の アイコン
 
-ロゴ（image_875_582e8701.webp）は すでに ある 画像を つかいます（追加は ありません）。
+ほかの ファイル（index.html・app.js・css など）は そのままです。

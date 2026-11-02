@@ -5676,10 +5676,10 @@ function start(e){
   if(curScreen!=='town' || e.touches.length!==2) return;
   const w = wrap(), wo = world(); if(!w || !wo) return;
   e.preventDefault();
-  const r = wo.getBoundingClientRect();
+  const r = wo.getBoundingClientRect(), mr = ($('#townMap') || wo).getBoundingClientRect();
   P.on = true; P.d0 = dist(e.touches); P.z0 = save.town.zoom || 1; P.scale = 1;
   P.cx = (e.touches[0].clientX + e.touches[1].clientX)/2; P.cy = (e.touches[0].clientY + e.touches[1].clientY)/2;
-  P.ox = (P.cx - r.left) / r.width; P.oy = (P.cy - r.top) / r.height;           // ゆびの まんなかが まちの どこか（わりあい）
+  P.ox = (P.cx - mr.left) / mr.width; P.oy = (P.cy - mr.top) / mr.height;        // ゆびの まんなかが まちの どこか（わりあい・v6.30：まちの マス目で はかる）
   wo.style.transformOrigin = `${(P.cx - r.left)}px ${(P.cy - r.top)}px`;
   wo.style.willChange = 'transform';
 }
@@ -5694,11 +5694,10 @@ function end(e){
   P.on = false; const wo = world(), z = Math.round(Math.max(ZMIN, Math.min(ZMAX, P.z0 * P.scale)) * 100) / 100;
   wo.style.transform = ''; wo.style.transformOrigin = ''; wo.style.willChange = '';
   if(Math.abs(z - P.z0) < 0.02) return;
+  const sy = window.scrollY;
   save.town.zoom = z; persist(); renderMap();
-  /* ゆびの まんなかに あった ところが おなじ ばしょに くるように スクロール */
-  requestAnimationFrame(() => { const r = wo.getBoundingClientRect(), w = wrap();
-    const dx = (r.left + P.ox * r.width) - P.cx, dy = (r.top + P.oy * r.height) - P.cy;
-    if(w) w.scrollLeft += dx; window.scrollBy(0, dy); });
+  /* ゆびの まんなかに あった ところが おなじ ばしょに くるように スクロール（v6.30：がめん全体は うごかさない） */
+  keepAt(P.ox, P.oy, P.cx, P.cy, sy);
   toast(`🔍 ${Math.round(z*100)}%`);
 }
 document.addEventListener('touchstart', e => { if(e.target.closest && e.target.closest('#townMapWrap')) start(e); }, {passive:false});
@@ -5707,7 +5706,21 @@ document.addEventListener('touchend', end, {passive:true});
 document.addEventListener('touchcancel', end, {passive:true});
 ['gesturestart','gesturechange'].forEach(n => document.addEventListener(n, e => { if(curScreen==='town') e.preventDefault(); }, {passive:false}));
 /* ＋－ボタンも おなじ はんいに */
-setZoom = function(z){ save.town.zoom = Math.max(ZMIN, Math.min(ZMAX, Math.round(z*100)/100)); persist(); renderMap(); };
+/* v6.30：ズームしても 見ている ばしょが ずれない */
+function keepAt(ox, oy, cx, cy, sy){
+  const fix = () => { const w = wrap(), m = $('#townMap'); if(!w || !m) return; const r = m.getBoundingClientRect();
+    w.scrollLeft += (r.left + ox * r.width) - cx; w.scrollTop += (r.top + oy * r.height) - cy;
+    if(Math.abs(window.scrollY - sy) > 1) window.scrollTo(window.scrollX, sy); };
+  fix(); requestAnimationFrame(fix);
+}
+setZoom = function(z){
+  const nz = Math.max(ZMIN, Math.min(ZMAX, Math.round(z*100)/100)), w = wrap(), m = $('#townMap'), sy = window.scrollY;
+  let a = null;
+  if(w && m){ const wr = w.getBoundingClientRect(), mr = m.getBoundingClientRect(); const cx = wr.left + w.clientWidth/2, cy = wr.top + w.clientHeight/2;
+    a = [(cx - mr.left)/mr.width, (cy - mr.top)/mr.height, cx, cy]; }
+  save.town.zoom = nz; persist(); renderMap();
+  if(a) keepAt(a[0], a[1], a[2], a[3], sy);
+};
 try{ const sm = $('.zoomBar small'); if(sm) sm.textContent = '2本ゆびで ひろげたり ちぢめたり できるよ'; }catch(e){}
 renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER67}`; }catch(e){} return o; })(renderSettings);
 window.__v67 = {P};
@@ -6449,7 +6462,7 @@ async function openFishing(key){
       <img class="fBg614" src="${IMG}fish_bg.webp" alt="">
       <div class="fWho614 sp-${who.sp}"><img src="${IMG.replace('v614','v615')}angler_${who.sp}.webp" alt=""><b>${X(who.res ? `${who.title} ${who.name}` : who.title)}</b></div>
       <svg class="fSvg614" viewBox="0 0 ${VB.w} ${VB.h}" preserveAspectRatio="xMidYMid slice">
-        <g class="fFish614"><ellipse cx="0" cy="0" rx="11" ry="3.8" fill="#0E3158" opacity=".62"/><path d="M-11 0l-6-3.6v7.2z" fill="#0E3158" opacity=".62"/></g>
+        <defs><radialGradient id="fgN630" cx="60%" cy="50%" r="60%"><stop offset="0" stop-color="#2A5E8E"/><stop offset=".7" stop-color="#123A63"/><stop offset="1" stop-color="#0A2A4A"/></radialGradient><radialGradient id="fgR630" cx="60%" cy="45%" r="60%"><stop offset="0" stop-color="#FFF6C2"/><stop offset=".55" stop-color="#FFD84A"/><stop offset="1" stop-color="#E09A00"/></radialGradient><filter id="fsBlur630" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation=".35"/></filter></defs><g class="fFish614"><g class="fsW630" filter="url(#fsBlur630)"><g class="fsN630"><path class="fTail630" d="M-11.5 0C-13.5 -1.2 -15.5 -4 -18.6 -5.8C-17.6 -2.4 -17.6 2.4 -18.6 5.8C-15.5 4 -13.5 1.2 -11.5 0Z" fill="#0E3158"/><path d="M4.6 -3.4C3.2 -6.8 .6 -8.6 -1.8 -8.4C-.4 -6.6 .8 -5 2 -3.7Z" fill="#0E3158"/><path d="M4.6 3.4C3.2 6.8 .6 8.6 -1.8 8.4C-.4 6.6 .8 5 2 3.7Z" fill="#0E3158"/><path d="M-4.6 -4.2C-6.2 -6.4 -8.2 -6.8 -9.4 -6.4C-8 -5.4 -7.2 -4.6 -6.8 -3.6Z" fill="#0E3158"/><path d="M-4.6 4.2C-6.2 6.4 -8.2 6.8 -9.4 6.4C-8 5.4 -7.2 4.6 -6.8 3.6Z" fill="#0E3158"/><path d="M13.4 0C12 -3.9 7 -5.6 1 -5.3C-5 -5 -9.5 -3 -12.2 0C-9.5 3 -5 5 1 5.3C7 5.6 12 3.9 13.4 0Z" fill="url(#fgN630)"/><path d="M-9 0Q0 -.9 10 0" stroke="#5D8CC0" stroke-width=".7" fill="none" stroke-linecap="round" opacity=".55"/><path d="M-5 -2.6Q2 -4.4 9 -2.4" stroke="#fff" stroke-width=".55" fill="none" stroke-linecap="round" opacity=".32"/><circle cx="9.6" cy="-2.3" r=".75" fill="#06182C"/><circle cx="9.6" cy="2.3" r=".75" fill="#06182C"/></g><g class="fsR630"><path class="fTail630" d="M-11.5 0C-13.5 -1.2 -15.5 -4 -18.6 -5.8C-17.6 -2.4 -17.6 2.4 -18.6 5.8C-15.5 4 -13.5 1.2 -11.5 0Z" fill="#F2B514"/><path d="M4.6 -3.4C3.2 -6.8 .6 -8.6 -1.8 -8.4C-.4 -6.6 .8 -5 2 -3.7Z" fill="#F2B514"/><path d="M4.6 3.4C3.2 6.8 .6 8.6 -1.8 8.4C-.4 6.6 .8 5 2 3.7Z" fill="#F2B514"/><path d="M-4.6 -4.2C-6.2 -6.4 -8.2 -6.8 -9.4 -6.4C-8 -5.4 -7.2 -4.6 -6.8 -3.6Z" fill="#F2B514"/><path d="M-4.6 4.2C-6.2 6.4 -8.2 6.8 -9.4 6.4C-8 5.4 -7.2 4.6 -6.8 3.6Z" fill="#F2B514"/><path d="M13.4 0C12 -3.9 7 -5.6 1 -5.3C-5 -5 -9.5 -3 -12.2 0C-9.5 3 -5 5 1 5.3C7 5.6 12 3.9 13.4 0Z" fill="url(#fgR630)"/><path d="M-9 0Q0 -.9 10 0" stroke="#FFF3B0" stroke-width=".7" fill="none" stroke-linecap="round" opacity=".55"/><path d="M-5 -2.6Q2 -4.4 9 -2.4" stroke="#fff" stroke-width=".55" fill="none" stroke-linecap="round" opacity=".32"/><circle cx="9.6" cy="-2.3" r=".75" fill="#8A5A00"/><circle cx="9.6" cy="2.3" r=".75" fill="#8A5A00"/></g></g><g class="fsR630 spkG630"><path class="spk630" style="animation-delay:0s" d="M-14 -8.8L-13.55 -7.45L-12.2 -7L-13.55 -6.55L-14 -5.2L-14.45 -6.55L-15.8 -7L-14.45 -7.45Z" fill="#fff"/><path class="spk630" style="animation-delay:0.4s" d="M6 -10.3L6.45 -8.95L7.8 -8.5L6.45 -8.05L6 -6.7L5.55 -8.05L4.2 -8.5L5.55 -8.95Z" fill="#fff"/><path class="spk630" style="animation-delay:0.8s" d="M14 3.2L14.45 4.55L15.8 5L14.45 5.45L14 6.8L13.55 5.45L12.2 5L13.55 4.55Z" fill="#fff"/><path class="spk630" style="animation-delay:1.2s" d="M-6 6.2L-5.55 7.55L-4.2 8L-5.55 8.45L-6 9.8L-6.45 8.45L-7.8 8L-6.45 7.55Z" fill="#fff"/></g></g>
         <g class="rip614"><ellipse cx="${BOB.x}" cy="${BOB.y+1}" rx="4" ry="1.4" fill="none" stroke="#fff" stroke-width=".6"/></g>
         <path class="fRod2" stroke="#4A2C14" stroke-width="2.6" fill="none" stroke-linecap="round"/><path class="fRod" stroke="#A0662E" stroke-width="1.6" fill="none" stroke-linecap="round"/>
         <path class="fLine" stroke="#fff" stroke-width=".45" fill="none" opacity=".95"/>
@@ -6582,7 +6595,7 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 @media (max-width:400px){.fBtns614 button{font-size:12px;gap:3px;padding:5px 4px}.fBtns614 button svg{width:24px;height:24px}}
 .fQ614{display:flex;flex-direction:column;align-items:center}.fishIc614.shadow{opacity:.75;filter:blur(1px)}.fQ614 small{font-size:11px;color:#6B5540}
 .fGot614{position:relative;display:flex;justify-content:center;animation:bump .6s}.new614{position:absolute;right:22%;top:0;background:#E8414B;color:#fff;border-radius:10px;padding:0 8px;font-size:12px}
-.fz614{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:58vh;overflow-y:auto;overflow-x:hidden}.fz614 img,.fz614 svg{max-width:100%;height:auto}.fz614 b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.rare625 .fFish614 ellipse,.rare625 .fFish614 path{fill:#FFD84A!important;opacity:.95!important}
+.fz614{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:58vh;overflow-y:auto;overflow-x:hidden}.fz614 img,.fz614 svg{max-width:100%;height:auto}.fz614 b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.rare625 .fFish614>ellipse,.rare625 .fFish614>path{fill:#FFD84A!important;opacity:.95!important}
 .rare625 .fFish614{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #FFC400)}
 .rare625 .fScene614{box-shadow:0 0 0 4px #FFD84A,0 8px 30px rgba(0,0,0,.35)}
 .rareQ625 small{color:#B5701C!important;font-weight:900}.rareQ625 .fishIc614.shadow{filter:brightness(0) sepia(1) saturate(6) hue-rotate(5deg) brightness(1.4)!important;opacity:.9}
@@ -7430,4 +7443,230 @@ css.textContent = `
 }`;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.30：まち画面を すっきり・ズームで ずれない・わたしの家の アイコン・電車
+   ・まち：レベルアップまでの「勉強ポイント・発展度・こうつう」を あと いくつ で 見せる
+           じゅうみん／のりものの かずは まちづくりから はずす（ショップ・じゅうみん画面で 見られる）
+           住民の おねがいは まちの 下に かさねて 出す（たためる）
+           きょうの うりあげは うけとれる ときだけ まちの 上に 出す
+           まちは いちばん 下・たてに もっと ながく
+   ・学校の 上の「じゅぎょう中」は 出さない
+   ・「かるい表示」の ときも 電車は はしる
+   ・わたしの家：ちしき／家具／おきゃくさん と 部屋の アイコンを イラストに
+   ・ショップ：イベントの アイコンを すこし 上に
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.30.0', IMG = './assets/images/v630/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const N = s => +(String(s||'').replace(/[^\d.]/g,'')) || 0;
+const fmt = n => (typeof nf==='function' ? nf(n) : String(n));
+const mobile = () => innerWidth <= 700;
+const LS = 'mt_req630';
+
+/* ---------- まち：上の じょうほう（レベルアップまで あと いくつ） ---------- */
+function head630(){
+  const h = document.querySelector('#townHead'); if(!h) return;
+  const tp = h.querySelector('.tprog');
+  if(tp && tp.parentElement!==h){ const ti = h.querySelector('.tInfo'); ti ? ti.after(tp) : h.appendChild(tp); }
+  if(tp) tp.querySelectorAll('.pr').forEach(pr => {
+    const em = pr.querySelector('em'); if(!em || em.dataset.v630) return;
+    const m = em.textContent.split('/'); if(m.length < 2) return;
+    const a = N(m[0]), b = N(m[1]), left = Math.max(0, b - a);
+    em.dataset.v630 = 1; em.title = em.textContent;
+    em.innerHTML = left > 0 ? `あと <b>${fmt(left)}</b>` : '✔ OK！';
+    pr.classList.toggle('ok630', left <= 0);
+  });
+  /* のこりの じょうほう（ちしき・うりあげ・まなびの力）は 小さな チップに */
+  const st = document.querySelector('#townStats'); let ch = h.querySelector('.chips630');
+  if(!ch){ h.insertAdjacentHTML('beforeend', '<div class="chips630"></div>'); ch = h.querySelector('.chips630'); }
+  const hasPr = !!(tp && tp.querySelector('.pr'));
+  const items = st ? [...st.querySelectorAll('.tstat')].filter(e => { const t = e.textContent;
+    if(/じゅうみん|のりもの/.test(t)) return false; if(hasPr && /発展度|こうつう/.test(t)) return false; return true; }) : [];
+  ch.innerHTML = items.map(e => { const sp = e.querySelector('span'), b = e.querySelector('b'); return `<span class="chip630">${sp ? sp.innerHTML.replace('ちしき ボーナス', 'ちしき') : ''}<b>${b ? b.innerHTML : ''}</b></span>`; }).join('');
+  ch.classList.toggle('hidden', !items.length);
+}
+
+/* ---------- まちの わく（うりあげ・おねがいを かさねる） ---------- */
+function box630(){
+  const wrap = document.querySelector('#townMapWrap'); if(!wrap) return null;
+  let box = document.querySelector('#mapBox630');
+  if(!box){
+    box = document.createElement('div'); box.id = 'mapBox630';
+    wrap.parentNode.insertBefore(box, wrap);
+    box.insertAdjacentHTML('afterbegin', '<div id="harv630" class="hidden"><div class="in630"><button type="button" class="btn green harvBtn630"></button></div></div>');
+    box.appendChild(wrap);
+    box.insertAdjacentHTML('beforeend', '<div id="req630" class="hidden"><div class="in630"><button type="button" class="reqHd630"></button><div class="reqBody630"></div></div></div>');
+    const rp = document.querySelector('#reqPanel'); if(rp) box.querySelector('.reqBody630').appendChild(rp);
+    box.querySelector('.harvBtn630').addEventListener('click', e => { e.preventDefault(); const H = document.querySelector('#btnHarvest'); if(H && !H.disabled) H.click(); setTimeout(harv630, 120); });
+    box.querySelector('.reqHd630').addEventListener('click', e => { e.preventDefault(); const open = localStorage.getItem(LS)!=='0'; localStorage.setItem(LS, open ? '0' : '1'); req630(); });
+    if(window.MutationObserver && rp) new MutationObserver(() => req630()).observe(rp, {childList:true, subtree:true});
+  }
+  return box;
+}
+function harv630(){
+  const box = box630(); if(!box) return; const H = document.querySelector('#btnHarvest'), el = box.querySelector('#harv630');
+  const on = !!(H && !H.disabled && !(typeof townEdit!=='undefined' && townEdit));
+  el.classList.toggle('hidden', !on);
+  if(on){ const b = el.querySelector('.harvBtn630'), t = H.textContent.replace(/^\s*🎁\s*/, '').trim(); b.innerHTML = `<span class="gift630">🎁</span><span>きょうの ${X(t)}</span>`; }
+}
+function req630(){
+  const box = box630(); if(!box) return; const el = box.querySelector('#req630'), rp = document.querySelector('#reqPanel'); if(!el || !rp) return;
+  const rows = rp.querySelectorAll('.reqRow'), done = rp.querySelectorAll('.reqRow.done').length;
+  /* 1行目：だれ・おねがい（…で きる）／2行目：すすみぐあい */
+  rp.querySelectorAll('.reqRow .reqT').forEach(t => { if(t.querySelector('.l1-630')) return; const bar = t.querySelector('.misBar'), sm = t.querySelector('small');
+    const l1 = document.createElement('span'); l1.className = 'l1-630'; [...t.childNodes].filter(n => n!==bar && n!==sm).forEach(n => l1.appendChild(n));
+    const l2 = document.createElement('span'); l2.className = 'l2-630'; if(bar) l2.appendChild(bar); if(sm) l2.appendChild(sm);
+    t.appendChild(l1); t.appendChild(l2); });
+  const on = rows.length > 0 && !(typeof townEdit!=='undefined' && townEdit);
+  el.classList.toggle('hidden', !on); if(!on) return;
+  const open = localStorage.getItem(LS)!=='0';
+  el.classList.toggle('closed', !open);
+  const ic = typeof artSrc==='function' ? artSrc('ui_letter') : '';
+  el.querySelector('.reqHd630').innerHTML = `${ic ? `<img src="${X(ic)}" alt="">` : '💌'}<span>じゅうみんの おねがい</span><b class="n630">${rows.length}</b>${done ? '<em class="done630">🎁 ほうこく できるよ</em>' : ''}<i class="arw630">${open ? '▼' : '▲'}</i>`;
+}
+
+/* ---------- まちの 高さ：がめんの 下まで（さいてい 480px） ---------- */
+let lastH = 0;
+function fit630(force){
+  const wrap = document.querySelector('#townMapWrap'), box = document.querySelector('#mapBox630');
+  if(!wrap || !box || typeof curScreen==='undefined' || curScreen!=='town') return;
+  const nav = document.querySelector('#bnav'), navH = nav && getComputedStyle(nav).display!=='none' ? nav.offsetHeight : 0;
+  document.documentElement.style.setProperty('--nav630', navH + 'px');
+  if(!mobile()){ wrap.style.removeProperty('height'); wrap.style.removeProperty('min-height'); lastH = 0; return; }
+  const top = box.getBoundingClientRect().top + scrollY;
+  const H = Math.round(Math.max(480, innerHeight - top - navH - 10));
+  if(!force && Math.abs(H - lastH) < 24) return;
+  lastH = H; wrap.style.setProperty('height', H + 'px', 'important'); wrap.style.setProperty('min-height', H + 'px', 'important'); wrap.style.setProperty('max-height', 'none', 'important');
+}
+
+function all630(){ try{ box630(); head630(); harv630(); req630(); fit630(true); }catch(e){ console.warn('v6.30', e); } }
+renderTown = (orig => function(){ const o = orig.apply(this, arguments); all630(); requestAnimationFrame(() => fit630(true)); return o; })(renderTown);
+try{ renderReqPanel = (orig => function(){ const o = orig.apply(this, arguments); try{ req630(); }catch(e){} return o; })(renderReqPanel); }catch(e){}
+addEventListener('resize', () => fit630(false));
+addEventListener('orientationchange', () => setTimeout(() => fit630(true), 400));
+/* もようがえ 中は かさねない */
+document.addEventListener('click', e => { if(e.target.closest('#btnEdit')) setTimeout(() => { harv630(); req630(); }, 60); });
+/* うりあげの じょうけん（あと ○問）が かわったら 出す */
+setInterval(() => { if(typeof curScreen!=='undefined' && curScreen==='town' && !document.hidden){ harv630(); } }, 2500);
+
+/* ---------- 電車：かるい表示でも はしる（ずれ時間は 変数で わたす） ---------- */
+try{ renderStrips = (orig => function(){ const o = orig.apply(this, arguments);
+  try{ document.querySelectorAll('#railStrip .mover.train').forEach(el => { const d = el.style.animationDelay || '0s'; el.style.setProperty('--d630', d); }); }catch(e){}
+  return o; })(renderStrips); }catch(e){ console.warn('rail630', e); }
+
+/* ---------- わたしの家：アイコンを イラストに ---------- */
+const HM = [[/ちしき/, 'hm_know'], [/家具/, 'hm_fur'], [/おきゃくさん/, 'hm_guest']];
+const RM = {living:'rm_living', cafe:'rm_cafe', kids:'rm_kids', bed:'rm_bed', hobby:'rm_hobby', attic:'rm_attic'};
+Object.entries(Object.assign({}, ...HM.map(([,k]) => ({[k]:k})), Object.fromEntries(Object.values(RM).map(k => [k,k])))).forEach(([k]) => { DEFAULT_ART['v630_' + k] = IMG + k + '.webp'; });
+const src = k => (typeof artSrc==='function' && artSrc('v630_' + k)) || IMG + k + '.webp';
+function home630(){
+  document.querySelectorAll('.hmStats span').forEach(sp => { if(sp.querySelector('img.ic630')) return; const hit = HM.find(([re]) => re.test(sp.textContent)); if(!hit) return;
+    const tn = [...sp.childNodes].find(n => n.nodeType===3 && n.textContent.trim()); if(tn) tn.textContent = tn.textContent.replace(/^[^\u3040-\u30FF\u4E00-\u9FFFA-Za-z0-9]+/, ' ');
+    sp.insertAdjacentHTML('afterbegin', `<img class="ic630" src="${X(src(hit[1]))}" alt="">`); });
+  document.querySelectorAll('.rbRoom[data-room]').forEach(b => { const k = RM[b.dataset.room]; if(!k || b.classList.contains('rlock')) return; const i = b.querySelector('i'); if(!i || i.querySelector('img')) return;
+    i.innerHTML = `<img class="rmIc630" src="${X(src(k))}" alt="">`; });
+}
+try{ renderMyHome = (orig => function(){ const o = orig.apply(this, arguments); try{ home630(); }catch(e){} return o; })(renderMyHome); }catch(e){}
+if(window.MutationObserver){ let t = 0; new MutationObserver(() => { if(typeof curScreen!=='undefined' && curScreen==='myhome'){ clearTimeout(t); t = setTimeout(home630, 30); } }).observe(document.body, {childList:true, subtree:true}); }
+
+const css = document.createElement('style');
+css.textContent = `
+/* ---- まち：わく・かさねる パーツ ---- */
+#mapBox630{position:relative;order:5}
+#scr-town #townStats{display:none!important}
+#scr-town .jump628,#scr-town #btnHarvest628{display:none!important}
+#harv630{position:sticky;top:62px;height:0;z-index:43}
+#harv630 .in630{position:absolute;left:0;right:0;top:8px;display:flex;justify-content:center;pointer-events:none}
+#harv630 .harvBtn630{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px!important;font-size:13px!important;border-radius:999px!important;box-shadow:0 4px 0 #2E8B57,0 6px 14px rgba(0,0,0,.25)!important;animation:harv630 1.6s ease-in-out infinite;white-space:nowrap;max-width:calc(100% - 20px)}
+#harv630 .gift630{font-size:18px;line-height:1}
+@keyframes harv630{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+#req630{position:sticky;bottom:calc(var(--nav630,66px) + 8px);height:0;z-index:42}
+#req630 .in630{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(255,253,246,.96);border:2.5px solid #F2C46B;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.22);overflow:hidden}
+#req630 .reqHd630{display:flex;align-items:center;gap:6px;width:100%;border:none;background:linear-gradient(180deg,#FFF3D2,#FFE7AE);padding:5px 10px;font:inherit;font-weight:900;font-size:13px;color:#7A4A12;cursor:pointer;text-align:left}
+#req630 .reqHd630 img{width:22px;height:22px;object-fit:contain;flex:none}
+#req630 .reqHd630 .n630{background:#E8414B;color:#fff;border-radius:999px;min-width:20px;height:20px;line-height:20px;text-align:center;font-size:12px;padding:0 5px}
+#req630 .reqHd630 .done630{font-style:normal;font-size:11px;color:#C66F0A;background:#fff;border-radius:999px;padding:1px 7px;border:1.5px solid #F2A33A;white-space:nowrap;animation:harv630 1.4s ease-in-out infinite}
+#req630 .reqHd630 .arw630{margin-left:auto;font-style:normal;font-size:12px;color:#B5701C}
+#req630 .reqBody630{max-height:min(26vh,128px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 6px 6px}
+#req630.closed .reqBody630{display:none}
+#req630 #reqPanel{margin:0!important;padding:0!important;background:none!important;border:none!important;box-shadow:none!important}
+#req630 #reqPanel .reqTitle,#req630 #reqPanel .reqEmpty{display:none!important}
+#req630 #reqPanel .reqRow{display:flex!important;align-items:center;gap:6px;margin:4px 0 0!important;padding:3px 6px!important;min-height:0!important;border-radius:12px!important;font-size:12px;cursor:pointer}
+#req630 #reqPanel .reqRow .reqWho{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#req630 #reqPanel .reqRow .reqWho img,#req630 #reqPanel .reqRow .reqWho .rpic{max-width:30px!important;max-height:30px!important;width:auto!important;height:auto}
+#req630 #reqPanel .reqRow .reqT{flex:1 1 auto;min-width:0;font-size:12px!important;line-height:1.3;display:flex;flex-direction:column;gap:1px}
+#req630 #reqPanel .reqRow .reqT .l1-630{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#req630 #reqPanel .reqRow .reqT .l2-630{display:flex;align-items:center;gap:6px;white-space:nowrap}
+#req630 #reqPanel .reqRow .reqT .misBar{flex:1 1 auto;min-width:30px;max-width:110px;height:6px!important;margin:0!important}
+#req630 #reqPanel .reqRow .reqT small{font-size:10.5px!important}
+#req630 #reqPanel .reqRow .reqIt{flex:none;width:28px;height:28px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#req630 #reqPanel .reqRow .reqIt img{max-width:28px!important;max-height:28px!important;width:auto!important;height:auto!important}
+#req630 #reqPanel .reqRow .btn{flex:none;padding:4px 8px!important;font-size:11.5px!important;min-height:0!important}
+body:not(.scr-town) #req630,body:not(.scr-town) #harv630{display:none}
+
+/* ---- まち：上の じょうほう ---- */
+#scr-town #townHead div.tprog{flex:1 1 100%;order:3;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:2px 0 0!important}
+#scr-town #townHead div.tprog>span{display:block!important;grid-column:1/-1;font-size:10.5px;font-weight:800;color:#8A6A45;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#scr-town #townHead .tprog .pr{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:2px!important;margin:0!important;padding:3px 6px 4px!important;background:#FFF8EA;border:1.5px solid #F1E2C4;border-radius:10px;min-width:0;grid-template-columns:none!important}
+#scr-town #townHead .tprog .pr b{display:flex!important;align-items:center;gap:2px;font-size:10px!important;line-height:1.15;white-space:nowrap;overflow:hidden;min-width:0;color:#6B4A2A}
+#scr-town #townHead .tprog .pr b img{width:14px!important;height:14px!important;flex:none}
+#scr-town #townHead .tprog .pr .tbar{height:6px!important;width:100%!important;margin:0!important;grid-column:auto!important;grid-row:auto!important}
+#scr-town #townHead .tprog .pr em{display:block!important;font-style:normal;font-size:10.5px!important;font-weight:800;color:#8A6A45;text-align:right;white-space:nowrap;line-height:1.15;margin:0!important}
+#scr-town #townHead .tprog .pr em b{display:inline!important;font-size:12px!important;color:#D2691E}
+#scr-town #townHead .tprog .pr.ok630{background:#EAF8EC;border-color:#BFE6C6}
+#scr-town #townHead .tprog .pr.ok630 em{color:#2E8B57}
+#scr-town #townHead .chips630{flex:1 1 100%;order:4;display:flex;flex-wrap:nowrap;gap:4px;margin-top:1px;overflow:hidden;min-width:0}
+#scr-town #townHead .chip630{display:inline-flex;align-items:center;gap:2px;background:#F3FAFF;border:1.5px solid #CFE6F7;border-radius:999px;padding:1px 7px 1px 3px;font-size:10px;flex:0 1 auto;min-width:0;font-weight:800;color:#4A6A85;white-space:nowrap}
+#scr-town #townHead .chip630 img{width:15px;height:15px;object-fit:contain}
+#scr-town #townHead .chip630 b{color:#2F6DB5;font-size:11.5px;margin-left:2px}
+#scr-town #townHead .lvUpBtn{order:5}
+#scr-town #townHead .ghostBtn{order:6}
+
+/* ---- 学校の「じゅぎょう中」は 出さない ---- */
+.sc52 .tag52{display:none!important}
+
+/* ---- かるい表示でも 電車は はしる ---- */
+#townMap.lite56 #railStrip .mover.train{animation:drive 22s linear infinite!important;animation-delay:var(--d630,0s)!important}
+#townMap.lite56 #railStrip .mover.train.lane1{animation-name:driveRev!important}
+@supports (container-type:inline-size){
+  #townMap.lite56 #railStrip .mover.train{animation-name:drive52!important}
+  #townMap.lite56 #railStrip .mover.train.lane1{animation-name:driveRev52!important}
+}
+
+/* ---- 魚影（イラスト） ---- */
+#fish614 .fsN630{opacity:.8}
+#fish614 .fsR630{display:none}
+#fish614.rare625 .fsN630{display:none}
+#fish614.rare625 .fsR630{display:inline}
+#fish614 .fTail630{transform-box:fill-box;transform-origin:100% 50%;animation:wag630 .55s ease-in-out infinite alternate}
+@keyframes wag630{from{transform:skewY(-10deg) scaleY(.88)}to{transform:skewY(10deg) scaleY(1)}}
+#fish614 .spk630{transform-box:fill-box;transform-origin:50% 50%;animation:spk630 1.6s ease-in-out infinite}
+@keyframes spk630{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1)}}
+
+/* ---- わたしの家：アイコン ---- */
+.hmStats span{display:inline-flex;align-items:center;gap:3px}
+.hmStats img.ic630{width:22px;height:22px;object-fit:contain;flex:none}
+.rbRoom i img.rmIc630{width:20px;height:20px;object-fit:contain;display:block}
+@media (max-width:700px){ .rbRoom i img.rmIc630{width:18px;height:18px} .hmStats{flex-wrap:nowrap!important} .hmStats span{padding:2px 7px 2px 3px!important;font-size:11.5px!important;min-width:0;flex:0 1 auto} .hmStats img.ic630{width:20px;height:20px} }
+
+@media (max-width:700px){
+  /* ---- まち：ならび（まちが いちばん 下） ---- */
+  #scr-town .townBtns{order:2!important}
+  #scr-town .zoomBar{order:3!important}
+  #scr-town #townTray{order:4}
+  #scr-town #mapBox630{order:5!important}
+  #scr-town.active{padding-bottom:calc(var(--nav630,66px) + 12px)!important}
+  #scr-town.active:has(#townTray:not(.hidden)){padding-bottom:calc(var(--nav630,66px) + 116px)!important}
+  #scr-town #townMapWrap{min-height:480px!important;max-height:none!important}
+  #scr-town #townHead{row-gap:4px!important}
+
+  /* ---- ショップ：イベントの アイコンを すこし 上に ---- */
+  #shopTabs button[data-v="ev"] img{transform:translateY(-6px)}
+}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+try{ if(typeof curScreen!=='undefined' && curScreen==='town') renderTown(); }catch(e){}
 })();
