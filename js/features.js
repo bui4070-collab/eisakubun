@@ -6421,9 +6421,13 @@ function angler(){
 const VB = {w:160, h:107};
 const BASE = {x:44, y:56}, TIP0 = {x:88, y:12}, BOB = {x:104, y:78};
 let F = null;
-function rodPath(b){
-  const tip = {x:TIP0.x + 8*b, y:TIP0.y + 24*b}, c = {x:(BASE.x + tip.x)/2 - 2 + 6*b, y:(BASE.y + tip.y)/2 - 6 + 16*b};
-  return {d:`M${BASE.x} ${BASE.y}Q${c.x} ${c.y} ${tip.x} ${tip.y}`, tip};
+function rodPath(b){   // v6.25：竿は もとが 上へ のび、先が 下へ しずむ アーチに しなる
+  b = Math.max(0, Math.min(1.1, b));
+  const L = (a, c, k) => a + (c - a)*k;
+  const tip = {x:L(TIP0.x, 97, b), y:L(TIP0.y, 46, b)};
+  const c1 = {x:L(BASE.x + 14.7, BASE.x + 15, b), y:L(BASE.y - 14.7, BASE.y - 38, b)};
+  const c2 = {x:L(BASE.x + 29.3, 92, b), y:L(BASE.y - 29.3, 10, b)};
+  return {d:`M${BASE.x} ${BASE.y}C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${tip.x} ${tip.y}`, tip};
 }
 function draw(){
   if(!F) return; const {b, sink, fx, fy, fa, fdir} = F, r = rodPath(b), by = BOB.y + sink;
@@ -6476,6 +6480,8 @@ async function loop(){
   await wait(rint(900, 2200)); if(F!==me) return;
   /* 魚が ちかづく */
   const fromR = Math.random() < .6; me.fdir = fromR ? -1 : 1; const sx = fromR ? 170 : 60, sy = rint(86, 100);
+  me.fishPick = pickFish(); me.rare = me.fishPick.w <= 5; me.root.classList.toggle('rare625', me.rare);
+  if(me.rare) setMsg('✨ きんいろの 魚影…！ レアな 魚かも！');
   await tween(rint(1600, 2600), k => { const e = ease(k); me.fx = sx + (BOB.x + (fromR ? 6 : -6) - sx)*e; me.fy = sy + (BOB.y + 5 - sy)*e; me.fa = Math.min(1, k*2); });
   if(F!==me) return;
   /* ちょんちょん */
@@ -6488,8 +6494,8 @@ async function loop(){
     await tween(rint(500, 1000), k => { me.fx = hx + Math.sin(k*Math.PI*2)*1.2; me.fy = hy + Math.sin(k*Math.PI*4)*.5; }); }
   if(F!==me) return;
   /* ヒット！ */
-  me.state = 'hit'; setMsg('いまだ！ タッチ！'); me.ex.setAttribute('opacity', 1); me.root.classList.add('hit');
-  const win = 1100; me.hitAt = performance.now();
+  me.state = 'hit'; setMsg(me.rare ? '✨ いまだ！ すばやく タッチ！' : 'いまだ！ タッチ！'); me.ex.setAttribute('opacity', 1); me.root.classList.add('hit'); SFX625('hit');
+  const win = me.rare ? 620 : 1100; me.hitAt = performance.now();   // レアは タッチできる 時間が みじかい
   await tween(win, k => { me.b = .95 + .05*Math.sin(k*Math.PI*8); me.sink = 4 + Math.sin(k*Math.PI*10); });
   if(F!==me || me.state!=='hit') return;
   missed('にげられちゃった… もう いちど！');
@@ -6508,26 +6514,36 @@ async function onTap(e){
   cancelAnimationFrame(me.raf); me.state = 'quiz'; me.ex.setAttribute('opacity', 0); me.root.classList.remove('hit'); sound && sound('ok');
   setMsg('かかった！ 魚の 問題に こたえて つりあげよう！');
   await tween(350, k => { me.b = 1 - .3*k; });
-  const f = pickFish(), all = (FQ[f.id]||[]).concat(GQ), Q = choice(Math.random() < .7 ? FQ[f.id] : all);
-  const res = await askMQ({html:`<div class="fQ614">${(FIMG[f.id] ? fishSVG(f, 70, 'shadow') : fishSVG({...f, c1:'#3A6E9E', c2:'#5B8DBA'}, 70).replace('class="fishIc614"','class="fishIc614 shadow"'))}<small>どんな 魚かな…？</small></div><div class="mqSent math">${X(Q[0])}</div>`, ans:Q[1], opts:shuffle([Q[1]].concat(Q[2].split('/'))), key:'fish|'+Q[0]+'|'+Date.now()}, '<b>🎣 さかなの クイズ</b>');
+  const f = me.fishPick || pickFish(), rare = !!me.rare;
+  const st0 = S(), RQ = st0.recentQ || (st0.recentQ = []);
+  const pickQ = () => { const own = FQ[f.id]||[], pool = Math.random() < .7 ? own : own.concat(GQ), fresh = pool.filter(q => !RQ.includes(q[0])); const q = choice(fresh.length ? fresh : pool); RQ.unshift(q[0]); if(RQ.length > 30) RQ.length = 30; persist(); return q; };
+  const N = rare ? 2 : 1; let res = {ok:true}, Q = null;
+  for(let qi=0; qi<N && res.ok; qi++){
+    Q = pickQ();
+    res = await askMQ({html:`<div class="fQ614 ${rare ? 'rareQ625' : ''}">${(FIMG[f.id] ? fishSVG(f, 70, 'shadow') : fishSVG({...f, c1:'#3A6E9E', c2:'#5B8DBA'}, 70).replace('class="fishIc614"','class="fishIc614 shadow"'))}<small>${rare ? `✨ レアな 魚！ ${qi+1}/${N}もん れんぞくで せいかいしよう` : 'どんな 魚かな…？'}</small></div><div class="mqSent math">${X(Q[0])}</div>`, ans:Q[1], opts:shuffle([Q[1]].concat(Q[2].split('/'))), key:'fish|'+Q[0]+'|'+Date.now()}, rare ? '<b>✨ レアな 魚の クイズ</b>' : '<b>🎣 さかなの クイズ</b>');
+    if(F!==me) return;
+  }
   if(F!==me) return;
   if(res.ok){
     const st = S(), first = !st.caught[f.id]; st.caught[f.id] = (st.caught[f.id]||0) + 1;
-    if(st.day!==dayKey()){ st.day = dayKey(); st.pt = 0; } let p = 0; if(st.pt < 10){ st.pt++; p = givePts(first ? 40 : 15, `つりで ${f.n}を つりあげた`); }
-    persist(); confetti(first ? 1800 : 900); sound && sound('fan');
-    await dialog(`<div class="fGot614">${fishSVG(f, 150)}${first ? '<b class="new614">NEW!</b>' : ''}</div><h2 class="dlgT">${X(f.n)}を つりあげた！</h2>
+    if(st.day!==dayKey()){ st.day = dayKey(); st.pt = 0; } let p = 0; if(st.pt < 10){ st.pt++; p = givePts(rare ? (first ? 250 : 100) : (first ? 40 : 15), `つりで ${f.n}を つりあげた`); }
+    persist();
+    if(rare){ SFX625('fanfare'); confetti(3200); await rareFx(f); if(F!==me) return; } else { confetti(first ? 1800 : 900); sound && sound('fan'); }
+    await dialog(`<div class="fGot614 ${rare ? 'rare' : ''}">${fishSVG(f, 150)}${first ? '<b class="new614">NEW!</b>' : ''}${rare ? '<b class="rare625b">✨ レア</b>' : ''}</div><h2 class="dlgT">${X(f.n)}を つりあげた！</h2>
       <p class="dlgP">${X(f.note)}<br><small>おおきさ：${X(f.size)}</small><br>${p ? `<span class="coin sm">P</span> +${p}` : '<small>きょうの ポイントは おしまい（つりは まだ できるよ）</small>'}</p>`, [{label:'つづける 🎣', cls:'gold', v:1}], 'wide');
   } else {
     await dialog(`<h2 class="dlgT">あっ… 糸が きれちゃった</h2><p class="dlgP">こたえは <b>${X(Q[1])}</b> だったよ。<br><small>${X(f.n)}だったみたい。${X(f.note)}</small></p>`, [{label:'もう いちど 🎣', cls:'gold', v:1}], 'wide');
   }
   if(F===me){ me.fa = 0; me.fx = 170; loop(); }
 }
+/* レアの 演出 */
+function rareFx(f){ return new Promise(res => { const o = document.createElement('div'); o.className = 'rfx625'; o.innerHTML = `<div class="rays625"></div>${fishSVG(f, 220)}<b>✨ レア ゲット！ ✨</b>`; document.body.appendChild(o); setTimeout(() => { o.classList.add('out'); setTimeout(() => { o.remove(); res(); }, 350); }, 2000); }); }
 function pickFish(){ let r = Math.random()*FISH.reduce((a,f) => a + f.w, 0); for(const f of FISH){ r -= f.w; if(r <= 0) return f; } return FISH[0]; }
 async function fishZukan(){
   const st = S(), got = FISH.filter(f => st.caught[f.id]).length;
   await dialog(`<h2 class="dlgT">🐟 さかなずかん（${got}/${FISH.length}）</h2><div class="fz614">${FISH.map(f => { const n = st.caught[f.id]||0;
-    return `<div class="${n ? '' : 'nf615'}">${n ? fishSVG(f, 70) : (FIMG[f.id] ? fishSVG(f, 70, 'fl615') : fishSVG({...f, c1:'#B9B2A6', c2:'#D9D4CB'}, 70))}<b>${n ? X(f.n) : '？？？'}</b><small>${n ? `${n}ひき` : 'まだ つっていない'}</small></div>`; }).join('')}</div>
-    <p class="dlgP facNote">これから 魚の しゅるいは ふえていく よていだよ</p>`, [{label:'とじる', v:null}], 'wide');
+    return `<div class="${n ? '' : 'nf615'}">${n ? fishSVG(f, 70) : (FIMG[f.id] ? fishSVG(f, 70, 'fl615') : fishSVG({...f, c1:'#B9B2A6', c2:'#D9D4CB'}, 70))}<b>${f.w <= 5 ? '✨' : ''}${n ? X(f.n) : '？？？'}</b><small>${n ? `${n}ひき` : 'まだ つっていない'}</small></div>`; }).join('')}</div>
+    <p class="dlgP facNote">✨は レアな 魚（きんいろの 魚影）</p>`, [{label:'とじる', v:null}], 'wide fz625');
 }
 
 /* ---------- みなとを タッチ ---------- */
@@ -6566,7 +6582,18 @@ css.textContent = `#fish614{position:fixed;inset:0;z-index:66;background:rgba(20
 @media (max-width:400px){.fBtns614 button{font-size:12px;gap:3px;padding:5px 4px}.fBtns614 button svg{width:24px;height:24px}}
 .fQ614{display:flex;flex-direction:column;align-items:center}.fishIc614.shadow{opacity:.75;filter:blur(1px)}.fQ614 small{font-size:11px;color:#6B5540}
 .fGot614{position:relative;display:flex;justify-content:center;animation:bump .6s}.new614{position:absolute;right:22%;top:0;background:#E8414B;color:#fff;border-radius:10px;padding:0 8px;font-size:12px}
-.fz614{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:58vh;overflow:auto}.fz614>div{display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2px solid #BFE3FB;border-radius:12px;padding:4px}
+.fz614{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:58vh;overflow-y:auto;overflow-x:hidden}.fz614 img,.fz614 svg{max-width:100%;height:auto}.fz614 b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.rare625 .fFish614 ellipse,.rare625 .fFish614 path{fill:#FFD84A!important;opacity:.95!important}
+.rare625 .fFish614{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #FFC400)}
+.rare625 .fScene614{box-shadow:0 0 0 4px #FFD84A,0 8px 30px rgba(0,0,0,.35)}
+.rareQ625 small{color:#B5701C!important;font-weight:900}.rareQ625 .fishIc614.shadow{filter:brightness(0) sepia(1) saturate(6) hue-rotate(5deg) brightness(1.4)!important;opacity:.9}
+.fGot614.rare img{filter:drop-shadow(0 0 10px #FFD84A)}.rare625b{position:absolute;left:20%;top:0;background:linear-gradient(90deg,#FFD84A,#FF9EB5);color:#7A3A00;border-radius:10px;padding:0 8px;font-size:13px}
+.rfx625{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(20,10,40,.55);animation:fadeIn .2s}
+.rfx625 img{position:relative;z-index:1;animation:bump .8s;filter:drop-shadow(0 0 16px #FFD84A)}
+.rfx625 b{position:relative;z-index:1;margin-top:10px;font-size:30px;font-weight:900;color:#FFE27A;-webkit-text-stroke:2px #8A4A00;paint-order:stroke}
+.rays625{position:absolute;width:160vmax;height:160vmax;background:repeating-conic-gradient(rgba(255,226,122,.35) 0 10deg,transparent 10deg 20deg);animation:spin625 6s linear infinite}
+@keyframes spin625{to{transform:rotate(360deg)}}.rfx625.out{opacity:0;transition:opacity .35s}
+.dlgCard.fz625{overflow-x:hidden;max-width:min(96vw,560px)}
+.fz614>div{display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2px solid #BFE3FB;border-radius:12px;padding:4px}
 .fishIc614.fl615{filter:brightness(0) opacity(.25)}.fishIc614.shadow{filter:brightness(0) opacity(.45) blur(1px)!important}
 .fz614>div.nf615{background:#F2EFEA;border-color:#E3DDD2}.fz614 b{font-size:13px}.fz614 small{font-size:10px;color:#6B5540}
 @media (max-width:600px){.fMsg614{font-size:12px;right:4%}.fWho614 b{font-size:10px}}`;
@@ -6749,7 +6776,7 @@ async function autoBat(){
     return hit(frac, r, st, null, false);
   }
   /* アウト */
-  const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing');
+  const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing'); try{ SFX625('swing'); }catch(e){}
   const pos = choice(['1B','2B','SS','3B','LF','CF','RF','P']), tg = FIELD_POS[pos];
   ball.style.transition = 'left .7s ease-out, top .7s ease-out'; Object.assign(ball.style, {left:tg[0]+'%', top:(tg[1]-3)+'%'});
   await W(700); if(!G) return; const f = G.el.querySelector(`.bbF618[data-pos="${pos}"]`); if(f){ f.classList.remove('hop'); void f.offsetWidth; f.classList.add('hop'); }
@@ -6791,7 +6818,7 @@ async function hit(frac, r, st, m, rev){
   const P = PITCH[m?.pitch || 'cv'], pt = m ? Math.max(1, Math.round(n*10*P.mul)) : 0; G.pts = (G.pts||0) + pt;
   if(fv) setTimeout(() => G && msg(`とくい教科で パワーアップ！ ${SUBJ_IC[m.subj]}`, 'run'), 1000);
   if(rev) label = 'リベンジ ' + label; else if(m?.weak) label = 'にがて こくふく！ ' + label;
-  const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing');
+  const bat = G.$('.bbBat618'); bat.classList.remove('swing'); void bat.offsetWidth; bat.classList.add('swing'); try{ SFX625('bat'); }catch(e){}
   const ball = G.$('.bbBall618'), side = Math.random()*2 - 1;
   const tgt = n===4 ? [50.9 + side*16, 8] : n===3 ? [50.9 + side*14, 26] : n===2 ? [50.9 + side*15, 33] : [50.9 + side*12, 42];
   ball.classList.add(n===4 ? 'hr' : 'fly'); void ball.offsetWidth;
@@ -6824,7 +6851,7 @@ async function homerun(){
   G.el.querySelector('.bbScene618').appendChild(ov); await W(2200); ov.classList.add('out'); await W(300); ov.remove();
 }
 async function strike(m, v){
-  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
+  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'}); setTimeout(() => { try{ SFX625('mitt'); }catch(e){} }, 320);
   G.strikes++; board(); msg(v==null ? '時間切れ… ストライク！' : 'ストライク！', 'k'); await W(900); if(!G) return;
   if(G.strikes < 3){ pitch(); return; }
   msg('さんしん…', 'k'); board(); await W(700); if(!G) return;
@@ -6833,7 +6860,7 @@ async function strike(m, v){
   G.revenge = {u:m.u, qg:m.qg}; G.strikes = 2; board(); msg('リベンジ打席！', 'big'); await W(1100); if(G) pitch();
 }
 async function revengeOut(m, v){
-  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
+  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'}); setTimeout(() => { try{ SFX625('mitt'); }catch(e){} }, 320);
   G.outs++; G.strikes = 0; G.bat++; board(); msg('アウト…', 'k'); await W(900); if(!G) return;
   await dialog(`<h2 class="dlgT">おしい！ こたえは <b>${X(m.ansF || m.ans)}</b></h2><p class="dlgP">この タイプの 問題は「にがてノート」に のこしたよ。<br>つぎの 試合で また 出るから、こんどこそ 打とう！</p>`, [{label:'つぎの バッターへ', cls:'gold', v:1}], 'wide');
   if(!G) return;
@@ -6841,7 +6868,7 @@ async function revengeOut(m, v){
   nextPA();
 }
 async function missOut(m, v){   // v6.22：問題は 1打席 1問。まちがえたら アウト（解説つき）
-  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'});
+  const ball = G.$('.bbBall618'); ball.style.transition = 'left .35s linear, top .35s linear'; Object.assign(ball.style, {left:FIELD_POS.C[0]+'%', top:(FIELD_POS.C[1]-2)+'%'}); setTimeout(() => { try{ SFX625('mitt'); }catch(e){} }, 320);
   G.outs++; G.strikes = 0; G.bat++; board(); msg(v==null ? '時間切れ… アウト' : 'さんしん… アウト', 'k'); await W(900); if(!G) return;
   await dialog(`<h2 class="dlgT">⚾ おしい！ いっしょに たしかめよう</h2>${explainHTML(m, v)}<p class="dlgP facNote">この 問題は「にがてノート」に のこしたよ。つぎの 試合で 出たら リベンジしよう！</p>`, [{label:'つぎへ', cls:'gold', v:1}], 'wide ex56Dlg');
   if(!G) return;
@@ -6995,5 +7022,62 @@ renderMap = (orig => function(){ try{ migrate(); cleanLots(); }catch(e){} return
 try{ migrate(); cleanLots(); }catch(e){}
 setInterval(() => { const t = save.town; if(curScreen==='town' && t && t.big623msg && !$('#dlg').classList.contains('show') && !document.hidden){ delete t.big623msg; persist();
   dialog(`<div class="dlgArt big">${picHTML(ITEM('tower'))}</div><h2 class="dlgT">📡 テレビとうが 大きく なったよ！</h2><p class="dlgP"><b>2×1マス</b>に なったので、いちど トレイ（もようがえ）に しまったよ。<br>2マス あいている ところに おきなおしてね（★は のこっているよ）。</p>`, [{label:'わかった！', cls:'gold', v:1}], 'wide'); } }, 3000);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   v6.25：効果音（WebAudio で つくる）・選択肢の はみだし・ショップの タブ・しゃかい3・4年 マスターの ごほうび
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.25.0';
+let AC = null; const ac = () => { if(!AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; } } if(AC.state==='suspended') AC.resume(); return AC; };
+const muted = () => !!(save.settings && (save.settings.mute || save.settings.sound===false || save.settings.se===false));
+function noise(c, t, dur, f, q, gain){ const n = c.createBuffer(1, Math.ceil(c.sampleRate*dur), c.sampleRate), d = n.getChannelData(0); for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/d.length, 3);
+  const s = c.createBufferSource(); s.buffer = n; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q; const g = c.createGain(); g.gain.value = gain; s.connect(bp); bp.connect(g); g.connect(c.destination); s.start(t); }
+function tone(c, t, f, dur, type='sine', gain=.2, f2){ const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if(f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .02); }
+window.SFX625 = function(kind){
+  if(muted()) return; const c = ac(); if(!c) return; const t = c.currentTime + .01;
+  if(kind==='bat'){ noise(c, t, .09, 2600, 1.2, 1.4); tone(c, t, 1200, .07, 'square', .12, 500); noise(c, t + .01, .25, 900, .8, .5); }      // カキーン
+  else if(kind==='swing'){ noise(c, t, .18, 1200, .7, .5); }
+  else if(kind==='mitt'){ noise(c, t, .06, 420, 1.5, 1.6); tone(c, t, 160, .09, 'sine', .35, 70); }                                        // バシッ
+  else if(kind==='hit'){ tone(c, t, 880, .08, 'triangle', .2); tone(c, t + .06, 1320, .1, 'triangle', .2); }
+  else if(kind==='fanfare'){ [[523,0],[659,.12],[784,.24],[1047,.38],[784,.56],[1047,.68]].forEach(([f,d]) => { tone(c, t + d, f, .3, 'triangle', .22); tone(c, t + d, f/2, .3, 'sine', .12); }); }
+};
+
+/* ---------- 選択肢の 文字が はみださない ---------- */
+const css = document.createElement('style');
+css.textContent = `.dlgCard #dlgBtns .btn{white-space:normal!important;word-break:normal;overflow-wrap:anywhere;line-height:1.25;min-width:0;max-width:100%;box-sizing:border-box}
+.dlgCard.quiz #dlgBtns .btn{font-size:clamp(13px,4.4vw,20px);padding:10px 6px}
+.dlgCard.quiz #dlgBtns .btn.long625{font-size:clamp(12px,3.6vw,16px)}
+.bbOpts618 button{overflow-wrap:anywhere;line-height:1.25}.bbOpts618 button.long625{font-size:13px}
+@media (max-width:600px){
+  #shopTabs{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:4px;padding:4px!important;margin-bottom:8px!important}
+  #shopTabs::-webkit-scrollbar{display:none}
+  #shopTabs button{flex:none;font-size:0!important;padding:5px 7px!important;gap:0!important;flex-direction:column}
+  #shopTabs button img{width:30px!important;height:30px!important;margin:0!important}
+  #shopTabs button.on{font-size:10px!important;padding:5px 9px!important}
+  #shopTabs button[data-v="ev"]{font-size:22px!important;line-height:30px}
+  #shopTabs button[data-v="ev"].on{font-size:10px!important;line-height:1.2}
+}`;
+document.head.appendChild(css);
+const longify = () => document.querySelectorAll('.dlgCard.quiz #dlgBtns .btn, .bbOpts618 button').forEach(b => b.classList.toggle('long625', (b.textContent||'').trim().length > 9));
+new MutationObserver(longify).observe(document.body, {childList:true, subtree:true});
+
+/* ---------- しゃかい 3・4年を ぜんぶ マスター → 超レアかくていレター＋10,000pt ---------- */
+async function checkSoc34(){
+  if(!save || save.socMaster34) return;
+  const ks = Object.keys(SOC_LV).filter(k => SOC_LV[k]===1 && MATH_UNITS[k]); if(!ks.length) return;
+  if(!ks.every(k => unitStar(k) >= 3)) return;
+  save.socMaster34 = dayKey(); save.superLetter = (save.superLetter||0) + 1; const p = givePts(10000, 'しゃかい 3・4年 ぜんぶ マスター'); persist();
+  confetti(3500); SFX625('fanfare');
+  await dialog(`<div class="dlgArt big"><img src="${esc(artSrc('itm_superletter'))}" alt=""></div><h2 class="dlgT">🗾 しゃかい 3・4年 ぜんぶ マスター！</h2>
+    <p class="dlgP">${ks.length}この たんげんを ぜんぶ マスターしたよ！<br><b>超レアかくていレター 1まい</b> と <span class="coin sm">P</span> <b>${nf(p)}</b> を もらったよ！</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+}
+window.__soc34 = checkSoc34;
+show = (orig => function(name){ const o = orig.apply(this, arguments); if(name==='soc' || name==='home' || name==='subject') setTimeout(() => { try{ checkSoc34(); }catch(e){} }, 600); return o; })(show);
+try{ renderSoc = (orig => function(){ const o = orig.apply(this, arguments); try{ const ks = Object.keys(SOC_LV).filter(k => SOC_LV[k]===1 && MATH_UNITS[k]), n = ks.filter(k => unitStar(k) >= 3).length;
+  if(!save.socMaster34 && $('#sUnits') && !$('#sUnits .soc34')) $('#sUnits').insertAdjacentHTML('afterbegin', `<div class="soc34 note">🎁 3・4年の たんげんを ぜんぶ ★3（マスター）に すると 超レアかくていレター＋10,000pt！（${n}/${ks.length}）</div>`); }catch(e){} return o; })(renderSoc); }catch(e){}
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 })();
