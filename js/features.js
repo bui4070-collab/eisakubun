@@ -7670,3 +7670,918 @@ document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 try{ if(typeof curScreen!=='undefined' && curScreen==='town') renderTown(); }catch(e){}
 })();
+
+/* =====================================================================
+   まなびタウン v6.31：がっこう・だいがく（仕様書 v0.2 の STEP1〜3）
+   ・がっこう：1じゅぎょう5問（かんたん／ふつう／むずかしい）、ヒントで さいちょうせん、
+              「わかった！」、★、ほうしゅうの 上限、ミッション、スタンプ・かいきん賞・ふくびき、
+              しゅっせき・お休みチケット、つうしんぼ、にがてノート、バッジ、きずな・おねがい、こんしゅうの 目標
+   ・だいがく：体験入学、入学試験、9テーマ（いまの 問題を つかう）、3ステージの 研究、
+              ひらめきライフ、レベル（ベーシック／アドバンス／マスター）、学位、チェイン、おすすめテーマ
+   ※ 研究ノート（カード）・レシピ・ひみつ報酬・がっかい・新しい問題は STEP4〜5 で ついか
+   ===================================================================== */
+(function(){
+'use strict';
+const resBy = id => (save.town?.res || []).find(r => r.id===id);
+const VER = '6.31.0', IMG = './assets/images/v631/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt = n => (typeof nf==='function' ? nf(n) : String(n));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- 調整用パラメータ（6-2） ---------- */
+const CFG = {
+  dayHour:4, cryDay:3,
+  coin:{easy:5, normal:10, hard:15}, mul:{easy:.5, normal:1, hard:1.5},
+  fullClass:3, overMul:.2, hintMul:.5, wakatta:2, revenge:20,
+  kaikin:50, mission:10, chest:40, ticketMax:2,
+  badge:[{n:'ブロンズ', ic:'🥉'}, {n:'シルバー', ic:'🥈', st:60, d:7, rew:300}, {n:'ゴールド', ic:'🥇', st:250, d:30, each:20, rew:1000}, {n:'にじいろ', ic:'🌈', st:800, d:100, each:100, rew:0}],
+  attendRew:{3:{pt:30}, 7:{pt:100, cry:1, b:'いっしゅうかん'}, 14:{pt:150, fuku:1}, 30:{pt:500, deco:1, b:'ひとつき'}, 50:{pt:800, fuku:3}, 100:{deco:1, t:'かいきん', b:'ひゃくにち'}},
+  bondLv:[0,10,30,60,100],
+  fullRes:3, life:3, degPt:[10,20,40], resCoin:[30,60,120], resCry:[.1,.3,1], noMiss:1.5, daiP:.05, chain:[1,1.1,1.2], recoMul:1.3,
+  adv:{n:5, days:3, wait:7}, mas:{n:10, days:10, wait:30},
+  degree:[{n:'がくせい'}, {n:'学士', pt:150, d:7, rew:500}, {n:'修士', pt:800, d:30, adv:1, rew:2000}, {n:'博士', pt:3000, d:100, mas:3, rew:0}],
+  stageSec:[60,50,40]
+};
+
+/* ---------- 日づけ（午前4時で きりかえ） ---------- */
+const D4 = () => dayKey(new Date(Date.now() - CFG.dayHour*3600e3));
+const dnum = d => Math.round(new Date(d + 'T12:00:00').getTime() / 864e5);
+const addDay = (d, n) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() + n); return dayKey(t); };
+const wkOf = d => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() - (t.getDay() + 6) % 7); return dayKey(t); };
+const wday = d => new Date(d + 'T12:00:00').getDay();
+
+/* ---------- セーブ ---------- */
+function SV(){
+  const s = save.sch631 || (save.sch631 = {});
+  s.stars = s.stars || {}; s.wk = s.wk || {}; s.acc = s.acc || {}; s.bond = s.bond || {}; s.notes = s.notes || [];
+  s.recent = s.recent || {}; s.got = s.got || {}; s.titles = s.titles || []; s.badges = s.badges || [];
+  if(s.attend==null){ s.attend = 0; s.streak = 0; s.last = ''; s.tickets = 0; s.badge = 0; s.grad = 0; s.fuku = 0; s.wkDays = {}; s.gradWk = {}; }
+  return s;
+}
+function UV(){
+  const u = save.uni631 || (save.uni631 = {});
+  if(u.th == null){ u.th = {}; u.enrolled = 0; u.degPt = 0; u.degree = 0; u.days = 0; u.lastDay = ''; u.frag = 0; u.tickets = 0; u.total = 0; u.partner = ''; }
+  return u;
+}
+function DL(){
+  const d = D4(); let L = save.dl631;
+  if(!L || L.d !== d){ L = save.dl631 = {d, cry:0, cnt:{}, best:{}, bond:{}, res:0, chain:[], trial:0, exam:0, mis:null, kaikin:0, friend:0, combo3:0, rev:0, wak:0}; }
+  return L;
+}
+/* 日づけを もどしても 二重に もらえない */
+function dayOK(){ const s = SV(), d = D4(); if(s.maxDay && d < s.maxDay) return false; s.maxDay = d; return true; }
+function giveCry(){ const L = DL(); if(L.cry >= CFG.cryDay) return false; L.cry++; save.crystal = (save.crystal||0) + 1; return true; }
+const pts = (p, why) => p > 0 ? givePts(Math.round(p), why) : 0;
+
+/* ---------- 教科 ---------- */
+const SUBJ = {jp:'こくご', math:'さんすう', sci:'りか', soc:'しゃかい', en:'えいご'};
+const SUBJ_IC = {jp:'📖', math:'🔢', sci:'🔬', soc:'🗾', en:'🔤'};
+const SUBJ_C = {jp:'#E8606A', math:'#3D8BE0', sci:'#3BAF6A', soc:'#E79A2B', en:'#9A6AD8'};
+const SK = Object.keys(SUBJ);
+const userG = () => Number(save.settings?.grade56 || 0) || 3;
+const ug = u => { try{ return window.__v57 ? window.__v57.unitGrade(u) : 0; }catch(e){ return 0; } };
+const subjOf = u => { const g = MATH_UNITS[u]?.g; return typeof g==='number' || g==='low' ? 'math' : g==='sci' ? 'sci' : g==='soc' ? 'soc' : g==='bun' ? 'jp' : g==='ek' ? 'en' : g==='prog' ? 'prog' : null; };
+let POOL = null;
+const pool = () => POOL || (POOL = Object.keys(MATH_UNITS).filter(u => subjOf(u) && subjOf(u)!=='prog' && ug(u) > 0 && u!=='ek_listen'));
+function near(subj, T, hard){
+  for(const tol of [.6, 1.1, 1.6, 2.6, 9]){
+    const L = pool().filter(u => subjOf(u)===subj && Math.abs(ug(u) - T) <= tol && (!hard || ug(u) >= T - .6));
+    if(L.length) return L;
+  }
+  return pool().filter(u => subjOf(u)===subj);
+}
+function genU(u){
+  for(let t=0; t<8; t++){ let m = null; try{ m = mqFromP(MATH_UNITS[u].gen(), u); }catch(e){}
+    if(m && m.opts && m.opts.length >= 2){ m.u = u; m.qg = ug(u); m.subj = subjOf(u); return m; } }
+  return null;
+}
+function genK(q){ const m = kanjiMQ(q, false); if(!m) return null; m.u = 'kanji'; m.kid = q.id; m.kq = q; m.qg = q.grade || 3; m.subj = 'jp'; m.key = 'k:' + q.id; return m; }
+const kanjiNear = T => { for(const tol of [.6, 1.1, 2.1, 9]){ const L = BUILTIN.filter(q => Math.abs((q.grade||3) - T) <= tol); if(L.length) return L; } return BUILTIN; };
+const isRecent = (k, used) => { if(!k) return false; if(used && used.has(k)) return true; const d = SV().recent[k]; return d && dnum(D4()) - dnum(d) < 3; };
+const rich = m => /<svg|<img|<table/.test(m.html) || String(m.html).replace(/<[^>]+>/g,'').length > 38;
+function subjQ(subj, T, used, hard){
+  let best = null;
+  for(let t=0; t<30; t++){
+    let m = null;
+    if(subj==='jp' && (Math.random() < .55 || !near('jp', T).length)) m = genK(choice(kanjiNear(T)));
+    else { const L = near(subj, T, hard); if(L.length) m = genU(choice(L)); }
+    if(!m) continue;
+    if(isRecent(m.key, used) && t < 24) continue;
+    if(hard && !rich(m) && t < 12){ best = best || m; continue; }
+    return m;
+  }
+  return best || genK(choice(BUILTIN));
+}
+function expl(m, v){
+  try{ if(m.kq) return window.__explain56({}, '', {kq:m.kq, kind:'read'}); if(m.p56) return window.__explain56(m.p56, v, {}); }catch(e){}
+  return `<p class="dlgP">こたえは <b>${X(m.ansF || m.ans)}</b></p>`;
+}
+function noteRecent(m){ const s = SV(); if(m.key) s.recent[m.key] = D4();
+  const lim = dnum(D4()) - 4; Object.keys(s.recent).forEach(k => { if(dnum(s.recent[k]) < lim) delete s.recent[k]; }); }
+
+/* ---------- 住民 ---------- */
+const RES = () => (save.town?.res || []).filter(r => !SP(r.sp).human && (SP(r.sp).img || artSrc(SP(r.sp).art)));
+const rsrc = r => SP(r.sp).img || artSrc(SP(r.sp).art) || '';
+function fav(r){ if(!r.favSubject || !SUBJ[r.favSubject]){ r.favSubject = choice(SK); } return r.favSubject; }
+const bondPt = id => SV().bond[id] || 0;
+const bondLv = id => { const p = bondPt(id); let l = 1; CFG.bondLv.forEach((v,i) => { if(p >= v) l = i + 1; }); return l; };
+function addBond(id, n, capDay){
+  const s = SV(), L = DL(); const before = bondLv(id);
+  if(capDay){ const c = L.bond[id] || 0; n = Math.max(0, Math.min(n, 2 - c)); L.bond[id] = c + n; }
+  s.bond[id] = (s.bond[id]||0) + n;
+  const after = bondLv(id), out = [];
+  if(after >= 3 && !s.got['g3_'+id]){ s.got['g3_'+id] = 1; out.push({id, gift:50}); }
+  if(after > before) out.push({id, lv:after});
+  return out;
+}
+function mates(){
+  const L = DL(), all = RES();
+  if(!L.mates || L.mates.some(id => !all.some(r => r.id===id))){
+    const n = Math.min(all.length, 3 + (Math.random() < .5 ? 1 : 0) + (all.length >= 8 ? 1 : 0));
+    const top = all.slice().sort((a,b) => bondPt(b.id) - bondPt(a.id)).filter(r => bondPt(r.id) > 0).slice(0, 2);
+    const rest = shuffle(all.filter(r => !top.includes(r)));
+    L.mates = top.concat(rest).slice(0, n).map(r => r.id);
+  }
+  return L.mates.map(resBy).filter(Boolean);
+}
+function teacherFor(subj){
+  const all = RES(); if(!all.length) return null;
+  const f = all.filter(r => fav(r)===subj), p = f.filter(r => bondLv(r.id) >= 4);
+  return choice(p.length ? p : f.length ? f : all);
+}
+const LINES = {
+  1:['きょうも がんばろうね！','いっしょに まなぼう','どの きょうかから やる？'],
+  2:['きみと いっしょだと たのしいな','この まえの もんだい むずかしかったね','ノート みせっこ しよう！'],
+  3:['きみの おかげで わかるように なったよ','せきがえで となりに なれたね！','あしたも いっしょに こようね'],
+  4:['せんせいやく、まかせて！','きみの ★の かず、すごいね','わからない ところ おしえてあげる'],
+  5:['ずっと ともだちだよ！','まちで おれいを わたすね','きみと まなぶのが いちばん たのしい！']
+};
+const sayOf = r => speak(r, choice(LINES[bondLv(r.id)] || LINES[1]));
+
+/* ---------- がっこう：毎日の しかけ ---------- */
+function special(d){ const w = wday(d); if(w>=1 && w<=5) return ['jp','math','sci','soc','en'][w-1];
+  const s = SV(), pw = s.wk[addDay(wkOf(d), -7)] || {}; return SK.slice().sort((a,b) => (pw[a]||0) - (pw[b]||0))[0]; }
+function missions(){
+  const L = DL(); if(L.mis) return L.mis;
+  const sp = special(L.d), hasN = SV().notes.length > 0;
+  L.mis = {list:[{id:'sp', t:`${SUBJ[sp]}で ★2を とろう`}, hasN ? {id:'rev', t:'にがてリベンジを 1もん せいかい'} : {id:'c3', t:'れんぞくで 3もん せいかい'}, {id:'two', t:'2つの きょうかで じゅぎょう'}], done:[0,0,0], chest:0};
+  return L.mis;
+}
+function checkMissions(){
+  const L = DL(), M = missions(), sp = special(L.d), got = [];
+  M.list.forEach((m, i) => { if(M.done[i]) return;
+    const ok = m.id==='sp' ? (L.best[sp]||0) >= 2 : m.id==='rev' ? L.rev > 0 : m.id==='c3' ? L.combo3 > 0 : Object.keys(L.cnt).length >= 2;
+    if(ok){ M.done[i] = 1; got.push(m); } });
+  return got;
+}
+function weekTick(){
+  const s = SV(), w = wkOf(D4());
+  if(s.tkWk !== w){ s.tkWk = w; s.tickets = Math.min(CFG.ticketMax, (s.tickets||0) + 1); }
+  if(!s.goal || s.goal.wk !== w) s.goal = {wk:w, g:'', done:0};
+  if(!s.req || s.req.wk !== w){ const r = choice(RES()); if(r){ const sb = choice(SK.filter(k => k !== fav(r))); s.req = {wk:w, rid:r.id, subj:sb, done:0}; } }
+}
+const wkStars = (w) => SK.reduce((a,k) => a + ((SV().wk[w]||{})[k]||0), 0);
+function goalProg(){
+  const s = SV(), G = s.goal; if(!G || !G.g) return null; const w = G.wk;
+  if(G.g==='days') return [Object.keys(s.wkDays).filter(d => wkOf(d)===w).length, 5, 'きょうしつに くる', 'にち'];
+  if(G.g==='stars') return [wkStars(w), 15, '★を あつめる', 'こ'];
+  return [(s.gradWk[w]||0), 3, 'にがてを そつぎょう', 'こ'];
+}
+function checkGoal(){ const s = SV(), G = s.goal, p = goalProg(); if(!G || G.done || !p || p[0] < p[1]) return false; G.done = 1; return true; }
+function attend(){
+  const s = SV(), d = D4(); if(s.last === d) return null;
+  let msg = '';
+  if(s.last){ const gap = dnum(d) - dnum(s.last) - 1;
+    if(gap <= 0) s.streak++;
+    else if(gap <= (s.tickets||0)){ s.tickets -= gap; s.streak++; msg = 'おかえり！ チケットで れんぞくを まもったよ'; }
+    else s.streak = 1;
+  } else s.streak = 1;
+  s.last = d; s.attend++; s.wkDays[d] = 1;
+  Object.keys(s.wkDays).forEach(k => { if(dnum(d) - dnum(k) > 21) delete s.wkDays[k]; });
+  const R = CFG.attendRew[s.attend]; return {msg, rew:R ? Object.assign({n:s.attend}, R) : null};
+}
+function decoItem(rainbow){
+  const lv = (save.town?.lv||0) + 1;
+  const L = TOWN_ITEMS.filter(i => i.cat==='deco' && !i.ev && (i.lv||1) <= lv + 2 && (i.price||0) >= (rainbow ? 600 : 150));
+  const it = choice(L.length ? L : TOWN_ITEMS.filter(i => i.cat==='deco' && !i.ev)); if(!it) return null;
+  save.town.inv[it.id] = (save.town.inv[it.id]||0) + 1; return it;
+}
+function badgeNext(){
+  const s = SV(), b = CFG.badge[s.badge + 1]; if(!b) return null;
+  const tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
+  const each = b.each ? SK.filter(k => (s.stars[k]||0) < b.each) : [];
+  return {b, tot, needSt:Math.max(0, b.st - tot), needD:Math.max(0, b.d - s.attend), each, ok:tot >= b.st && s.attend >= b.d && !each.length};
+}
+function fukubiki(){
+  const r = Math.random(); let out;
+  if(r < .5) out = {t:'コイン 100', pt:100};
+  else if(r < .8) out = {t:'コイン 200', pt:200};
+  else if(r < .95){ const it = decoItem(false); out = it ? {t:`まちの かざり「${it.name}」`, it} : {t:'コイン 200', pt:200}; }
+  else out = giveCry() ? {t:'すいしょう 1こ', cry:1} : {t:'コイン 200', pt:200};
+  if(out.pt) pts(out.pt, 'がっこうの ふくびき');
+  return out;
+}
+
+/* ---------- にがてノート ---------- */
+function addNote(m, mark){
+  const s = SV(), k = m.u==='kanji' ? 'k:' + m.kid : 'u:' + m.u;
+  let n = s.notes.find(x => x.key===k);
+  if(!n){ n = {key:k, subj:m.subj, u:m.u, kid:m.kid||null, ok:[], add:D4()}; s.notes.unshift(n); if(s.notes.length > 100) s.notes.length = 100; }
+  n.mark = mark || n.mark || 'u'; n.add = D4();
+  return n;
+}
+function pickNote(subj){
+  const s = SV(), d = D4();
+  const L = s.notes.filter(n => n.subj===subj && n.add !== d && !n.ok.includes(d));
+  if(!L.length) return null;
+  return L.sort((a,b) => (b.mark==='k') - (a.mark==='k') || a.ok.length - b.ok.length)[0];
+}
+function noteQ(n){ if(n.u==='kanji'){ const q = BUILTIN.find(x => x.id===n.kid); return q ? genK(q) : null; } return MATH_UNITS[n.u] ? genU(n.u) : null; }
+function noteOK(n){
+  const s = SV(), d = D4(); if(!n.ok.includes(d)) n.ok.push(d);
+  if(n.ok.length >= 3){ s.notes = s.notes.filter(x => x !== n); s.grad = (s.grad||0) + 1; const w = wkOf(d); s.gradWk[w] = (s.gradWk[w]||0) + 1;
+    const M = {10:100, 50:500, 100:1000}[s.grad]; return {grad:true, mile:M ? {n:s.grad, pt:M} : null}; }
+  return {grad:false};
+}
+
+/* =====================================================================
+   画面（オーバーレイ）
+   ===================================================================== */
+let ROOT = null, CUR = null, KEY = null, busy = false;
+function root(){
+  if(ROOT && document.body.contains(ROOT)) return ROOT;
+  ROOT = document.createElement('div'); ROOT.id = 'sc631'; document.body.appendChild(ROOT);
+  ROOT.addEventListener('click', onClick);
+  return ROOT;
+}
+function close(){ if(ROOT){ ROOT.classList.remove('show'); setTimeout(() => { if(ROOT && !ROOT.classList.contains('show')){ ROOT.remove(); ROOT = null; } }, 250); } CUR = null; document.body.classList.remove('sc631on'); try{ persist(); }catch(e){} }
+function open(kind, key){ KEY = key; CUR = kind; root(); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain(); }
+function stage(bg, list, opt={}){
+  const pos = opt.pos || [[14,88],[33,95],[67,95],[86,88],[50,82]];
+  return `<div class="stg631 ${opt.cls||''}"><img class="bg" src="${IMG}${bg}.webp" alt="">
+    ${list.slice(0, pos.length).map((r, i) => `<button type="button" class="who631 ${opt.bounce ? 'hop' : ''}" data-who="${X(r.id)}" style="left:${pos[i][0]}%;top:${pos[i][1]}%;animation-delay:${(i*.37).toFixed(2)}s">
+      <img src="${X(rsrc(r))}" alt="">${opt.prop ? `<i class="prop631">${opt.prop(r, i)}</i>` : ''}${bondLv(r.id) >= 2 && !opt.noLv ? `<em class="bl631">💗${bondLv(r.id)}</em>` : ''}</button>`).join('')}
+    ${opt.extra || ''}</div>`;
+}
+function bubble(el, txt){
+  ROOT.querySelectorAll('.bub631').forEach(b => b.remove());
+  el.insertAdjacentHTML('beforeend', `<span class="bub631">${X(txt)}</span>`);
+  setTimeout(() => el.querySelector('.bub631')?.remove(), 2600);
+}
+const stars = (n, max=3) => '<span class="st631">' + Array.from({length:max}, (_, i) => `<i class="${i < n ? 'on' : ''}">★</i>`).join('') + '</span>';
+const bar = (a, b, cls='') => `<span class="bar631 ${cls}"><i style="width:${Math.min(100, b ? a/b*100 : 100)}%"></i></span>`;
+
+/* ---------- クリック ---------- */
+let ST = {subj:null, diff:null};
+async function onClick(e){
+  const t = e.target.closest('[data-a],[data-who],[data-subj],[data-diff],[data-th],[data-lv]'); if(!t || busy) return;
+  if(t.dataset.who){ const r = resBy(t.dataset.who); if(r) bubble(t, CUR==='uni' ? speak(r, choice(['この データ、おもしろい！','つぎの はっけんは なにかな','いっしょに けんきゅう しよう！','ひらめいた かも…！'])) : sayOf(r)); return; }
+  if(t.dataset.subj){ ST.subj = t.dataset.subj; sound('ok'); schoolMain(); return; }
+  if(t.dataset.diff){ ST.diff = t.dataset.diff; SV().lastDiff = ST.diff; sound('ok'); schoolMain(); return; }
+  if(t.dataset.th){ UT.th = t.dataset.th; sound('ok'); uniMain(); return; }
+  if(t.dataset.lv){ UT.lv = +t.dataset.lv; sound('ok'); uniMain(); return; }
+  const a = t.dataset.a;
+  busy = true;
+  try{
+    if(a==='close') close();
+    else if(a==='start') await runClass(ST.subj, ST.diff);
+    else if(a==='cal') await calendar();
+    else if(a==='mis') await misInfo();
+    else if(a==='chest') await openChest();
+    else if(a==='fuku') await doFuku();
+    else if(a==='notes') await notesView();
+    else if(a==='goal') await goalView();
+    else if(a==='req') await reqView();
+    else if(a==='badge') await badgeView();
+    else if(a==='grade'){ const k = KEY; close(); setTimeout(() => openBuilding(k), 300); }
+    else if(a==='touni'){ const k = (save.town && Object.keys(save.town.cells).find(k => save.town.cells[k]==='bg_university')); if(k){ KEY = k; CUR = 'uni'; uniMain(); } else await dialog(`<h2 class="dlgT">🎓 だいがく</h2><p class="dlgP">まちに「だいがく」を たてると かよえるよ。<br>（ショップ → たてもの、まちレベル12から）</p>`, [{label:'わかった', cls:'gold', v:1}]); }
+    else if(a==='toschool'){ CUR = 'school'; schoolMain(); }
+    else if(a==='trial') await trial();
+    else if(a==='exam') await exam();
+    else if(a==='rstart') await runResearch(UT.th, UT.lv);
+    else if(a==='deg') await degreeView();
+    else if(a==='partner') await pickPartner();
+  } finally { busy = false; }
+}
+
+/* ---------- がっこう：メイン ---------- */
+function schoolMain(){
+  if(!ROOT) return; const s = SV(), L = DL(); weekTick(); missions(); checkMissions();
+  const sp = special(L.d), M = missions(), bn = badgeNext();
+  if(!ST.diff) ST.diff = s.lastDiff || 'normal';
+  const stamps = SK.filter(k => (L.best[k]||0) >= 1).length;
+  const rec = {easy:'normal', normal:'hard'};
+  const recoDiff = ST.subj && (L.best[ST.subj]||0) >= 3 && rec[s.lastDiff] ? rec[s.lastDiff] : null;
+  const ml = mates();
+  /* 友だち（きずなLv5）の おれい */
+  if(!L.friend){ const fr = RES().filter(r => bondLv(r.id) >= 5); L.friend = 1; if(fr.length){ pts(20 * fr.length, 'ともだちの おれい'); setTimeout(() => toast(`💗 ともだちから おれい +${20*fr.length}`), 400); } }
+  const subjBtn = k => { const b = L.best[k]||0, n = L.cnt[k]||0, glow = stamps===4 && b < 1;
+    return `<button type="button" class="sb631 ${ST.subj===k ? 'on' : ''} ${glow ? 'glow' : ''}" data-subj="${k}" style="--c:${SUBJ_C[k]}">
+      ${k===sp ? '<em class="rib631">×1.5</em>' : ''}<span class="ic">${SUBJ_IC[k]}</span><b>${SUBJ[k]}</b>${stars(b)}<small>${n >= CFG.fullClass ? 'れんしゅう' : `${n}/${CFG.fullClass}`}</small>${b >= 1 ? '<i class="stamp631">✔</i>' : ''}</button>`; };
+  const D = {easy:['かんたん','🌱'], normal:['ふつう','⭐'], hard:['むずかしい','🔥']};
+  const base = CFG.coin[ST.diff] || 10, mul = (ST.subj===sp ? 1.5 : 1);
+  const pm = ST.subj && (L.cnt[ST.subj]||0) >= CFG.fullClass;
+  ROOT.innerHTML = `<div class="wrap631 school">
+    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><b>🏫 がっこう</b><small>${dayOK() ? (special(L.d)===sp ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '') : '⚠️ 日づけが もどっているよ'}</small></div>
+      <button type="button" class="stk631" data-a="cal"><b>🔥 れんぞく ${s.streak||0}にち</b><small>🎫×${s.tickets||0}</small></button></header>
+    ${stage('bg_school', ml, {})}
+    <div class="mis631" data-a="mis">${M.list.map((m,i) => `<span class="${M.done[i] ? 'ok' : ''}"><i>${M.done[i] ? '✓' : ''}</i>${X(m.t)}</span>`).join('')}
+      <button type="button" class="chest631 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${M.chest ? '📭' : '🎁'}</button></div>
+    <div class="sec631"><div class="h631">きょうの じゅぎょう <small>スタンプ ${stamps}/5${stamps===4 ? ' <b class="hot">あと1つで かいきん賞！</b>' : stamps===5 ? ' 🏅 かいきん賞！' : ''}</small></div>
+      <div class="sbs631">${SK.map(subjBtn).join('')}</div></div>
+    <div class="sec631"><div class="h631">ちょうせんする もんだい</div>
+      <div class="dfs631">${Object.entries(D).map(([k,[n,ic]]) => `<button type="button" class="df631 ${ST.diff===k ? 'on' : ''}" data-diff="${k}">${recoDiff===k ? '<em class="rib631 g">おすすめ</em>' : ''}<span>${ic}</span><b>${n}</b><small>1もん ${CFG.coin[k]}コイン${k==='easy' ? '・★1まで' : ''}</small></button>`).join('')}</div></div>
+    <div class="rw631">もらえる ごほうび：🪙 ${pm ? `れんしゅう（×${CFG.overMul}）` : `〜${Math.round((base*5 + (ST.diff==='easy' ? 0 : 10)) * mul)}`}${ST.diff==='hard' ? '・ちょうせん成功 +30' : ''}　${ST.diff!=='easy' ? `💎 ★3で ${ST.diff==='hard' ? '50' : '20'}%` : ''}　💗 きずな</div>
+    <button type="button" class="bdg631" data-a="badge">${CFG.badge[s.badge].ic} ${CFG.badge[s.badge].n}バッジ　${bn ? `つぎの ${bn.b.n}まで ${bn.needSt ? `★${bn.needSt}こ` : '★OK'}／${bn.needD ? `あと${bn.needD}にち` : '日数OK'}${bn.each.length ? `／${bn.each.map(k => SUBJ[k]).join('・')} ★${bn.b.each}` : ''}` : 'さいこうの バッジ！'}</button>
+    <button type="button" class="go631" data-a="start" ${ST.subj && ST.diff ? '' : 'disabled'}>${ST.subj ? `✏️ ${SUBJ[ST.subj]}の じゅぎょうを はじめる！` : 'きょうかを えらんでね'}</button>
+    <div class="tools631">
+      <button type="button" data-a="fuku" ${s.fuku ? '' : 'class="off"'}>🎟 ふくびき<b>${s.fuku||0}</b></button>
+      <button type="button" data-a="notes">📒 にがて<b>${s.notes.length}</b></button>
+      <button type="button" data-a="goal">🎯 しゅうの 目標${s.goal?.done ? '<b>✓</b>' : !s.goal?.g ? '<b class="red">!</b>' : ''}</button>
+      <button type="button" data-a="req">💌 おねがい${s.req && !s.req.done ? '<b class="red">!</b>' : ''}</button>
+      <button type="button" data-a="touni">🎓 だいがく</button>
+      <button type="button" data-a="grade">⬆ たてもの</button>
+    </div></div>`;
+  persist();
+  /* 週の はじめ：つうしんぼ・目標 */
+  if(!busy) setTimeout(weekStart, 350);
+}
+async function weekStart(){
+  const s = SV(), w = wkOf(D4()); if(busy || CUR!=='school') return;
+  const pw = addDay(w, -7);
+  if(s.repWk !== w && (s.wk[pw] || s.acc[pw])){ s.repWk = w; busy = true; try{ await report(pw); } finally { busy = false; } }
+  else s.repWk = s.repWk || w;
+  if(s.goal && !s.goal.g && !s.goal.asked){ s.goal.asked = 1; persist(); busy = true; try{ await goalView(); } finally { busy = false; } }
+}
+async function report(pw){
+  const s = SV(), cur = s.wk[pw] || {}, prev = s.wk[addDay(pw, -7)] || {};
+  const lab = n => n >= 9 ? 'たいへん よくできました' : n >= 4 ? 'よくできました' : 'がんばろう';
+  const acc = k => { const a = (s.acc[pw]||{})[k], b4 = [14,21,28].map(n => (s.acc[addDay(pw, -n)]||{})[k]).find(Boolean); return a && a[1] && b4 && b4[1] ? `${Math.round(b4[0]/b4[1]*100)}% → ${Math.round(a[0]/a[1]*100)}%` : ''; };
+  const t = teacherFor(SK.slice().sort((a,b) => ((cur[b]||0)-(prev[b]||0)) - ((cur[a]||0)-(prev[a]||0)))[0]);
+  const rows = SK.map(k => { const n = cur[k]||0, up = n - (prev[k]||0);
+    return `<tr><th>${SUBJ_IC[k]} ${SUBJ[k]}</th><td>★${n}</td><td>${lab(n)}${up > 0 ? `<b class="up631">+${up} ふえたよ！</b>` : ''}${acc(k) ? `<small>${acc(k)}</small>` : ''}</td></tr>`; }).join('');
+  await dialog(`<h2 class="dlgT">📗 つうしんぼ</h2><table class="rep631">${rows}</table>
+    ${t ? `<div class="talkBubble"><b>${X(t.name)}せんせい</b>${X(speak(t, 'こんしゅうも いっしょに がんばろうね！'))}</div>` : ''}`, [{label:'こんしゅうも がんばる！', cls:'gold', v:1}], 'wide');
+}
+
+/* ---------- じゅぎょう ---------- */
+function qPanel(head, body){
+  const p = ROOT.querySelector('.qz631') || (() => { ROOT.innerHTML = `<div class="wrap631 quiz"><div class="qz631"></div></div>`; return ROOT.querySelector('.qz631'); })();
+  p.innerHTML = head + body; ROOT.scrollTop = 0; return p;
+}
+/* 1もん：mode 'school'（ヒントで もういちど）／'one'（1かいだけ） */
+function askQ(m, head, mode, opt={}){
+  return new Promise(res => {
+    const ans = m.ansF || m.ans; let tries = 0, removed = new Set(opt.removed || []), timer = null, left = opt.sec || 0;
+    const draw = (hint) => {
+      const p = qPanel(head, `<div class="qq631">${m.html}</div>${m.say && typeof sayBtn==='function' ? sayBtn(m.say) : ''}
+        ${hint ? `<div class="hint631">💡 ${hint}</div>` : ''}
+        ${opt.sec ? `<div class="tm631"><i style="width:${left/opt.sec*100}%"></i><b>⏱ ${left}びょう</b></div>` : ''}
+        <div class="ops631">${m.opts.map(o => `<button type="button" class="op631" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
+        ${opt.tool ? `<div class="qt631">${opt.tool()}</div>` : ''}`);
+      p.querySelectorAll('.op631').forEach(b => b.onclick = () => pick(b.dataset.o, b));
+      p.querySelectorAll('[data-qt]').forEach(b => b.onclick = () => { const r = opt.onTool && opt.onTool(b.dataset.qt, m); if(r){ r.forEach(o => removed.add(o)); draw(hint); } });
+    };
+    const finish = (out) => { clearInterval(timer); res(out); };
+    let lock = false;
+    const pick = (v, btn) => {
+      if(lock) return; lock = true;
+      if(v==null){ sound('ng'); return finish({ok:false, timeout:true, v:''}); }
+      const ok = v===ans; tries++;
+      const tr = tries;
+      if(ok){ sound('ok'); btn && btn.classList.add('ok'); setTimeout(() => finish({ok:true, tries:tr, v}), 450); clearInterval(timer); return; }
+      sound('ng'); btn && btn.classList.add('ng');
+      if(mode==='school' && tries===1){ removed.add(v);
+        const h = m.hint || 'もんだいを もういちど ゆっくり よんでみよう。こたえの こうほが 1つ へったよ';
+        setTimeout(() => { lock = false; draw(`おしい！ ヒントを みて もういちど かんがえてみよう<br><small>${X(h)}</small>`)}, 500); return; }
+      clearInterval(timer); setTimeout(() => finish({ok:false, tries:tr, v}), 450);
+    };
+    draw('');
+    if(opt.sec){ timer = setInterval(() => { left--; const tm = ROOT && ROOT.querySelector('.tm631'); if(tm){ tm.querySelector('i').style.width = (left/opt.sec*100) + '%'; tm.querySelector('b').textContent = `⏱ ${Math.max(0,left)}びょう`; } if(left <= 0) pick(null); }, 1000); }
+  });
+}
+function explainStep(m, v, head, btns){
+  return new Promise(res => {
+    const p = qPanel(head, `<div class="exw631">${expl(m, v)}</div><div class="exb631">${btns.map(b => `<button type="button" class="btn ${b.cls||'white'}" data-v="${X(b.v)}">${b.label}</button>`).join('')}</div>`);
+    p.querySelectorAll('.exb631 [data-v]').forEach(b => b.onclick = () => res(b.dataset.v));
+  });
+}
+async function runClass(subj, diff){
+  if(!subj || !diff) return;
+  const s = SV(), L = DL(), g = userG(), sp = special(L.d), practice = (L.cnt[subj]||0) >= CFG.fullClass, good = dayOK();
+  const teacher = teacherFor(subj), ml = mates();
+  const used = new Set(); let combo = 0, maxCombo = 0, coin = 0, hana = 0, wak = 0, revOK = 0, grads = [], first = 0, n = 5;
+  const revSlot = diff==='normal' ? ri(1, 4) : -1;
+  const T = diff==='easy' ? Math.max(1, g - (Math.random() < .5 ? 1 : 2)) : g;
+  if(teacher) await dialog(`<div class="dlgArt"><img src="${X(rsrc(teacher))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(teacher.name)}せんせい</b>${X(speak(teacher, sp===subj ? `きょうは ${SUBJ[subj]}の とくべつじゅぎょう！ コインが 1.5ばいだよ` : `${SUBJ[subj]}の じゅぎょうを はじめるよ！ おちついて かんがえてね`))}</div>${practice ? '<p class="dlgP facNote">きょうの まんがくは おわったので「れんしゅうモード」（コイン ×0.2）だよ</p>' : ''}`, [{label:'はーい！', cls:'gold', v:1}], 'wide');
+  for(let i=0; i<n; i++){
+    let m = null, note = null;
+    if(i===revSlot){ note = pickNote(subj); if(note) m = noteQ(note); if(m) m.rev = 1; }
+    if(!m) m = subjQ(subj, T, used, diff==='hard');
+    used.add(m.key); noteRecent(m);
+    const head = `<div class="qh631" style="--c:${SUBJ_C[subj]}"><span>${SUBJ_IC[subj]} ${SUBJ[subj]}・${{easy:'かんたん',normal:'ふつう',hard:'むずかしい'}[diff]}</span>
+      <span class="dots631">${Array.from({length:n}, (_, k) => `<i class="${k < i ? 'd' : k===i ? 'c' : ''}"></i>`).join('')}</span>
+      ${combo >= 2 ? `<b class="cb631">れんぞく！ ${combo}もん</b>` : ''}${teacher ? `<img class="tc631" src="${X(rsrc(teacher))}" alt="">` : ''}</div>
+      ${m.rev ? '<div class="revt631">🔥 にがて リベンジ！</div>' : ''}${i===n-1 && hana===2 && diff!=='easy' ? '' : ''}${diff!=='easy' && hana + (n - i) >= 3 && hana >= 2 && i===n-1 && hana===4 ? '<div class="near631">あと1もんで ★3！</div>' : ''}`;
+    const r = await askQ(m, head, 'school');
+    if(r.ok && r.tries===1){
+      hana++; first++; combo++; maxCombo = Math.max(maxCombo, combo);
+      coin += CFG.coin[diff] + (combo >= 2 ? combo - 1 : 0);
+      if(combo >= 3) L.combo3 = 1;
+      if(m.rev && note){ revOK++; L.rev++; const g2 = noteOK(note); if(g2.grad) grads.push(g2); }
+      await pop('💮', combo >= 2 ? `れんぞく！ ${combo}もん` : 'はなまる！');
+    } else if(r.ok){
+      combo = 0; coin += CFG.coin[diff] * CFG.hintMul;
+      await pop('⭕', 'ヒントで せいかい！ つぎは ヒントなしで いけるかな？');
+    } else {
+      combo = 0;
+      const v = await explainStep(m, r.v, head, [{label:'✅ わかった！（うっかり）', cls:'gold', v:'u'}, {label:'✅ わかった！（わからなかった）', cls:'gold', v:'k'}]);
+      addNote(m, v); wak++; L.wak++;
+      await pop('📒', 'えらい！ にがてノートに のせたよ');
+    }
+    const a = s.acc[wkOf(L.d)] || (s.acc[wkOf(L.d)] = {}); const aa = a[subj] || (a[subj] = [0,0]); aa[1]++; if(r.ok && r.tries===1) aa[0]++;
+  }
+  /* けっか */
+  const star = diff==='easy' ? (hana >= 3 ? 1 : 0) : hana >= 5 ? 3 : hana >= 4 ? 2 : hana >= 3 ? 1 : 0;
+  const lines = []; let total = 0, cry = 0;
+  if(good){
+    let c = coin * (sp===subj ? 1.5 : 1) * (s.streak >= 30 ? 1.2 : s.streak >= 7 ? 1.1 : 1);
+    if(practice) c *= CFG.overMul;
+    c = Math.round(c); total += c; lines.push(`🪙 じゅぎょう +${c}${sp===subj ? '（とくべつ ×1.5）' : ''}${practice ? '（れんしゅう）' : ''}`);
+    if(wak){ total += wak * CFG.wakatta; lines.push(`📒 わかった！ +${wak * CFG.wakatta}`); }
+    if(revOK){ total += revOK * CFG.revenge; lines.push(`🔥 リベンジせいこう！ +${revOK * CFG.revenge}`); }
+    if(!practice && star===3 && diff==='hard'){ total += 30; lines.push('🏆 ちょうせん成功 +30'); }
+    if(!practice && star===3 && diff!=='easy' && Math.random() < (diff==='hard' ? .5 : .2)){ if(giveCry()){ cry++; lines.push('💎 すいしょう 1こ！'); } }
+    grads.forEach(g2 => { lines.push('🎓 にがて そつぎょう！'); if(g2.mile){ total += g2.mile.pt; lines.push(`🏅 そつぎょう ${g2.mile.n}もん たっせい +${g2.mile.pt}`); } });
+  }
+  /* ★・スタンプ */
+  const oldB = L.best[subj] || 0, wk = wkOf(L.d);
+  if(good && star > oldB){ const up = star - oldB; L.best[subj] = star; s.stars[subj] = (s.stars[subj]||0) + up; const W = s.wk[wk] || (s.wk[wk] = {}); W[subj] = (W[subj]||0) + up; }
+  const stampNew = good && oldB < 1 && star >= 1;
+  L.cnt[subj] = (L.cnt[subj]||0) + 1;
+  /* しゅっせき */
+  const at = good ? attend() : null;
+  if(at && at.msg) lines.unshift(`🎫 ${at.msg}`);
+  if(at && at.rew){ const R = at.rew; let t = `🎉 つうさん しゅっせき ${R.n}にち！`;
+    if(R.pt){ total += R.pt; t += ` +${R.pt}`; } if(R.cry && giveCry()){ cry++; t += '・💎1'; } if(R.fuku){ s.fuku += R.fuku; t += `・ふくびき×${R.fuku}`; }
+    if(R.deco){ const it = decoItem(R.n >= 100); if(it) t += `・かざり「${it.name}」`; } if(R.b && !s.badges.includes(R.b)){ s.badges.push(R.b); t += `・「${R.b}」バッジ`; } if(R.t && !s.titles.includes(R.t)){ s.titles.push(R.t); t += `・しょうごう「${R.t}」`; }
+    lines.push(t); }
+  /* かいきん賞 */
+  if(good && !L.kaikin && SK.every(k => (L.best[k]||0) >= 1)){ L.kaikin = 1; total += CFG.kaikin; s.fuku++; lines.push(`🏅 かいきん賞！ +${CFG.kaikin}・ふくびき券 1まい`); }
+  /* きずな */
+  const bondEv = [];
+  if(good){ ml.forEach(r => bondEv.push(...addBond(r.id, 1, true))); }
+  if(good && s.req && !s.req.done && s.req.subj===subj){ s.req.done = 1; const r = resBy(s.req.rid); if(r){ bondEv.push(...addBond(r.id, 3, false)); total += 50; lines.push(`💌 ${r.name}の おねがい たっせい！ +50・きずな+3`); } }
+  bondEv.forEach(ev => { const r = resBy(ev.id); if(!r) return; if(ev.gift){ total += ev.gift; lines.push(`🎁 ${r.name}から おれいの しな +${ev.gift}`); } if(ev.lv) lines.push(`💗 ${r.name}と きずな Lv${ev.lv}！`); });
+  /* ミッション・目標 */
+  if(good){ checkMissions().forEach(mi => { total += CFG.mission; lines.push(`✅ ミッション「${mi.t}」 +${CFG.mission}`); });
+    if(checkGoal()){ total += 100; const r = choice(ml); if(r) addBond(r.id, 2, false); lines.push('🎯 こんしゅうの 目標 たっせい！ +100・しゅうかんバッジ'); } }
+  /* バッジ */
+  let badgeUp = null; const bn = badgeNext();
+  if(good && bn && bn.ok){ s.badge++; badgeUp = bn.b; if(bn.b.rew){ total += bn.b.rew; } if(s.badge===3){ decoItem(true); if(!s.titles.includes('にじいろの がくしゅうしゃ')) s.titles.push('にじいろの がくしゅうしゃ'); }
+    lines.push(`${bn.b.ic} ${bn.b.n}バッジに しょうかく！${bn.b.rew ? ` +${bn.b.rew}` : ''}${s.badge===2 ? '・だいがく 入学試験に ちょうせん できるよ' : ''}`); }
+  if(total) pts(total, `がっこう ${SUBJ[subj]}の じゅぎょう`);
+  persist();
+  /* けっか がめん */
+  const nb = badgeNext(), least = SK.filter(k => k!==subj).sort((a,b) => (L.best[a]||0) - (L.best[b]||0) || (L.cnt[a]||0) - (L.cnt[b]||0))[0];
+  const stamps = SK.filter(k => (L.best[k]||0) >= 1).length;
+  const limit = SK.every(k => (L.cnt[k]||0) >= CFG.fullClass);
+  ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">
+    ${stage('bg_school', ml, {bounce: star===3, noLv:true, cls:'mini'})}
+    <h2>じゅぎょう おしまい！</h2><div class="bigst631">${Array.from({length: diff==='easy' ? 1 : 3}, (_, i) => `<i class="${i < star ? 'on' : ''}" style="animation-delay:${.25 + i*.35}s">★</i>`).join('')}</div>
+    <p class="hn631">💮 はなまる ${hana}/5${maxCombo >= 2 ? `　さいだい れんぞく ${maxCombo}` : ''}</p>
+    ${!good ? '<p class="warn631">⚠️ 端末の 日づけが もどっているので ごほうびは ありません</p>' : ''}
+    <ul class="ln631">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>
+    ${total ? `<div class="tot631">ごうけい <b>+${fmt(total)}</b> pt${cry ? '　💎×' + cry : ''}</div>` : ''}
+    ${stampNew ? `<div class="stp631">スタンプ ${stamps}/5 ${stamps===4 ? '<b>あと1つで かいきん賞！</b>' : ''}</div>` : ''}
+    ${nb ? `<div class="nx631">つぎの ${nb.b.ic}${nb.b.n}まで：${nb.needSt ? `★あと${nb.needSt}こ` : '★OK'}／${nb.needD ? `あと${nb.needD}にち` : '日数OK'}${bar(nb.tot, nb.b.st)}</div>` : ''}
+    ${limit ? `<p class="tmr631">きょうは いっぱい がんばったね！ あしたは ${SUBJ[special(addDay(L.d,1))]}の とくべつじゅぎょうが まってるよ</p>` : `<p class="tmr631">つぎは <b>${SUBJ[least]}</b>が いいかも？</p>`}
+    <div class="rb631"><button type="button" class="btn gold" data-a="again">✏️ もう1じゅぎょう（${SUBJ[least]}）</button><button type="button" class="btn white" data-a="back">がっこうに もどる</button></div>
+  </div></div>`;
+  if(star === 3){ confetti(1800); sound('fan'); } else sound(star ? 'ok' : 'ng');
+  if(badgeUp) setTimeout(() => confetti(2500), 900);
+  ROOT.querySelector('[data-a="again"]').onclick = e => { e.stopPropagation(); ST.subj = least; schoolMain(); };
+  ROOT.querySelector('[data-a="back"]').onclick = e => { e.stopPropagation(); schoolMain(); };
+}
+function pop(ic, txt){
+  return new Promise(res => { const p = ROOT.querySelector('.qz631'); if(!p) return res();
+    p.insertAdjacentHTML('beforeend', `<div class="pop631"><span>${ic}</span><b>${X(txt)}</b></div>`); setTimeout(res, 900); });
+}
+
+/* ---------- がっこう：サブ がめん ---------- */
+async function calendar(){
+  const s = SV(), next = Object.keys(CFG.attendRew).map(Number).find(n => n > s.attend);
+  const d = D4(), cells = Array.from({length:14}, (_, i) => addDay(d, i - 13));
+  await dialog(`<h2 class="dlgT">📅 しゅっせき</h2>
+    <div class="cal631">${cells.map(c => `<span class="${s.wkDays[c] ? 'on' : ''} ${c===d ? 'td' : ''}"><small>${+c.slice(8)}</small>${s.wkDays[c] ? '🌸' : ''}</span>`).join('')}</div>
+    <p class="dlgP">つうさん <b>${s.attend}にち</b>／れんぞく <b>${s.streak||0}にち</b><br>🎫 お休みチケット ${s.tickets||0}まい（まいしゅう月曜に 1まい・さいだい2まい）</p>
+    ${next ? `<p class="dlgP facNote">つぎの おめでとうは ${next}にち（あと ${next - s.attend}にち）</p>` : ''}
+    ${s.titles.length ? `<p class="dlgP">しょうごう：${s.titles.map(X).join('・')}</p>` : ''}`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+}
+async function misInfo(){
+  const M = missions(); await dialog(`<h2 class="dlgT">📋 きょうの ミッション</h2><ul class="mi631">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}">${M.done[i] ? '✅' : '⬜'} ${X(m.t)} <small>+${CFG.mission}</small></li>`).join('')}</ul>
+    <p class="dlgP facNote">3つ ぜんぶで 🎁たからばこ（コイン+${CFG.chest}・きずな+1）。まいあさ 4じに かわるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+}
+async function openChest(){
+  const M = missions(); if(M.chest) return toast('きょうの たからばこは あけたよ');
+  if(!M.done.every(Boolean)) return misInfo();
+  if(!dayOK()) return; M.chest = 1; pts(CFG.chest, 'がっこう ミッション たからばこ'); const r = choice(mates()); if(r) addBond(r.id, 1, false);
+  persist(); sound('fan'); confetti(1500);
+  await dialog(`<div class="big631">🎁</div><h2 class="dlgT">たからばこ ゲット！</h2><p class="dlgP">コイン +${CFG.chest}${r ? `<br>💗 ${X(r.name)}と きずな +1` : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+  schoolMain();
+}
+async function doFuku(){
+  const s = SV(); if(!s.fuku) return dialog(`<h2 class="dlgT">🎟 ふくびき</h2><p class="dlgP">かいきん賞（5きょうか スタンプ）で ふくびき券が もらえるよ。<br>ハズレなし！</p>`, [{label:'とじる', cls:'gold', v:1}]);
+  s.fuku--; const o = fukubiki(); persist(); sound('fan'); confetti(1200);
+  await dialog(`<div class="big631 spin631">🎰</div><h2 class="dlgT">あたり！</h2><p class="dlgP"><b>${X(o.t)}</b></p><p class="dlgP facNote">のこり ふくびき券 ${s.fuku}まい</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+  schoolMain();
+}
+async function notesView(){
+  const s = SV(); const by = SK.map(k => [k, s.notes.filter(n => n.subj===k)]);
+  await dialog(`<h2 class="dlgT">📒 にがてノート</h2><p class="dlgP">いま <b>${s.notes.length}こ</b>　そつぎょう <b>${s.grad||0}こ</b></p>
+    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${SUBJ_IC[k]} ${SUBJ[k]}</b><span>${L.length}こ</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
+    <p class="dlgP facNote">「ふつう」の じゅぎょうで リベンジ（+${CFG.revenge}）。べつべつの 日に 3かい せいかいで そつぎょう！</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+}
+async function goalView(){
+  const s = SV(), G = s.goal;
+  if(G && G.g){ const p = goalProg(); return dialog(`<h2 class="dlgT">🎯 こんしゅうの 目標</h2><p class="dlgP"><b>${X(p[2])}</b>：${p[0]} / ${p[1]}${p[3]}</p>${bar(p[0], p[1])}<p class="dlgP facNote">${G.done ? '✅ たっせい！ しゅうかんバッジ ゲット' : 'たっせいで コイン+100・きずな+2'}</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide'); }
+  const v = await dialog(`<h2 class="dlgT">🎯 こんしゅうの 目標を えらぼう</h2><p class="dlgP">じぶんで 1つ えらんでね（たっせいで コイン+100・きずな+2）</p>`,
+    [{label:'📅 5にち きょうしつに くる', cls:'white big', v:'days'}, {label:'⭐ ★を 15こ あつめる', cls:'white big', v:'stars'}, {label:'📒 にがてを 3つ そつぎょう', cls:'white big', v:'grad'}, {label:'あとで', cls:'', v:''}], 'wide');
+  if(v){ G.g = v; persist(); toast('目標を きめたよ！'); schoolMain(); }
+}
+async function reqView(){
+  const s = SV(), R = s.req, r = R && resBy(R.rid);
+  if(!r) return dialog(`<h2 class="dlgT">💌 おねがい</h2><p class="dlgP">いまは おねがいは ないよ</p>`, [{label:'とじる', cls:'gold', v:1}]);
+  const v = await dialog(`<div class="dlgArt"><img src="${X(rsrc(r))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(r.name)}</b>${X(speak(r, R.done ? 'てつだって くれて ありがとう！' : `${SUBJ[R.subj]}の しゅくだい てつだって！`))}</div>
+    <p class="dlgP facNote">${R.done ? '✅ たっせい ずみ（また らいしゅう）' : `${SUBJ[R.subj]}の じゅぎょうを 1かい うけると たっせい（きずな+3・コイン+50）`}</p>`, R.done ? [{label:'とじる', cls:'gold', v:0}] : [{label:`${SUBJ_IC[R.subj]} ${SUBJ[R.subj]}を えらぶ`, cls:'gold', v:1}, {label:'あとで', v:0}], 'wide');
+  if(v){ ST.subj = R.subj; schoolMain(); }
+}
+async function badgeView(){
+  const s = SV(), tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
+  await dialog(`<h2 class="dlgT">${CFG.badge[s.badge].ic} がっこうバッジ</h2><p class="dlgP">★ ごうけい <b>${tot}</b>　つうさん しゅっせき <b>${s.attend}にち</b></p>
+    <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${b.ic} ${b.n}</th><td>★${b.st}・${b.d}にち${b.each ? `・5きょうか ★${b.each}いじょう` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
+    <div class="sbst631">${SK.map(k => `<span>${SUBJ_IC[k]} ★${s.stars[k]||0}</span>`).join('')}</div>
+    <p class="dlgP facNote">ゴールドで だいがくの 入学試験に ちょうせん できるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+}
+
+/* =====================================================================
+   だいがく
+   ===================================================================== */
+const TH = [
+  {id:'env',  n:'かんきょう',        ic:'🌍', mul:1.5, need:0,  u:['r_bug','r_bugpic','r_plant','r_plantpic','r_water','r_land','r_flower','r_earth','cg_clim','w_cont','s_jp'], prop:'🌱'},
+  {id:'life', n:'いのち・けんこう',  ic:'❤️', mul:1.5, need:0,  u:['r_body','r_hbody','r_life','r_bio'], prop:'🩺'},
+  {id:'soc',  n:'しゃかい・けいざい', ic:'🏛️', mul:1.5, need:0,  u:['cg_world','cg_japan','cg_skill','civ1','civ2','w_geo','j_geo','w_cap'], prop:'📊'},
+  {id:'tech', n:'テクノロジー',      ic:'💻', mul:2,   need:5,  u:['pr_seq','pr_loop','pr_if','pr_word','pr_var','pr_bug','pr_bin','pr_flow','pr_algo'], prop:'💻'},
+  {id:'space',n:'うちゅう',          ic:'🪐', mul:2,   need:5,  u:['r_sky','r_moon','r_earth','r_sun'], prop:'🔭'},
+  {id:'chem', n:'かがく（元素）',    ic:'⚗️', mul:2,   need:15, u:['r_el1','r_el2','r_el3','r_chem','r_sol','r_burn'], prop:'🧪'},
+  {id:'lang', n:'ことばと えいご',   ic:'🔠', mul:2,   need:15, u:['ek_sent2','ek_make','ek_wh','ek_prep','ek_spell','ek_opp','b_tsunagu','kanji'], prop:'📚'},
+  {id:'math', n:'すうがく',          ic:'📐', mul:2.5, need:30, u:['ratio','ave','divisor','fracadd','vol','decmd','r_calc'], prop:'📐'},
+  {id:'logic',n:'ろんり パズル',     ic:'🧩', mul:2.5, need:30, u:['pr_algo','pr_flow','pr_bin','pr_bug','rules','box'], prop:'🧩'}
+];
+const THM = id => TH.find(t => t.id===id);
+const LV = ['ベーシック','アドバンス','マスター'];
+let UT = {th:null, lv:0};
+const thData = id => { const u = UV(); return u.th[id] || (u.th[id] = {lv:0, s:[0,0,0], days:[[],[],[]], first:'', adv:'', mas:''}); };
+const thOpen = t => UV().total >= t.need;
+function lvCheck(id){
+  const d = thData(id), today = D4(), out = [];
+  if(d.lv < 1){ const ok = d.s[0] >= CFG.adv.n && d.days[0].length >= CFG.adv.days && d.first && dnum(today) - dnum(d.first) >= CFG.adv.wait; if(ok){ d.lv = 1; d.adv = today; out.push(1); } }
+  if(d.lv === 1){ const ok = d.s[1] >= CFG.mas.n && d.days[1].length >= CFG.mas.days && d.adv && dnum(today) - dnum(d.adv) >= CFG.mas.wait; if(ok){ d.lv = 2; d.mas = today; out.push(2); } }
+  return out;
+}
+function lvNeed(id){
+  const d = thData(id), today = D4();
+  if(d.lv === 0){ const w = d.first ? Math.max(0, CFG.adv.wait - (dnum(today) - dnum(d.first))) : CFG.adv.wait; return {n:Math.max(0, CFG.adv.n - d.s[0]), d:Math.max(0, CFG.adv.days - d.days[0].length), w, tot:CFG.adv.n, cur:d.s[0]}; }
+  if(d.lv === 1){ const w = Math.max(0, CFG.mas.wait - (dnum(today) - dnum(d.adv))); return {n:Math.max(0, CFG.mas.n - d.s[1]), d:Math.max(0, CFG.mas.days - d.days[1].length), w, tot:CFG.mas.n, cur:d.s[1]}; }
+  return null;
+}
+function recoTheme(){
+  const u = UV(), w = wkOf(D4());
+  if(u.recoWk !== w){ const L = TH.filter(thOpen); const un = L.filter(t => !(thData(t.id).s[0])); u.reco = (choice(un.length ? un : L) || TH[0]).id; u.recoWk = w; }
+  return u.reco;
+}
+function degNext(){
+  const u = UV(), D = CFG.degree[u.degree + 1]; if(!D) return null;
+  const advN = TH.filter(t => thData(t.id).lv >= 1).length, masN = TH.filter(t => thData(t.id).lv >= 2).length;
+  return {D, needP:Math.max(0, D.pt - u.degPt), needD:Math.max(0, D.d - u.days), needA:D.adv ? Math.max(0, D.adv - advN) : 0, needM:D.mas ? Math.max(0, D.mas - masN) : 0,
+    ok:u.degPt >= D.pt && u.days >= D.d && (!D.adv || advN >= D.adv) && (!D.mas || masN >= D.mas)};
+}
+function themeQ(t, lv, used, stage){
+  const units = t.u.filter(u => u==='kanji' || MATH_UNITS[u]);
+  const sorted = units.slice().sort((a,b) => (a==='kanji' ? 6 : ug(a)) - (b==='kanji' ? 6 : ug(b)));
+  const k = sorted.length, lo = lv===0 ? 0 : lv===1 ? Math.floor(k/3) : Math.floor(k/2), hi = lv===0 ? Math.max(1, Math.ceil(k*.67)) : k;
+  const L = sorted.slice(lo, hi).length ? sorted.slice(lo, hi) : sorted;
+  let best = null;
+  for(let i=0; i<24; i++){
+    const u = choice(L); const m = u==='kanji' ? genK(choice(BUILTIN.filter(q => (q.grade||3) >= 5).length ? BUILTIN.filter(q => (q.grade||3) >= 5) : BUILTIN)) : genU(u);
+    if(!m) continue; if(isRecent(m.key, used) && i < 18) continue;
+    if(stage===2 && !rich(m) && i < 10){ best = best || m; continue; }
+    return m;
+  }
+  return best || subjQ('math', userG(), used, false);
+}
+function uniMates(n){
+  const all = RES(), u = UV(), p = u.partner && resBy(u.partner);
+  const L = shuffle(all.filter(r => r !== p)).slice(0, p ? n - 1 : n); if(p) L.unshift(p); return L;
+}
+function uniMain(){
+  if(!ROOT) return; const u = UV(), s = SV(), L = DL();
+  if(!u.enrolled) return uniLocked();
+  const reco = recoTheme();
+  if(!UT.th || !thOpen(THM(UT.th))) UT.th = reco;
+  const d = thData(UT.th); if(UT.lv > d.lv) UT.lv = d.lv;
+  const dn = degNext(), D = CFG.degree[u.degree], props = TH.reduce((o,t) => (o[t.id] = t.prop, o), {});
+  const t = THM(UT.th), pm = L.res >= CFG.fullRes;
+  const mul = t.mul * (UT.th===reco ? CFG.recoMul : 1) * CFG.chain[Math.min(2, L.chain.filter(x => x!==UT.th).length)];
+  const p = u.partner && resBy(u.partner);
+  ROOT.innerHTML = `<div class="wrap631 uni">
+    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><b>🎓 だいがく</b><small>むずかしいけど ごほうびは 大きいよ</small></div>
+      <button type="button" class="stk631 deg" data-a="deg"><b>${D.n}</b><small>${dn ? `${fmt(u.degPt)}/${fmt(dn.D.pt)}` : fmt(u.degPt)}</small></button></header>
+    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:(r) => props[THM(UT.th).id] || '📚'})}
+    <div class="sec631"><div class="h631">けんきゅう テーマ <small>きょう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes}かい${pm ? '（れんしゅうモード）' : ''}</small></div>
+      <div class="ths631">${TH.map(x => { const open = thOpen(x), dd = thData(x.id);
+        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${open ? x.ic : '🔒'}</span><b>${x.n}</b><small>${open ? `×${x.mul}・${LV[dd.lv]}` : `あと けんきゅう ${x.need - u.total}かい`}</small></button>`; }).join('')}</div></div>
+    <div class="sec631"><div class="h631">レベル</div><div class="lvs631">${LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(UT.th) : null;
+      return `<button type="button" class="lv631 ${UT.lv===i ? 'on' : ''} ${on ? '' : 'lock'}" ${on ? `data-lv="${i}"` : ''}><b>${on ? '' : '🔒'}${n}</b><small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : '—'}</small>${nd ? bar(nd.cur, nd.tot) : ''}</button>`; }).join('')}</div></div>
+    <div class="rw631">ごほうび：🎓 学位 ${Math.round(CFG.degPt[UT.lv] * mul)}〜　🪙 ${Math.round(CFG.resCoin[UT.lv] * t.mul * (pm ? CFG.overMul : 1))}　💎 ${Math.round(CFG.resCry[UT.lv]*100)}%　❓？？？</div>
+    <div class="rw631 sm">🔎 3ステージ（しらべる3・かんがえる3・はっぴょう1）　♥×${CFG.life}　ノーミスで 学位×1.5</div>
+    <button type="button" class="go631 uni" data-a="rstart">🔬 けんきゅうを はじめる！</button>
+    <div class="tools631">
+      <button type="button" data-a="partner">🤝 なかま${p ? `<b class="nm">${X(p.name)}</b>` : ''}</button>
+      <span class="chip631">✨ かけら ${u.frag}/5</span><span class="chip631">🎟 ヒント ${u.tickets}</span>
+      <button type="button" data-a="toschool">🏫 がっこう</button>
+    </div></div>`;
+  persist();
+}
+function uniLocked(){
+  const s = SV(), u = UV(), L = DL(), gold = s.badge >= 2, bn = badgeNext();
+  const toGold = s.badge < 2 ? (() => { const b = CFG.badge[2], tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0); return {st:Math.max(0, b.st - tot), d:Math.max(0, b.d - s.attend), tot, b}; })() : null;
+  ROOT.innerHTML = `<div class="wrap631 uni">
+    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><b>🎓 だいがく</b><small>がっこう ゴールドバッジで 入学試験</small></div><span></span></header>
+    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => choice(['📚','💻','🔭','🧪']), cls:'locked'})}
+    <div class="lock631"><b>🔒 入学まで</b>${toGold ? `<p>🥇ゴールドバッジまで：★あと <b>${toGold.st}</b>こ・あと <b>${toGold.d}</b>にち</p>${bar(toGold.tot, toGold.b.st)}` : `<p>🥇 ゴールド たっせい！ 入学試験に ちょうせん できるよ</p>`}
+      <p class="sm">入学試験：10もん中 7もん せいかいで ごうかく（5きょうか 2もんずつ）</p></div>
+    <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : '📝 入学試験に ちょうせん！') : '📝 入学試験（ゴールドで かいほう）'}</button>
+    <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学は また あした' : '🎒 体験入学（1日1もん・せいかいで +10）'}</button>
+    <div class="tools631"><button type="button" data-a="toschool">🏫 がっこうへ</button></div></div>`;
+}
+async function trial(){
+  const L = DL(); if(L.trial) return; L.trial = 1;
+  const t = choice(TH.slice(0, 3)), m = themeQ(t, 0, new Set(), 1);
+  const r = await askQ(m, `<div class="qh631 uni"><span>🎒 体験入学：${t.ic} ${t.n}</span></div>`, 'one');
+  if(r.ok){ if(dayOK()) pts(10, 'だいがく 体験入学'); await pop('🎉', 'せいかい！ +10　だいがくって おもしろいね！'); }
+  else await explainStep(m, r.v, `<div class="qh631 uni"><span>🎒 体験入学</span></div>`, [{label:'わかった！', cls:'gold', v:1}]);
+  persist(); uniMain();
+}
+async function exam(){
+  const L = DL(), s = SV(); if(L.exam || s.badge < 2) return; L.exam = 1; persist();
+  const g = userG(), used = new Set(), list = []; SK.forEach(k => { list.push(k, k); });
+  let ok = 0, miss = [];
+  for(let i=0; i<10; i++){
+    const subj = list[i], m = subjQ(subj, g, used, true); used.add(m.key);
+    const head = `<div class="qh631 uni"><span>📝 入学試験 ${i+1}/10</span><b class="cb631">${ok >= 7 ? 'ごうかく ライン こえた！' : `あと ${7 - ok}もんで ごうかく`}</b></div>`;
+    const r = await askQ(m, head, 'one');
+    if(r.ok){ ok++; await pop('⭕', 'せいかい！'); }
+    else { miss.push(subj); addNote(m, 'k'); await explainStep(m, r.v, head, [{label:'つぎへ', cls:'gold', v:1}]); }
+  }
+  if(ok >= 7 && dayOK()){
+    const u = UV(); u.enrolled = 1; u.enrollDay = D4(); pts(500, 'だいがく 入学'); persist();
+    const all = RES().slice(0, 12);
+    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631 ent631"><img class="bgE" src="${IMG}bg_univ.webp" alt=""><h2>🌸 ごうかく！ 入学 おめでとう！</h2>
+      <div class="clap631">${all.map((r,i) => `<span style="animation-delay:${(i*.12).toFixed(2)}s"><img src="${X(rsrc(r))}" alt=""><i>👏</i></span>`).join('')}</div>
+      <p class="hn631">${ok}/10 せいかい</p><ul class="ln631"><li>🪙 入学の ごほうび +500</li><li>🔓 かんきょう・いのち・しゃかい の 3テーマ かいほう</li><li>🎓 しょうごう「がくせい」</li></ul>
+      <div class="rb631"><button type="button" class="btn gold" data-a="toU">🎓 だいがくへ</button></div></div></div>`;
+    confetti(3500); sound('fan');
+    ROOT.querySelector('[data-a="toU"]').onclick = e => { e.stopPropagation(); uniMain(); };
+  } else {
+    const ms = [...new Set(miss)];
+    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>ざんねん… ${ok}/10</h2><p class="hn631">7もん せいかいで ごうかく。あした（あさ4じ いこう）また ちょうせん できるよ</p>
+      ${ms.length ? `<p class="tmr631">がっこうで <b>${ms.map(k => SUBJ[k]).join('・')}</b> の じゅぎょうを うけると いいかも！</p>` : ''}
+      <div class="rb631"><button type="button" class="btn gold" data-a="toS">🏫 ${ms.length ? SUBJ[ms[0]] + 'の じゅぎょうへ' : 'がっこうへ'}</button><button type="button" class="btn white" data-a="toU">もどる</button></div></div></div>`;
+    sound('ng');
+    ROOT.querySelector('[data-a="toS"]').onclick = e => { e.stopPropagation(); CUR = 'school'; if(ms[0]) ST.subj = ms[0]; schoolMain(); };
+    ROOT.querySelector('[data-a="toU"]').onclick = e => { e.stopPropagation(); uniMain(); };
+  }
+}
+async function pickPartner(){
+  const u = UV(), all = RES(), t = THM(UT.th);
+  if(!all.length) return;
+  const v = await dialog(`<h2 class="dlgT">🤝 研究なかまを えらぶ</h2><p class="dlgP facNote">とくいな きょうかが テーマと あうと ヒントが 1かい むりょう（きずなLv3いじょうで +1）</p>
+    <div class="pp631">${all.slice(0, 24).map(r => `<button type="button" class="ppb631 ${u.partner===r.id ? 'on' : ''}" data-pp="${X(r.id)}"><img src="${X(rsrc(r))}" alt=""><b>${X(r.name)}</b><small>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}${bondLv(r.id) >= 2 ? ` 💗${bondLv(r.id)}` : ''}</small></button>`).join('')}</div>`, [{label:'とじる', v:''}], 'wide');
+  void v;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-pp]'); if(!b) return; UV().partner = b.dataset.pp; persist(); document.querySelectorAll('.ppb631').forEach(x => x.classList.toggle('on', x===b)); toast('なかまを きめたよ'); if(CUR==='uni') uniMain(); }, true);
+const TH_SUBJ = {env:'sci', life:'sci', soc:'soc', tech:'math', space:'sci', chem:'sci', lang:'en', math:'math', logic:'math'};
+async function runResearch(id, lv){
+  const t = THM(id); if(!t || !thOpen(t)) return;
+  const u = UV(), L = DL(), d = thData(id), good = dayOK(), practice = L.res >= CFG.fullRes;
+  const p = u.partner && resBy(u.partner);
+  let free = p && fav(p)===TH_SUBJ[id] ? 1 + (bondLv(p.id) >= 3 ? 1 : 0) : 0;
+  let life = CFG.life, miss = 0; const used = new Set();
+  const stages = [['しらべる', 3, 1], ['かんがえる', 3, 2], ['はっぴょう', 1, 3]];
+  const tool = () => `<button type="button" class="btn small white" data-qt="h" ${free || u.tickets ? '' : 'disabled'}>💡 ヒント（${free ? `なかま ${free}` : `券 ${u.tickets}`}）</button>`;
+  const onTool = (k, m) => { if(!free && !u.tickets) return null; if(free) free--; else u.tickets--; const ans = m.ansF || m.ans; return shuffle(m.opts.filter(o => o!==ans)).slice(0, 2); };
+  let qi = 0, failed = false, lastM = null, lastV = '';
+  outer: for(const [sn, cnt, sk] of stages){
+    for(let i=0; i<cnt; i++){
+      const m = themeQ(t, lv, used, sk); used.add(m.key); noteRecent(m); qi++;
+      const head = `<div class="qh631 uni"><span>${t.ic} ${t.n}・${LV[lv]}</span><span class="stg2">ステージ${sk}「${sn}」</span>${practice ? '<b class="cb631">れんしゅう</b>' : `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`}</div>
+        <div class="nb631">📓 ${Array.from({length:7}, (_, k) => `<i class="${k < qi - 1 ? 'on' : ''}"></i>`).join('')}</div>`;
+      const r = await askQ(m, head, 'one', {sec: sk===3 ? CFG.stageSec[lv] : 0, tool, onTool});
+      if(r.ok){ await pop('📝', sk===3 ? 'はっぴょう だいせいこう！' : 'ノートが 1ぎょう うまった！'); continue; }
+      miss++; lastM = m; lastV = r.v;
+      if(!practice){ life--; }
+      if(!practice && life <= 0){ failed = true; break outer; }
+      await explainStep(m, r.v, head + (r.timeout ? '<div class="revt631">⏱ じかんぎれ…</div>' : ''), [{label:'つぎへ', cls:'gold', v:1}]);
+    }
+  }
+  if(failed){
+    const v = await explainStep(lastM, lastV, `<div class="qh631 uni"><span>${t.ic} ${t.n}</span><b class="lf631">♡♡♡</b></div><div class="revt631">けんきゅうは しっぱい… でも かいせつを よめば まえに すすめるよ</div>`, [{label:'✅ わかった！', cls:'gold', v:'w'}]);
+    if(v==='w'){ u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; toast('✨ かけら 5こで ヒント券 1まい！'); } }
+    persist();
+    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>けんきゅう しっぱい…</h2><p class="hn631">✨ ひらめきの かけら +1（${u.frag}/5）</p><p class="tmr631">おなじ テーマで もういちど ちょうせん できるよ</p>
+      <div class="rb631"><button type="button" class="btn gold" data-a="re">🔬 もういちど</button><button type="button" class="btn white" data-a="bk">もどる</button></div></div></div>`;
+    ROOT.querySelector('[data-a="re"]').onclick = e => { e.stopPropagation(); busy = true; runResearch(id, lv).finally(() => { busy = false; }); };
+    ROOT.querySelector('[data-a="bk"]').onclick = e => { e.stopPropagation(); uniMain(); };
+    return;
+  }
+  /* せいこう */
+  const lines = []; let coin = 0, dp = 0, cry = 0, dai = false;
+  const today = D4();
+  if(good && !practice){
+    L.res++;
+    const chainN = L.chain.includes(id) ? L.chain.length - 1 : L.chain.length; if(!L.chain.includes(id)) L.chain.push(id);
+    const reco = recoTheme() === id, nomiss = miss === 0;
+    dai = lv===2 && nomiss && Math.random() < CFG.daiP;
+    dp = CFG.degPt[lv] * t.mul * (nomiss ? CFG.noMiss : 1) * CFG.chain[Math.min(2, chainN)] * (reco ? CFG.recoMul : 1) * (dai ? 3 : 1);
+    coin = CFG.resCoin[lv] * t.mul * (dai ? 3 : 1);
+    dp = Math.round(dp); coin = Math.round(coin);
+    u.degPt += dp; lines.push(`🎓 学位ポイント +${dp}${nomiss ? '（ノーミス×1.5）' : ''}${chainN ? `（チェイン +${chainN*10}%）` : ''}${reco ? '（おすすめ×1.3）' : ''}`);
+    lines.push(`🪙 コイン +${coin}`);
+    if(Math.random() < CFG.resCry[lv]){ if(giveCry()){ cry = 1; lines.push('💎 すいしょう 1こ！'); } else if(lv===2){ coin += 100; lines.push('🪙 すいしょうの かわりに +100'); } }
+    d.s[lv]++; if(!d.days[lv].includes(today)) d.days[lv].push(today); if(lv===0 && !d.first) d.first = today;
+    u.total++;
+    if(u.lastDay !== today){ u.lastDay = today; u.days++; }
+    if(p) { addBond(p.id, 1, true); lines.push(`🤝 ${p.name}と きずな +1`); }
+    lvCheck(id).forEach(l => { lines.push(`⬆ ${t.n}の ${LV[l]}が かいほう！`); });
+    TH.forEach(x => { if(x.need && u.total === x.need) lines.push(`🔓 あたらしい テーマ「${x.n}」が かいほう！`); });
+    const dn = degNext(); if(dn && dn.ok){ u.degree++; if(dn.D.rew){ coin += dn.D.rew; } lines.push(`🎓 しょうごう「${dn.D.n}」に なった！${dn.D.rew ? ` +${dn.D.rew}` : ''}`); }
+  } else if(good){ coin = Math.round(CFG.resCoin[lv] * t.mul * CFG.overMul); lines.push(`🪙 れんしゅうモード +${coin}`); }
+  if(coin) pts(coin, `だいがく ${t.n}の けんきゅう`);
+  persist();
+  const dn = degNext();
+  ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => t.prop, bounce:true, noLv:true, cls:'mini'})}
+    <h2 class="hk631">${dai ? '🌟 だいはっけん！！' : '💡 はっけん！'}</h2>
+    <ul class="ln631">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>
+    ${dn ? `<div class="nx631">つぎの「${dn.D.n}」まで：学位 あと${fmt(dn.needP)}・あと${dn.needD}にち${dn.needA ? `・アドバンス ${dn.needA}テーマ` : ''}${dn.needM ? `・マスター ${dn.needM}テーマ` : ''}${bar(u.degPt, dn.D.pt)}</div>` : ''}
+    ${L.res >= CFG.fullRes ? `<p class="tmr631">きょうの けんきゅうは まんかい！ あしたも まってるよ</p>` : `<p class="tmr631">べつの テーマに ちょうせんすると 学位ポイントが ふえるよ（チェイン）</p>`}
+    <div class="rb631"><button type="button" class="btn gold" data-a="bk">🎓 だいがくに もどる</button></div></div></div>`;
+  confetti(dai ? 3500 : 2000); sound('fan');
+  ROOT.querySelector('[data-a="bk"]').onclick = e => { e.stopPropagation(); uniMain(); };
+}
+async function degreeView(){
+  const u = UV();
+  await dialog(`<h2 class="dlgT">🎓 学位</h2><p class="dlgP">いま：<b>${CFG.degree[u.degree].n}</b>　学位ポイント <b>${fmt(u.degPt)}</b>　けんきゅうした日 <b>${u.days}にち</b></p>
+    <table class="rep631">${CFG.degree.slice(1).map((D, i) => `<tr class="${u.degree >= i+1 ? 'got' : ''}"><th>${D.n}</th><td>${fmt(D.pt)}pt・${D.d}にち${D.adv ? '・アドバンス1テーマ' : ''}${D.mas ? `・マスター${D.mas}テーマ` : ''}</td><td>${u.degree >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+}
+
+/* ---------- まちの たてものに つなぐ ---------- */
+/* facilities.js の FAC は 中に かくれているので、タップの しゅんかんだけ セルの id を すりかえて こちらで うけとる */
+const HOOK = {school:'school', bg_university:'uni'}; let swap = null;
+const restore = () => { if(swap && save.town && save.town.cells[swap.k]==='__sch631') save.town.cells[swap.k] = swap.id; swap = null; };
+window.addEventListener('pointerup', e => {
+  if(typeof curScreen==='undefined' || curScreen!=='town' || townEdit || !save.town) return;
+  if(e.target.closest('#townMap .walker,.car2,.ship65,.air65')) return;
+  const c = e.target.closest('#townMap .cell'); if(!c) return;
+  const k = `${c.dataset.x},${c.dataset.y}`, id = save.town.cells[k]; if(!HOOK[id]) return;
+  restore(); swap = {k, id}; save.town.cells[k] = '__sch631'; setTimeout(restore, 600);
+}, true);
+window.addEventListener('click', e => {
+  if(!swap) return; const c = e.target.closest && e.target.closest('#townMap .cell'); const s = swap; restore();
+  if(!c || `${c.dataset.x},${c.dataset.y}` !== s.k) return;
+  e.stopImmediatePropagation(); e.preventDefault(); open(HOOK[s.id], s.k);
+}, true);
+document.addEventListener('keydown', e => { if(e.key==='Escape' && CUR && !document.querySelector('#dlg.show')) close(); });
+const _show631 = show; show = function(){ if(CUR) close(); return _show631.apply(this, arguments); };
+/* じゅぎょう中の 文字は 出さない（v6.30）／だいがくの 上の アイコンは そのまま */
+window.__sch631 = {open, close, SV, UV, DL, CFG, TH, special};
+
+const css = document.createElement('style');
+css.textContent = `
+#sc631{position:fixed;inset:0;z-index:66;background:linear-gradient(180deg,#FFF9EE,#FDF2DF);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;opacity:0;transition:opacity .22s;overscroll-behavior:contain}
+#sc631.show{opacity:1}
+body.sc631on{overflow:hidden}
+.wrap631{max-width:560px;margin:0 auto;padding:0 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px}
+.wrap631.uni{--main:#5A6FD6}
+.hd631{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;padding:calc(6px + env(safe-area-inset-top)) 2px 6px;background:linear-gradient(180deg,#FFF9EE 80%,rgba(255,249,238,0))}
+.back631{border:none;background:#fff;border-radius:999px;padding:6px 11px;font:inherit;font-weight:900;font-size:13px;color:#7A5634;box-shadow:0 2px 0 #E6D6BB;white-space:nowrap}
+.tt631{min-width:0;text-align:center;line-height:1.15}.tt631 b{display:block;font-size:17px;color:#6B4A2A}.tt631 small{display:block;font-size:10.5px;color:#C0702A;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stk631{border:2px solid #F7C35F;background:#FFF5D9;border-radius:12px;padding:3px 8px;font:inherit;line-height:1.15;text-align:center}.stk631 b{display:block;font-size:11.5px;color:#D2601E;white-space:nowrap}.stk631 small{font-size:10.5px;color:#8A6A45;font-weight:800}
+.stk631.deg{border-color:#9DB0F2;background:#EEF2FF}.stk631.deg b{color:#3F55C4}
+.stg631{position:relative;border-radius:18px;overflow:hidden;aspect-ratio:3/1.4;box-shadow:0 3px 10px rgba(0,0,0,.12);border:3px solid #fff;flex:none}
+.stg631.mini{aspect-ratio:3/1.25}
+.stg631 .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+.stg631.locked .bg{filter:saturate(.7) brightness(.95)}
+.who631{position:absolute;transform:translate(-50%,-100%);width:19%;max-width:96px;border:none;background:none;padding:0;cursor:pointer;animation:sway631 2.6s ease-in-out infinite alternate}
+.who631 img{width:100%;height:auto;display:block;filter:drop-shadow(0 3px 2px rgba(0,0,0,.18))}
+.who631::after{content:"";position:absolute;left:18%;right:18%;bottom:-2%;height:8%;border-radius:50%;background:rgba(80,50,20,.22);z-index:-1}
+.who631.hop{animation:hop631 .6s ease-in-out infinite alternate}
+@keyframes sway631{from{rotate:-2.5deg}to{rotate:2.5deg}}
+@keyframes hop631{from{translate:0 0}to{translate:0 -10%}}
+.prop631{position:absolute;right:-14%;bottom:4%;font-style:normal;font-size:clamp(14px,4.5vw,22px);filter:drop-shadow(0 2px 1px rgba(0,0,0,.2))}
+.bl631{position:absolute;left:-6%;top:0;font-style:normal;font-size:10px;font-weight:900;background:#fff;border-radius:999px;padding:0 4px;color:#E05A7A;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.bub631{position:absolute;left:50%;bottom:102%;transform:translateX(-50%);background:#fff;border:2px solid #E8D3B0;border-radius:12px;padding:3px 8px;font-size:11px;font-weight:800;color:#6B4A2A;white-space:nowrap;z-index:3;animation:pop631 .25s}
+.mis631{display:flex;align-items:stretch;gap:4px;background:#fff;border-radius:14px;padding:5px;box-shadow:0 2px 0 #EADCC4;cursor:pointer}
+.mis631>span{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:3px;font-size:10px;font-weight:800;color:#7A5634;line-height:1.2;background:#FFF8EA;border-radius:9px;padding:3px 4px}
+.mis631>span i{flex:none;width:15px;height:15px;border:2px solid #D9C29A;border-radius:4px;font-style:normal;font-size:11px;line-height:11px;text-align:center;color:#fff;background:#fff}
+.mis631>span.ok{background:#EAF8EC;color:#2E8B57}.mis631>span.ok i{background:#3BAF6A;border-color:#3BAF6A}
+.chest631{flex:none;width:40px;border:none;background:#FFF1C9;border-radius:10px;font-size:22px;padding:0}
+.chest631.glow{animation:glow631 1s ease-in-out infinite alternate;background:#FFE08A}.chest631.got{opacity:.55}
+@keyframes glow631{from{box-shadow:0 0 0 0 rgba(255,190,0,.0);transform:scale(1)}to{box-shadow:0 0 12px 4px rgba(255,190,0,.7);transform:scale(1.08)}}
+.sec631{background:#fff;border-radius:14px;padding:6px;box-shadow:0 2px 0 #EADCC4}
+.h631{font-size:12.5px;font-weight:900;color:#6B4A2A;margin:0 2px 5px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.h631 small{font-size:10.5px;color:#8A6A45}.h631 .hot{color:#E8414B;animation:harv630 1.2s infinite}
+.sbs631{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.sb631{position:relative;border:2.5px solid color-mix(in srgb,var(--c) 35%,#fff);background:color-mix(in srgb,var(--c) 9%,#fff);border-radius:12px;padding:5px 1px 3px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+.sb631 .ic{font-size:20px;line-height:1}.sb631 b{font-size:11.5px;color:var(--c);white-space:nowrap}.sb631 small{font-size:9.5px;color:#8A6A45;font-weight:800;white-space:nowrap}
+.sb631.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 22%,#fff);box-shadow:0 3px 0 color-mix(in srgb,var(--c) 60%,#000 0%)}
+.sb631.glow{animation:glow631 1.4s ease-in-out infinite alternate}
+.stamp631{position:absolute;right:-3px;top:-5px;width:18px;height:18px;border-radius:50%;background:#E8414B;color:#fff;font-style:normal;font-size:11px;line-height:18px;text-align:center;font-weight:900;rotate:-12deg;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.rib631{position:absolute;left:-3px;top:-7px;font-style:normal;font-size:9px;font-weight:900;background:#FF7A45;color:#fff;border-radius:6px;padding:0 4px;white-space:nowrap;z-index:1}.rib631.g{background:#3BAF6A}
+.st631{display:flex;gap:0;font-size:12px;line-height:1}.st631 i{font-style:normal;color:#DDD3C3}.st631 i.on{color:#FFB400;text-shadow:0 0 2px #fff}
+.dfs631,.lvs631{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.df631,.lv631{position:relative;border:2.5px solid #EADCC4;background:#FFFBF2;border-radius:12px;padding:5px 2px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+.df631 span{font-size:17px;line-height:1}.df631 b,.lv631 b{font-size:12px;color:#6B4A2A;white-space:nowrap}.df631 small,.lv631 small{font-size:9.5px;color:#8A6A45;font-weight:800;white-space:nowrap}
+.df631.on{border-color:#F2A33A;background:#FFF0D2;box-shadow:0 3px 0 #E8A03A}.lv631.on{border-color:#5A6FD6;background:#EEF1FF;box-shadow:0 3px 0 #5A6FD6}
+.lv631.lock{opacity:.7}.lv631 .bar631{width:90%;margin-top:2px}
+.rw631{font-size:11px;font-weight:800;color:#7A5634;background:#FFF5DE;border-radius:10px;padding:4px 8px;text-align:center;line-height:1.35}.rw631.sm{font-size:10px;background:#F3F5FF;color:#4A5AA8}
+.bdg631{border:none;font:inherit;font-size:11px;font-weight:800;color:#6B4A2A;background:#fff;border-radius:10px;padding:5px 8px;text-align:left;box-shadow:0 2px 0 #EADCC4;line-height:1.3}
+.go631{border:none;font:inherit;font-weight:900;font-size:16px;color:#fff;background:linear-gradient(180deg,#FF8A5B,#F2663A);border-radius:16px;padding:11px 8px;box-shadow:0 4px 0 #C94A22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.go631.uni{background:linear-gradient(180deg,#7B8CF0,#5A6FD6);box-shadow:0 4px 0 #3F51B0}.go631.sub{background:linear-gradient(180deg,#7FCB8E,#4CAF6A);box-shadow:0 4px 0 #2E8B57;font-size:14px}
+.go631:disabled{background:#CFC6B8;box-shadow:0 4px 0 #A99F90}
+.tools631{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.tools631 button,.chip631{position:relative;border:none;background:#fff;border-radius:999px;padding:5px 9px;font:inherit;font-size:11.5px;font-weight:800;color:#6B4A2A;box-shadow:0 2px 0 #EADCC4;white-space:nowrap}
+.tools631 button.off{opacity:.6}.tools631 b{margin-left:3px;background:#F2A33A;color:#fff;border-radius:999px;padding:0 5px;font-size:10.5px}.tools631 b.red{background:#E8414B}.tools631 b.nm{background:#5A6FD6;max-width:70px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle}
+.bar631{display:block;height:6px;border-radius:99px;background:#EFE5D3;overflow:hidden;margin-top:3px}.bar631 i{display:block;height:100%;background:linear-gradient(90deg,#FFD25A,#F2A33A);border-radius:99px}
+.ths631{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.th631{position:relative;border:2.5px solid #DCE1F7;background:#F7F8FF;border-radius:12px;padding:6px 2px 4px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+.th631 .ic{font-size:20px;line-height:1}.th631 b{font-size:11px;color:#3F4E9E;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.th631 small{font-size:9px;color:#6A74A8;font-weight:800;white-space:nowrap}
+.th631.on{border-color:#5A6FD6;background:#E6EAFF;box-shadow:0 3px 0 #5A6FD6}.th631.lock{opacity:.6;background:#F1F1F1;border-color:#E2E2E2}
+.ck631{position:absolute;right:3px;top:2px;font-style:normal;font-size:10px;color:#3BAF6A;font-weight:900}
+.lock631{background:#fff;border-radius:14px;padding:8px 10px;box-shadow:0 2px 0 #E1E4F2;font-size:12.5px;color:#3F4E9E;font-weight:800}.lock631 p{margin:4px 0 0}.lock631 .sm{font-size:10.5px;color:#6A74A8}
+/* もんだい */
+.qz631{display:flex;flex-direction:column;gap:7px;padding-top:calc(8px + env(safe-area-inset-top));position:relative;min-height:60vh}
+.qh631{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;border-radius:12px;padding:6px 8px;box-shadow:0 2px 0 #EADCC4;border-left:6px solid var(--c,#5A6FD6);font-size:12.5px;font-weight:900;color:#6B4A2A}
+.qh631.uni{--c:#5A6FD6}.qh631 .stg2{font-size:11px;color:#5A6FD6}
+.dots631{display:flex;gap:3px}.dots631 i{width:9px;height:9px;border-radius:50%;background:#E8DCC8}.dots631 i.d{background:#F2A33A}.dots631 i.c{background:#fff;border:2px solid #F2A33A}
+.cb631{margin-left:auto;background:#FF7A45;color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;animation:pop631 .3s}
+.lf631{margin-left:auto;color:#E8414B;font-size:15px;letter-spacing:1px}
+.tc631{height:34px;width:auto;margin-left:auto}
+.cb631+.tc631{margin-left:4px}
+.nb631{display:flex;align-items:center;gap:3px;font-size:12px}.nb631 i{flex:1;height:5px;border-radius:3px;background:#E1E4F2}.nb631 i.on{background:#5A6FD6}
+.revt631,.near631{text-align:center;font-weight:900;font-size:12.5px;color:#D2601E;background:#FFF0D9;border-radius:10px;padding:3px}
+.qq631{background:#fff;border-radius:14px;padding:10px;box-shadow:0 2px 0 #EADCC4;font-size:16px;overflow-x:auto}
+.qq631 img,.qq631 svg{max-width:100%;height:auto}
+.hint631{background:#FFFBE0;border:2px dashed #F2C94C;border-radius:12px;padding:6px 9px;font-size:13px;font-weight:800;color:#8A5A00;line-height:1.4}.hint631 small{font-weight:700;color:#6B5540}
+.ops631{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.op631{border:2.5px solid #E6D6BB;background:#fff;border-radius:14px;padding:11px 6px;font:inherit;font-weight:900;font-size:15px;color:#4A3A2A;min-height:50px;word-break:break-word;overflow-wrap:anywhere;line-height:1.25;box-shadow:0 3px 0 #E6D6BB}
+.op631:disabled{opacity:.35;text-decoration:line-through}
+.op631.ok{background:#E3F7E8;border-color:#3BAF6A;box-shadow:0 3px 0 #3BAF6A}.op631.ng{background:#FFE7E7;border-color:#E8414B;box-shadow:0 3px 0 #E8414B;animation:shake631 .3s}
+@keyframes shake631{25%{translate:-4px 0}75%{translate:4px 0}}
+.qt631{display:flex;justify-content:center}
+.tm631{position:relative;height:16px;border-radius:99px;background:#EEE;overflow:hidden}.tm631 i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#FF7A45,#FFC24A);transition:width 1s linear}.tm631 b{position:relative;display:block;text-align:center;font-size:11px;line-height:16px;color:#6B4A2A}
+.exw631{background:#fff;border-radius:14px;padding:6px;box-shadow:0 2px 0 #EADCC4;max-height:none}
+.exb631{display:flex;flex-direction:column;gap:6px}.exb631 .btn{width:100%}
+.pop631{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);background:rgba(255,255,255,.96);border:3px solid #FFC94D;border-radius:18px;padding:10px 16px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.18);animation:pop631 .3s;z-index:4;max-width:88%}
+.pop631 span{display:block;font-size:44px;line-height:1.1}.pop631 b{font-size:14px;color:#D2601E}
+@keyframes pop631{from{transform:translate(-50%,-50%) scale(.5);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.bub631{animation:none}
+/* けっか */
+.res631{display:flex;flex-direction:column;gap:7px;padding-top:calc(8px + env(safe-area-inset-top));text-align:center}
+.res631 h2{margin:2px 0 0;font-size:20px;color:#6B4A2A}.res631 h2.hk631{font-size:26px;color:#3F55C4;animation:pop2 .5s}
+@keyframes pop2{from{scale:.4}to{scale:1}}
+.bigst631{display:flex;justify-content:center;gap:6px;font-size:46px;line-height:1}.bigst631 i{font-style:normal;color:#E3D9C8;scale:.2;animation:star631 .4s forwards}.bigst631 i.on{color:#FFB400;text-shadow:0 2px 0 #E08A00}
+@keyframes star631{to{scale:1}}
+.hn631{margin:0;font-weight:900;color:#7A5634;font-size:13px}
+.ln631{list-style:none;margin:0;padding:6px 8px;background:#fff;border-radius:14px;box-shadow:0 2px 0 #EADCC4;text-align:left;font-size:12.5px;font-weight:800;color:#5A4430;display:flex;flex-direction:column;gap:3px}
+.tot631{font-weight:900;color:#D2601E;font-size:15px}.tot631 b{font-size:22px}
+.stp631,.nx631{font-size:12px;font-weight:800;color:#6B4A2A;background:#FFF5DE;border-radius:10px;padding:5px 8px;text-align:left}.stp631 b{color:#E8414B}
+.tmr631{margin:0;font-size:12.5px;font-weight:800;color:#3F4E9E;background:#EEF1FF;border-radius:10px;padding:5px 8px}
+.warn631{margin:0;color:#C0392B;font-weight:900;font-size:12px}
+.rb631{display:flex;flex-direction:column;gap:6px}.rb631 .btn{width:100%}
+.ent631{position:relative}.ent631 .bgE{width:100%;border-radius:16px;aspect-ratio:3/1.4;object-fit:cover}
+.clap631{display:flex;flex-wrap:wrap;justify-content:center;gap:2px}.clap631 span{position:relative;width:15%;max-width:70px;animation:hop631 .5s ease-in-out infinite alternate}.clap631 img{width:100%}.clap631 i{position:absolute;right:-4px;top:-4px;font-style:normal;font-size:16px}
+/* ダイアログの なかみ */
+.rep631{width:100%;border-collapse:collapse;font-size:12.5px}.rep631 th,.rep631 td{padding:4px 5px;border-bottom:1px solid #F0E6D6;text-align:left;vertical-align:top}.rep631 th{white-space:nowrap;color:#6B4A2A}.rep631 td small{display:block;color:#3F55C4;font-weight:800}.rep631 tr.got{background:#EAF8EC}
+.up631{display:block;color:#E8414B;font-size:12px}
+.cal631{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:6px 0}.cal631 span{background:#F6EFE2;border-radius:8px;min-height:36px;display:flex;flex-direction:column;align-items:center;font-size:14px}.cal631 span small{font-size:9px;color:#8A6A45}.cal631 span.on{background:#FFE3EC}.cal631 span.td{outline:2px solid #F2A33A}
+.mi631{list-style:none;padding:0;margin:6px 0;text-align:left;font-weight:800;font-size:13px;display:flex;flex-direction:column;gap:4px}.mi631 li.ok{color:#2E8B57}
+.big631{font-size:64px;text-align:center;line-height:1.1}.spin631{animation:spin631 .8s ease-out}@keyframes spin631{from{rotate:-200deg;scale:.3}to{rotate:0;scale:1}}
+.nt631{display:grid;grid-template-columns:1fr 1fr;gap:5px;text-align:left}.nt631>div{background:#FFF8EA;border-radius:10px;padding:5px 7px;font-size:12px}.nt631 span{float:right;font-weight:900}.nt631 small{display:block;color:#7A5634;font-size:10.5px;line-height:1.35;margin-top:2px}
+.sbst631{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0;font-size:12px;font-weight:800}.sbst631 span{background:#FFF5DE;border-radius:999px;padding:1px 8px}
+.pp631{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-height:50vh;overflow-y:auto}
+.ppb631{border:2px solid #E6D6BB;background:#fff;border-radius:12px;padding:4px 2px;font:inherit;display:flex;flex-direction:column;align-items:center;min-width:0}.ppb631 img{height:46px;width:auto}.ppb631 b{font-size:11px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.ppb631 small{font-size:9.5px;color:#8A6A45}.ppb631.on{border-color:#5A6FD6;background:#EEF1FF}
+@media (min-width:600px){ .stg631{aspect-ratio:3/1.3} .op631{font-size:17px} }
+`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();

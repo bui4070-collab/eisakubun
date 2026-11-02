@@ -1,9 +1,9 @@
-まなびタウン v6.30 UPDATE（v6.29 からの差分）
+まなびタウン v6.31 UPDATE（v6.29 からの差分。v6.30 も ふくみます）
 
 アップロードする ファイル:
-- js/features.js                      （上書き）
-- assets/images/v630/ （新しい フォルダ：9まい）
-    hm_know.webp / hm_fur.webp / hm_guest.webp      … わたしの家 ちしき・家具・おきゃくさん
-    rm_living / rm_cafe / rm_kids / rm_bed / rm_hobby / rm_attic .webp … 部屋の アイコン
+- js/features.js                 （上書き）
+- assets/images/v630/            （v6.30 の アイコン 9まい。まだ アップロードして いなければ）
+- assets/images/v631/            （新しい フォルダ：がっこう・だいがくの 背景 2まい）
+    bg_school.webp / bg_univ.webp
 
-ほかの ファイル（index.html・app.js・css など）は そのままです。
+ほかの ファイルは そのままです。
