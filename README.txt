@@ -1,4 +1,5 @@
-まなびタウン v6.27 UPDATE（v6.26 からの差分。v6.26 の内容も ふくみます）
+まなびタウン v6.28 UPDATE（v6.27 からの差分）
 
-アップロードする ファイル（上書き）:
-- js/features.js
+アップロードする ファイル:
+- js/features.js                     （上書き）
+- assets/images/v628/ui_event.webp   （新しい フォルダ：イベントの アイコン）

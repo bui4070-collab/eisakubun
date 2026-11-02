@@ -7299,7 +7299,7 @@ css.textContent = `
   #shopTabs button[data-v="ev"] *{font-size:0!important}
 
   /* ---- わたしの家：ボタンと 枠の かさなりを なくす ---- */
-  #scr-myhome{display:flex;flex-direction:column;gap:10px}
+  #scr-myhome.active{display:flex;flex-direction:column;gap:10px}
   #scr-myhome .townBtns{margin:4px 0 6px!important;gap:8px!important;position:relative;z-index:1}
   #scr-myhome #homeHead{margin-bottom:2px}
   #scr-myhome .townBtns .btn{box-shadow:0 3px 0 rgba(0,0,0,.12)!important;margin:0!important}
@@ -7325,5 +7325,53 @@ css.textContent = `
 document.head.appendChild(css);
 /* 説明ボタンの クリックも むこうに */
 document.addEventListener('click', e => { if(e.target.closest('#btnHomeTips')){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.28：まち画面の つかいやすさ・ショップの イベントを イラストに
+   ・まち：ボタンを まちの 上へ（スクロールしなくても とどく）・「わたしの家」ボタンは なし
+           まちを たてに 広く・もようがえの トレーは ついてこない（まちの すぐ上に おく）
+           「⬇」ボタンで おねがい・じょうほうへ ひとっとび
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.28.0';
+DEFAULT_ART.ui_event = './assets/images/v628/ui_event.webp';
+function evIcon(){ const b = document.querySelector('#shopTabs button[data-v="ev"]'); if(!b || b.querySelector('img')) return; b.innerHTML = `<img alt="" data-art="ui_event" src="${DEFAULT_ART.ui_event}">イベント`; }
+evIcon(); renderShop = (orig => function(){ evIcon(); return orig.apply(this, arguments); })(renderShop);
+/* したへ とぶ ボタン */
+function addJump(){ const z = document.querySelector('#scr-town .zoomBar'); if(!z || z.querySelector('.jump628')) return;
+  z.insertAdjacentHTML('beforeend', '<button class="roundBtn jump628" type="button" title="おねがい・じょうほうへ">⬇</button>'); }
+document.addEventListener('click', e => { const b = e.target.closest('.jump628'); if(!b) return; e.preventDefault();
+  const t = document.querySelector('#reqPanel'); const top = (t && t.offsetHeight ? t : document.querySelector('#townStats')).getBoundingClientRect().top + scrollY - 64; window.scrollTo({top, behavior:'smooth'}); }, true);
+function harvestProxy(){ const h = document.querySelector('#btnHarvest'), sc = document.querySelector('#scr-town'); if(!h || !sc) return; let p = document.querySelector('#btnHarvest628');
+  if(!p){ sc.insertAdjacentHTML('beforeend', '<button class="btn green" id="btnHarvest628" type="button"></button>'); p = document.querySelector('#btnHarvest628'); p.onclick = () => { const H = document.querySelector('#btnHarvest'); if(H && !H.disabled) H.click(); setTimeout(harvestProxy, 200); }; }
+  p.innerHTML = h.innerHTML; p.disabled = h.disabled; }
+renderTown = (orig => function(){ const o = orig.apply(this, arguments); try{ addJump(); harvestProxy(); }catch(e){} return o; })(renderTown);
+const css = document.createElement('style');
+css.textContent = `
+#shopTabs button[data-v="ev"]::before{content:none!important;display:none!important}
+#shopTabs button[data-v="ev"] img{width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:2px}
+@media (max-width:700px){
+  #shopTabs button[data-v="ev"]{line-height:normal!important}
+  #shopTabs button[data-v="ev"] img{width:26px!important;height:26px!important;margin:0!important;font-size:initial}
+  #shopTabs button[data-v="ev"].on{font-size:10px!important}
+
+  /* ---- まち：ボタンを 上へ ---- */
+  #scr-town #btnToHome{display:none!important}
+  #scr-town .townBtns{order:2!important;grid-template-columns:repeat(3,1fr)!important}
+  #scr-town .zoomBar{order:3!important}
+  #scr-town #townTray{order:4!important}
+  #scr-town #townMapWrap{order:5!important;height:calc(100vh - 262px - 66px)!important;max-height:none!important;min-height:330px;overscroll-behavior:auto}
+  #scr-town #reqPanel{order:6!important}#scr-town #townStats{order:7!important}
+  #scr-town .townBtns #btnHarvest{display:none!important}
+  #scr-town #btnHarvest628{order:6;width:100%;font-size:12px!important;padding:6px 8px!important;margin:0!important}
+  .jump628{margin-left:auto!important;font-size:16px!important}
+
+  /* ---- もようがえの トレー：ついてこない ---- */
+  #scr-town #townTray{position:static!important;bottom:auto!important;margin:0!important;border-radius:16px!important;max-height:none!important;box-shadow:0 2px 8px rgba(0,0,0,.08)!important;padding:6px 8px!important}
+}`;
+document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 })();
