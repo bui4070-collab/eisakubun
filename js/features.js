@@ -7281,3 +7281,49 @@ css.textContent = `.pick621{display:grid;grid-template-columns:repeat(4,1fr);gap
 .pick621 i{position:absolute;right:2px;top:1px;font-style:normal;font-size:11px;font-weight:900;background:#F2A33A;color:#fff;border-radius:50%;width:17px;height:17px;line-height:17px;text-align:center}`;
 document.head.appendChild(css);
 })();
+
+/* =====================================================================
+   まなびタウン v6.27：ショップの「イベント」・わたしの家（ボタンと 枠の かさなり・部屋えらびを コンパクトに）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.27.0';
+const css = document.createElement('style');
+css.textContent = `
+@media (max-width:700px){
+  /* ---- ショップ：イベントの 文字を おさえる ---- */
+  #shopTabs button[data-v="ev"]{font-size:0!important;line-height:0!important;padding:4px 6px!important;width:auto;min-width:36px;gap:0!important;justify-content:center;align-items:center}
+  #shopTabs button[data-v="ev"]::before{content:"🎉";font-size:20px;line-height:26px;width:26px;height:26px;text-align:center;display:block}
+  #shopTabs button[data-v="ev"].on{font-size:10px!important;line-height:1.2!important;flex-direction:column;padding:4px 8px!important;white-space:nowrap}
+  #shopTabs button[data-v="ev"].on::before{content:none}
+  #shopTabs button[data-v="ev"] *{font-size:0!important}
+
+  /* ---- わたしの家：ボタンと 枠の かさなりを なくす ---- */
+  #scr-myhome{display:flex;flex-direction:column;gap:10px}
+  #scr-myhome .townBtns{margin:4px 0 6px!important;gap:8px!important;position:relative;z-index:1}
+  #scr-myhome #homeHead{margin-bottom:2px}
+  #scr-myhome .townBtns .btn{box-shadow:0 3px 0 rgba(0,0,0,.12)!important;margin:0!important}
+  #scr-myhome .townBtns #btnCafe46{grid-column:1 / -1;width:100%;min-height:0;padding:8px 6px!important}
+  #scr-myhome #roomBarBox{margin-top:4px;position:relative;z-index:0}
+
+  /* ---- 1F・2F・3Fの 部屋えらび：コンパクトに ---- */
+  .roomBar{margin:0 0 6px!important}
+  .roomBar .rbHouse{gap:4px!important;padding:6px!important;border-radius:14px!important}
+  .rbFloor{gap:4px!important}
+  .rbF{width:24px!important;font-size:11px!important;border-radius:8px!important}
+  .rbRoom{padding:2px 3px!important;border-radius:9px!important;flex-direction:row!important;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 3px!important;font-size:11px!important;min-height:0;line-height:1.15}
+  .rbRoom i{font-size:15px!important}
+  .rbRoom span{font-size:11px;max-width:calc(100% - 20px)}
+  .rbRoom small{display:none!important}
+  .rbRoom.rcan small{display:inline!important;font-size:9px;flex:1 1 100%;text-align:center}
+
+  /* ---- 「すてき度を 上げるには？」は なくす ---- */
+  #btnHomeTips{display:none!important}
+  #scr-myhome .hBtns{grid-template-columns:1fr!important}
+  #scr-myhome .hBtns .btn{width:100%}
+}`;
+document.head.appendChild(css);
+/* 説明ボタンの クリックも むこうに */
+document.addEventListener('click', e => { if(e.target.closest('#btnHomeTips')){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
