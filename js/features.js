@@ -7375,3 +7375,59 @@ css.textContent = `
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 })();
+
+/* =====================================================================
+   まなびタウン v6.29：まち画面の 調整・ロゴを もどす・イベントの イラスト
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.29.0';
+DEFAULT_ART.ui_event = './assets/images/v629/ui_event.webp';
+/* ---------- ショップの イベント：ほかの タブと おなじ 高さ・おなじ 位置 ---------- */
+function evIcon(){ const b = document.querySelector('#shopTabs button[data-v="ev"]'); if(!b) return; const im = b.querySelector('img'); if(im && im.dataset.art==='ui_event' && im.src.includes('v629')) return;
+  b.innerHTML = `<img alt="" data-art="ui_event" src="${DEFAULT_ART.ui_event}">イベント`; }
+evIcon(); renderShop = (orig => function(){ const o = orig.apply(this, arguments); try{ evIcon(); }catch(e){} return o; })(renderShop);
+
+/* ---------- まち：ロゴを もどす（村の名前の みぎの すきま） ---------- */
+function townLogo(){ const h = document.querySelector('#townHead'); if(!h) return; let l = h.querySelector('.tlogo629');
+  if(!l){ h.insertAdjacentHTML('afterbegin', `<img class="tlogo629" alt="まちづくり" src="${artSrc('logo_town') || './assets/images/image_875_582e8701.webp'}">`); } }
+renderTown = (orig => function(){ const o = orig.apply(this, arguments); try{ townLogo(); }catch(e){} return o; })(renderTown);
+
+const css = document.createElement('style');
+css.textContent = `
+/* ---- ショップ：イベントを ほかの タブと そろえる ---- */
+#shopTabs button[data-v="ev"]{width:auto;min-width:0;padding:4px 5px!important}
+#shopTabs button[data-v="ev"] img{width:26px!important;height:26px!important;object-fit:contain;margin:0!important;display:block;flex:none}
+@media (max-width:700px){
+  #shopTabs button{display:inline-flex!important;flex-direction:column;align-items:center;justify-content:flex-start;height:46px;box-sizing:border-box;padding-top:4px!important}
+  #shopTabs button img{height:26px!important;width:26px!important;object-fit:contain}
+  #shopTabs button[data-v="ev"]{font-size:0!important;line-height:0!important}
+  #shopTabs button[data-v="ev"].on{font-size:10px!important;line-height:1.2!important}
+
+  /* ---- まち ---- */
+  #scr-town #townHead{position:relative;padding:6px 10px 6px 10px!important;min-height:0}
+  #scr-town #townHead .tlogo629{display:block;position:absolute;right:8px;top:4px;height:48px;width:auto;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.15))}
+  #scr-town #townHead .tInfo{padding-right:104px}
+  #scr-town #townHead .lvUpBtn{margin-right:0}
+  #scr-town #townHead .ghostBtn{padding:3px 8px!important;font-size:11px!important}
+  /* ボタンと ズーム行の すきま */
+  #scr-town{gap:10px!important}
+  #scr-town .townBtns{margin-bottom:2px!important}
+  #scr-town .zoomBar{margin-top:2px!important;padding:2px 0!important;gap:10px!important}
+  /* まちを たてに ひろく（400px ぐらい）。がめん ぜんたいで スクロールする */
+  #scr-town #townMapWrap{height:max(400px,calc(100vh - 262px - 66px))!important;min-height:400px!important}
+  /* もようがえの トレー：ついてくる。ただし ちいさく */
+  #scr-town #townTray{position:fixed!important;left:8px!important;right:8px!important;bottom:calc(66px + env(safe-area-inset-bottom))!important;top:auto!important;margin:0!important;max-height:104px!important;overflow-y:auto;padding:3px 8px 4px!important;border-radius:14px!important;z-index:45!important;box-shadow:0 -2px 10px rgba(0,0,0,.18)!important;order:9}
+  #scr-town.active:has(#townTray:not(.hidden)){padding-bottom:116px}
+  #scr-town #townTray .trayTop{margin-bottom:2px!important;font-size:10.5px!important;line-height:1.25}
+  #scr-town #townTray .trayTop .btn{padding:3px 8px!important;font-size:11px!important;min-height:0}
+  #scr-town #townTray #trayItems,#scr-town #townTray .trayRow{gap:4px!important}
+  #scr-town #townTray .trayIt{padding:2px!important;border-radius:10px!important}
+  #scr-town #townTray .trayIt img,#scr-town #townTray .trayIt .bimg{max-height:36px!important;width:auto!important;max-width:100%}
+  #scr-town #townTray .trayIt small,#scr-town #townTray .trayIt b{font-size:9px!important;line-height:1.1}
+  #scr-town #townTray .trayGrip{padding:0!important;font-size:10px}
+  #scr-town #townTray.mini{max-height:44px!important}
+}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
