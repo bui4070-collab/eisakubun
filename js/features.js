@@ -6625,6 +6625,9 @@ const resImg = r => `<img src="${X(picSrc(SP(r.sp)))}" alt="">`;
 
 /* ---------- チーム ---------- */
 function team(){
+  { const all = (save.town?.res||[]), ids = (save.bbPick||[]).filter(id => all.some(r => r.id===id)); if(ids.length >= 3){ const L = ids.map(id => all.find(r => r.id===id)), used = new Set(ids);
+    const rest = shuffle(all.filter(r => !used.has(r.id) && !SP(r.sp).human && (SP(r.sp).img || artSrc(SP(r.sp).art)))); while(L.length < 9 && rest.length) L.push(rest.shift());   // 9人に たりない ぶんは じどうで おぎなう
+    return L; } }
   const L = (save.town?.res||[]).filter(r => picSrc(SP(r.sp)));
   const hana = L.find(r => SP(r.sp).human), others = L.filter(r => !SP(r.sp).human);
   const lineup = shuffle(others.slice()).slice(0, 8); if(hana) lineup.unshift(hana); else if(others[8]) lineup.push(others[8]);
@@ -7080,4 +7083,201 @@ show = (orig => function(name){ const o = orig.apply(this, arguments); if(name==
 try{ renderSoc = (orig => function(){ const o = orig.apply(this, arguments); try{ const ks = Object.keys(SOC_LV).filter(k => SOC_LV[k]===1 && MATH_UNITS[k]), n = ks.filter(k => unitStar(k) >= 3).length;
   if(!save.socMaster34 && $('#sUnits') && !$('#sUnits .soc34')) $('#sUnits').insertAdjacentHTML('afterbegin', `<div class="soc34 note">🎁 3・4年の たんげんを ぜんぶ ★3（マスター）に すると 超レアかくていレター＋10,000pt！（${n}/${ks.length}）</div>`); }catch(e){} return o; })(renderSoc); }catch(e){}
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.26：スマホの 画面を すっきり（まち・わたしの家・ずかん・ショップ）
+   ・まち：ロゴを ちいさく、まち地図を いちばん 上に、数字や お願いは 下へ
+   ・わたしの家／ずかん：ロゴを ちいさく、よけいな 余白を へらす
+   ・ショップ：タブが はみださない
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.26.0';
+const css = document.createElement('style');
+css.textContent = `
+@media (max-width:700px){
+  /* ---- ロゴは ちいさく ---- */
+  .scrLogo{width:min(34%,150px)!important;margin:-2px auto 2px!important}
+  #scr-shop .scrLogo,#scr-record .scrLogo,#scr-zukan .scrLogo,#scr-subject .scrLogo{width:min(30%,130px)!important;margin:-2px auto 0!important}
+  .screen>.card:first-of-type{margin-top:4px}
+  .screen{gap:8px}
+
+  /* ---- まち：ならびかえ ---- */
+  #scr-town.active{display:flex;flex-direction:column;gap:6px}
+  #scr-town>.scrLogo{display:none!important}
+  #scr-town .townTop{display:contents}
+  #scr-town #townHead{order:1;padding:6px 10px!important;gap:8px!important;flex-wrap:nowrap!important;align-items:center}
+  #scr-town #townHead .lvBadge{width:46px!important;height:46px!important;flex:none}
+  #scr-town #townHead .lvBadge small{font-size:9px}#scr-town #townHead .lvBadge b{font-size:20px}
+  #scr-town #townHead{flex-wrap:wrap!important}
+  #scr-town #townHead .tInfo{min-width:0;flex:1 1 0}
+  #scr-town #townHead .townName{display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden}
+  #scr-town #townHead .townName span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
+  #scr-town #townHead .tName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #scr-town #townHead .tSize{white-space:nowrap}
+  #scr-town #townHead .ghostBtn{flex:1 1 100%!important;order:5;padding:4px 8px!important;font-size:12px!important;margin:0!important}
+  #scr-town #townHead .lvUpBtn{order:4}
+  #scr-town #townHead .tName{font-size:15px!important;line-height:1.2}
+  #scr-town #townHead .townName{font-size:11px}
+  #scr-town #townHead .tprog{margin-top:2px}
+  #scr-town #townHead .tprog>span,#scr-town #townHead .tprog small{display:none}
+  #scr-town #townHead .tprog .pr{display:none}
+  #scr-town #townHead .tprog .pr:first-of-type{display:flex!important;font-size:10px;margin:0}
+  #scr-town #townHead .lvUpBtn{flex:none;padding:6px 10px!important;font-size:12px!important}
+  #scr-town .zoomBar{order:2;margin:0!important}
+  #scr-town #townMapWrap{order:3}
+  #scr-town #townTray{order:4}
+  #scr-town .townBtns{order:5;display:grid!important;grid-template-columns:repeat(4,1fr);gap:6px!important;margin:0!important}
+  #scr-town .townBtns .btn{font-size:11px!important;padding:6px 2px!important;flex-direction:column;gap:0;line-height:1.15;min-width:0;white-space:normal}
+  #scr-town .townBtns .btn img{width:26px!important;height:26px!important;margin:0!important}
+  #scr-town .townBtns #btnHarvest{grid-column:1 / -1;order:5;font-size:11px!important;padding:4px 8px!important;flex-direction:row;min-height:0}
+  #scr-town .townBtns{gap:4px!important}
+  #scr-town .townBtns .btn{min-height:0}
+  #scr-town #reqPanel{order:6}
+  #scr-town #townStats{order:7;grid-template-columns:repeat(3,1fr)!important;gap:5px!important;padding:6px!important}
+  #scr-town #townStats .tstat{padding:4px 6px!important;border-radius:12px!important}
+  #scr-town #townStats .tstat span{font-size:10px!important;line-height:1.2}
+  #scr-town #townStats .tstat b{font-size:13px!important}
+  #scr-town #reqPanel .card,#scr-town #reqPanel>*{margin:0}
+  #scr-town #townMapWrap{max-height:calc(100vh - 56px - 66px - 94px - 46px - 108px)!important;min-height:300px;overflow:auto!important;touch-action:pan-x pan-y!important;-webkit-overflow-scrolling:touch}   /* ヘッダー・タブ・ボタンぶんを ひいた 高さ。まちの なかだけ スクロール */
+  #scr-town .townBtns{margin-top:2px!important}
+  .zoomBar small{display:none!important}
+
+  /* ---- わたしの家 ---- */
+  #scr-myhome>.card:first-of-type{padding:8px 12px!important}
+  #scr-myhome .scrLogo{display:none!important}
+  #scr-myhome .homeLogo{width:min(34%,140px)!important;max-width:140px!important;margin:0 auto 2px!important;display:block}
+  #homeHead>*{margin-top:4px!important;margin-bottom:4px!important}
+  #scr-myhome .townBtns{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important;margin:0!important}
+  #scr-myhome .townBtns .btn{padding:8px 6px!important;font-size:14px!important}
+  #scr-myhome #viewSeg{margin:0!important}
+  #scr-myhome .homeStat,#scr-myhome .hmStats{gap:4px!important}
+
+  /* ---- ずかん ---- */
+  #scr-zukan>.card{padding:8px 10px!important}
+  #zukanHead{gap:6px}
+  #zukanHead .zkRing{width:62px!important;height:62px!important}
+  #zukanHead .btn{font-size:12px!important;padding:6px 8px!important}
+  .zkTabs{gap:5px!important}.zkTabs button{padding:4px 6px!important;font-size:12px}
+  #zukanNote{margin:2px 0!important;font-size:11px}
+  .zkGrid{gap:8px!important}
+
+  /* ---- ショップ ---- */
+  #shopTabs{max-width:100%;box-sizing:border-box}
+  #scr-shop .card{max-width:100%;overflow:hidden}
+  #scr-shop #shopTabs{width:100%;margin-left:0;margin-right:0;position:relative;scroll-snap-type:x proximity;mask-image:linear-gradient(90deg,#000 88%,transparent 100%);-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent 100%)}
+  #scr-shop #shopTabs button{scroll-snap-align:start}
+  #scr-shop #shopTabs button img{width:26px!important;height:26px!important}
+  #scr-shop #shopTabs button{padding:4px 5px!important}
+  #scr-shop #shopTabs button.on{padding:4px 8px!important}
+}`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.26（つづき）
+   ・ずかんに「さかな」タブ（釣った 魚が のる）
+   ・やきゅう：選手を 住民から えらべる／おんがく（BGM・最終回の 逆転チャンスは もりあがる 曲）
+   ===================================================================== */
+(function(){
+'use strict';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ---------- ずかん：さかな ---------- */
+try{
+  const FISHES = (window.__v614 && window.__v614.FISH) || [];
+  if(FISHES.length && !ZUKAN_CATS.some(c => c.id==='fish')){
+    ZUKAN_CATS.splice(ZUKAN_CATS.length - 1, 0, {id:'fish', n:'さかな', i:'🐟', list:() => FISHES.map(f => ({id:'fsh_' + f.id, name:f.n, fish:f, art:null, lv:1, rar:f.w <= 5 ? 3 : 1}))});
+  }
+  const _zs = zukanSync;
+  zukanSync = function(){ try{ const z = zk(), C = (save.fish70 && save.fish70.caught) || {}; FISHES.forEach(f => { if(C[f.id] && !z.f['fsh_' + f.id]) z.f['fsh_' + f.id] = Date.now(); }); }catch(e){} return _zs.apply(this, arguments); };
+  picHTML = (orig => function(o, cls){ if(o && o.fish){ const f = o.fish; return window.__v614 ? window.__v614.fishSVG(f, 70) : ''; } return orig.apply(this, arguments); })(picHTML);
+  renderZukan = (orig => function(){ try{ zukanSync(); }catch(e){} const r = orig.apply(this, arguments);
+    try{ if(zukanTab==='fish'){ $('#zukanNote').textContent = '港で つりあげると ずかんに のるよ。✨は レアな 魚！'; $$('#zukanGrid .zkCard').forEach(b => { const f = FISHES.find(x => 'fsh_' + x.id === b.dataset.id); if(!f) return; const got = b.classList.contains('got'), n = ((save.fish70||{}).caught||{})[f.id]||0;
+        const im = b.querySelector('.zkImg svg, .zkImg img'); if(im && !got) im.style.filter = 'brightness(0) opacity(.25)';
+        const r2 = b.querySelector('.zkRar'); if(r2) r2.textContent = got ? `${f.w <= 5 ? '✨レア ' : ''}${n}ひき` : (f.w <= 5 ? '✨ レア' : 'ふつう'); }); } }catch(e){}
+    return r; })(renderZukan);
+}catch(e){ console.warn('zukan fish', e); }
+document.addEventListener('click', async e => {
+  if(curScreen!=='zukan' || zukanTab!=='fish') return; const b = e.target.closest('.zkCard'); if(!b) return;
+  const f = ((window.__v614 && window.__v614.FISH) || []).find(x => 'fsh_' + x.id === b.dataset.id); if(!f) return; e.stopImmediatePropagation();
+  const n = ((save.fish70||{}).caught||{})[f.id]||0;
+  await dialog(n ? `<div class="dlgArt">${window.__v614.fishSVG(f, 160)}</div><h2 class="dlgT">${f.w <= 5 ? '✨ ' : ''}${X(f.n)}</h2><p class="dlgP">${X(f.note)}<br><small>おおきさ：${X(f.size)}　つった かず：${n}ひき</small></p>` : `<div class="dlgArt"><div style="filter:brightness(0) opacity(.25)">${window.__v614.fishSVG(f, 160)}</div></div><h2 class="dlgT">？？？</h2><p class="dlgP">みなとで つりあげると わかるよ。${f.w <= 5 ? '<br>✨ レアな 魚だよ！' : ''}</p>`, [{label:'とじる', v:1}]);
+}, true);
+
+/* ---------- やきゅう：選手を えらぶ ---------- */
+const BB = () => save.bbPick || (save.bbPick = []);
+async function pickPlayers(){
+  const all = (save.town?.res||[]).filter(r => { const s = SP(r.sp); return s.img || artSrc(s.art); });
+  const sel = new Set(BB().filter(id => all.some(r => r.id===id)));
+  const draw = () => `<h2 class="dlgT">⚾ 出る 選手を えらぶ</h2><p class="dlgP facNote">9人まで（1ばんから じゅんばん）。えらばないと じどうで きまるよ</p>
+    <div class="pick621">${all.map(r => { const s = SP(r.sp), i = [...sel].indexOf(r.id); return `<button data-pk="${r.id}" class="${i>=0 ? 'on' : ''}"><img src="${X(s.img || artSrc(s.art))}" alt=""><b>${X(r.name)}</b><small>💪${r.bbPower||1}</small>${i>=0 ? `<i>${i+1}</i>` : ''}</button>`; }).join('')}</div>
+    <p class="dlgP facNote">${sel.size} / 9人</p>`;
+  return new Promise(res => { let done = false;
+    dialog(draw(), [{label:'⚾ これで いく！', cls:'gold', v:'ok'}, {label:'じどうに もどす', cls:'white', v:'auto'}], 'wide').then(v => { done = true; document.removeEventListener('click', onPk, true); if(v==='auto'){ save.bbPick = []; persist(); } else if(v==='ok'){ save.bbPick = [...sel]; persist(); } res(v); });
+    function onPk(ev){ const b = ev.target.closest('#dlgBody [data-pk]'); if(!b || done) return; ev.stopImmediatePropagation(); ev.preventDefault(); const id = b.dataset.pk;
+      if(sel.has(id)) sel.delete(id); else if(sel.size < 9) sel.add(id); else toast('9人までだよ');
+      const sc = $('#dlgBody .pick621'); const top = sc ? sc.scrollTop : 0; $('#dlgBody').innerHTML = draw(); const n = $('#dlgBody .pick621'); if(n) n.scrollTop = top; }
+    document.addEventListener('click', onPk, true);
+  });
+}
+window.__bbPick = pickPlayers;
+/* ロビーに「選手を えらぶ」ボタンを たす */
+dialog = (orig => function(html, btns, cls){
+  try{ if(typeof html==='string' && html.includes('まなびスタジアム</h2>') && Array.isArray(btns) && !btns.some(b => b.v==='pick')){ btns = btns.slice(); btns.splice(btns.findIndex(b => b.v==='play') + 1, 0, {label:'👥 選手を えらぶ', cls:'white', v:'pick'}); } }catch(e){}
+  return orig.call(this, html, btns, cls); })(dialog);
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#dlgBtns button'); if(!b || !/選手を えらぶ/.test(b.textContent)) return; e.stopImmediatePropagation(); e.preventDefault();
+  $('#dlg').classList.remove('show'); const key = Object.keys(save.town.cells).find(k => save.town.cells[k]==='stadium') || '0,0';
+  await W(120); await pickPlayers(); await W(120); window.__v618.openStadium(key);
+}, true);
+const W = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- やきゅう：おんがく ---------- */
+let AC = null, MUS = null;
+const ac = () => { if(!AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; } } if(AC.state==='suspended') AC.resume(); return AC; };
+const muted = () => !!(save.settings && (save.settings.mute || save.settings.sound===false || save.settings.bgm===false));
+const N = {C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880,C3:130.81,G3:196,F3:174.61,E3:164.81,A3:220,D3:146.83,B3:246.94,R:0};
+const SONGS = {
+  play:{bpm:132, lead:'C5 E5 G5 E5 C5 E5 G5 R  D5 F5 A5 F5 D5 F5 A5 R  E5 G5 C5 G5 E5 G5 C5 R  D5 B4 G4 B4 D5 R C5 R'.split(' '), bass:'C3 R G3 R C3 R G3 R  D3 R A3 R D3 R A3 R  E3 R G3 R E3 R G3 R  G3 R G3 R C3 R C3 R'.split(' '), gain:.07},
+  chance:{bpm:164, lead:'E5 E5 G5 E5 C5 E5 G5 A5  G5 E5 G5 A5 C5 C5 A5 G5  F5 F5 A5 F5 D5 F5 A5 C5  B4 D5 G5 B4 D5 G5 C5 R'.split(' '), bass:'C3 C3 G3 G3 C3 C3 G3 G3  F3 F3 C3 C3 F3 F3 C3 C3  D3 D3 A3 A3 D3 D3 A3 A3  G3 G3 G3 G3 C3 C3 C3 C3'.split(' '), gain:.095},
+  win:{bpm:150, lead:'C5 E5 G5 C5 E5 G5 C5 E5 G5 C5 R R'.split(' '), bass:'C3 G3 C3 G3 C3 G3 C3 G3 C3 R R R'.split(' '), gain:.09, once:true}
+};
+function startBGM(name){
+  stopBGM(); if(muted()) return; const c = ac(); if(!c) return; const S = SONGS[name]; if(!S) return;
+  const dur = 60/S.bpm/2, master = c.createGain(); master.gain.value = 1; master.connect(c.destination);
+  let step = 0, nextT = c.currentTime + .05, timer = null; const m = {name, master, stop:false};
+  const note = (f, t, d, type, g) => { if(!f) return; const o = c.createOscillator(), gg = c.createGain(); o.type = type; o.frequency.value = f; gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(g, t + .01); gg.gain.exponentialRampToValueAtTime(.0008, t + d*.92); o.connect(gg); gg.connect(master); o.start(t); o.stop(t + d); };
+  const sched = () => { if(m.stop) return; while(nextT < c.currentTime + .4){ const i = step % S.lead.length;
+      note(N[S.lead[i]], nextT, dur, 'square', S.gain); note(N[S.bass[i]], nextT, dur, 'triangle', S.gain*1.4);
+      if(name==='chance' && i % 2===0){ const o = c.createOscillator(), g2 = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(150, nextT); o.frequency.exponentialRampToValueAtTime(50, nextT + .12); g2.gain.setValueAtTime(S.gain*3, nextT); g2.gain.exponentialRampToValueAtTime(.001, nextT + .13); o.connect(g2); g2.connect(master); o.start(nextT); o.stop(nextT + .14); }
+      step++; nextT += dur; if(S.once && step >= S.lead.length){ m.stop = true; clearInterval(timer); break; } } };
+  timer = setInterval(sched, 120); sched(); m.timer = timer; MUS = m;
+}
+function stopBGM(){ if(!MUS) return; const m = MUS; MUS = null; m.stop = true; clearInterval(m.timer); try{ m.master.gain.setTargetAtTime(0, ac().currentTime, .08); }catch(e){} }
+window.__bgm = {startBGM, stopBGM};
+
+/* 試合に あわせて 曲を きりかえる */
+const watch = () => {
+  const G = window.__v618 && window.__v618.G;
+  if(!G){ if(MUS && MUS.name!=='win') stopBGM(); return; }
+  const want = G.chance && G.inning===2 ? 'chance' : 'play';
+  if(!MUS || (MUS.name!==want && MUS.name!=='win')) startBGM(want);
+};
+setInterval(watch, 500);
+/* しょうりの ファンファーレ：試合が おわった しゅんかんに かった ときだけ */
+let lastG = null;
+setInterval(() => { const G = window.__v618 && window.__v618.G; if(G){ lastG = {score:G.score, opp:G.cold ? G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0) : G.opp.reduce((a,b) => a+b, 0), walk:G.walkoff}; return; }
+  if(lastG){ const L = lastG; lastG = null; stopBGM(); if(L.score > L.opp || L.walk) setTimeout(() => startBGM('win'), 150); } }, 300);
+window.addEventListener('pagehide', stopBGM); document.addEventListener('visibilitychange', () => { if(document.hidden) stopBGM(); });
+
+const css = document.createElement('style');
+css.textContent = `.pick621{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:46vh;overflow-y:auto;overflow-x:hidden;margin:6px 0}
+.pick621 button{position:relative;display:flex;flex-direction:column;align-items:center;background:#F3FAFF;border:2.5px solid #BFE3FB;border-radius:12px;padding:3px 2px;font:inherit;color:inherit;cursor:pointer;min-width:0}
+.pick621 button.on{border-color:#F2A33A;background:#FFF3D6}.pick621 img{width:100%;max-width:52px;height:52px;object-fit:contain}
+.pick621 b{font-size:10.5px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pick621 small{font-size:10px;color:#C66F0A}
+.pick621 i{position:absolute;right:2px;top:1px;font-style:normal;font-size:11px;font-weight:900;background:#F2A33A;color:#fff;border-radius:50%;width:17px;height:17px;line-height:17px;text-align:center}`;
+document.head.appendChild(css);
 })();
