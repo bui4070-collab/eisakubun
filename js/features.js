@@ -9832,7 +9832,7 @@ document.head.appendChild(css);
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.44.0', IMG = './assets/images/v644/';
+const VER = '6.45.0', IMG = './assets/images/v644/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 /* [id, なまえ, エリア, 絵（あたらしい 水彩 → なければ 住民の 絵）, まめちしき, [もんだい, せいかい, まちがい1, まちがい2, ★, かいせつ]...] */
@@ -9967,15 +9967,16 @@ const AQ_RARE = ['whaleshark','ジンベエザメ','rare','res_shark','せかい
 
 const CFG = {walk:5, perDay:5, ptCap:300, cry:3, rareP:.15, rareMul:3, perfect:10, complete:500, star:{1:2,2:4,3:6}, gap:520};
 const PLACE = {
-  zoo:{key:'zoo', n:'どうぶつえん', card:'しゃしんカード', areas:ZOO_AREAS, an:ZOO_AN, rare:ZOO_RARE, logo:null, guides:['res_panda','res_redpanda'],
+  zoo:{key:'zoo', n:'どうぶつえん', card:'しゃしんカード', areas:ZOO_AREAS, an:ZOO_AN, rare:ZOO_RARE, logo:'./assets/images/v645/logo_zoo.webp', guides:['res_panda','res_redpanda'],
     say:['いっしょに みて まわろう！','どの どうぶつに あえるかな？','わからない ときは ぼくを タッチしてね','ささ、おいしいよ〜'], hello:n => `${n}さんだ！ ちかづいて みよう！`},
   aq:{key:'aq', n:'すいぞくかん', card:'かいがらカード', areas:AQ_AREAS, an:AQ_AN, rare:AQ_RARE, logo:IMG+'logo_aquarium.webp', guides:['res_dolphin'],
     say:['うみの ふしぎに であおう！','きょうは だれに あえるかな？','こまったら ぼくを タッチしてね','キュイ〜！'], hello:n => `${n}だ！ ちかづいて みよう！`}
 };
 const all = P => P.an.concat([P.rare]);
 const anBy = (P, id) => all(P).find(a => a[0]===id);
-const artOf = a => a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
-const isNew = a => a[3].startsWith('v644:');
+const NEW645 = {giraffe:'an_giraffe', panda:'an_panda', penguin:'an_penguin', penguin2:'an_penguin', turtle:'an_turtle', clownfish:'an_clownfish', octopus:'an_octopus'};
+const artOf = a => NEW645[a[0]] ? './assets/images/v645/' + NEW645[a[0]] + '.webp' : a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
+const isNew = a => !!NEW645[a[0]] || a[3].startsWith('v644:');
 
 /* ---------- セーブ ---------- */
 function SV(P){ const k = P.key==='zoo' ? 'zoo644' : 'aq644'; const s = save[k] || (save[k] = {seen:{}, perfect:0, complete:0});
@@ -10279,7 +10280,7 @@ body.zq644on{overflow:hidden}
 .zk644 img{width:46px;height:46px;object-fit:contain}.zk644 b{font-size:12px;color:#6B4A2A}
 /* あるく */
 .sc644{position:relative;flex:1;min-height:0;z-index:1;user-select:none;-webkit-user-select:none;cursor:pointer}
-.wd644{position:absolute;left:0;bottom:30%;height:56%;width:10px;will-change:transform}
+.wd644{position:absolute;left:0;bottom:21%;height:58%;width:10px;will-change:transform}
 .an644{position:absolute;bottom:0;width:190px;height:100%;transform:translateX(-50%);display:flex;align-items:flex-end;justify-content:center}
 .ai644{position:relative;display:flex;align-items:flex-end;justify-content:center;max-width:100%}.ai644.sw{margin-bottom:13vh;animation:fl644 3.6s ease-in-out infinite alternate}
 .an644 img{max-width:100%;max-height:min(250px,36vh);object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.18))}
@@ -10290,7 +10291,7 @@ body.zq644on{overflow:hidden}
 .ex644.gold{background:linear-gradient(#FFE27A,#F2B514);box-shadow:0 4px 0 #B5800C,0 0 18px 6px rgba(255,210,74,.8)}
 @keyframes ex644{to{transform:translateX(-50%) translateY(-8px) scale(1.08)}}
 .end644{position:absolute;bottom:0;transform:translateX(-50%);background:#fff;border:3px solid #6B4A2A;border-radius:12px;padding:6px 12px;font-weight:900;color:#6B4A2A}
-.hw644{position:absolute;left:22%;bottom:24%;width:24%;max-width:120px;aspect-ratio:154/270;transform:translateX(-50%);z-index:3;pointer-events:none}
+.hw644{position:absolute;left:22%;bottom:12%;width:24%;max-width:120px;aspect-ratio:154/270;transform:translateX(-50%);z-index:3;pointer-events:none}
 .hw644.flip i{transform:scaleX(-1)}
 .hw644.mv{animation:bob644 .38s ease-in-out infinite alternate}
 @keyframes bob644{to{translate:0 -3px}}
@@ -10354,6 +10355,25 @@ body.zq644on{overflow:hidden}
 .rb644{display:flex;flex-direction:column;gap:6px;margin-top:10px}.rb644 .btn{width:100%}
 .zg644{margin-top:8px;text-align:left}.zg644 h4{margin:8px 2px 4px;color:#6B4A2A;font-size:13px}.zg644>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.zg644 .cd644{width:auto}
 .zc644{position:relative;z-index:2;text-align:center;font-weight:900;color:#D4A017;margin:0 10px 14px}.zc644.s{color:#6B4A2A}
+
+/* v6.45：エリアの はいけい（イラスト） */
+.bg644 .l1,.bg644 .l2,.bg644 .l3{display:none!important}
+.bg644{background-color:#CFE9F7;background-repeat:repeat-x;background-size:auto 100%;background-position:calc(var(--px,0px) * .8) 100%}
+.bg644.top,.bg644.q{background-size:cover;background-position:50% 100%;background-repeat:no-repeat}
+.bg644.sav{background-image:url(./assets/images/v645/tile_sav.webp)}.bg644.sav.top,.bg644.sav.q{background-image:url(./assets/images/v645/bg_sav.webp)}
+.bg644.forest{background-image:url(./assets/images/v645/tile_forest.webp)}.bg644.forest.top,.bg644.forest.q{background-image:url(./assets/images/v645/bg_forest.webp)}
+.bg644.north{background-image:url(./assets/images/v645/tile_north.webp)}.bg644.north.top,.bg644.north.q{background-image:url(./assets/images/v645/bg_north.webp)}
+.bg644.bird{background-image:url(./assets/images/v645/tile_bird.webp)}.bg644.bird.top,.bg644.bird.q{background-image:url(./assets/images/v645/bg_bird.webp)}
+.bg644.coral{background-image:url(./assets/images/v645/tile_coral.webp)}.bg644.coral.top,.bg644.coral.q{background-image:url(./assets/images/v645/bg_coral.webp)}
+.bg644.tunnel{background-image:url(./assets/images/v645/tile_tunnel.webp)}.bg644.tunnel.top,.bg644.tunnel.q{background-image:url(./assets/images/v645/bg_tunnel.webp)}
+.bg644.jelly{background-image:url(./assets/images/v645/tile_jelly.webp)}.bg644.jelly.top,.bg644.jelly.q{background-image:url(./assets/images/v645/bg_jelly.webp)}
+.bg644.shore{background-image:url(./assets/images/v645/tile_shore.webp)}.bg644.shore.top,.bg644.shore.q{background-image:url(./assets/images/v645/bg_shore.webp)}
+
+#zq644.zoo .bg644.rare{background-image:url(./assets/images/v645/tile_sav.webp);filter:sepia(.35) saturate(1.3) brightness(1.08)}#zq644.zoo .bg644.rare.q{background-image:url(./assets/images/v645/bg_sav.webp)}
+#zq644.aq .bg644.rare{background-image:url(./assets/images/v645/tile_tunnel.webp);filter:hue-rotate(-20deg) saturate(1.2)}#zq644.aq .bg644.rare.q{background-image:url(./assets/images/v645/bg_tunnel.webp)}
+#zq644.aq .bg644 .ray{opacity:.6}
+.w644.zk .bg644,.w644.rs .bg644{filter:blur(2px) brightness(1.05)}
+.lg644{max-width:230px}
 @media (max-height:640px){ .qt644{font-size:16px} .op644 button{min-height:54px;font-size:14px} }
 `;
 document.head.appendChild(css);
