@@ -9716,3 +9716,110 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 .ik642 b{font-size:11px;white-space:nowrap}.ik642 small{font-size:9.5px;color:#6A7A8A}.ik642 .btn{padding:3px 6px!important;font-size:10.5px!important;margin-top:2px}
 .ik642.u>div{background:#FFF8EA;border-color:#F1DDB5}
 `; document.head.appendChild(st); })();
+
+/* =====================================================================
+   まなびタウン v6.43：BGM（assets/audio/BGM.mp3）
+   ・ふだんは ひかえめな 音量で ループ
+   ・問題を とく とき・野球・運動会・つり などは 音量を さげる
+   ・ものがたり／運動会の 音楽が ながれている ときは とめる
+   ・上の バーと せっていで オン／オフ（save.settings.bgm）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.43.0', SRC = './assets/audio/BGM.mp3';
+const VOL = {base:.22, low:.07, quiet:.12, off:0};      // あまり 目立たない 音量
+const B = {el:null, ctx:null, gain:null, ok:false, cur:-1, err:false};
+const on = () => save.settings && save.settings.bgm !== false;
+
+function init(){
+  if(B.el || B.err) return;
+  const a = new Audio(); a.src = SRC; a.loop = true; a.preload = 'auto'; a.setAttribute('playsinline', '');
+  a.addEventListener('error', () => { B.err = true; console.warn('BGM: ' + SRC + ' が よみこめません'); });
+  B.el = a;
+  try{
+    B.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const s = B.ctx.createMediaElementSource(a); B.gain = B.ctx.createGain(); B.gain.gain.value = 0;
+    s.connect(B.gain).connect(B.ctx.destination);      // iPhone は audio.volume が きかないので GainNode で 音量を かえる
+  }catch(e){ B.ctx = null; a.volume = 0; }
+}
+/* いま どの くらいの 音量に するか */
+function target(){
+  if(!on() || document.hidden) return VOL.off;
+  const b = document.body, q = s => document.querySelector(s);
+  try{ if(typeof SM!=='undefined' && SM.timer) return VOL.off; }catch(e){}
+  try{ if(typeof UDM!=='undefined' && UDM.timer) return VOL.off; }catch(e){}
+  if(q('#story.show')) return VOL.off;
+  if(b.classList.contains('scr-quiz') || b.classList.contains('scr-mathplay') || b.classList.contains('scr-engplay') || b.classList.contains('scr-ud')) return VOL.low;
+  if(q('#dlg.show .mqHead') || q('#dlg.show .dlgCard.quiz')) return VOL.low;                // まちの いろいろな 問題
+  if(q('#sc631 .qz631') || q('#sc631 .exw631')) return VOL.low;                              // がっこう・だいがくの じゅぎょう／けんきゅう
+  if(q('#stn636 .qb636') || q('#stn636 .ex636') || q('#stn636 .dep636')) return VOL.low;    // 大きな えきの たびクイズ
+  if(q('#bb618')) return VOL.low;                                                              // 野球
+  if(q('#fish614')) return VOL.quiet;                                                          // つり
+  if(q('.tour') && q('.tour.show')) return VOL.quiet;
+  return VOL.base;
+}
+function apply(force){
+  if(!B.el){ if(!on()) return paint(); init(); }
+  if(B.err) return paint();
+  const v = target();
+  if(v > 0){
+    if(B.ctx && B.ctx.state === 'suspended') B.ctx.resume().catch(() => {});
+    if(B.el.paused && B.ok) B.el.play().catch(() => {});
+  }
+  if(v !== B.cur || force){
+    B.cur = v;
+    if(B.gain){ const g = B.gain.gain, t = B.ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.setTargetAtTime(v, t, v > g.value ? .6 : .25); }
+    else B.el.volume = v;
+    clearTimeout(B.pt);
+    if(v === 0) B.pt = setTimeout(() => { if(B.cur === 0 && B.el && !B.el.paused) B.el.pause(); }, 1500);
+  }
+  paint();
+}
+/* さいしょに タッチした ときに 再生（ブラウザの きまり） */
+function unlock(){
+  if(B.ok) return; init(); if(B.err) return;
+  B.ok = true;
+  if(B.ctx && B.ctx.state === 'suspended') B.ctx.resume().catch(() => {});
+  if(on()) B.el.play().catch(() => { B.ok = false; });
+  apply(true);
+}
+['pointerdown','touchend','keydown'].forEach(n => document.addEventListener(n, unlock, {capture:true, passive:true}));
+document.addEventListener('visibilitychange', () => apply());
+setInterval(() => { if(B.ok || !on()) apply(); }, 400);
+
+/* ---------- オン／オフ ---------- */
+const ICON = o => `<svg viewBox="0 0 32 32" class="bgmI643"><path d="M12 22.5V8.5l12-3v13" fill="none" stroke="${o ? '#E07A3F' : '#A89A88'}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="9" cy="22.5" rx="3.6" ry="2.9" fill="${o ? '#F2A33A' : '#C9BEB0'}"/><ellipse cx="21" cy="19" rx="3.6" ry="2.9" fill="${o ? '#F2A33A' : '#C9BEB0'}"/>
+  ${o ? '<path d="M26.5 8.5q2 2 0 4M28.5 6.5q3.5 4 0 8" fill="none" stroke="#F2A33A" stroke-width="1.8" stroke-linecap="round"/>' : '<path d="M5 5L27 27" stroke="#E8414B" stroke-width="3" stroke-linecap="round"/>'}</svg>`;
+function setOn(v){ save.settings.bgm = !!v; persist(); if(v) unlock(); apply(true); toast(v ? 'BGM オン' : 'BGM オフ'); }
+function paint(){
+  const o = on(), b = document.querySelector('#btnBgm643');
+  if(b){ b.innerHTML = ICON(o); b.classList.toggle('off', !o); b.title = o ? 'BGM：オン' : 'BGM：オフ'; }
+  document.querySelectorAll('#segBgm643 button').forEach(x => x.classList.toggle('on', (x.dataset.v === 'true') === o));
+}
+function mount(){
+  const set = document.querySelector('#btnSettings');
+  if(set && !document.querySelector('#btnBgm643')){
+    set.insertAdjacentHTML('beforebegin', '<button class="roundBtn" id="btnBgm643" type="button" aria-label="BGM"></button>');
+    document.querySelector('#btnBgm643').addEventListener('click', e => { e.stopPropagation(); setOn(!on()); });
+  }
+  const row = document.querySelector('#segSound')?.closest('.row');
+  if(row && !document.querySelector('#segBgm643')){
+    row.insertAdjacentHTML('afterend', '<div class="row"><div class="lab">BGM（おんがく）</div><div class="seg" id="segBgm643"><button data-v="true">オン</button><button data-v="false">オフ</button></div></div>');
+    document.querySelector('#segBgm643').addEventListener('click', e => { const x = e.target.closest('button'); if(x) setOn(x.dataset.v === 'true'); });
+  }
+  paint();
+}
+mount(); setTimeout(mount, 800);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ mount(); const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__bgm643 = {B, target, apply, setOn};
+
+const css = document.createElement('style');
+css.textContent = `
+#btnBgm643{display:flex;align-items:center;justify-content:center;padding:0}
+#btnBgm643 .bgmI643{width:62%;height:62%;display:block}
+#btnBgm643.off{opacity:.8}
+body.scr-quiz #btnBgm643{display:none}
+`;
+document.head.appendChild(css);
+})();
