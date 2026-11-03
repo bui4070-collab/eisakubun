@@ -9823,3 +9823,539 @@ body.scr-quiz #btnBgm643{display:none}
 `;
 document.head.appendChild(css);
 })();
+
+
+/* =====================================================================
+   まなびタウン v6.44：どうぶつえん・すいぞくかん（仕様書 v0.1）
+   トップ → あるく（ハナが よこむきで あるく・「！」）→ クイズ → ごほうび → 5ひきで おわり
+   ずかん（しゃしんカード／かいがらカード）・レア・パーフェクト・1日の じょうげん
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.44.0', IMG = './assets/images/v644/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+/* [id, なまえ, エリア, 絵（あたらしい 水彩 → なければ 住民の 絵）, まめちしき, [もんだい, せいかい, まちがい1, まちがい2, ★, かいせつ]...] */
+const ZOO_AREAS = [['sav','サバンナの ひろば'],['forest','もりの みち'],['north','きたの くに'],['bird','とりの いけ']];
+const AQ_AREAS = [['coral','さんごの うみ'],['tunnel','だいすいそうの トンネル'],['jelly','くらげの へや'],['shore','いそべの ひろば']];
+const ZOO_AN = [
+ ['lion','ライオン','sav','res_lion','オスには りっぱな たてがみが ある。むれで くらす。',[
+  ['たてがみが あるのは？','オス','メス','あかちゃん',1,'たてがみは オスだけ。つよさを みせる しるしだよ。'],
+  ['ライオンが すんでいる ところは？','サバンナ','こおりの うみ','ふかい うみの そこ',1,'くさはらが ひろがる サバンナで くらしているよ。'],
+  ['かりを する ことが おおいのは？','メス','オス','こども',2,'むれの メスたちが きょうりょくして かりを することが おおいよ。'],
+  ['ライオンの むれの なまえは？','プライド','チーム','クラブ',3,'ライオンの むれは「プライド」と よばれるよ。']]],
+ ['giraffe','キリン','sav','res_giraffe','せかいで いちばん せが たかい どうぶつ。',[
+  ['キリンが よく たべるのは？','きの はっぱ','にく','さかな',1,'たかい きの はっぱを ながい したで まきとって たべるよ。'],
+  ['キリンの くびの ほねは なんこ？','7こ','14こ','30こ',2,'ひとと おなじ 7こ。1つ1つが とても ながいんだ。'],
+  ['キリンの したの いろは？','こい むらさき','ピンク','みどり',3,'こい むらさきいろで、ひやけを ふせぐと いわれているよ。']]],
+ ['elephant','ゾウ','sav','v644:an_elephant','りくで いちばん おもい どうぶつ。',[
+  ['ゾウの ながい はなで できるのは？','みずを すって あびる','そらを とぶ','ひかる',1,'はなで みずを すったり、ものを つかんだり できるよ。'],
+  ['ゾウの おおきな みみは なんの やくに たつ？','あつさを にがす','おとを とめる','とぶ ため',3,'みみを パタパタ うごかして、からだを ひやしているよ。'],
+  ['ゾウの きばは なにが のびた もの？','は（まえば）','つの','はなの ほね',3,'きばは まえばが ながく のびた ものだよ。']]],
+ ['zebra','シマウマ','sav','v644:an_zebra','しまもようは 1とうずつ ちがう。',[
+  ['シマウマは なんの なかま？','ウマ','ウシ','シカ',1,'ウマの なかまだよ。はしるのが とくい！'],
+  ['シマウマの おもな たべものは？','くさ','にく','さかな',1,'サバンナの くさを たべて くらしているよ。'],
+  ['シマウマの しまもようは？','1とうずつ ちがう','みんな おなじ','おとなに なると きえる',2,'ひとの しもんの ように、1とうずつ もようが ちがうよ。']]],
+ ['camel','ラクダ','sav','res_camel','あつい さばくでも げんきに あるける。',[
+  ['ラクダが すんでいる ところは？','さばく','うみの なか','こおりの うえ',1,'すなの おおい さばくで くらしているよ。'],
+  ['ラクダの まつげが ながいのは なぜ？','すなから めを まもる','かざり','よく ねむる ため',2,'ながい まつげで、すなが めに はいるのを ふせいでいるよ。'],
+  ['ラクダの こぶの なかみは？','しぼう','みず','ほね',2,'こぶには えいようの しぼうが たまっているよ。']]],
+ ['panda','パンダ','forest','res_panda','ジャイアントパンダの ふるさとは ちゅうごく。',[
+  ['パンダが いちばん よく たべるのは？','ささ・たけ','にく','さかな',1,'たけや ささが しゅしょく。1日の ほとんどを たべて すごすよ。'],
+  ['ジャイアントパンダの ふるさとの くには？','ちゅうごく','オーストラリア','ブラジル',2,'ちゅうごくの やまおくの たけやぶに すんでいるよ。'],
+  ['パンダが たけを つかむ ときに つかうのは？','ゆびの ような でっぱり','しっぽ','みみ',3,'てくびの ほねの でっぱりを 6ばんめの ゆびの ように つかうよ。']]],
+ ['redpanda','レッサーパンダ','forest','res_redpanda','しましまの しっぽが ふわふわ。',[
+  ['レッサーパンダの しっぽの もようは？','しましま','みずたま','もようなし',1,'あかちゃいろと うすい いろの しましまだよ。'],
+  ['レッサーパンダが おもに たべるのは？','たけ・ささ','さかな','いし',2,'たけや ささの ほか、くだものも たべるよ。'],
+  ['びっくりした とき どうする ことが ある？','たちあがって おおきく みせる','とぶ','すみを はく',2,'うしろあしで たって、からだを おおきく みせるよ。']]],
+ ['koala','コアラ','forest','v644:an_koala','1日の ほとんどを ねて すごす。',[
+  ['コアラが たべる はっぱは？','ユーカリ','ささ','キャベツ',1,'ユーカリの はっぱだけを たべるよ。'],
+  ['コアラの ふるさとは？','オーストラリア','アフリカ','なんきょく',1,'オーストラリアの もりに すんでいるよ。'],
+  ['コアラが あかちゃんを そだてる ところは？','おなかの ふくろ','すの なか','たまごの なか',2,'カンガルーと おなじ、おなかの ふくろで そだてるよ。'],
+  ['コアラが 1日に ねる じかんは？','20じかん くらい','2じかん くらい','8じかん くらい',3,'ユーカリは えいようが すくないので、たくさん ねて つかれない ように しているよ。']]],
+ ['monkey','ニホンザル','forest','res_goldmonkey','せかいで いちばん きたに すむ サル。',[
+  ['ニホンザルの かおの いろは？','あか','あお','きいろ',1,'あかい かおと おしりが とくちょうだよ。'],
+  ['さむい ひに はいる ことで ゆうめいなのは？','おんせん','プール','こたつ',2,'ながのけんの おんせんに はいる サルが ゆうめいだよ。'],
+  ['ニホンザルは せかいの サルの なかで…？','いちばん きたに すむ','いちばん おおきい','いちばん はやい',3,'ひと いがいの サルで、いちばん きたに すんでいるよ。']]],
+ ['penguin','ペンギン','north','res_penguin','とべないけれど およぐのが とくい。',[
+  ['ペンギンは そらを とべる？','とべない','とべる','たまに とべる',1,'とべない かわりに、うみの なかを はやく およげるよ。'],
+  ['いちばん おおきい ペンギンは？','コウテイペンギン','ケープペンギン','フンボルトペンギン',2,'コウテイペンギンは せの たかさが 1mを こえる ことも あるよ。'],
+  ['コウテイペンギンの たまごを あたためるのは？','オス','メス','りょうほう こうたいで',3,'オスが あしの うえに たまごを のせて、さむい ふゆを たえるよ。']]],
+ ['polarbear','ホッキョクグマ','north','res_polarbear','しろく みえる けは じつは とうめい。',[
+  ['ホッキョクグマが すんでいる ところは？','ほっきょく','なんきょく','さばく',1,'こおりの うみが ひろがる ほっきょくに すんでいるよ。'],
+  ['ホッキョクグマの おもな たべものは？','アザラシ','ささ','くだもの',2,'こおりの うえで アザラシを まって つかまえるよ。'],
+  ['ホッキョクグマの ひふの いろは？','くろ','しろ','ピンク',3,'けは とうめいで しろく みえる。くろい ひふで ねつを ためるよ。']]],
+ ['seal','アザラシ','north','res_seal','ぶあつい しぼうで さむさに つよい。',[
+  ['アザラシは なにで いきを する？','はい','えら','ひふ',2,'はいで いきを するので、ときどき すいめんに かおを だすよ。'],
+  ['アザラシの からだを あたたかく するのは？','ぶあつい しぼう','ふわふわの はね','かたい こうら',2,'ひふの したの ぶあつい しぼうが さむさを ふせぐよ。'],
+  ['アザラシが りくで あるくのが にがてな わけは？','うしろあしが まえに まがらない','あしが ない','おもすぎる',3,'うしろあしが うしろを むいたまま なので、おなかで はって すすむよ。']]],
+ ['flamingo','フラミンゴ','bird','res_flamingo','かたあしで たって やすむ ことが おおい。',[
+  ['フラミンゴは かたあしで たつ ことが？','よく ある','ぜったい ない','とぶ ときだけ',1,'かたあしで たって やすむ すがたが よく みられるよ。'],
+  ['フラミンゴが ピンクいろなのは なぜ？','たべものの いろ','うまれつき ぜんぶ','ぬっている',3,'たべものに ふくまれる いろの もとで ピンクに なるよ。'],
+  ['フラミンゴは えさを たべる とき くちばしを どうする？','さかさまに して みずを こす','くるくる まわす','つかわない',3,'あたまを さかさまに して、みずの なかの えさを こしとるよ。']]],
+ ['pelican','ペリカン','bird','res_pelican','くちばしの したに おおきな ふくろが ある。',[
+  ['ペリカンが よく たべるのは？','さかな','くさ','ささ',1,'みずの なかの さかなを たべるよ。'],
+  ['くちばしの したの ふくろの やくわりは？','さかなを すくう','たまごを いれる','うたを うたう',2,'ふくろを あみの ように つかって さかなを すくうよ。'],
+  ['ペリカンは そらを とべる？','とべる','とべない','みずの なかだけ',2,'おおきな つばさで そらを とぶ ことが できるよ。']]],
+ ['parrot','インコ','bird','res_parrot','ことばや おとの まねが じょうず。',[
+  ['インコの なかまが とくいなのは？','ことばや おとの まね','みずの なかで ねる','いろを かえる',1,'ひとの ことばや いろいろな おとを まねできるよ。'],
+  ['かたい きのみを わるのに つかうのは？','つよい くちばし','はね','しっぽ',2,'かぎの ような つよい くちばしで、かたい からも わるよ。'],
+  ['インコの あしの ゆびは まえに なんぼん？','2ほん','4ほん','1ぽん',3,'まえに 2ほん、うしろに 2ほん。えだを しっかり つかめるよ。']]]
+];
+const ZOO_RARE = ['whitetiger','ホワイトタイガー','rare','res_whitetiger','しろい けの トラ。めったに あえない！',[
+  ['ホワイトタイガーは なんの なかま？','ベンガルトラ','ライオン','ユキヒョウ',3,'ベンガルトラの なかで、しろい けで うまれた トラだよ。'],
+  ['トラの しまもようは ひふにも ある？','ある','ない','おとなだけ',3,'けを そっても、ひふに しまもようが あるよ。'],
+  ['トラは みずが すき？','すきで およぐのが とくい','にがてで はいらない','のめない',3,'トラは みずあびや およぐのが すきな どうぶつだよ。']]];
+const AQ_AN = [
+ ['clownfish','クマノミ','coral','res_clownfish','イソギンチャクと なかよく くらす。',[
+  ['クマノミは なにと いっしょに くらす？','イソギンチャク','サメ','ウニ',1,'イソギンチャクの しょくしゅに まもられて くらしているよ。'],
+  ['イソギンチャクに さされない わけは？','からだの ねんえきで まもられている','かたい うろこ','しびれない から',3,'からだの ぬるぬる（ねんえき）が どくばりから まもるよ。'],
+  ['クマノミの むれで いちばん おおきい 1ぴきは？','メス','オス','あかちゃん',3,'いちばん おおきい クマノミが メスに なるよ。']]],
+ ['gardeneel','チンアナゴ','coral','v644:an_gardeneel','すなから かおを だして ゆらゆら。',[
+  ['チンアナゴは どこで くらす？','すなの あな','いわの うえ','そこを あるいて',1,'すなに あなを ほって、からだを だして くらしているよ。'],
+  ['びっくりすると どうする？','すなに ひっこむ','ふくらむ','すみを はく',1,'あぶないと すぐに すなの なかへ ひっこむよ。'],
+  ['チンアナゴは なんの なかま？','アナゴ・ウナギ','ヘビ','ミミズ',2,'アナゴの なかまの さかなだよ。']]],
+ ['puffer','フグ','coral','v644:an_puffer','おどろくと ぷくっと ふくらむ。',[
+  ['フグは おどろくと どうなる？','みずを すって ふくらむ','いろが きえる','とぶ',1,'みずを すって ふくらみ、てきに たべられない ように するよ。'],
+  ['フグの なかまの おおくが からだに もつのは？','どく','でんき','ひかり',2,'どくを もつ フグが おおいので、りょうりには しかくが いるよ。'],
+  ['フグの つよい はで かみくだく ものは？','かいや カニの から','いわ','てつ',3,'くちばしの ような つよい はで、かたい からも わるよ。']]],
+ ['seahorse','タツノオトシゴ','coral','res_seahorse','たてに なって およぐ ふしぎな さかな。',[
+  ['タツノオトシゴは なんの なかま？','さかな','エビ','ヘビ',2,'すがたは ふしぎだけど、れっきとした さかなだよ。'],
+  ['しっぽの やくわりは？','かいそうに まきつく','はやく およぐ','えさを とる',2,'しっぽを まきつけて、ながされない ように しているよ。'],
+  ['あかちゃんを おなかで そだてるのは？','オス','メス','りょうほう',3,'オスの おなかの ふくろで たまごを そだてるよ。']]],
+ ['turtle','ウミガメ','tunnel','res_seaturtle','すなはまに たまごを うみに くる。',[
+  ['ウミガメが たまごを うむ ところは？','すなはま','うみの そこ','いわの あな',1,'よるに すなはまへ あがって、あなを ほって うむよ。'],
+  ['ウミガメは なにで いきを する？','はい','えら','ひれ',2,'はいで いきを するので、ときどき すいめんに でるよ。'],
+  ['アオウミガメが おとなに なって おもに たべるのは？','かいそう','さかな','クラゲ だけ',3,'おとなの アオウミガメは かいそうを たべるよ。']]],
+ ['manta','マンタ','tunnel','res_shark','つばさの ような ひれで ゆうがに およぐ。',[
+  ['マンタは なんの なかま？','エイ','クジラ','カメ',1,'マンタは おおきな エイの なかまだよ。'],
+  ['マンタが たべるのは？','プランクトン','さかな','カニ',3,'くちを あけて、ちいさな いきものを こしとって たべるよ。'],
+  ['マンタの はばは おおきい もので？','5m いじょう','50cm','10cm',3,'おおきな ものは はばが 5mを こえるよ。']]],
+ ['shark','サメ','tunnel','res_shark','はは なんども はえかわる。',[
+  ['サメは なんの なかま？','さかな','ほにゅうるい','はちゅうるい',1,'えらで いきを する さかなの なかまだよ。'],
+  ['サメの はは？','なんども はえかわる','1どだけ はえる','はえない',2,'ぬけても うしろから つぎの はが でてくるよ。'],
+  ['サメの ほねは なにで できている？','なんこつ','かたい ほね','てつ',3,'やわらかい なんこつで できているよ。']]],
+ ['jelly','ミズクラゲ','jelly','v644:an_jelly','4つの わの もようが ある。',[
+  ['クラゲは どうやって およぐ？','かさを ひらいたり とじたり','ひれで','あしで',1,'かさを ひらいたり とじたり して すすむよ。'],
+  ['クラゲの からだの ほとんどは？','みず','ほね','にく',2,'からだの やく 95%が みずで できているよ。'],
+  ['ミズクラゲに ないものは？','のう','しょくしゅ','かさ',3,'のうは ないけれど、からだじゅうの しんけいで うごいているよ。']]],
+ ['starfish','ヒトデ','jelly','v644:an_starfish','うでが きれても また はえてくる。',[
+  ['ヒトデの うでは ふつう なんぼん？','5ほん','8ほん','3ぼん',1,'5ほんの ものが おおいけれど、もっと おおい なかまも いるよ。'],
+  ['ヒトデの くちは どこに ある？','からだの うらの まんなか','うでの さき','せなか',2,'うらがわの まんなかに くちが あるよ。'],
+  ['ヒトデの うでが きれると？','また はえてくる','そのまま なくなる','かたく なる',2,'さいせいする ちからが あって、うでが また はえてくるよ。']]],
+ ['octopus','タコ','jelly','res_octopus','すみを はいて にげる。かしこい いきもの。',[
+  ['タコの あしは なんぼん？','8ほん','10ぽん','6ぽん',1,'8ほんの あし（うで）に きゅうばんが ならんでいるよ。'],
+  ['てきから にげる とき はくのは？','すみ','みず','あわ',1,'すみを はいて、てきの めを くらませるよ。'],
+  ['タコの しんぞうは いくつ？','3つ','1つ','2つ',3,'えらに 2つ、からだに 1つ。ぜんぶで 3つ あるよ。']]],
+ ['crab','カニ','shore','res_crab','よこに あるく ことが おおい。',[
+  ['カニは どっちに あるく ことが おおい？','よこ','まえ','うしろ',1,'あしの つくりの ため、よこに あるく ことが おおいよ。'],
+  ['はさみも いれた カニの あしの かずは？','10ぽん','8ほん','6ぽん',2,'はさみ 2ほんと あし 8ほんで、ぜんぶで 10ぽんだよ。'],
+  ['カニは そだつ とき どうする？','からを ぬいで おおきく なる','からが のびる','からを たべる',3,'「だっぴ」を して、ひとまわり おおきく なるよ。']]],
+ ['hermit','ヤドカリ','shore','res_hermit','まきがいの からを おうちに する。',[
+  ['ヤドカリが せおって いるのは？','まきがいの から','じぶんの ほね','いし',1,'まきがいの からを おうちに して、やわらかい からだを まもるよ。'],
+  ['ヤドカリは おおきく なると どうする？','おおきな からに ひっこす','からを のばす','からを すてて くらす',2,'からだに あう おおきな からを さがして ひっこすよ。'],
+  ['ヤドカリは なんの なかま？','エビ・カニ','かい','さかな',2,'エビや カニに ちかい なかまだよ。']]],
+ ['penguin2','フンボルトペンギン','shore','res_penguin','みなみアメリカの うみべに すむ ペンギン。',[
+  ['ペンギンは なんの なかま？','とり','さかな','ほにゅうるい',1,'とべないけれど、はねの ある とりの なかまだよ。'],
+  ['ペンギンが およぐ ときに つかうのは？','つばさ','あし だけ','くちばし',2,'つばさを ひれの ように うごかして およぐよ。'],
+  ['ペンギンが いちばん おおく すむのは？','みなみはんきゅう','ほっきょく','さばく',2,'ほとんどの ペンギンは ちきゅうの みなみがわに すんでいるよ。']]]
+];
+const AQ_RARE = ['whaleshark','ジンベエザメ','rare','res_shark','せかいで いちばん おおきな さかな！',[
+  ['ジンベエザメは せかいで いちばん おおきい…？','さかな','クジラ','カメ',3,'ジンベエザメは さかなの なかで いちばん おおきいよ。'],
+  ['ジンベエザメの おもな たべものは？','プランクトンや ちいさな さかな','クジラ','いわ',3,'おおきな くちで、ちいさな いきものを まとめて すいこむよ。'],
+  ['ジンベエザメの からだの もようは？','しろい てんてん','あかい しま','もようなし',3,'こい あおの からだに、しろい てんてんが ならんでいるよ。']]];
+
+const CFG = {walk:5, perDay:5, ptCap:300, cry:3, rareP:.15, rareMul:3, perfect:10, complete:500, star:{1:2,2:4,3:6}, gap:520};
+const PLACE = {
+  zoo:{key:'zoo', n:'どうぶつえん', card:'しゃしんカード', areas:ZOO_AREAS, an:ZOO_AN, rare:ZOO_RARE, logo:null, guides:['res_panda','res_redpanda'],
+    say:['いっしょに みて まわろう！','どの どうぶつに あえるかな？','わからない ときは ぼくを タッチしてね','ささ、おいしいよ〜'], hello:n => `${n}さんだ！ ちかづいて みよう！`},
+  aq:{key:'aq', n:'すいぞくかん', card:'かいがらカード', areas:AQ_AREAS, an:AQ_AN, rare:AQ_RARE, logo:IMG+'logo_aquarium.webp', guides:['res_dolphin'],
+    say:['うみの ふしぎに であおう！','きょうは だれに あえるかな？','こまったら ぼくを タッチしてね','キュイ〜！'], hello:n => `${n}だ！ ちかづいて みよう！`}
+};
+const all = P => P.an.concat([P.rare]);
+const anBy = (P, id) => all(P).find(a => a[0]===id);
+const artOf = a => a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
+const isNew = a => a[3].startsWith('v644:');
+
+/* ---------- セーブ ---------- */
+function SV(P){ const k = P.key==='zoo' ? 'zoo644' : 'aq644'; const s = save[k] || (save[k] = {seen:{}, perfect:0, complete:0});
+  const d = dayKey(); if(!s.daily || s.daily.d !== d) s.daily = {d, walks:0}; if(!s.rare || s.rare.d !== d) s.rare = {d, done:0}; return s; }
+function SH(){ const d = dayKey(); let s = save.zaq644; if(!s || s.d !== d) s = save.zaq644 = {d, cry:0, pt:0}; return s; }
+const userStar = () => { const g = Number(save.settings?.grade56 || 0); return !g ? 0 : g <= 2 ? 1 : g <= 4 ? 2 : 3; };
+function pickQ(P, a){
+  const s = SV(P), sv = s.seen[a[0]] || {}, us = userStar();
+  let L = a[5].map((q, i) => [q, i]).filter(([, i]) => i !== sv.lastQ);
+  if(us){ const best = Math.min(...L.map(([q]) => Math.abs(q[4] - us))); const M = L.filter(([q]) => Math.abs(q[4] - us) === best); if(M.length) L = Math.random() < .75 ? M : L; }
+  return choice(L);
+}
+
+/* ---------- 画面 ---------- */
+let ROOT = null, P = null, KEY = null, W = null, busy = false;
+function root(){ if(ROOT && document.body.contains(ROOT)) return ROOT; ROOT = document.createElement('div'); ROOT.id = 'zq644'; document.body.appendChild(ROOT); return ROOT; }
+function open(kind, key){ P = PLACE[kind]; KEY = key; W = null; root(); ROOT.className = P.key; document.body.classList.add('zq644on'); requestAnimationFrame(() => ROOT.classList.add('show')); top(); }
+function close(){ stopLoop(); if(!ROOT) return; ROOT.classList.remove('show'); document.body.classList.remove('zq644on'); const r = ROOT; ROOT = null; setTimeout(() => r.remove(), 250); try{ persist(); }catch(e){} }
+const cryChip = () => { const s = SH(), left = CFG.cry - s.cry; return `<button type="button" class="cy644 ${left ? '' : 'got'}" data-z="cry"><img src="${X(artSrc('itm_crystal') || artSrc('ui_bulb') || '')}" alt="" onerror="this.style.display='none'"><b>${left}/${CFG.cry}</b></button>`; };
+const backBtn = (a='town') => `<button type="button" class="bk644" data-z="${a}"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>${a==='town' ? 'まちへ' : 'もどる'}</b></button>`;
+const logo = () => P.logo ? `<img class="lg644" src="${P.logo}" alt="${P.n}">` : `<div class="lgt644"><small>まなびタウンの</small><b>${P.n}</b></div>`;
+const hanaStand = (cls='') => `<div class="hn644 ${cls}"><i style="background-image:url(${IMG}hana_walk.webp)"></i></div>`;
+
+function top(){
+  if(!ROOT) return; stopLoop(); const s = SV(P), left = CFG.perDay - s.daily.walks;
+  ROOT.innerHTML = `<div class="w644 tp"><div class="bg644 ${P.key==='zoo' ? 'sav' : 'tunnel'} top"><i class="l1"></i><i class="l2"></i><i class="l3"></i>${P.key==='aq' ? '<i class="ray"></i>' : ''}</div>
+    <header class="hd644">${backBtn()}${logo()}${cryChip()}</header>
+    <div class="ts644">
+      ${P.key==='zoo' ? `<img class="tz644 a" src="${X(artOf(ZOO_AN[1]))}" alt=""><img class="tz644 b" src="${X(artOf(ZOO_AN[2]))}" alt="">` : `<img class="tz644 c" src="${X(artOf(AQ_AN[7]))}" alt=""><img class="tz644 d" src="${X(artOf(AQ_AN[2]))}" alt="">`}
+      ${hanaStand('top')}
+      ${P.guides.map((g, i) => `<button type="button" class="gd644 g${i}" data-z="guide" data-i="${i}"><img src="${X(artSrc(g) || '')}" alt=""></button>`).join('')}
+      <span class="bb644 hidden"></span>
+    </div>
+    <div class="tb644"><button type="button" class="go644" data-z="walk" ${left > 0 ? '' : 'disabled'}><span>${left > 0 ? `${P.n}を あるく` : 'きょうは もう おしまい'}</span><small>${left > 0 ? `きょう あと ${left}かい` : 'また あした あそぼう！'}</small></button>
+      <button type="button" class="zk644" data-z="zukan"><img src="${X(artSrc('ui_zukan') || '')}" alt=""><b>ずかん</b></button></div>
+  </div>`;
+}
+function say(el, t){ const b = ROOT.querySelector('.bb644'); if(!b) return; b.textContent = t; b.classList.remove('hidden', 'pop'); void b.offsetWidth; b.classList.add('pop');
+  const r = el.getBoundingClientRect(), pr = b.parentElement.getBoundingClientRect(); b.style.left = Math.max(4, Math.min(pr.width - 170, r.left - pr.left + r.width/2 - 80)) + 'px'; b.style.top = Math.max(0, r.top - pr.top - 54) + 'px'; }
+
+/* ---------- あるく ---------- */
+function startWalk(){
+  const s = SV(P); if(s.daily.walks >= CFG.perDay){ toast('きょうの けんがくは おしまい'); return; }
+  s.daily.walks++; persist();
+  const order = P.areas.map(a => a[0]);
+  let pick = shuffle(P.an.slice()).slice(0, CFG.walk).sort((a, b) => order.indexOf(a[2]) - order.indexOf(b[2]));
+  let rare = false;
+  if(!s.rare.done){ s.rare.done = 1; if(Math.random() < CFG.rareP){ rare = true; pick[2] = P.rare; } persist(); }
+  W = {list:pick, i:0, x:0, dir:0, moving:false, stop:false, got:0, ok:0, pt:0, cards:[], rare, last:0, frame:0, perfect:true};
+  drawWalk(); startLoop();
+}
+const posOf = i => 420 + i * CFG.gap;
+function areaAt(i){ const a = W.list[Math.min(i, W.list.length-1)]; return a[2]==='rare' ? (W.list[Math.max(0, i-1)] || a)[2] : a[2]; }
+function drawWalk(){
+  if(!ROOT) return; const a = areaAt(W.i), an = P.areas.find(x => x[0]===a);
+  ROOT.innerHTML = `<div class="w644 wk"><header class="hd644">${backBtn()}<div class="as644"><b>${X(an ? an[1] : '')}</b></div>${cryChip()}</header>
+    <div class="sc644" data-z="scene"><div class="bg644 ${a}"><i class="l1"></i><i class="l2"></i><i class="l3"></i>${P.key==='aq' ? '<i class="ray"></i><i class="bub"></i>' : ''}</div>
+      <div class="wd644">${W.list.map((x, i) => `<div class="an644 ${x[2]==='rare' ? 'gold' : ''} ${i < W.i ? 'done' : ''}" data-i="${i}" style="left:${posOf(i)}px"><div class="ai644 ${P.key==='aq' && !['crab','hermit','penguin2','starfish','gardeneel'].includes(x[0]) ? 'sw' : ''}"><img src="${X(artOf(x))}" alt="" class="${isNew(x) ? 'wc' : 'tmp'}"><button type="button" class="ex644 hidden" data-z="ex">！</button></div></div>`).join('')}
+        <div class="end644" style="left:${posOf(W.list.length) - 80}px"><b>ゴール</b></div></div>
+      <div class="hw644"><i style="background-image:url(${IMG}hana_walk.webp)"></i><span class="hb644 hidden"></span></div>
+      <div class="tip644"><span>◀ ひだり</span><b>がめんを タッチしている あいだ あるくよ</b><span>みぎ ▶</span></div>
+    </div>
+    <div class="rt644">${W.list.map((x, i) => `<span class="${i < W.i ? 'd' : i===W.i ? 'c' : ''} ${x[2]==='rare' ? 'g' : ''}"><img src="${X(artOf(x))}" alt=""></span>`).join('<i></i>')}<b>${W.i}/${W.list.length}ひき</b></div>
+  </div>`;
+  const sc = ROOT.querySelector('.sc644');
+  const set = e => { if(W.stop || busy) return; const r = sc.getBoundingClientRect(); W.dir = (e.clientX - r.left) < r.width * .4 ? -1 : 1; };
+  sc.addEventListener('pointerdown', e => { if(e.target.closest('.ex644')) return; sc.setPointerCapture(e.pointerId); set(e); });
+  sc.addEventListener('pointermove', e => { if(W.dir) set(e); });
+  ['pointerup','pointercancel','pointerleave'].forEach(n => sc.addEventListener(n, () => { W.dir = 0; }));
+  place();
+}
+let RAF = 0, LT = 0;
+function startLoop(){ cancelAnimationFrame(RAF); LT = performance.now(); const f = t => { const dt = Math.min(50, t - LT); LT = t; tick(dt); RAF = requestAnimationFrame(f); }; RAF = requestAnimationFrame(f); }
+function stopLoop(){ cancelAnimationFrame(RAF); RAF = 0; }
+function tick(dt){
+  if(!W || !ROOT || !ROOT.querySelector('.wd644')) return;
+  const target = posOf(W.i) - 205;
+  if(W.dir && !W.stop){
+    W.x += W.dir * dt * .26; W.x = Math.max(0, W.x);
+    if(W.i < W.list.length && W.x >= target){ W.x = target; arrive(); }
+    if(W.i >= W.list.length && W.x >= posOf(W.list.length) - 160){ W.x = posOf(W.list.length) - 160; W.dir = 0; finish(); }
+    W.frame += dt / 95;
+  }
+  place();
+}
+function place(){
+  const wd = ROOT && ROOT.querySelector('.wd644'); if(!wd) return; const sc = ROOT.querySelector('.sc644'), hx = sc.clientWidth * .22;
+  const off = hx - W.x - 60; wd.style.transform = `translateX(${off}px)`;
+  sc.style.setProperty('--px', off + 'px');
+  const h = ROOT.querySelector('.hw644 i'); if(h){ const moving = W.dir && !W.stop; const fr = moving ? Math.floor(W.frame) % 6 : 2; h.style.backgroundPositionX = `${fr * 20}%`; h.parentElement.classList.toggle('flip', W.dir < 0); h.parentElement.classList.toggle('mv', !!moving); }
+  /* エリアの かんばん */
+  const a = areaAt(W.i), bg = ROOT.querySelector('.sc644 .bg644'); if(bg && !bg.classList.contains(a)){ bg.className = `bg644 ${a}`; const an = P.areas.find(x => x[0]===a) || ['', P.rare[1]]; const as = ROOT.querySelector('.as644 b'); if(as){ as.textContent = a==='rare' ? '？？？' : an[1]; as.parentElement.classList.remove('pop'); void as.offsetWidth; as.parentElement.classList.add('pop'); } }
+}
+function arrive(){
+  W.stop = true; W.dir = 0; const a = W.list[W.i], el = ROOT.querySelector(`.an644[data-i="${W.i}"]`);
+  if(el){ const ex = el.querySelector('.ex644'); ex.classList.remove('hidden'); if(a[2]==='rare'){ ex.classList.add('gold'); sound('fan'); } else sound('tap'); }
+  const hb = ROOT.querySelector('.hb644'); if(hb){ hb.textContent = a[2]==='rare' ? `わあ！ ${a[1]}だ！ めずらしい！` : P.hello(a[1]); hb.classList.remove('hidden'); }
+}
+async function finish(){
+  if(busy || !W || W.done) return; W.done = true; stopLoop();
+  const s = SV(P), sh = SH(), lines = [];
+  const perfect = W.ok === W.list.length;
+  if(perfect){ s.perfect = (s.perfect||0) + 1; const p = addCapped(CFG.perfect); W.pt += p; W.list.forEach(a => { const v = s.seen[a[0]]; if(v && v.card) v.gold = 1; }); }
+  let cry = false; if(W.ok >= 3 && sh.cry < CFG.cry){ sh.cry++; save.crystal = (save.crystal||0) + 1; cry = true; }
+  persist();
+  ROOT.innerHTML = `<div class="w644 rs"><div class="bg644 ${P.key==='zoo' ? 'sav' : 'coral'} top"><i class="l1"></i><i class="l2"></i><i class="l3"></i></div>
+    <div class="rc644"><h2>${perfect ? '🌟 パーフェクト！' : 'けんがく おしまい！'}</h2>
+      ${hanaStand('rs')}
+      <p class="sc644t">${W.ok}/${W.list.length}もん せいかい</p>
+      <div class="pt644">+${W.pt} ポイント</div>
+      ${W.cards.length ? `<div class="cg644"><b>あたらしい ${P.card}</b><div>${W.cards.map(a => card(a, s.seen[a[0]], true)).join('')}</div></div>` : ''}
+      <p class="cr644 ${cry ? 'ok' : ''}">${cry ? `すいしょう +1 ゲット！（きょう あと ${CFG.cry - sh.cry}こ）` : sh.cry >= CFG.cry ? 'きょうの すいしょうは もらったよ' : '3もん いじょう せいかいで すいしょうが もらえるよ'}</p>
+      ${perfect ? '<p class="pf644">5もん ぜんぶ せいかい！ カードが きんいろに なったよ</p>' : ''}
+      <div class="rb644">${CFG.perDay - s.daily.walks > 0 ? `<button type="button" class="btn gold" data-z="walk">もういちど あるく（あと ${CFG.perDay - s.daily.walks}かい）</button>` : ''}<button type="button" class="btn white" data-z="top">トップへ</button></div></div></div>`;
+  confetti(perfect ? 2600 : 1200); sound('fan');
+  checkComplete();
+}
+function addCapped(p){ const sh = SH(); const g = Math.max(0, Math.min(p, CFG.ptCap - sh.pt)); if(g > 0){ sh.pt += g; addPoints(g, `${P.n}の けんがく`, true); } return g; }
+
+/* ---------- クイズ ---------- */
+async function quiz(){
+  if(busy || !W || !W.stop) return; busy = true;
+  const a = W.list[W.i], [q, qi] = pickQ(P, a), rare = a[2]==='rare', s = SV(P);
+  const sv = s.seen[a[0]] || (s.seen[a[0]] = {n:0, ok:0, card:0}); sv.n++; sv.lastQ = qi;
+  const opts = shuffle([q[1], q[2], q[3]]); let removed = new Set(), hinted = false;
+  const r = await new Promise(res => {
+    const draw = () => {
+      ROOT.innerHTML = `<div class="w644 qz"><header class="hd644">${backBtn()}<div class="as644 sm"><b>${W.i+1}/${W.list.length}ひきめ</b></div>${cryChip()}</header>
+        <div class="qs644 ${rare ? 'gold' : ''}"><div class="bg644 ${areaAt(W.i)} q"><i class="l1"></i><i class="l2"></i><i class="l3"></i>${P.key==='aq' ? '<i class="ray"></i>' : ''}</div>
+          <img class="qa644 ${isNew(a) ? 'wc' : 'tmp'}" src="${X(artOf(a))}" alt="">${hanaStand('q')}
+          <span class="qb644">${X(rare ? 'きんいろに ひかってる…！' : choice(['わあ！ ちかくで みると すごい！','どんな いきものかな？','よく みてみよう！']))}</span>
+          <div class="pv644"><span>${sv.card ? 'もってる カード' : `せいかいすると<br>${P.card}が もらえる！`}</span>${card(a, sv, false, 'mini')}</div></div>
+        <div class="qc644"><div class="qh644"><span class="nm644">${X(a[1])}</span><span class="st644">${'★'.repeat(q[4])}</span></div>
+          <div class="qt644">${X(q[0])}</div>
+          <div class="op644">${opts.map(o => `<button type="button" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
+          ${hinted ? '' : `<button type="button" class="ht644" data-z="hint">${P.guides.map(g => `<img src="${X(artSrc(g)||'')}" alt="">`).join('')}<span>ヒント（ポイント はんぶん）</span></button>`}</div></div>`;
+      ROOT.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const ok = b.dataset.o === q[1]; b.classList.add(ok ? 'ok' : 'ng'); ROOT.querySelectorAll('[data-o]').forEach(x => x.disabled = true); sound(ok ? 'ok' : 'ng'); setTimeout(() => res({ok, v:b.dataset.o}), ok ? 600 : 450); });
+      const h = ROOT.querySelector('[data-z="hint"]'); if(h) h.onclick = () => { hinted = true; removed.add(choice([q[2], q[3]])); sound('tap'); draw(); };
+      ROOT.querySelector('[data-z="town"]').onclick = () => res({quit:true});
+    };
+    draw();
+  });
+  if(r.quit){ busy = false; return quitWalk(); }
+  if(r.ok){
+    W.ok++; sv.ok++;
+    let p = CFG.star[q[4]] || 2; if(hinted) p = Math.max(1, Math.round(p/2)); if(rare) p *= CFG.rareMul;
+    const g = addCapped(p); W.pt += g;
+    let newCard = false; if(!sv.card){ sv.card = 1; newCard = true; W.cards.push(a); } if(rare) sv.gold = 1;
+    persist();
+    await reward(a, sv, g, p, newCard, rare);
+  } else {
+    W.perfect = false; persist();
+    await explain(a, q, r.v);
+  }
+  W.i++; W.stop = false; busy = false;
+  if(!ROOT) return;
+  drawWalk(); startLoop();
+  const hb = ROOT.querySelector('.hb644'); if(hb){ hb.textContent = W.i >= W.list.length ? 'これで ぜんぶ！ ゴールへ いこう！' : 'つぎは だれに あえるかな？'; hb.classList.remove('hidden'); }
+}
+function reward(a, sv, g, p, newCard, rare){
+  return new Promise(res => {
+    ROOT.querySelector('.qc644').innerHTML = `<div class="rw644 ${rare ? 'gold' : ''}"><h3>${rare ? '✨ だいせいかい！ ✨' : 'せいかい！'}</h3>
+      ${newCard ? `<div class="nc644"><b>${P.card} ゲット！</b>${card(a, sv, true)}</div>` : `<p class="mm644">${X(a[4])}</p>`}
+      <p class="gp644">${g ? `+${g} ポイント${rare ? '（3ばい！）' : ''}` : 'きょうの ポイントは じょうげんに なったよ'}</p>
+      <button type="button" class="btn gold" data-z="next">つぎへ</button></div>`;
+    if(rare || newCard) confetti(rare ? 2400 : 900); if(rare) sound('fan');
+    ROOT.querySelector('[data-z="next"]').onclick = res;
+  });
+}
+function explain(a, q, v){
+  return new Promise(res => {
+    ROOT.querySelector('.qc644').innerHTML = `<div class="xp644"><div class="xh644">${P.guides.slice(0,1).map(g => `<img src="${X(artSrc(g)||'')}" alt="">`).join('')}<b>おしい！ こたえは「${X(q[1])}」だよ</b></div>
+      <p>${X(q[5])}</p>${v ? `<small>きみの こたえ：${X(v)}</small>` : ''}<button type="button" class="btn gold" data-z="next">わかった！ つぎへ</button></div>`;
+    ROOT.querySelector('[data-z="next"]').onclick = res;
+  });
+}
+async function quitWalk(){
+  const v = await dialog(`<h2 class="dlgT">まちへ もどる？</h2><p class="dlgP">ここまでに もらった ポイントと カードは もらえるよ。<br>（すいしょうは さいごまで あるくと もらえるよ）</p>`, [{label:'けんがくを つづける', cls:'gold', v:0}, {label:'まちへ もどる', cls:'white', v:1}]);
+  if(v){ close(); return; }
+  if(W && W.stop){ drawWalk(); arrive(); startLoop(); } else if(W){ drawWalk(); startLoop(); }
+}
+
+/* ---------- カード・ずかん ---------- */
+function card(a, sv, show, cls=''){
+  const has = sv && sv.card, gold = sv && sv.gold;
+  return `<div class="cd644 ${P.key} ${cls} ${has || show ? '' : 'sh'} ${gold ? 'gold' : ''}"><div class="ci644"><img class="${isNew(a) ? 'wc' : 'tmp'}" src="${X(artOf(a))}" alt=""></div>
+    ${cls==='mini' ? '' : `<b>${has || show ? X(a[1]) : '？？？'}</b>${has || show ? `<small>${X(a[4])}</small>` : ''}${sv && sv.n ? `<em>あった かず ${sv.n}</em>` : ''}`}</div>`;
+}
+function zukan(){
+  stopLoop(); const s = SV(P), L = all(P), got = L.filter(a => (s.seen[a[0]]||{}).card).length;
+  ROOT.innerHTML = `<div class="w644 zk"><div class="bg644 ${P.key==='zoo' ? 'forest' : 'jelly'} top"><i class="l1"></i><i class="l2"></i><i class="l3"></i></div>
+    <header class="hd644">${backBtn('top')}<div class="as644"><b>${P.key==='zoo' ? 'しゃしんずかん' : 'かいがらずかん'}　${got}/${L.length}</b></div><span></span></header>
+    <div class="zg644">${P.areas.concat([['rare','とくべつな いきもの']]).map(ar => `<h4>${X(ar[1])}</h4><div>${L.filter(a => a[2]===ar[0]).map(a => card(a, s.seen[a[0]], false)).join('')}</div>`).join('')}</div>
+    ${s.complete ? '<p class="zc644">ぜんぶ そろった！ きんいろの わくを ゲット！</p>' : `<p class="zc644 s">ぜんぶ そろえると とくべつな ごほうび！</p>`}</div>`;
+}
+async function checkComplete(){
+  const s = SV(P); if(s.complete) return; if(!P.an.every(a => (s.seen[a[0]]||{}).card)) return;
+  s.complete = 1; P.an.forEach(a => { s.seen[a[0]].gold = 1; }); addPoints(CFG.complete, `${P.n} ずかん コンプリート`); persist();
+  await dialog(`<h2 class="dlgT">🌟 ずかん コンプリート！</h2><p class="dlgP">${P.n}の ${P.card}が ぜんぶ そろったよ！<br>+${CFG.complete} ポイント・カードが ぜんぶ きんいろに！</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+}
+
+/* ---------- タッチ ---------- */
+document.addEventListener('click', async e => {
+  if(!ROOT || !ROOT.contains(e.target)) return; const t = e.target.closest('[data-z]'); if(!t) return; const z = t.dataset.z;
+  if(z==='scene') return;
+  if(busy && z!=='town') return;
+  if(z==='town'){ if(W && !W.done && ROOT.querySelector('.wk')) return quitWalk(); return close(); }
+  if(z==='top'){ W = null; return top(); }
+  if(z==='walk') return startWalk();
+  if(z==='zukan') return zukan();
+  if(z==='guide'){ sound('tap'); return say(t, choice(P.say)); }
+  if(z==='cry'){ const sh = SH(); return toast(sh.cry >= CFG.cry ? 'きょうの すいしょうは もらったよ' : `すいしょう：きょう あと ${CFG.cry - sh.cry}こ（どうぶつえん・すいぞくかん あわせて）`); }
+  if(z==='ex') return quiz();
+}, true);
+document.addEventListener('click', e => { if(!ROOT || !W || !W.stop || busy) return; const a = e.target.closest && e.target.closest('.an644'); if(a && +a.dataset.i === W.i) quiz(); });
+
+/* ---------- まちの たてものに つなぐ ---------- */
+const HOOK = {zoo:'zoo', aquarium:'aq'}; let swap = null;
+const restore = () => { if(swap && save.town && save.town.cells[swap.k]==='__zq644') save.town.cells[swap.k] = swap.id; swap = null; };
+window.addEventListener('pointerup', e => {
+  if(typeof curScreen==='undefined' || curScreen!=='town' || townEdit || !save.town) return;
+  if(e.target.closest('#townMap .walker,.car2')) return;
+  const c = e.target.closest('#townMap .cell'); if(!c) return;
+  const k = `${c.dataset.x},${c.dataset.y}`, id = save.town.cells[k]; if(!HOOK[id]) return;
+  restore(); swap = {k, id}; save.town.cells[k] = '__zq644'; setTimeout(restore, 600);
+}, true);
+window.addEventListener('click', e => {
+  if(!swap) return; const c = e.target.closest && e.target.closest('#townMap .cell'); const s = swap; restore();
+  if(!c || `${c.dataset.x},${c.dataset.y}` !== s.k) return;
+  e.stopImmediatePropagation(); e.preventDefault(); open(HOOK[s.id], s.k);
+}, true);
+const _show644 = show; show = function(){ if(ROOT) close(); return _show644.apply(this, arguments); };
+window.__zq644 = {open, close, PLACE, SV, SH, get W(){ return W; }, quiz, finish};
+
+/* ---------- BGM：クイズ中は さげる・すいぞくかんは ひかえめ ---------- */
+try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#zq644') || v === 0) return v; return document.querySelector('#zq644 .qz') ? .07 : document.querySelector('#zq644.aq') ? .14 : v; }; } }catch(e){}
+
+const css = document.createElement('style');
+css.textContent = `
+#zq644{position:fixed;inset:0;z-index:66;overflow:hidden;opacity:0;transition:opacity .22s;background:#CFE9F7;touch-action:manipulation}
+#zq644.show{opacity:1}
+body.zq644on{overflow:hidden}
+.w644{position:relative;max-width:560px;height:100%;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
+.w644.zk,.w644.rs{overflow-y:auto}
+/* 背景（かりの え：つぎの こうしんで イラストに さしかえ） */
+.bg644{position:absolute;inset:0;z-index:0;overflow:hidden}
+.bg644 i{position:absolute;left:-50%;right:-50%;display:block}
+.bg644 .l1{top:0;height:62%;background:linear-gradient(#9FD8F5,#DDF2FF)}
+.bg644 .l2{top:30%;height:40%;background:radial-gradient(60px 40px at 10% 80%,#7FBF6A 98%,transparent),radial-gradient(90px 55px at 35% 85%,#6FB35C 98%,transparent),radial-gradient(70px 45px at 62% 82%,#86C673 98%,transparent),radial-gradient(100px 60px at 88% 86%,#74B862 98%,transparent);background-size:420px 100%;background-position-x:calc(var(--px,0px) * .35)}
+.bg644 .l3{bottom:0;height:42%;background:linear-gradient(#E9D3A2,#D9BC82);background-size:240px 100%;background-position-x:var(--px,0px)}
+.bg644.sav .l1{background:linear-gradient(#FFD9A0,#FFF1D6)}.bg644.sav .l3{background:repeating-linear-gradient(90deg,#E5C98F 0 120px,#DDBF84 120px 240px)}
+.bg644.forest .l1{background:linear-gradient(#BFE6C2,#E9F7E4)}.bg644.forest .l2{filter:saturate(1.3) brightness(.85)}.bg644.forest .l3{background:repeating-linear-gradient(90deg,#B99A6A 0 120px,#B08F5F 120px 240px)}
+.bg644.north .l1{background:linear-gradient(#BFDDF2,#F2FAFF)}.bg644.north .l2{filter:grayscale(.85) brightness(1.45)}.bg644.north .l3{background:repeating-linear-gradient(90deg,#EEF6FB 0 120px,#E3EEF6 120px 240px)}
+.bg644.bird .l1{background:linear-gradient(#A9DDF2,#EAF8FF)}.bg644.bird .l3{background:repeating-linear-gradient(90deg,#7FC6DE 0 120px,#76BDD6 120px 240px)}
+.bg644.rare .l1{background:linear-gradient(#FFE9A8,#FFF8DC)}.bg644.rare .l3{background:repeating-linear-gradient(90deg,#F2D98A 0 120px,#EBCF7A 120px 240px)}
+#zq644.aq .bg644 .l1{height:100%;background:linear-gradient(#4FB4E0,#1F6FA8 70%,#164E86)}
+#zq644.aq .bg644 .l2{top:auto;bottom:22%;height:30%;background:radial-gradient(30px 60px at 12% 100%,#F07B8A 96%,transparent),radial-gradient(22px 44px at 30% 100%,#FFB15C 96%,transparent),radial-gradient(34px 70px at 58% 100%,#E86AA8 96%,transparent),radial-gradient(26px 50px at 82% 100%,#5CC9A6 96%,transparent);background-size:360px 100%;background-position-x:calc(var(--px,0px) * .5);filter:none}
+#zq644.aq .bg644 .l3{height:24%;background:repeating-linear-gradient(90deg,#E8D6A8 0 120px,#DFCB98 120px 240px);background-position-x:var(--px,0px)}
+#zq644.aq .bg644.tunnel .l1{background:radial-gradient(120% 90% at 50% 100%,#2C8FC9 50%,#174E86 51%,#174E86 54%,#3DA3D8 55%,#1A5E99)}
+#zq644.aq .bg644.jelly .l1{background:linear-gradient(#2A2F6E,#1B1D4A 70%,#13153A)}#zq644.aq .bg644.jelly .l2{filter:hue-rotate(200deg) brightness(.8)}#zq644.aq .bg644.jelly .l3{background:repeating-linear-gradient(90deg,#3A3F7A 0 120px,#343873 120px 240px)}
+#zq644.aq .bg644.shore .l1{background:linear-gradient(#8FD6F2,#CFEFFA 60%,#FFF2D6)}
+#zq644.aq .bg644.rare .l1{background:linear-gradient(#1B4F86,#0E2F5A)}
+#zq644.aq .bg644 .ray{top:0;height:70%;background:repeating-linear-gradient(100deg,rgba(255,255,255,.12) 0 18px,transparent 18px 80px);animation:ray644 8s linear infinite;mix-blend-mode:screen}
+@keyframes ray644{to{background-position-x:160px}}
+#zq644.aq .bg644 .bub{top:0;height:80%;background:radial-gradient(4px 4px at 20% 80%,rgba(255,255,255,.7) 98%,transparent),radial-gradient(3px 3px at 60% 60%,rgba(255,255,255,.6) 98%,transparent),radial-gradient(5px 5px at 80% 90%,rgba(255,255,255,.6) 98%,transparent);background-size:200px 300px;animation:bub644 7s linear infinite}
+@keyframes bub644{to{background-position-y:-300px}}
+/* ヘッダー */
+.hd644{position:relative;z-index:5;display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 8px 0}
+.bk644{display:flex;align-items:center;gap:2px;border:3px solid #fff;background:linear-gradient(180deg,#FFF6E2,#F7E3BE);border-radius:18px;padding:5px 8px 5px 4px;font:inherit;box-shadow:0 3px 0 #C9A36A}
+.bk644 svg{width:24px;height:24px;background:#F07B54;border-radius:50%;padding:3px}.bk644 b{font-size:12.5px;color:#6B3A12;white-space:nowrap}
+.lg644{justify-self:center;width:100%;max-width:220px;height:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.2))}
+.lgt644{justify-self:center;display:flex;flex-direction:column;align-items:center;background:linear-gradient(180deg,#FFF3D2,#F7D99A);border:3.5px solid #8A5A2B;border-radius:16px;padding:3px 14px 5px;box-shadow:0 4px 0 #6B4220;line-height:1.1}
+.lgt644 small{font-size:10.5px;font-weight:900;color:#7A4A1A}.lgt644 b{font-size:24px;font-weight:900;color:#5A2E0C;letter-spacing:1px;white-space:nowrap}
+.cy644{display:flex;align-items:center;gap:3px;border:3px solid #fff;background:#fff;border-radius:16px;padding:4px 8px;font:inherit;box-shadow:0 3px 0 #BFD3E6}
+.cy644 img{width:22px;height:22px;object-fit:contain}.cy644 b{font-size:14px;color:#2F6FA3}.cy644.got{filter:grayscale(1);opacity:.7}
+.as644{justify-self:center;background:linear-gradient(180deg,#FFF8E6,#F2DDAE);border:3px solid #9A6A34;border-radius:14px;padding:4px 14px;box-shadow:0 3px 0 #7A4E22}
+#zq644.aq .as644{background:linear-gradient(180deg,#EAF8FF,#BFE6F7);border-color:#2F6FA3;box-shadow:0 3px 0 #1F4F7A}
+.as644 b{font-size:15px;color:#5A3A1A;white-space:nowrap}#zq644.aq .as644 b{color:#1F4F7A}.as644.sm b{font-size:13px}
+.as644.pop{animation:pbp639 .4s}
+/* トップ */
+.ts644{position:relative;z-index:2;flex:1;min-height:0}
+.tz644{position:absolute;object-fit:contain;filter:drop-shadow(0 4px 4px rgba(0,0,0,.15))}
+.tz644.a{right:-4%;bottom:34%;height:52%}.tz644.b{left:-6%;bottom:38%;height:30%;opacity:.95}
+.tz644.c{right:4%;top:6%;height:30%;opacity:.9;animation:fl644 5s ease-in-out infinite alternate}.tz644.d{left:6%;top:12%;height:16%;animation:fl644 4s ease-in-out infinite alternate-reverse}
+@keyframes fl644{to{transform:translate(10px,-10px)}}
+.hn644{position:absolute;width:110px;aspect-ratio:154/270}
+.hn644 i,.hw644 i{display:block;width:100%;height:100%;background-size:600% 100%;background-repeat:no-repeat;background-position:40% 0}
+.hn644.top{left:16%;bottom:14%;width:30%;max-width:150px}
+.gd644{position:absolute;bottom:12%;border:none;background:none;padding:0;animation:hop639 1.8s ease-in-out infinite}
+.gd644 img{width:100%;height:auto;filter:drop-shadow(0 4px 3px rgba(0,0,0,.2))}
+.gd644.g0{left:48%;width:28%;max-width:140px}.gd644.g1{left:72%;width:24%;max-width:120px;animation-delay:.6s}
+#zq644.aq .gd644.g0{left:52%;width:40%;max-width:190px;bottom:22%}
+.bb644{position:absolute;z-index:4;width:160px;background:#fff;border:3px solid #6B4A2A;border-radius:16px;padding:5px 8px;font-size:13px;font-weight:900;color:#4A3420;text-align:center}
+.bb644.pop{animation:pbp639 .35s}
+.tb644{position:relative;z-index:3;display:flex;gap:8px;padding:0 10px calc(14px + env(safe-area-inset-bottom))}
+.go644{flex:1;display:flex;flex-direction:column;align-items:center;border:4px solid #fff;border-radius:22px;padding:10px 6px;font:inherit;background:linear-gradient(180deg,#FFC65A,#F29A2E);box-shadow:0 5px 0 #B5651C,0 8px 14px rgba(0,0,0,.2);color:#fff;text-shadow:0 2px 0 rgba(120,60,0,.4)}
+#zq644.aq .go644{background:linear-gradient(180deg,#6FD0F5,#2C8FD0);box-shadow:0 5px 0 #1F5F95,0 8px 14px rgba(0,0,0,.2);text-shadow:0 2px 0 rgba(0,40,90,.4)}
+.go644 span{font-size:20px;font-weight:900}.go644 small{font-size:11px;font-weight:800;opacity:.95}
+.go644:disabled{filter:grayscale(.8);opacity:.8}
+.zk644{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:4px solid #fff;border-radius:22px;background:#FFF8EA;font:inherit;box-shadow:0 5px 0 #CDB48C}
+.zk644 img{width:46px;height:46px;object-fit:contain}.zk644 b{font-size:12px;color:#6B4A2A}
+/* あるく */
+.sc644{position:relative;flex:1;min-height:0;z-index:1;user-select:none;-webkit-user-select:none;cursor:pointer}
+.wd644{position:absolute;left:0;bottom:30%;height:56%;width:10px;will-change:transform}
+.an644{position:absolute;bottom:0;width:190px;height:100%;transform:translateX(-50%);display:flex;align-items:flex-end;justify-content:center}
+.ai644{position:relative;display:flex;align-items:flex-end;justify-content:center;max-width:100%}.ai644.sw{margin-bottom:13vh;animation:fl644 3.6s ease-in-out infinite alternate}
+.an644 img{max-width:100%;max-height:min(250px,36vh);object-fit:contain;filter:drop-shadow(0 6px 4px rgba(0,0,0,.18))}
+.an644 img.tmp{max-height:min(170px,25vh)}.ai644.sw img{max-height:min(170px,25vh)}
+.an644.done img{opacity:.9}
+.an644.gold img{filter:drop-shadow(0 0 8px #FFD24A) drop-shadow(0 0 16px #FFC400)}
+.ex644{position:absolute;top:-6px;left:50%;margin-top:-58px;transform:translateX(-50%);width:54px;height:54px;border-radius:50%;border:4px solid #fff;background:#FF7A45;color:#fff;font:inherit;font-size:30px;font-weight:900;box-shadow:0 4px 0 #C94A22,0 0 0 6px rgba(255,122,69,.3);animation:ex644 .8s ease-in-out infinite alternate;z-index:3}
+.ex644.gold{background:linear-gradient(#FFE27A,#F2B514);box-shadow:0 4px 0 #B5800C,0 0 18px 6px rgba(255,210,74,.8)}
+@keyframes ex644{to{transform:translateX(-50%) translateY(-8px) scale(1.08)}}
+.end644{position:absolute;bottom:0;transform:translateX(-50%);background:#fff;border:3px solid #6B4A2A;border-radius:12px;padding:6px 12px;font-weight:900;color:#6B4A2A}
+.hw644{position:absolute;left:22%;bottom:24%;width:24%;max-width:120px;aspect-ratio:154/270;transform:translateX(-50%);z-index:3;pointer-events:none}
+.hw644.flip i{transform:scaleX(-1)}
+.hw644.mv{animation:bob644 .38s ease-in-out infinite alternate}
+@keyframes bob644{to{translate:0 -3px}}
+.hb644{position:absolute;bottom:102%;left:20%;width:max-content;max-width:180px;background:#fff;border:3px solid #6B4A2A;border-radius:16px;padding:5px 10px;font-size:13px;font-weight:900;color:#4A3420;animation:pbp639 .35s}
+.hb644::after{content:"";position:absolute;bottom:-12px;left:22%;border:7px solid transparent;border-top:9px solid #6B4A2A}
+.tip644{position:absolute;left:8px;right:8px;bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:10.5px;font-weight:900;color:#6B4A2A;pointer-events:none}
+.tip644 span{background:rgba(255,255,255,.85);border-radius:99px;padding:3px 9px}.tip644 b{background:rgba(255,255,255,.7);border-radius:99px;padding:2px 8px;font-size:9.5px;text-align:center}
+.rt644{position:relative;z-index:3;display:flex;align-items:center;justify-content:center;gap:2px;background:rgba(255,253,246,.96);border-top:3px solid #F1D9AA;padding:6px 8px calc(8px + env(safe-area-inset-bottom))}
+.rt644 span{width:46px;height:46px;border-radius:50%;background:#fff;border:3px solid #E6D6BB;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.rt644 span img{width:90%;height:90%;object-fit:contain;filter:brightness(0) opacity(.25)}
+.rt644 span.d img,.rt644 span.c img{filter:none}.rt644 span.c{border-color:#F2A33A;box-shadow:0 0 0 3px rgba(242,163,58,.3)}
+.rt644 span.g{border-color:#FFD24A}.rt644 span.g img{filter:brightness(0) sepia(1) saturate(5) hue-rotate(5deg) opacity(.6)}.rt644 span.g.d img,.rt644 span.g.c img{filter:drop-shadow(0 0 3px #FFC400)}
+.rt644 i{width:8px;height:3px;background:#E6D6BB}
+.rt644 b{margin-left:6px;font-size:12px;color:#6B4A2A;white-space:nowrap}
+/* クイズ */
+.qs644{position:relative;flex:1;min-height:200px;z-index:1}
+.qa644{position:absolute;right:2%;bottom:6%;height:86%;max-width:68%;object-fit:contain;filter:drop-shadow(0 6px 5px rgba(0,0,0,.2));animation:fl644 4s ease-in-out infinite alternate}
+.qa644.tmp{height:62%}
+.qs644.gold .qa644{filter:drop-shadow(0 0 10px #FFD24A) drop-shadow(0 0 22px #FFC400)}
+.hn644.q{left:2%;bottom:2%;width:28%;max-width:120px}
+.qb644{position:absolute;left:4%;top:8%;max-width:44%;background:#fff;border:3px solid #6B4A2A;border-radius:16px;padding:5px 9px;font-size:12.5px;font-weight:900;color:#4A3420}
+.pv644{position:absolute;right:8px;top:6px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.92);border-radius:12px;padding:4px 6px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.pv644 span{font-size:9.5px;font-weight:900;color:#8A5A12;line-height:1.3}
+.qc644{position:relative;z-index:2;background:rgba(255,252,242,.98);border-top:4px solid #F1D9AA;border-radius:22px 22px 0 0;padding:10px 10px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;box-shadow:0 -6px 16px rgba(0,0,0,.12)}
+#zq644.aq .qc644{border-top-color:#9FD3EE;background:rgba(244,251,255,.98)}
+.qh644{display:flex;align-items:center;gap:6px}.nm644{background:#F2A33A;color:#fff;border-radius:99px;padding:2px 12px;font-weight:900;font-size:13px}#zq644.aq .nm644{background:#2F8FD0}
+.st644{color:#FFB400;font-size:14px;letter-spacing:1px}
+.qt644{font-size:19px;font-weight:900;color:#3A2E22;text-align:center;line-height:1.45;padding:2px 4px}
+.op644{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.op644 button{min-height:64px;border:3px solid #fff;border-radius:16px;font:inherit;font-weight:900;font-size:15px;line-height:1.25;color:#3A2E22;padding:6px 4px;word-break:keep-all;overflow-wrap:anywhere;box-shadow:0 4px 0 rgba(0,0,0,.12)}
+.op644 button:nth-child(1){background:#FFE1E8}.op644 button:nth-child(2){background:#DDEFFF}.op644 button:nth-child(3){background:#E2F6DC}
+.op644 button:disabled{opacity:.4}.op644 button.ok{opacity:1;outline:4px solid #3BAF6A;background:#C9F0D2}.op644 button.ng{opacity:1;outline:4px solid #E8414B}
+.ht644{align-self:center;display:flex;align-items:center;gap:2px;border:none;background:#FFF3D2;border-radius:99px;padding:3px 12px 3px 4px;font:inherit;font-size:12px;font-weight:900;color:#B5701C}
+.ht644 img{width:34px;height:34px;object-fit:contain}
+.rw644,.xp644{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.rw644 h3{margin:0;font-size:24px;color:#E8604A}.rw644.gold h3{color:#D4A017}
+.mm644{margin:0;font-size:13px;font-weight:800;color:#5A4430}.gp644{margin:0;font-size:18px;font-weight:900;color:#D2601E}
+.nc644{display:flex;flex-direction:column;align-items:center;gap:4px}.nc644>b{color:#B5701C}
+.xh644{display:flex;align-items:center;gap:6px}.xh644 img{width:48px;height:48px;object-fit:contain}.xh644 b{font-size:16px;color:#2F6FA3}
+.xp644 p{margin:0;font-size:14px;font-weight:800;line-height:1.6;color:#3A2E22}.xp644 small{color:#B23}
+.rw644 .btn,.xp644 .btn{width:100%}
+/* カード */
+.cd644{position:relative;width:118px;background:#fff;border:4px solid #F2C46B;border-radius:14px;padding:5px 5px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 3px 6px rgba(0,0,0,.12)}
+.cd644.aq{border-color:#8FD0EE;background:linear-gradient(#FFFFFF,#EEF9FF)}
+.cd644.aq::before{content:"";position:absolute;right:-8px;top:-9px;width:22px;height:20px;background:radial-gradient(circle at 50% 100%,#FFC6CF 0 60%,transparent 62%),repeating-conic-gradient(from -60deg at 50% 100%,#F79AAE 0 6deg,#FFD9E0 6deg 14deg);border-radius:50% 50% 4px 4px;clip-path:polygon(50% 100%,0 20%,20% 0,80% 0,100% 20%)}
+.ci644{width:100%;aspect-ratio:4/3;border-radius:9px;background:linear-gradient(#EAF6E3,#F9F3E3);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cd644.aq .ci644{background:linear-gradient(#CDEBFA,#EAF8FF)}
+.ci644 img{max-width:92%;max-height:92%;object-fit:contain}
+.cd644 b{font-size:12.5px;color:#4A3420}.cd644 small{font-size:9.5px;color:#6B5540;line-height:1.35;text-align:center}.cd644 em{font-style:normal;font-size:9px;color:#8A8A8A}
+.cd644.sh .ci644 img{filter:brightness(0) opacity(.22)}
+.cd644.gold{border-color:#FFD24A;background:linear-gradient(135deg,#FFF6D0,#FFFDF2 40%,#FFF0B8);box-shadow:0 0 0 2px #FFF2B0,0 0 12px rgba(255,200,0,.6)}
+.cd644.gold::after{content:"";position:absolute;inset:0;border-radius:10px;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.7) 45%,transparent 60%);background-size:250% 100%;animation:shine634 2.6s linear infinite;pointer-events:none}
+.cd644.mini{width:58px;padding:3px;border-width:3px}
+/* けっか・ずかん */
+.rc644,.zg644{position:relative;z-index:2;margin:calc(10px + env(safe-area-inset-top)) 10px 14px;background:rgba(255,252,244,.97);border-radius:22px;padding:12px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.rc644 h2{margin:0;color:#E8604A;font-size:24px}
+.hn644.rs{position:relative;margin:0 auto;width:90px}
+.sc644t{margin:4px 0 0;font-weight:900;color:#6B4A2A}.pt644{font-size:26px;font-weight:900;color:#D2601E}
+.cg644>b{display:block;color:#B5701C;margin:4px 0}.cg644>div{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.cr644{margin:8px 0 0;font-size:12.5px;font-weight:900;color:#8A8A8A}.cr644.ok{color:#2F6FA3}.pf644{margin:4px 0 0;font-weight:900;color:#D4A017}
+.rb644{display:flex;flex-direction:column;gap:6px;margin-top:10px}.rb644 .btn{width:100%}
+.zg644{margin-top:8px;text-align:left}.zg644 h4{margin:8px 2px 4px;color:#6B4A2A;font-size:13px}.zg644>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.zg644 .cd644{width:auto}
+.zc644{position:relative;z-index:2;text-align:center;font-weight:900;color:#D4A017;margin:0 10px 14px}.zc644.s{color:#6B4A2A}
+@media (max-height:640px){ .qt644{font-size:16px} .op644 button{min-height:54px;font-size:14px} }
+`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();

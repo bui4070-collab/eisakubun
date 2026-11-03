@@ -1,6 +1,8 @@
-まなびタウン v6.43 UPDATE（BGM）
+まなびタウン v6.44 UPDATE（どうぶつえん・すいぞくかん リニューアル その1）
 
 アップロードする ファイル:
 - js/features.js（上書き）
-- assets/audio/BGM.mp3  ← 手元の BGM.mp3 を この 場所・この 名前で 置いてください
-  （assets/audio フォルダは 新しく つくります。ファイル名は 大文字小文字も そのまま「BGM.mp3」）
+- assets/images/v644/（新しい フォルダ）
+    hana_walk.webp … よこむきに あるく ハナ（6コマ）
+    logo_aquarium.webp … すいぞくかん ロゴ
+    an_*.webp … 水彩の どうぶつ 7しゅるい
