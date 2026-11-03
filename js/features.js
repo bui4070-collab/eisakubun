@@ -8911,7 +8911,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.37.0', IMG = './assets/images/v636/';
+const VER = '6.38.0', IMG = './assets/images/v636/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const A = k => X(artSrc(k) || '');
@@ -8923,7 +8923,7 @@ const SI = id => STN.find(s => s[0]===id);
 const prefOf = name => PREF.find(p => p[0]===name);
 
 /* ---------- 調整用パラメータ ---------- */
-const CFG = {free:3, buyMax:2, buyPt:30, tripMax:5, pt:{1:2,2:3,3:5,4:8,5:12}, perfect:20, combo3:5, secretP:.15, secretMul:3,
+const CFG = {free:3, buyMax:17, buyPt:30, tripMax:20, pt:{1:2,2:3,3:5,4:8,5:12}, perfect:20, combo3:5, secretP:.15, secretMul:3,
   rank:[{n:'えきいん', d:0, s:0}, {n:'しゃしょう', d:7, s:10}, {n:'うんてんし', d:30, s:30}, {n:'えきちょう', d:60, s:50}, {n:'でんせつの えきちょう', d:100, s:59}]};
 const COURSE = [
   {id:'mirai', n:'みらいタウン', pl:1, t:'10:08', c:'#F2A33A', lv:[1,2], mix:['yomi','yomi','soc','math'], rank:0},
@@ -9043,7 +9043,7 @@ function root(){ if(ROOT && document.body.contains(ROOT)) return ROOT; ROOT = do
 function close(){ if(!ROOT) return; ROOT.classList.remove('show'); document.body.classList.remove('stn636on'); setTimeout(() => { ROOT?.remove(); ROOT = null; }, 250); try{ persist(); }catch(e){} }
 function open(key){ KEY = key; root(); document.body.classList.add('stn636on'); requestAnimationFrame(() => ROOT.classList.add('show')); Hline = ''; main(); if(!(save.guide635||{}).station){ busy = true; setTimeout(() => guideStn().finally(() => { busy = false; main(); }), 450); } }
 const HANA = () => artSrc('res_girl'), OTTER = () => artSrc('res_otter');
-const ticketDots = () => { const t = TK(); return `<span class="tkd636">${Array.from({length:CFG.free + CFG.buyMax}, (_, i) => `<i class="${i < t.free ? 'on' : i < CFG.free + t.bought ? 'used' : ''}"></i>`).join('')}</span>`; };
+const ticketDots = () => { const t = TK(), n = Math.max(CFG.free, t.free); return `<span class="tkd636">${Array.from({length:Math.min(n, CFG.free)}, (_, i) => `<i class="${i < t.free ? 'on' : 'used'}"></i>`).join('')}${t.free > CFG.free ? `<b>+${t.free - CFG.free}</b>` : ''}<small>たび ${t.trips}/${CFG.tripMax}</small></span>`; };
 function hanaSay(){
   const t = TK(), s = S();
   if(Hline) return Hline;
@@ -9331,7 +9331,7 @@ body.stn636on{overflow:hidden}
 .bh636{display:flex;align-items:center;gap:6px;color:#fff;font-weight:900;font-size:13px;padding:0 2px 4px;border-bottom:1px dashed #4A5160;margin-bottom:3px}
 .bh636 em{margin-left:auto;font-style:normal}
 .clk636{width:16px;height:16px;border-radius:50%;background:#fff;position:relative}.clk636::after{content:"";position:absolute;left:7px;top:3px;width:2px;height:6px;background:#333;box-shadow:2px 4px 0 -0px #333}
-.tkd636{display:inline-flex;gap:3px}.tkd636 i{width:10px;height:10px;border-radius:50%;border:2px solid #FFC94D}.tkd636 i.on{background:#FFC94D}.tkd636 i.used{border-color:#666}
+.tkd636{display:inline-flex;align-items:center;gap:3px}.tkd636 b{color:#FFC94D;font-size:12px}.tkd636 small{color:#ccc;font-size:10.5px;margin-left:4px;font-weight:800}.tkd636 i{width:10px;height:10px;border-radius:50%;border:2px solid #FFC94D}.tkd636 i.on{background:#FFC94D}.tkd636 i.used{border-color:#666}
 .row636{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:6px;width:100%;border:none;background:none;padding:4px 2px;font:inherit;font-family:ui-monospace,monospace;border-bottom:1px solid #2E3542;text-align:left}
 .row636 .tm{color:#FFD24A;font-weight:900;font-size:15px}.row636 b{color:var(--c);font-size:15px;font-family:'Zen Maru Gothic',sans-serif;filter:brightness(1.35)}.row636 .pl{color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;gap:3px;font-family:'Zen Maru Gothic',sans-serif}
 .row636.lk b,.row636.lk .tm{color:#777!important;filter:none}.row636.lk .pl{color:#999}
