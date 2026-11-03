@@ -7683,7 +7683,7 @@ try{ if(typeof curScreen!=='undefined' && curScreen==='town') renderTown(); }cat
 (function(){
 'use strict';
 const resBy = id => (save.town?.res || []).find(r => r.id===id);
-const VER = '6.32.0', IMG = './assets/images/v631/';
+const VER = '6.34.0', IMG = './assets/images/v631/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt = n => (typeof nf==='function' ? nf(n) : String(n));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -7740,7 +7740,7 @@ const IMG633 = './assets/images/v633/';
 const SUBJ_ART = {jp:'icon_kokugo', math:'icon_sansu', sci:'icon_rika', soc:'icon_shakai', en:'icon_write'};
 const subjImg = k => `<img class="sic633" src="${X(artSrc(SUBJ_ART[k]) || '')}" alt="">`;
 const chestImg = () => `<img class="chi633" src="${X(artSrc('ui_chest') || '')}" alt="">`;
-let QUITFN = null, QUITOK = false;
+let QUITFN = null, QUITOK = false, QUITMSG = '';
 const SUBJ_C = {jp:'#E8606A', math:'#3D8BE0', sci:'#3BAF6A', soc:'#E79A2B', en:'#9A6AD8'};
 const SK = Object.keys(SUBJ);
 const userG = () => Number(save.settings?.grade56 || 0) || 3;
@@ -7924,7 +7924,7 @@ function root(){
   return ROOT;
 }
 function close(){ QUITOK = false; QUITFN = null; if(ROOT){ ROOT.classList.remove('show'); setTimeout(() => { if(ROOT && !ROOT.classList.contains('show')){ ROOT.remove(); ROOT = null; } }, 250); } CUR = null; document.body.classList.remove('sc631on'); try{ persist(); }catch(e){} }
-function open(kind, key){ KEY = key; CUR = kind; root(); ROOT.classList.toggle('bgS633', kind==='school'); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain(); }
+function open(kind, key){ KEY = key; CUR = kind; root(); ROOT.classList.toggle('bgS633', kind==='school'); ROOT.classList.toggle('bgU634', kind!=='school'); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain(); }
 function stage(bg, list, opt={}){
   const pos = opt.pos || [[14,88],[33,95],[67,95],[86,88],[50,82]];
   return `<div class="stg631 ${opt.cls||''}"><img class="bg" src="${IMG}${bg}.webp" alt="">
@@ -7970,12 +7970,14 @@ async function onClick(e){
     else if(a==='rstart') await runResearch(UT.th, UT.lv);
     else if(a==='deg') await degreeView();
     else if(a==='partner') await pickPartner();
+    else if(a==='note') noteBook(UT.th);
+    else if(a==='secret') await secretView();
   } finally { busy = false; }
 }
 
 /* ---------- がっこう：メイン ---------- */
 function schoolMain(){
-  if(!ROOT) return; ROOT.classList.add('bgS633'); const s = SV(), L = DL(); weekTick(); missions(); checkMissions();
+  if(!ROOT) return; ROOT.classList.add('bgS633'); ROOT.classList.remove('bgU634'); const s = SV(), L = DL(); weekTick(); missions(); checkMissions();
   const sp = special(L.d), M = missions(), bn = badgeNext();
   if(!ST.diff) ST.diff = s.lastDiff || 'normal';
   const stamps = SK.filter(k => (L.best[k]||0) >= 1).length;
@@ -8035,17 +8037,17 @@ async function report(pw){
 
 /* ---------- じゅぎょう ---------- */
 function qPanel(head, body){
-  const p = ROOT.querySelector('.qz631') || (() => { ROOT.innerHTML = `<div class="wrap631 quiz ${ROOT.classList.contains('bgS633') ? 'card633' : ''}"><div class="qz631"></div></div>`; return ROOT.querySelector('.qz631'); })();
+  const p = ROOT.querySelector('.qz631') || (() => { ROOT.innerHTML = `<div class="wrap631 quiz ${ROOT.classList.contains('bgS633') || ROOT.classList.contains('bgU634') ? 'card633' : ''}"><div class="qz631"></div></div>`; return ROOT.querySelector('.qz631'); })();
   p.innerHTML = (QUITOK ? '<button type="button" class="quit633">✕ やめる</button>' : '') + head + body; ROOT.scrollTop = 0;
   const q = p.querySelector('.quit633'); if(q) q.onclick = async e => { e.stopPropagation(); const fn = QUITFN; if(!fn) return;
-    const v = await dialog('<h2 class="dlgT">じゅぎょうを やめる？</h2><p class="dlgP">とちゅうで やめると この じゅぎょうの ★と ごほうびは もらえないよ。<br>（にがてノートに のせた もんだいは のこるよ）</p>', [{label:'つづける', cls:'gold', v:0}, {label:'やめる', cls:'white', v:1}]);
+    const v = await dialog(`<h2 class="dlgT">${CUR==='uni' ? 'やめる？' : 'じゅぎょうを やめる？'}</h2><p class="dlgP">${QUITMSG || 'とちゅうで やめると この じゅぎょうの ★と ごほうびは もらえないよ。<br>（にがてノートに のせた もんだいは のこるよ）'}</p>`, [{label:'つづける', cls:'gold', v:0}, {label:'やめる', cls:'white', v:1}]);
     if(v && QUITFN===fn) fn(); };
   return p;
 }
 /* 1もん：mode 'school'（ヒントで もういちど）／'one'（1かいだけ） */
 function askQ(m, head, mode, opt={}){
   return new Promise(res => {
-    const ans = m.ansF || m.ans; let tries = 0, removed = new Set(opt.removed || []), timer = null, left = opt.sec || 0;
+    const ans = m.ansF || m.ans; if(window.__t631) window.__ans631 = ans; let tries = 0, removed = new Set(opt.removed || []), timer = null, left = opt.sec || 0;
     const draw = (hint) => {
       const p = qPanel(head, `<div class="qq631">${m.html}</div>${m.say && typeof sayBtn==='function' ? sayBtn(m.say) : ''}
         ${hint ? `<div class="hint631">💡 ${hint}</div>` : ''}
@@ -8089,7 +8091,7 @@ async function runClass(subj, diff){
   const revSlot = diff==='normal' ? ri(1, 4) : -1;
   const T = diff==='easy' ? Math.max(1, g - (Math.random() < .5 ? 1 : 2)) : g;
   if(teacher) await dialog(`<div class="dlgArt"><img src="${X(rsrc(teacher))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(teacher.name)}せんせい</b>${X(speak(teacher, sp===subj ? `きょうは ${SUBJ[subj]}の とくべつじゅぎょう！ コインが 1.5ばいだよ` : `${SUBJ[subj]}の じゅぎょうを はじめるよ！ おちついて かんがえてね`))}</div>${practice ? '<p class="dlgP facNote">きょうの まんがくは おわったので「れんしゅうモード」（コイン ×0.2）だよ</p>' : ''}`, [{label:'はーい！', cls:'gold', v:1}], 'wide');
-  QUITOK = true;
+  QUITOK = true; QUITMSG = '';
   const quitOut = () => { QUITOK = false; QUITFN = null; toast('じゅぎょうを やめたよ'); schoolMain(); };
   for(let i=0; i<n; i++){
     let m = null, note = null;
@@ -8325,12 +8327,45 @@ function themeQ(t, lv, used, stage){
   }
   return best || subjQ('math', userG(), used, false);
 }
+/* ===== v6.34（STEP5）：研究ノート・レシピ・ひみつ・がっかい ===== */
+const IMG634 = './assets/images/v634/';
+const thImg = (id, cls='thi634') => `<img class="${cls}" src="${IMG634}th_${id}.webp" alt="">`;
+const CARDS = {"env": ["森は 雨水を たくわえるので「緑のダム」と よばれる。", "植物は 光を つかって 二酸化炭素から 養分と 酸素を つくる（光合成）。", "こん虫の からだは あたま・むね・はらの 3つ。あしは 6本。", "川の 水は 海から 蒸発して 雲に なり、雨と なって もどってくる。", "ペットボトルは リサイクルすると 服や たまごパックに 生まれかわる。", "日本の 国土の 約3分の2は 森林。世界でも 森の 多い 国。", "川の 上流の 石は 大きく 角ばり、下流の 石は 小さく 丸い。", "メダカの たまごは 約11日で かえる（水温 25℃くらい）。", "地球の 平均気温が 上がる ことを 地球温暖化という。", "食べる・食べられるの つながりを「食物連鎖」という。", "サンゴは 植物ではなく 動物の なかま。", "1本の 大きな 木は 1年に 数十kgの 二酸化炭素を すいこむ。", "海の プラスチックごみは 細かく くだけて 魚の おなかに 入る ことも ある。", "北極の 氷が へると、ホッキョクグマが えさを とりにくくなる。", "生き物の しゅるいが 多い ことを「生物多様性」という。"], "life": ["人の 心臓は 1日に 約10万回 ドクンと うつ。", "血液は 酸素や 養分を からだじゅうに とどける。", "大人の 骨は 約200こ。赤ちゃんは 約300こ あって くっついていく。", "食べた ものは 胃や 小腸で 消化されて 吸収される。", "ねむっている あいだに 成長ホルモンが 出て からだが 育つ。", "小腸の かべの ひだを 広げると テニスコートくらいの 広さに なる。", "肺の 中には ぶどうの ような「肺ほう」が たくさん ある。", "手あらいの とき、せっけんで 20びょう あらうと ばいきんが へる。", "人の からだの 約60%は 水で できている。", "メダカも 人も、心臓が 血液を おくり出す ポンプの はたらきを する。", "脳は からだの 重さの 約2%なのに エネルギーを 約20% つかう。", "ワクチンは からだに「てきの おぼえがき」を 先に つくる しくみ。", "じん臓は 血液から いらない ものを こし出して にょうを つくる。", "DNAには からだの つくり方の 設計図が 書かれている。", "白血球は からだに 入った ばいきんと たたかう 血液の せいぶん。"], "soc": ["日本で いちばん 高い 山は 富士山（3776m）。", "日本で いちばん 長い 川は 信濃川（約367km）。", "日本で いちばん 大きい 湖は 琵琶湖（滋賀県）。", "都道府県は 47。1都・1道・2府・43県。", "国会は 法律を つくる ところ。衆議院と 参議院が ある。", "お金を 銀行に あずけると 利子が つく ことが ある。", "日本の 食料自給率は（カロリーで）約4割。半分以上を 輸入に たよっている。", "税金は 学校・道路・病院など みんなの ために つかわれる。", "世界で いちばん 人口が 多い 国は インド（2023年から）。", "日本国憲法の 三つの 原則は 国民主権・平和主義・基本的人権の 尊重。", "ものの ねだんは ほしい 人と 売りたい 人の バランスで きまる。", "選挙で 投票できるのは 18さい から。", "三権分立：立法（国会）・行政（内閣）・司法（裁判所）が おたがいを チェックする。", "世界には 190以上の 国が ある。", "SDGsは 2030年までに 世界で めざす 17の 目標。"], "tech": ["コンピューターは 0と 1だけで すべての 情報を あらわす。", "プログラムは コンピューターへの「命令の ならび」。", "同じ ことを くりかえす 命令を「ループ（くりかえし）」という。", "「もし〜なら」で 動きを かえる 命令を「条件分岐」という。", "プログラムの まちがいを「バグ」、なおす ことを「デバッグ」という。", "世界で 最初の プログラマーは エイダ・ラブレス（1800年代）と いわれる。", "インターネットは 世界じゅうの コンピューターを つなぐ あみの め。", "パスワードは 長く、だれにも 教えない ことが 大事。", "ロボットは センサーで まわりを 知り、モーターで うごく。", "人工知能（AI）は たくさんの データから きまりを 見つけて 学ぶ。", "2進数の 1010 は ふつうの 数で 10。", "プログラムで 数を おぼえておく 箱を「変数」という。", "手じゅんを くふうすると、同じ 答えでも ずっと はやく 計算できる（アルゴリズム）。", "QRコードは 日本で 生まれた。少し よごれても 読みとれる。", "スマートフォン 1台は、むかしの 月ロケットの コンピューターより ずっと 高性能。"], "space": ["太陽系の わくせいは 8こ。すい・きん・ち・か・もく・ど・てん・かい。", "月は 地球の まわりを 約27日で 1しゅう する。", "太陽は 地球の 約109倍の 大きさ。", "光は 1びょうで 地球を 約7しゅう半 する。", "夏の 大三角は ベガ・アルタイル・デネブ。", "木星には 90こ以上の 衛星が ある。", "月の 表面の でこぼこは いん石が ぶつかった あと（クレーター）。", "金星は 自転の 向きが 地球と 反対。", "国際宇宙ステーションは 約90分で 地球を 1しゅう する。", "北極星は 1年じゅう ほぼ 真北に 見える。", "土星は 密度が 水より 小さい。大きな プールが あれば うかぶ ほど。", "1光年は 約9兆5000億km。", "太陽の 光は 地球まで 約8分20びょう かかる。", "天の川銀河には 1000億こ以上の 星が ある。", "宇宙は 約138億年前の ビッグバンで はじまったと 考えられている。"], "chem": ["水は H₂O。水素 2こと 酸素 1こで できている。", "空気の 約78%は 窒素、約21%は 酸素。", "元素は 118しゅるい 見つかっている。", "金は さびにくく、ずっと ぴかぴかの まま。", "氷が 水に うくのは、水より 密度が 小さいから。", "リトマス紙は 酸性で 青→赤、アルカリ性で 赤→青。", "鉄が さびるのは 空気中の 酸素と 結びつくから。", "ダイヤモンドと えんぴつの しんは どちらも 炭素で できている。", "食塩水を 熱すると 水が 蒸発して 食塩が のこる。", "ヘリウムは 空気より かるいので 風船が うかぶ。", "元素記号の Na は ナトリウム、K は カリウム。", "化学変化の 前と あとで 全体の 重さは かわらない（質量保存の 法則）。", "いちばん かるい 元素は 水素。宇宙で いちばん 多い 元素でも ある。", "周期表は メンデレーエフが 考えた。", "ドライアイスは 二酸化炭素の 固体。とけると 気体に なる。"], "lang": ["英語の アルファベットは 26文字。", "ひらがなは 漢字を くずして つくられた。", "世界で いちばん 話されている 言葉の 一つは 英語。", "「Hello」は「こんにちは」。「Thank you」は「ありがとう」。", "日本語には ひらがな・カタカナ・漢字の 3しゅるいの 文字が ある。", "「十人十色」は 人それぞれ ちがう という いみ。", "英語の 文は ふつう「だれが・する・何を」の じゅんばん。", "カステラ・パン・テンプラは ポルトガル語から きた ことば。", "漢字は 5万字以上 あると いわれる。", "「いろはうた」は かなを 1回ずつ つかった うた。", "英語の 曜日は Sunday（日）から Saturday（土）。", "「温故知新」は 昔の ことから 新しい ことを 学ぶ こと。", "英語の 過去形は ふつう ed を つける（play → played）。", "世界には 約7000の 言語が ある。", "ことわざ「急がば回れ」は 確実な 方法が けっきょく はやい という いみ。"], "math": ["0は インドで 考え出された 数。", "円周率 π は 3.14159… と ずっと つづく。", "三角形の 角を ぜんぶ たすと 180°。", "1から 10まで たすと 55。", "九九の 答えを ぜんぶ たすと 2025。", "正方形は 4つの 辺も 4つの 角も 等しい。", "素数は 1と その数でしか われない 数（2, 3, 5, 7…）。", "マイナスの 数どうしを かけると プラスに なる。", "四角形の 角を ぜんぶ たすと 360°。", "ハチの すは 正六角形。すき間なく ならべられて 強い。", "フィボナッチ数列 1,1,2,3,5,8… は 花びらの 数にも あらわれる。", "円の 面積は 半径×半径×円周率。", "ピタゴラスの 定理：直角三角形で a²＋b²＝c²。", "1／3 を 小数に すると 0.333… と ずっと つづく。", "さいころの 向かいあう 面を たすと かならず 7。"], "logic": ["数の ならびの きまりを 見つけると、つぎの 数が わかる。", "「すべての AはB」でも「すべての BはA」とは かぎらない。", "4人の ならび方は 4×3×2×1＝24通り。", "あくしゅの 回数は 人数×（人数−1）÷2。", "つるかめ算は「ぜんぶ つるだったら」と 考えると とける。", "うそつき問題は「もし Aが 本当なら」と 1つずつ ためす。", "立方体の 面は 6、辺は 12、頂点は 8。", "紙を 半分に おる たびに 部分の 数は 2倍に なる。", "ハノイの とうは 円ばんが n まいなら 2ⁿ−1 回で うつせる。", "迷路は 左手を かべに つけて すすむと いつか 出口に つく（つながった 迷路なら）。", "ぎゃくから 考えると とける 問題も 多い。", "数独は 1〜9を たて・よこ・ブロックに 1回ずつ 入れる パズル。", "5人から 2人 えらぶ えらび方は 10通り。", "ひとふで書きは 線が 奇数本 あつまる 点が 0か 2こなら できる。", "とけない 問題も「とけない ことを 証明する」ことが できる。"]};
+const TH_C = {env:'#3BAF6A', life:'#E8606A', soc:'#E79A2B', tech:'#3D8BE0', space:'#7A5CD6', chem:'#26A69A', lang:'#9A6AD8', math:'#D4A017', logic:'#F07B3F'};
+const isKira = i => i % 5 === 0;
+const cardsOf = id => { const u = UV(); u.cards = u.cards || {}; return u.cards[id] || (u.cards[id] = []); };
+const nCards = id => cardsOf(id).length;
+const RECIPE = {
+  env:['mori_salad','もりの グリーンサラダ','veggie_salad',{f_cabbage:2,f_tomato:1,f_carrot:1}],
+  life:['genki_soup','げんき いっぱい スープ','pumpkin_soup',{f_pumpkin:1,f_carrot:1,cf_chicken:1}],
+  soc:['sekai_plate','せかい いっしゅう プレート','lunchbox',{cf_pork:1,cf_egg:1,f_tomato:1,f_potato:1}],
+  tech:['robo_pancake','ロボット パンケーキ','pancake',{cf_egg:2,cf_milk:2,cf_honey:1}],
+  space:['hoshi_parfait','ほしぞら パフェ','royal_parfait',{f_strawberry:2,f_banana:1,cf_milk:2}],
+  chem:['fushigi_soda','ふしぎな ソーダ','watermelon_juice',{f_watermelon:1,f_apple:1,cf_honey:1}],
+  lang:['abc_cookie','ABC クッキー','fruit_tart',{cf_egg:1,cf_milk:1,cf_honey:1}],
+  math:['pi_pie','パイの パイ（π）','apple_honey_tart',{f_apple:3,cf_egg:2,cf_milk:1}],
+  logic:['puzzle_cake','パズル ケーキ','rainbow_cake',{f_strawberry:2,f_banana:1,cf_egg:2,cf_milk:2}],
+  deg:['gakui_cake','がくい おいわい ケーキ','fruit_tart',{f_strawberry:2,cf_egg:2,cf_milk:2}]
+};
+function addRecipeMenus(){
+  try{ const M = window.__cafe61 && window.__cafe61.menus(); if(!M) return; const u = UV(); (u.recipes||[]).forEach(k => { const R0 = RECIPE[k]; if(!R0 || M.some(m => m.id==='rc_'+R0[0])) return;
+    const base = M.find(m => m.id===R0[2]) || M[0], pt = 380;
+    M.push({id:'rc_'+R0[0], n:'🎓 '+R0[1], i:'', lv:1, pt, req:R0[3], art:base.art, mult:2.6, min:30, buy:Math.round(pt*1.4), rc:1}); }); }catch(e){ console.warn('recipe634', e); }
+}
+function giveRecipe(k){ const u = UV(); u.recipes = u.recipes || []; if(u.recipes.includes(k)) return null; u.recipes.push(k); addRecipeMenus(); return RECIPE[k]; }
+setTimeout(addRecipeMenus, 0);
+const masters = () => TH.filter(t => thData(t.id).lv >= 2).length;
+function secretChip(){ const n = masters(), pct = Math.round(n/9*100), done = UV().secret;
+  return `<button type="button" class="sec634 ${done ? 'open' : ''}" data-a="secret"><span class="sil634"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100-pct}%"></span><b>${done ? 'ひみつ' : '？？？'}</b><small>${n}/9</small></button>`; }
+/* 月ごとの きろく */
+const ym = d => d.slice(0,7);
+function monRec(){ const u = UV(); u.mon = u.mon || {}; const k = ym(D4()); return u.mon[k] || (u.mon[k] = {res:0, cards:0, th:{}}); }
 function uniMates(n){
   const all = RES(), u = UV(), p = u.partner && resBy(u.partner);
   const L = shuffle(all.filter(r => r !== p)).slice(0, p ? n - 1 : n); if(p) L.unshift(p); return L;
 }
 function uniMain(){
-  if(!ROOT) return; ROOT.classList.remove('bgS633'); const u = UV(), s = SV(), L = DL();
+  if(!ROOT) return; ROOT.classList.remove('bgS633'); ROOT.classList.add('bgU634'); addRecipeMenus(); setTimeout(gakkai, 400); const u = UV(), s = SV(), L = DL();
   if(!u.enrolled) return uniLocked();
   const reco = recoTheme();
   if(!UT.th || !thOpen(THM(UT.th))) UT.th = reco;
@@ -8340,19 +8375,20 @@ function uniMain(){
   const mul = t.mul * (UT.th===reco ? CFG.recoMul : 1) * CFG.chain[Math.min(2, L.chain.filter(x => x!==UT.th).length)];
   const p = u.partner && resBy(u.partner);
   ROOT.innerHTML = `<div class="wrap631 uni">
-    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><b>🎓 だいがく</b><small>むずかしいけど ごほうびは 大きいよ</small></div>
+    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG634}logo_univ.webp" alt="だいがく"><small>${UV().title ? '🏅 ' + X(UV().title) : 'むずかしいけど ごほうびは 大きいよ'}</small></div>
       <button type="button" class="stk631 deg" data-a="deg"><b>${D.n}</b><small>${dn ? `${fmt(u.degPt)}/${fmt(dn.D.pt)}` : fmt(u.degPt)}</small></button></header>
-    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:(r) => props[THM(UT.th).id] || '📚'})}
+    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:(r) => props[THM(UT.th).id] || '📚', cls:'clear633'})}
     <div class="sec631"><div class="h631">けんきゅう テーマ <small>きょう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes}かい${pm ? '（れんしゅうモード）' : ''}</small></div>
       <div class="ths631">${TH.map(x => { const open = thOpen(x), dd = thData(x.id);
-        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${open ? x.ic : '🔒'}</span><b>${x.n}</b><small>${open ? `×${x.mul}・${LV[dd.lv]}` : `あと けんきゅう ${x.need - u.total}かい`}</small></button>`; }).join('')}</div></div>
+        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${thImg(x.id)}${open ? '' : '<i class="lk634">🔒</i>'}</span><b>${x.n}</b><small>${open ? `${LV[dd.lv]}・🃏${nCards(x.id)}/15` : `あと けんきゅう ${x.need - u.total}かい`}</small>${open && nCards(x.id)===14 ? '<em class="last634">あと1まい！</em>' : ''}</button>`; }).join('')}</div></div>
     <div class="sec631"><div class="h631">レベル</div><div class="lvs631">${LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(UT.th) : null;
       return `<button type="button" class="lv631 ${UT.lv===i ? 'on' : ''} ${on ? '' : 'lock'}" ${on ? `data-lv="${i}"` : ''}><b>${on ? '' : '🔒'}${n}</b><small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : '—'}</small>${nd ? bar(nd.cur, nd.tot) : ''}</button>`; }).join('')}</div></div>
-    <div class="rw631">ごほうび：🎓 学位 ${Math.round(CFG.degPt[UT.lv] * mul)}〜　🪙 ${Math.round(CFG.resCoin[UT.lv] * t.mul * (pm ? CFG.overMul : 1))}　💎 ${Math.round(CFG.resCry[UT.lv]*100)}%　❓？？？</div>
-    <div class="rw631 sm">🔎 3ステージ（しらべる3・かんがえる3・はっぴょう1）　♥×${CFG.life}　ノーミスで 学位×1.5</div>
+    <div class="rw631 sm">🔎 しらべる3もん → かんがえる3もん → はっぴょう1もん　♥×3</div>
     <button type="button" class="go631 uni" data-a="rstart">🔬 けんきゅうを はじめる！</button>
     <div class="tools631">
       <button type="button" data-a="partner">🤝 なかま${p ? `<b class="nm">${X(p.name)}</b>` : ''}</button>
+      <button type="button" data-a="note">📓 研究ノート<b>${TH.reduce((a,t) => a + nCards(t.id), 0)}/135</b></button>
+      ${secretChip()}
       <span class="chip631">✨ かけら ${u.frag}/5</span><span class="chip631">🎟 ヒント ${u.tickets}</span>
       <button type="button" data-a="toschool">🏫 がっこう</button>
     </div></div>`;
@@ -8362,8 +8398,8 @@ function uniLocked(){
   const s = SV(), u = UV(), L = DL(), gold = s.badge >= 2, bn = badgeNext();
   const toGold = s.badge < 2 ? (() => { const b = CFG.badge[2], tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0); return {st:Math.max(0, b.st - tot), d:Math.max(0, b.d - s.attend), tot, b}; })() : null;
   ROOT.innerHTML = `<div class="wrap631 uni">
-    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><b>🎓 だいがく</b><small>がっこう ゴールドバッジで 入学試験</small></div><span></span></header>
-    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => choice(['📚','💻','🔭','🧪']), cls:'locked'})}
+    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG634}logo_univ.webp" alt="だいがく"><small>がっこう ゴールドバッジで 入学試験</small></div><span></span></header>
+    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => choice(['📚','💻','🔭','🧪']), cls:'locked clear633'})}
     <div class="lock631"><b>🔒 入学まで</b>${toGold ? `<p>🥇ゴールドバッジまで：★あと <b>${toGold.st}</b>こ・あと <b>${toGold.d}</b>にち</p>${bar(toGold.tot, toGold.b.st)}` : `<p>🥇 ゴールド たっせい！ 入学試験に ちょうせん できるよ</p>`}
       <p class="sm">入学試験：10もん中 7もん せいかいで ごうかく（5きょうか 2もんずつ）</p></div>
     <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : '📝 入学試験に ちょうせん！') : '📝 入学試験（ゴールドで かいほう）'}</button>
@@ -8381,14 +8417,18 @@ async function trial(){
 async function exam(){
   const L = DL(), s = SV(); if(L.exam || s.badge < 2) return; L.exam = 1; persist();
   const g = userG(), used = new Set(), list = []; SK.forEach(k => { list.push(k, k); });
+  QUITOK = true; QUITMSG = 'とちゅうで やめると きょうの 入学試験は おしまいに なるよ。<br>あした また ちょうせん できるよ';
+  const quitOut = () => { QUITOK = false; QUITFN = null; toast('入学試験を やめたよ'); uniMain(); };
   let ok = 0, miss = [];
   for(let i=0; i<10; i++){
     const subj = list[i], m = subjQ(subj, g, used, true); used.add(m.key);
     const head = `<div class="qh631 uni"><span>📝 入学試験 ${i+1}/10</span><b class="cb631">${ok >= 7 ? 'ごうかく ライン こえた！' : `あと ${7 - ok}もんで ごうかく`}</b></div>`;
     const r = await askQ(m, head, 'one');
+    if(r.quit) return quitOut();
     if(r.ok){ ok++; await pop('⭕', 'せいかい！'); }
-    else { miss.push(subj); addNote(m, 'k'); await explainStep(m, r.v, head, [{label:'つぎへ', cls:'gold', v:1}]); }
+    else { miss.push(subj); addNote(m, 'k'); const ev = await explainStep(m, r.v, head, [{label:'つぎへ', cls:'gold', v:1}]); if(ev==='__quit') return quitOut(); }
   }
+  QUITOK = false; QUITFN = null;
   if(ok >= 7 && dayOK()){
     const u = UV(); u.enrolled = 1; u.enrollDay = D4(); pts(500, 'だいがく 入学'); persist();
     const all = RES().slice(0, 12);
@@ -8427,19 +8467,24 @@ async function runResearch(id, lv){
   const tool = () => `<button type="button" class="btn small white" data-qt="h" ${free || u.tickets ? '' : 'disabled'}>💡 ヒント（${free ? `なかま ${free}` : `券 ${u.tickets}`}）</button>`;
   const onTool = (k, m) => { if(!free && !u.tickets) return null; if(free) free--; else u.tickets--; const ans = m.ansF || m.ans; return shuffle(m.opts.filter(o => o!==ans)).slice(0, 2); };
   let qi = 0, failed = false, lastM = null, lastV = '';
+  QUITOK = true; QUITMSG = 'とちゅうで やめると この けんきゅうの ごほうびは もらえないよ。<br>（♥は へらないよ）';
+  const quitOut = () => { QUITOK = false; QUITFN = null; toast('けんきゅうを やめたよ'); uniMain(); };
   outer: for(const [sn, cnt, sk] of stages){
     for(let i=0; i<cnt; i++){
       const m = themeQ(t, lv, used, sk); used.add(m.key); noteRecent(m); qi++;
       const head = `<div class="qh631 uni"><span>${t.ic} ${t.n}・${LV[lv]}</span><span class="stg2">ステージ${sk}「${sn}」</span>${practice ? '<b class="cb631">れんしゅう</b>' : `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`}</div>
         <div class="nb631">📓 ${Array.from({length:7}, (_, k) => `<i class="${k < qi - 1 ? 'on' : ''}"></i>`).join('')}</div>`;
       const r = await askQ(m, head, 'one', {sec: sk===3 ? CFG.stageSec[lv] : 0, tool, onTool});
+      if(r.quit) return quitOut();
       if(r.ok){ await pop('📝', sk===3 ? 'はっぴょう だいせいこう！' : 'ノートが 1ぎょう うまった！'); continue; }
       miss++; lastM = m; lastV = r.v;
       if(!practice){ life--; }
       if(!practice && life <= 0){ failed = true; break outer; }
-      await explainStep(m, r.v, head.replace(/<b class="lf631">[^<]*<\/b>/, `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`) + (r.timeout ? '<div class="revt631">⏱ じかんぎれ…</div>' : ''), [{label:'つぎへ', cls:'gold', v:1}]);
+      const ev = await explainStep(m, r.v, head.replace(/<b class="lf631">[^<]*<\/b>/, `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`) + (r.timeout ? '<div class="revt631">⏱ じかんぎれ…</div>' : ''), [{label:'つぎへ', cls:'gold', v:1}]);
+      if(ev==='__quit') return quitOut();
     }
   }
+  QUITOK = false; QUITFN = null;
   if(failed){
     const v = await explainStep(lastM, lastV, `<div class="qh631 uni"><span>${t.ic} ${t.n}</span><b class="lf631">♡♡♡</b></div><div class="revt631">けんきゅうは しっぱい… でも かいせつを よめば まえに すすめるよ</div>`, [{label:'✅ わかった！', cls:'gold', v:'w'}]);
     if(v==='w'){ u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; toast('✨ かけら 5こで ヒント券 1まい！'); } }
@@ -8451,7 +8496,7 @@ async function runResearch(id, lv){
     return;
   }
   /* せいこう */
-  const lines = []; let coin = 0, dp = 0, cry = 0, dai = false;
+  const lines = []; let coin = 0, dp = 0, cry = 0, dai = false, card = null, secretPending = false;
   const today = D4();
   if(good && !practice){
     L.res++;
@@ -8468,25 +8513,98 @@ async function runResearch(id, lv){
     u.total++;
     if(u.lastDay !== today){ u.lastDay = today; u.days++; }
     if(p) { addBond(p.id, 1, true); lines.push(`🤝 ${p.name}と きずな +1`); }
-    lvCheck(id).forEach(l => { lines.push(`⬆ ${t.n}の ${LV[l]}が かいほう！`); });
+    const mr = monRec(); mr.res++; mr.th[id] = (mr.th[id]||0) + 1;
+    card = drawCard(id, lv, nomiss, dai);
+    if(card && card.dup){ coin += 20; u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; } lines.push('🃏 カードは ぜんぶ もっているよ → コイン+20・かけら+1'); }
+    else if(card){ mr.cards++; lines.push(`🃏 はっけんカード ${card.kira ? '✨キラ' : ''}ゲット！（${t.n} ${nCards(id)}/15）`);
+      if(nCards(id)===15){ coin += 1000; const tt = t.n.replace(/（.*）/,'') + 'はかせ'; u.titles = u.titles || []; if(!u.titles.includes(tt)) u.titles.push(tt); u.title = tt; lines.push(`👑 コンプリート！ しょうごう「${tt}」 +1000`);
+        if(TH.every(x => nCards(x.id)===15) && !u.titles.includes('だいはかせ')){ u.titles.push('だいはかせ'); u.title = 'だいはかせ'; lines.push('🌟 ぜんぶの テーマを コンプリート！ しょうごう「だいはかせ」'); } } }
+    lvCheck(id).forEach(l => { lines.push(`⬆ ${t.n}の ${LV[l]}が かいほう！`);
+      if(l===2){ const rc = giveRecipe(id); if(rc) lines.push(`🍰 カフェの とくべつ レシピ「${rc[1]}」を おぼえた！`); lines.push(`❓ ひみつの シルエットが すこし 見えた（${masters()}/9）`);
+        if(masters()===9 && !u.secret) secretPending = true; } });
     TH.forEach(x => { if(x.need && u.total === x.need) lines.push(`🔓 あたらしい テーマ「${x.n}」が かいほう！`); });
-    const dn = degNext(); if(dn && dn.ok){ u.degree++; if(dn.D.rew){ coin += dn.D.rew; } lines.push(`🎓 しょうごう「${dn.D.n}」に なった！${dn.D.rew ? ` +${dn.D.rew}` : ''}`); }
+    const dn = degNext(); if(dn && dn.ok){ u.degree++; if(dn.D.rew){ coin += dn.D.rew; } lines.push(`🎓 しょうごう「${dn.D.n}」に なった！${dn.D.rew ? ` +${dn.D.rew}` : ''}`);
+      if(dn.D.n==='修士'){ const rc = giveRecipe('deg'); if(rc) lines.push(`🍰 とくべつ レシピ「${rc[1]}」を おぼえた！`); } }
   } else if(good){ coin = Math.round(CFG.resCoin[lv] * t.mul * CFG.overMul); lines.push(`🪙 れんしゅうモード +${coin}`); }
   if(coin) pts(coin, `だいがく ${t.n}の けんきゅう`);
   persist();
   const dn = degNext();
-  ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => t.prop, bounce:true, noLv:true, cls:'mini'})}
+  ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => t.prop, bounce:true, noLv:true, cls:'mini clear633'})}
     <h2 class="hk631">${dai ? '🌟 だいはっけん！！' : '💡 はっけん！'}</h2>
+    ${card && !card.dup ? cardHTML(id, card.i, true) : ''}
     <ul class="ln631">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>
     ${dn ? `<div class="nx631">つぎの「${dn.D.n}」まで：学位 あと${fmt(dn.needP)}・あと${dn.needD}にち${dn.needA ? `・アドバンス ${dn.needA}テーマ` : ''}${dn.needM ? `・マスター ${dn.needM}テーマ` : ''}${bar(u.degPt, dn.D.pt)}</div>` : ''}
     ${L.res >= CFG.fullRes ? `<p class="tmr631">きょうの けんきゅうは まんかい！ あしたも まってるよ</p>` : `<p class="tmr631">べつの テーマに ちょうせんすると 学位ポイントが ふえるよ（チェイン）</p>`}
     <div class="rb631"><button type="button" class="btn gold" data-a="bk">🎓 だいがくに もどる</button></div></div></div>`;
   confetti(dai ? 3500 : 2000); sound('fan');
   ROOT.querySelector('[data-a="bk"]').onclick = e => { e.stopPropagation(); uniMain(); };
+  if(secretPending) setTimeout(() => { busy = true; secretOpen().finally(() => { busy = false; }); }, 1600);
 }
+function drawCard(id, lv, nomiss, dai){
+  const own = cardsOf(id); if(own.length >= 15) return {dup:true};
+  const range = k => [0,1,2,3,4].map(j => k*5 + j).filter(i => !own.includes(i));
+  let pool = range(lv); if(!pool.length) for(let k=0; k<=2 && !pool.length; k++) pool = range(k);
+  if(!pool.length) return {dup:true};
+  const kira = pool.filter(isKira), norm = pool.filter(i => !isKira(i));
+  let i;
+  if(dai && kira.length) i = kira[0];
+  else if(nomiss && kira.length && Math.random() < .2) i = kira[0];
+  else i = norm.length ? choice(norm) : kira[0];
+  own.push(i); own.sort((a,b) => a-b); return {i, kira:isKira(i)};
+}
+function cardHTML(id, i, flip){
+  const t = THM(id), k = isKira(i);
+  return `<div class="cd634 ${k ? 'kira' : ''} ${flip ? 'flip' : ''}" style="--tc:${TH_C[id]}"><div class="in634"><div class="bk634">🎓</div><div class="fr634">
+    <div class="ct634"><span>${t.n}</span><em>${LV[Math.floor(i/5)]} No.${i+1}</em></div>${thImg(id, 'ci634')}<p>${X(CARDS[id][i])}</p>${k ? '<i class="kr634">✨キラ</i>' : ''}</div></div></div>`;
+}
+function noteBook(th){
+  if(!ROOT) return; th = th && THM(th) ? th : TH[0].id; const own = cardsOf(th), tot = TH.reduce((a,t) => a + nCards(t.id), 0);
+  ROOT.innerHTML = `<div class="wrap631 nb634w"><header class="hd631"><button type="button" class="back631" data-nb="back">‹ だいがく</button><div class="tt631"><b class="nbt634">📓 研究ノート</b><small>はっけんカード ${tot}/135</small></div><span></span></header>
+    <div class="nbt634s">${TH.map(t => `<button type="button" class="nbtab634 ${t.id===th ? 'on' : ''}" data-nb="${t.id}" style="--tc:${TH_C[t.id]}">${thImg(t.id)}<small>${nCards(t.id)}/15</small>${nCards(t.id)===14 ? '<em class="last634">あと1まい</em>' : ''}</button>`).join('')}</div>
+    <div class="nbp634" style="--tc:${TH_C[th]}"><div class="nbh634">${thImg(th)}<b>${THM(th).n}</b><span>${own.length}/15${own.length===15 ? ' 👑 コンプリート' : ''}</span></div>
+      ${LV.map((n, k) => `<div class="nbl634">${n}</div><div class="nbg634">${[0,1,2,3,4].map(j => { const i = k*5+j; return own.includes(i) ? `<button type="button" class="mini634 ${isKira(i) ? 'kira' : ''}" data-cd="${th}|${i}">${thImg(th,'ci634')}<small>No.${i+1}</small></button>` : `<span class="mini634 off">${isKira(i) ? '✨' : ''}？</span>`; }).join('')}</div>`).join('')}
+      <p class="nbn634">けんきゅうに せいこうすると カードが 1まい もらえるよ。ノーミスだと キラカードが 出やすい！</p></div></div>`;
+  ROOT.scrollTop = 0;
+  ROOT.querySelectorAll('[data-nb]').forEach(b => b.onclick = e => { e.stopPropagation(); const v = b.dataset.nb; if(v==='back') uniMain(); else noteBook(v); });
+  ROOT.querySelectorAll('[data-cd]').forEach(b => b.onclick = e => { e.stopPropagation(); const [id, i] = b.dataset.cd.split('|'); dialog(`<div class="cdw634">${cardHTML(id, +i, false)}</div>`, [{label:'とじる', cls:'gold', v:1}]); });
+}
+async function secretView(){
+  const u = UV(), n = masters();
+  if(u.secret) return dialog(`<div class="dlgArt"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="height:110px"></div><h2 class="dlgT">🌈 ひみつの ほうしゅう</h2><p class="dlgP">ぜんぶの テーマを マスターして <b>超レアかくていレター</b> を 手に入れたよ！</p>`, [{label:'とじる', cls:'gold', v:1}]);
+  await dialog(`<div class="dlgArt"><span class="sil634 big"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100 - Math.round(n/9*100)}%"></span></div><h2 class="dlgT">❓ ？？？の ひみつ</h2>
+    <p class="dlgP">テーマを 1つ「マスター」に するたびに シルエットが 9分の1ずつ 見えてくるよ。<br>ぜんぶ マスターすると ひみつが あきらかに！</p><p class="dlgP facNote">いま ${n}/9 テーマ</p>`, [{label:'とじる', cls:'gold', v:1}]);
+}
+async function secretOpen(){
+  const u = UV(); if(u.secret || masters() < 9) return; u.secret = 1;
+  save.superLetter = (save.superLetter||0) + 3; save.crystal = (save.crystal||0) + 10; u.titles = u.titles || []; if(!u.titles.includes('でんせつの けんきゅうしゃ')) u.titles.push('でんせつの けんきゅうしゃ'); u.title = 'でんせつの けんきゅうしゃ';
+  persist(); confetti(4000); sound('fan');
+  await dialog(`<div class="rareIntro rk4"><div class="rays"></div><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="height:120px;position:relative"></div><h2 class="dlgT">🌈 ひみつが あきらかに！</h2>
+    <p class="dlgP">9つの テーマを ぜんぶ マスター！<br><b>超レアかくていレター ×3</b>・<b>すいしょう ×10</b><br>しょうごう「でんせつの けんきゅうしゃ」</p><p class="dlgP facNote">レターは もちものから つかうと 超レアの 住民が かならず 来るよ</p>`, [{label:'すごい！', cls:'gold', v:1}], 'wide');
+}
+/* がっかい（月1回） */
+let gkBusy = false;
+async function gakkai(){
+  if(gkBusy || !save.uni631 || !UV().enrolled) return; const u = UV(), cur = ym(D4());
+  if(u.gkLast === cur) return; if(document.querySelector('#dlg.show') || busy) return;
+  const keys = Object.keys(u.mon || {}).filter(k => k < cur).sort(), pk = keys[keys.length-1];
+  u.gkLast = cur; persist(); if(!pk) return; const M = u.mon[pk]; if(!M || !M.res) return;
+  gkBusy = true;
+  try{
+    const mvp = Object.entries(M.th).sort((a,b) => b[1]-a[1])[0], t = mvp && THM(mvp[0]);
+    save.crystal = (save.crystal||0) + 1; const it = decoItem(true); persist(); confetti(2500); sound('fan');
+    const cl = RES().slice(0, 8);
+    await dialog(`<div class="gk634"><div class="gkt634">📜 ${+pk.slice(5)}月の がっかい はっぴょう</div>
+      <div class="gkb634">${t ? `<div class="gkm634">${thImg(t.id)}<div><small>こんげつの MVP テーマ</small><b>${t.n}</b><span>${mvp[1]}かい けんきゅう</span></div></div>` : ''}
+      <div class="gks634"><span>🔬 けんきゅう<b>${M.res}かい</b></span><span>🃏 カード<b>${M.cards}まい</b></span><span>📓 ぜんぶで<b>${TH.reduce((a,x) => a + nCards(x.id), 0)}/135</b></span></div></div>
+      <div class="clap631">${cl.map((r,i) => `<span style="animation-delay:${(i*.12).toFixed(2)}s"><img src="${X(rsrc(r))}" alt=""><i>👏</i></span>`).join('')}</div>
+      <p class="dlgP">MVPの ごほうび：💎 すいしょう 1こ${it ? `・とくべつ かざり「${X(it.name)}」` : ''}</p></div>`, [{label:'こんげつも がんばる！', cls:'gold', v:1}], 'wide');
+  } finally { gkBusy = false; }
+}
+setInterval(() => { if(document.hidden || CUR || typeof curScreen==='undefined' || !['town','home','myhome'].includes(curScreen)) return; gakkai(); }, 5000);
 async function degreeView(){
   const u = UV();
   await dialog(`<h2 class="dlgT">🎓 学位</h2><p class="dlgP">いま：<b>${CFG.degree[u.degree].n}</b>　学位ポイント <b>${fmt(u.degPt)}</b>　けんきゅうした日 <b>${u.days}にち</b></p>
+    ${(UV().titles||[]).length ? `<p class="dlgP">しょうごう：${UV().titles.map(X).join('・')}</p>` : ''}${(UV().recipes||[]).length ? `<p class="dlgP facNote">🍰 おぼえた レシピ：${UV().recipes.map(k => RECIPE[k] ? RECIPE[k][1] : '').join('・')}（カフェの メニューに あるよ）</p>` : ''}
     <table class="rep631">${CFG.degree.slice(1).map((D, i) => `<tr class="${u.degree >= i+1 ? 'got' : ''}"><th>${D.n}</th><td>${fmt(D.pt)}pt・${D.d}にち${D.adv ? '・アドバンス1テーマ' : ''}${D.mas ? `・マスター${D.mas}テーマ` : ''}</td><td>${u.degree >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
 
@@ -8654,6 +8772,66 @@ body.sc631on{overflow:hidden}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
+/* v6.34 だいがく */
+#sc631.bgU634{background:#EEF1E4}
+#sc631.bgU634::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_univ.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
+#sc631.bgU634>*{position:relative;z-index:1}
+#sc631.bgU634 .hd631{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
+#sc631.bgU634 .tt631 small{background:rgba(255,255,255,.85);border-radius:99px;padding:0 6px;display:inline-block;max-width:100%;color:#3F55C4}
+#sc631.bgU634 .sec631,#sc631.bgU634 .lock631,#sc631.bgU634 .rw631{background:rgba(255,255,255,.92)}
+#sc631.bgU634 .wrap631.result{min-height:100%;justify-content:flex-end}
+#sc631.bgU634 .res631{background:rgba(250,251,255,.96);border-radius:22px;padding:10px 10px 12px;margin-top:calc(10px + env(safe-area-inset-top));box-shadow:0 8px 28px rgba(20,30,80,.3);border:3px solid #fff}
+#sc631.bgU634 .res631 .stg631.mini{aspect-ratio:3/.9;margin:-4px 0 -6px}
+#sc631.bgU634 .ent631 .bgE{display:none}
+.thi634{width:36px;height:36px;object-fit:contain;display:block}
+.th631 .ic{position:relative;height:36px}.th631.lock .thi634{filter:grayscale(1) opacity(.5)}
+.lk634{position:absolute;right:-8px;bottom:-4px;font-style:normal;font-size:14px}
+.last634{position:absolute;right:-4px;bottom:-8px;font-style:normal;font-size:9px;font-weight:900;color:#fff;background:#E8414B;border-radius:6px;padding:0 4px;animation:blink634 .8s ease-in-out infinite alternate;white-space:nowrap}
+@keyframes blink634{from{opacity:1}to{opacity:.35}}
+.sec634{position:relative;border:none;background:#2E2A4A!important;color:#fff!important;border-radius:999px;padding:3px 10px 3px 4px!important;display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:11.5px;font-weight:900;box-shadow:0 2px 0 #19162E!important}
+.sec634 small{font-size:10px;opacity:.85}.sec634.open{background:linear-gradient(90deg,#FF8AD8,#8AB4FF)!important}
+.sil634{position:relative;display:inline-block;width:26px;height:26px;border-radius:50%;background:#46406E;overflow:hidden}
+.sil634 img{width:100%;height:100%;object-fit:contain;filter:brightness(0) invert(1);opacity:.95;clip-path:inset(var(--r,100%) 0 0 0)}
+.sil634.big{width:120px;height:120px;border-radius:24px}
+/* カード */
+.cd634{perspective:900px;width:min(62vw,230px);margin:4px auto}
+.cd634 .in634{position:relative;transform-style:preserve-3d;transition:transform .8s}
+.cd634.flip .in634{animation:flip634 1.1s ease-out both}
+@keyframes flip634{0%{transform:rotateY(180deg) scale(.6)}60%{transform:rotateY(-10deg) scale(1.05)}100%{transform:rotateY(0) scale(1)}}
+.cd634 .bk634,.cd634 .fr634{backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px}
+.cd634 .bk634{position:absolute;inset:0;transform:rotateY(180deg);background:repeating-linear-gradient(45deg,var(--tc),var(--tc) 10px,color-mix(in srgb,var(--tc) 70%,#fff) 10px 20px);display:flex;align-items:center;justify-content:center;font-size:52px;border:4px solid #fff}
+.cd634 .fr634{position:relative;background:#fff;border:5px solid var(--tc);padding:8px 10px 10px;box-shadow:0 6px 16px rgba(0,0,0,.2);text-align:center}
+.cd634.kira .fr634{background:linear-gradient(135deg,#FFF6D0,#E8F4FF 35%,#FFE3F4 65%,#E9FFE8);border-image:linear-gradient(135deg,#FFD24A,#FF8AD8,#8AB4FF,#7CE0A0) 1;border-radius:0}
+.cd634.kira .fr634::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 45%,transparent 60%);background-size:250% 100%;animation:shine634 2.4s linear infinite;pointer-events:none}
+@keyframes shine634{from{background-position:150% 0}to{background-position:-100% 0}}
+.ct634{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:900;color:var(--tc)}.ct634 em{font-style:normal;color:#8A8A9A;font-size:10px}
+.ci634{width:72px;height:72px;object-fit:contain;display:block;margin:4px auto}
+.cd634 p{margin:2px 0 0;font-size:13px;font-weight:800;color:#3A3A4A;line-height:1.5;text-align:left}
+.kr634{position:absolute;left:8px;bottom:-10px;font-style:normal;font-size:10px;font-weight:900;color:#fff;background:linear-gradient(90deg,#FFB400,#FF6FB5);border-radius:99px;padding:1px 7px}
+.cdw634 .cd634{width:min(72vw,260px)}
+/* ノート */
+.nbt634{font-size:17px;color:#3F4E9E}
+.nbt634s{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px;background:rgba(255,255,255,.92);border-radius:14px;padding:5px}
+.nbtab634{position:relative;border:2px solid transparent;background:#F6F7FF;border-radius:10px;padding:3px 0 1px;display:flex;flex-direction:column;align-items:center;font:inherit;min-width:0}
+.nbtab634 .thi634{width:28px;height:28px}.nbtab634 small{font-size:9px;font-weight:900;color:#5A6080}
+.nbtab634.on{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,#fff)}
+.nbtab634 .last634{font-size:8px;bottom:-6px;right:-2px}
+.nbp634{background:rgba(255,255,255,.95);border-radius:16px;padding:8px;border:3px solid var(--tc)}
+.nbh634{display:flex;align-items:center;gap:6px;font-weight:900;color:var(--tc)}.nbh634 b{font-size:15px}.nbh634 span{margin-left:auto;font-size:12px;color:#5A6080}
+.nbl634{font-size:11px;font-weight:900;color:#6A74A8;margin:6px 0 3px}
+.nbg634{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.mini634{aspect-ratio:3/4;border:2.5px solid var(--tc);background:#fff;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font:inherit;padding:0;min-width:0}
+.mini634 .ci634{width:80%;height:auto;margin:0}.mini634 small{font-size:9px;color:#8A8A9A;font-weight:800}
+.mini634.kira{background:linear-gradient(135deg,#FFF6D0,#E8F4FF,#FFE3F4);box-shadow:0 0 6px rgba(255,190,0,.6)}
+.mini634.off{border-style:dashed;border-color:#C9CCE0;background:#F3F4FA;color:#B0B4CC;font-weight:900;font-size:16px}
+.nbn634{font-size:11px;color:#6A74A8;font-weight:800;margin:8px 0 0}
+/* がっかい */
+.gk634{text-align:center}
+.gkt634{display:inline-block;background:linear-gradient(90deg,#3F55C4,#7A5CD6);color:#fff;font-weight:900;font-size:16px;border-radius:12px;padding:5px 14px;box-shadow:0 3px 0 #2A3A8E}
+.gkb634{margin:8px 0;background:#FFFDF4;border:3px double #C9A55A;border-radius:12px;padding:8px}
+.gkm634{display:flex;align-items:center;gap:8px;justify-content:center}.gkm634 .thi634{width:60px;height:60px}.gkm634 div{display:flex;flex-direction:column;text-align:left}.gkm634 small{font-size:10.5px;color:#B5701C;font-weight:900}.gkm634 b{font-size:18px;color:#3F4E9E}.gkm634 span{font-size:12px;font-weight:800}
+.gks634{display:flex;gap:4px;justify-content:center;margin-top:6px;flex-wrap:wrap}.gks634 span{background:#EEF1FF;border-radius:10px;padding:3px 8px;font-size:11px;font-weight:800;display:flex;flex-direction:column}.gks634 b{font-size:14px;color:#3F55C4}
+
 #sc631.bgS633 .wrap631.result{min-height:100%;justify-content:flex-end}
 #sc631.bgS633 .res631{background:rgba(255,251,242,.96);border-radius:22px;padding:10px 10px 12px;margin-top:calc(10px + env(safe-area-inset-top));box-shadow:0 8px 28px rgba(60,40,10,.3);border:3px solid #fff}
 #sc631.bgS633 .res631 .stg631.mini{aspect-ratio:3/.9;margin:-4px 0 -6px}

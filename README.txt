@@ -1,10 +1,8 @@
-まなびタウン v6.33 UPDATE（がっこうの 見た目・じゅぎょうの とちゅうで やめる）
+まなびタウン v6.34 UPDATE（だいがくの 見た目・STEP5）
 
 アップロードする ファイル:
 - js/features.js        （上書き）
-- assets/images/v633/   （新しい フォルダ）
-    logo_school.webp … 「がっこう」ロゴ
-    df_easy.webp / df_normal.webp / df_hard.webp … かんたん・ふつう・むずかしい
-- assets/images/v630/・v631/ … まだ アップロードして いなければ
-
-教科と たからばこの アイコンは すでに ある 画像（icon_kokugo など・ui_chest）を つかいます。
+- assets/images/v634/   （新しい フォルダ）
+    logo_univ.webp … 「だいがく」ロゴ
+    th_env / th_life / th_soc / th_tech / th_space / th_chem / th_lang / th_math / th_logic .webp … テーマの アイコン
+- assets/images/v630/・v631/・v633/ … まだ アップロードして いなければ
