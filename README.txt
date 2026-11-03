@@ -1,9 +1,8 @@
-まなびタウン v6.31 UPDATE（v6.29 からの差分。v6.30 も ふくみます）
+まなびタウン v6.32 UPDATE（STEP4：だいがくの 挑戦教科の 問題）
 
 アップロードする ファイル:
-- js/features.js                 （上書き）
-- assets/images/v630/            （v6.30 の アイコン 9まい。まだ アップロードして いなければ）
-- assets/images/v631/            （新しい フォルダ：がっこう・だいがくの 背景 2まい）
-    bg_school.webp / bg_univ.webp
+- js/features.js        （上書き）
+- assets/images/v631/   （v6.31 で まだなら：がっこう・だいがくの 背景）
+- assets/images/v630/   （v6.30 で まだなら：わたしの家の アイコン）
 
-ほかの ファイルは そのままです。
+新しい 画像は ありません（解説の 図は features.js の 中で えがいています）。
