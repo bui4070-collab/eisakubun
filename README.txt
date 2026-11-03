@@ -1,8 +1,10 @@
-まなびタウン v6.32 UPDATE（STEP4：だいがくの 挑戦教科の 問題）
+まなびタウン v6.33 UPDATE（がっこうの 見た目・じゅぎょうの とちゅうで やめる）
 
 アップロードする ファイル:
 - js/features.js        （上書き）
-- assets/images/v631/   （v6.31 で まだなら：がっこう・だいがくの 背景）
-- assets/images/v630/   （v6.30 で まだなら：わたしの家の アイコン）
+- assets/images/v633/   （新しい フォルダ）
+    logo_school.webp … 「がっこう」ロゴ
+    df_easy.webp / df_normal.webp / df_hard.webp … かんたん・ふつう・むずかしい
+- assets/images/v630/・v631/ … まだ アップロードして いなければ
 
-新しい 画像は ありません（解説の 図は features.js の 中で えがいています）。
+教科と たからばこの アイコンは すでに ある 画像（icon_kokugo など・ui_chest）を つかいます。

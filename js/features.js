@@ -7736,6 +7736,11 @@ const pts = (p, why) => p > 0 ? givePts(Math.round(p), why) : 0;
 /* ---------- 教科 ---------- */
 const SUBJ = {jp:'こくご', math:'さんすう', sci:'りか', soc:'しゃかい', en:'えいご'};
 const SUBJ_IC = {jp:'📖', math:'🔢', sci:'🔬', soc:'🗾', en:'🔤'};
+const IMG633 = './assets/images/v633/';
+const SUBJ_ART = {jp:'icon_kokugo', math:'icon_sansu', sci:'icon_rika', soc:'icon_shakai', en:'icon_write'};
+const subjImg = k => `<img class="sic633" src="${X(artSrc(SUBJ_ART[k]) || '')}" alt="">`;
+const chestImg = () => `<img class="chi633" src="${X(artSrc('ui_chest') || '')}" alt="">`;
+let QUITFN = null, QUITOK = false;
 const SUBJ_C = {jp:'#E8606A', math:'#3D8BE0', sci:'#3BAF6A', soc:'#E79A2B', en:'#9A6AD8'};
 const SK = Object.keys(SUBJ);
 const userG = () => Number(save.settings?.grade56 || 0) || 3;
@@ -7918,8 +7923,8 @@ function root(){
   ROOT.addEventListener('click', onClick);
   return ROOT;
 }
-function close(){ if(ROOT){ ROOT.classList.remove('show'); setTimeout(() => { if(ROOT && !ROOT.classList.contains('show')){ ROOT.remove(); ROOT = null; } }, 250); } CUR = null; document.body.classList.remove('sc631on'); try{ persist(); }catch(e){} }
-function open(kind, key){ KEY = key; CUR = kind; root(); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain(); }
+function close(){ QUITOK = false; QUITFN = null; if(ROOT){ ROOT.classList.remove('show'); setTimeout(() => { if(ROOT && !ROOT.classList.contains('show')){ ROOT.remove(); ROOT = null; } }, 250); } CUR = null; document.body.classList.remove('sc631on'); try{ persist(); }catch(e){} }
+function open(kind, key){ KEY = key; CUR = kind; root(); ROOT.classList.toggle('bgS633', kind==='school'); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain(); }
 function stage(bg, list, opt={}){
   const pos = opt.pos || [[14,88],[33,95],[67,95],[86,88],[50,82]];
   return `<div class="stg631 ${opt.cls||''}"><img class="bg" src="${IMG}${bg}.webp" alt="">
@@ -7970,7 +7975,7 @@ async function onClick(e){
 
 /* ---------- がっこう：メイン ---------- */
 function schoolMain(){
-  if(!ROOT) return; const s = SV(), L = DL(); weekTick(); missions(); checkMissions();
+  if(!ROOT) return; ROOT.classList.add('bgS633'); const s = SV(), L = DL(); weekTick(); missions(); checkMissions();
   const sp = special(L.d), M = missions(), bn = badgeNext();
   if(!ST.diff) ST.diff = s.lastDiff || 'normal';
   const stamps = SK.filter(k => (L.best[k]||0) >= 1).length;
@@ -7981,21 +7986,21 @@ function schoolMain(){
   if(!L.friend){ const fr = RES().filter(r => bondLv(r.id) >= 5); L.friend = 1; if(fr.length){ pts(20 * fr.length, 'ともだちの おれい'); setTimeout(() => toast(`💗 ともだちから おれい +${20*fr.length}`), 400); } }
   const subjBtn = k => { const b = L.best[k]||0, n = L.cnt[k]||0, glow = stamps===4 && b < 1;
     return `<button type="button" class="sb631 ${ST.subj===k ? 'on' : ''} ${glow ? 'glow' : ''}" data-subj="${k}" style="--c:${SUBJ_C[k]}">
-      ${k===sp ? '<em class="rib631">×1.5</em>' : ''}<span class="ic">${SUBJ_IC[k]}</span><b>${SUBJ[k]}</b>${stars(b)}<small>${n >= CFG.fullClass ? 'れんしゅう' : `${n}/${CFG.fullClass}`}</small>${b >= 1 ? '<i class="stamp631">✔</i>' : ''}</button>`; };
-  const D = {easy:['かんたん','🌱'], normal:['ふつう','⭐'], hard:['むずかしい','🔥']};
+      ${k===sp ? '<em class="rib631">×1.5</em>' : ''}<span class="ic">${subjImg(k)}</span><b>${SUBJ[k]}</b>${stars(b)}<small>${n >= CFG.fullClass ? 'れんしゅう' : `${n}/${CFG.fullClass}`}</small>${b >= 1 ? '<i class="stamp631">✔</i>' : ''}</button>`; };
+  const D = {easy:['かんたん','df_easy'], normal:['ふつう','df_normal'], hard:['むずかしい','df_hard']};
   const base = CFG.coin[ST.diff] || 10, mul = (ST.subj===sp ? 1.5 : 1);
   const pm = ST.subj && (L.cnt[ST.subj]||0) >= CFG.fullClass;
   ROOT.innerHTML = `<div class="wrap631 school">
-    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><b>🏫 がっこう</b><small>${dayOK() ? (special(L.d)===sp ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '') : '⚠️ 日づけが もどっているよ'}</small></div>
+    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG633}logo_school.webp" alt="がっこう"><small>${dayOK() ? (special(L.d)===sp ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '') : '⚠️ 日づけが もどっているよ'}</small></div>
       <button type="button" class="stk631" data-a="cal"><b>🔥 れんぞく ${s.streak||0}にち</b><small>🎫×${s.tickets||0}</small></button></header>
-    ${stage('bg_school', ml, {})}
-    <div class="mis631" data-a="mis">${M.list.map((m,i) => `<span class="${M.done[i] ? 'ok' : ''}"><i>${M.done[i] ? '✓' : ''}</i>${X(m.t)}</span>`).join('')}
-      <button type="button" class="chest631 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${M.chest ? '📭' : '🎁'}</button></div>
+    ${stage('bg_school', ml, {cls:'clear633'})}
+    <div class="mis633"><div class="mh633" data-a="mis"><b>📋 きょうの ミッション</b><span class="mc633">${M.done.filter(Boolean).length}/3</span></div>
+      <div class="mb633"><ol data-a="mis">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}"><i>${M.done[i] ? '✓' : i+1}</i><span>${X(m.t)}</span></li>`).join('')}</ol>
+      <button type="button" class="chest633 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ' : M.done.every(Boolean) ? 'あける！' : 'ぜんぶで'}</small></button></div></div>
     <div class="sec631"><div class="h631">きょうの じゅぎょう <small>スタンプ ${stamps}/5${stamps===4 ? ' <b class="hot">あと1つで かいきん賞！</b>' : stamps===5 ? ' 🏅 かいきん賞！' : ''}</small></div>
       <div class="sbs631">${SK.map(subjBtn).join('')}</div></div>
     <div class="sec631"><div class="h631">ちょうせんする もんだい</div>
-      <div class="dfs631">${Object.entries(D).map(([k,[n,ic]]) => `<button type="button" class="df631 ${ST.diff===k ? 'on' : ''}" data-diff="${k}">${recoDiff===k ? '<em class="rib631 g">おすすめ</em>' : ''}<span>${ic}</span><b>${n}</b><small>1もん ${CFG.coin[k]}コイン${k==='easy' ? '・★1まで' : ''}</small></button>`).join('')}</div></div>
-    <div class="rw631">もらえる ごほうび：🪙 ${pm ? `れんしゅう（×${CFG.overMul}）` : `〜${Math.round((base*5 + (ST.diff==='easy' ? 0 : 10)) * mul)}`}${ST.diff==='hard' ? '・ちょうせん成功 +30' : ''}　${ST.diff!=='easy' ? `💎 ★3で ${ST.diff==='hard' ? '50' : '20'}%` : ''}　💗 きずな</div>
+      <div class="dfs631">${Object.entries(D).map(([k,[n,ic]]) => `<button type="button" class="df631 ${ST.diff===k ? 'on' : ''}" data-diff="${k}">${recoDiff===k ? '<em class="rib631 g">おすすめ</em>' : ''}<span><img class="dfi633" src="${IMG633}${ic}.webp" alt=""></span><b>${n}</b><small>1もん ${CFG.coin[k]}コイン${k==='easy' ? '・★1まで' : ''}</small></button>`).join('')}</div></div>
     <button type="button" class="bdg631" data-a="badge">${CFG.badge[s.badge].ic} ${CFG.badge[s.badge].n}バッジ　${bn ? `つぎの ${bn.b.n}まで ${bn.needSt ? `★${bn.needSt}こ` : '★OK'}／${bn.needD ? `あと${bn.needD}にち` : '日数OK'}${bn.each.length ? `／${bn.each.map(k => SUBJ[k]).join('・')} ★${bn.b.each}` : ''}` : 'さいこうの バッジ！'}</button>
     <button type="button" class="go631" data-a="start" ${ST.subj && ST.diff ? '' : 'disabled'}>${ST.subj ? `✏️ ${SUBJ[ST.subj]}の じゅぎょうを はじめる！` : 'きょうかを えらんでね'}</button>
     <div class="tools631">
@@ -8030,8 +8035,12 @@ async function report(pw){
 
 /* ---------- じゅぎょう ---------- */
 function qPanel(head, body){
-  const p = ROOT.querySelector('.qz631') || (() => { ROOT.innerHTML = `<div class="wrap631 quiz"><div class="qz631"></div></div>`; return ROOT.querySelector('.qz631'); })();
-  p.innerHTML = head + body; ROOT.scrollTop = 0; return p;
+  const p = ROOT.querySelector('.qz631') || (() => { ROOT.innerHTML = `<div class="wrap631 quiz ${ROOT.classList.contains('bgS633') ? 'card633' : ''}"><div class="qz631"></div></div>`; return ROOT.querySelector('.qz631'); })();
+  p.innerHTML = (QUITOK ? '<button type="button" class="quit633">✕ やめる</button>' : '') + head + body; ROOT.scrollTop = 0;
+  const q = p.querySelector('.quit633'); if(q) q.onclick = async e => { e.stopPropagation(); const fn = QUITFN; if(!fn) return;
+    const v = await dialog('<h2 class="dlgT">じゅぎょうを やめる？</h2><p class="dlgP">とちゅうで やめると この じゅぎょうの ★と ごほうびは もらえないよ。<br>（にがてノートに のせた もんだいは のこるよ）</p>', [{label:'つづける', cls:'gold', v:0}, {label:'やめる', cls:'white', v:1}]);
+    if(v && QUITFN===fn) fn(); };
+  return p;
 }
 /* 1もん：mode 'school'（ヒントで もういちど）／'one'（1かいだけ） */
 function askQ(m, head, mode, opt={}){
@@ -8046,7 +8055,8 @@ function askQ(m, head, mode, opt={}){
       p.querySelectorAll('.op631').forEach(b => b.onclick = () => pick(b.dataset.o, b));
       p.querySelectorAll('[data-qt]').forEach(b => b.onclick = () => { const r = opt.onTool && opt.onTool(b.dataset.qt, m); if(r){ r.forEach(o => removed.add(o)); draw(hint); } });
     };
-    const finish = (out) => { clearInterval(timer); res(out); };
+    const finish = (out) => { clearInterval(timer); QUITFN = null; res(out); };
+    QUITFN = QUITOK ? () => finish({quit:true}) : null;
     let lock = false;
     const pick = (v, btn) => {
       if(lock) return; lock = true;
@@ -8066,6 +8076,7 @@ function askQ(m, head, mode, opt={}){
 }
 function explainStep(m, v, head, btns){
   return new Promise(res => {
+    QUITFN = QUITOK ? () => { QUITFN = null; res('__quit'); } : null;
     const p = qPanel(head, `<div class="exw631">${expl(m, v)}</div><div class="exb631">${btns.map(b => `<button type="button" class="btn ${b.cls||'white'}" data-v="${X(b.v)}">${b.label}</button>`).join('')}</div>`);
     p.querySelectorAll('.exb631 [data-v]').forEach(b => b.onclick = () => res(b.dataset.v));
   });
@@ -8078,6 +8089,8 @@ async function runClass(subj, diff){
   const revSlot = diff==='normal' ? ri(1, 4) : -1;
   const T = diff==='easy' ? Math.max(1, g - (Math.random() < .5 ? 1 : 2)) : g;
   if(teacher) await dialog(`<div class="dlgArt"><img src="${X(rsrc(teacher))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(teacher.name)}せんせい</b>${X(speak(teacher, sp===subj ? `きょうは ${SUBJ[subj]}の とくべつじゅぎょう！ コインが 1.5ばいだよ` : `${SUBJ[subj]}の じゅぎょうを はじめるよ！ おちついて かんがえてね`))}</div>${practice ? '<p class="dlgP facNote">きょうの まんがくは おわったので「れんしゅうモード」（コイン ×0.2）だよ</p>' : ''}`, [{label:'はーい！', cls:'gold', v:1}], 'wide');
+  QUITOK = true;
+  const quitOut = () => { QUITOK = false; QUITFN = null; toast('じゅぎょうを やめたよ'); schoolMain(); };
   for(let i=0; i<n; i++){
     let m = null, note = null;
     if(i===revSlot){ note = pickNote(subj); if(note) m = noteQ(note); if(m) m.rev = 1; }
@@ -8088,6 +8101,7 @@ async function runClass(subj, diff){
       ${combo >= 2 ? `<b class="cb631">れんぞく！ ${combo}もん</b>` : ''}${teacher ? `<img class="tc631" src="${X(rsrc(teacher))}" alt="">` : ''}</div>
       ${m.rev ? '<div class="revt631">🔥 にがて リベンジ！</div>' : ''}${i===n-1 && hana===2 && diff!=='easy' ? '' : ''}${diff!=='easy' && hana + (n - i) >= 3 && hana >= 2 && i===n-1 && hana===4 ? '<div class="near631">あと1もんで ★3！</div>' : ''}`;
     const r = await askQ(m, head, 'school');
+    if(r.quit) return quitOut();
     if(r.ok && r.tries===1){
       hana++; first++; combo++; maxCombo = Math.max(maxCombo, combo);
       coin += CFG.coin[diff] + (combo >= 2 ? combo - 1 : 0);
@@ -8100,11 +8114,13 @@ async function runClass(subj, diff){
     } else {
       combo = 0;
       const v = await explainStep(m, r.v, head, [{label:'✅ わかった！（うっかり）', cls:'gold', v:'u'}, {label:'✅ わかった！（わからなかった）', cls:'gold', v:'k'}]);
+      if(v==='__quit') return quitOut();
       addNote(m, v); wak++; L.wak++;
       await pop('📒', 'えらい！ にがてノートに のせたよ');
     }
     const a = s.acc[wkOf(L.d)] || (s.acc[wkOf(L.d)] = {}); const aa = a[subj] || (a[subj] = [0,0]); aa[1]++; if(r.ok && r.tries===1) aa[0]++;
   }
+  QUITOK = false; QUITFN = null;
   /* けっか */
   const star = diff==='easy' ? (hana >= 3 ? 1 : 0) : hana >= 5 ? 3 : hana >= 4 ? 2 : hana >= 3 ? 1 : 0;
   const lines = []; let total = 0, cry = 0;
@@ -8151,7 +8167,7 @@ async function runClass(subj, diff){
   const stamps = SK.filter(k => (L.best[k]||0) >= 1).length;
   const limit = SK.every(k => (L.cnt[k]||0) >= CFG.fullClass);
   ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">
-    ${stage('bg_school', ml, {bounce: star===3, noLv:true, cls:'mini'})}
+    ${stage('bg_school', ml, {bounce: star===3, noLv:true, cls:'mini clear633'})}
     <h2>じゅぎょう おしまい！</h2><div class="bigst631">${Array.from({length: diff==='easy' ? 1 : 3}, (_, i) => `<i class="${i < star ? 'on' : ''}" style="animation-delay:${.25 + i*.35}s">★</i>`).join('')}</div>
     <p class="hn631">💮 はなまる ${hana}/5${maxCombo >= 2 ? `　さいだい れんぞく ${maxCombo}` : ''}</p>
     ${!good ? '<p class="warn631">⚠️ 端末の 日づけが もどっているので ごほうびは ありません</p>' : ''}
@@ -8314,7 +8330,7 @@ function uniMates(n){
   const L = shuffle(all.filter(r => r !== p)).slice(0, p ? n - 1 : n); if(p) L.unshift(p); return L;
 }
 function uniMain(){
-  if(!ROOT) return; const u = UV(), s = SV(), L = DL();
+  if(!ROOT) return; ROOT.classList.remove('bgS633'); const u = UV(), s = SV(), L = DL();
   if(!u.enrolled) return uniLocked();
   const reco = recoTheme();
   if(!UT.th || !thOpen(THM(UT.th))) UT.th = reco;
@@ -8608,6 +8624,40 @@ body.sc631on{overflow:hidden}
 .nt631{display:grid;grid-template-columns:1fr 1fr;gap:5px;text-align:left}.nt631>div{background:#FFF8EA;border-radius:10px;padding:5px 7px;font-size:12px}.nt631 span{float:right;font-weight:900}.nt631 small{display:block;color:#7A5634;font-size:10.5px;line-height:1.35;margin-top:2px}
 .sbst631{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0;font-size:12px;font-weight:800}.sbst631 span{background:#FFF5DE;border-radius:999px;padding:1px 8px}
 .fig632{max-width:100%;height:auto;display:block}
+/* v6.33 がっこう */
+#sc631.bgS633{background:#F6E9C8}
+#sc631.bgS633::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_school.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
+#sc631.bgS633>*{position:relative;z-index:1}
+#sc631.bgS633 .hd631{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
+.logo633{height:62px;width:auto;max-width:100%;display:block;margin:0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
+#sc631.bgS633 .tt631 small{background:rgba(255,255,255,.85);border-radius:99px;padding:0 6px;display:inline-block;max-width:100%}
+.stg631.clear633{background:none;border:none;box-shadow:none;aspect-ratio:3/1.15}
+.stg631.clear633 .bg{display:none}
+#sc631.bgS633 .sec631,#sc631.bgS633 .bdg631,#sc631.bgS633 .mis633{background:rgba(255,255,255,.92)}
+.sic633{width:34px;height:34px;object-fit:contain;display:block}
+.sb631 .ic{height:34px}
+.dfi633{width:38px;height:38px;object-fit:contain;display:block}
+.df631 span{height:38px}
+.mis633{border-radius:14px;padding:6px 8px;box-shadow:0 2px 0 #EADCC4}
+.mh633{display:flex;align-items:center;gap:6px;cursor:pointer}.mh633 b{font-size:12.5px;color:#6B4A2A}.mc633{margin-left:auto;background:#F2A33A;color:#fff;border-radius:99px;font-size:11px;font-weight:900;padding:0 8px}
+.mb633{display:flex;align-items:center;gap:6px;margin-top:4px}
+.mb633 ol{list-style:none;margin:0;padding:0;flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.mb633 li{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#6B4A2A;background:#FFF8EA;border-radius:9px;padding:3px 7px}
+.mb633 li i{flex:none;width:18px;height:18px;border-radius:50%;background:#E8D7B8;color:#fff;font-style:normal;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.mb633 li.ok{background:#EAF8EC;color:#2E8B57}.mb633 li.ok i{background:#3BAF6A}.mb633 li.ok span{text-decoration:line-through;text-decoration-color:rgba(46,139,87,.5)}
+.chest633{flex:none;width:66px;border:none;background:#FFF4D6;border-radius:12px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;font:inherit}
+.chest633 small{font-size:9.5px;font-weight:900;color:#B5701C;white-space:nowrap}
+.chi633{width:46px;height:46px;object-fit:contain}
+.chest633.glow{animation:glow631 1s ease-in-out infinite alternate;background:#FFE08A}.chest633.got{opacity:.5}
+/* じゅぎょうは カード */
+.wrap631.card633{min-height:100%;justify-content:center;padding-top:calc(14px + env(safe-area-inset-top));padding-bottom:20px}
+.card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
+.quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
+.card633 .pop631{top:45%}
+#sc631.bgS633 .wrap631.result{min-height:100%;justify-content:flex-end}
+#sc631.bgS633 .res631{background:rgba(255,251,242,.96);border-radius:22px;padding:10px 10px 12px;margin-top:calc(10px + env(safe-area-inset-top));box-shadow:0 8px 28px rgba(60,40,10,.3);border:3px solid #fff}
+#sc631.bgS633 .res631 .stg631.mini{aspect-ratio:3/.9;margin:-4px 0 -6px}
+
 .pp631{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-height:50vh;overflow-y:auto}
 .ppb631{border:2px solid #E6D6BB;background:#fff;border-radius:12px;padding:4px 2px;font:inherit;display:flex;flex-direction:column;align-items:center;min-width:0}.ppb631 img{height:46px;width:auto}.ppb631 b{font-size:11px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.ppb631 small{font-size:9.5px;color:#8A6A45}.ppb631.on{border-color:#5A6FD6;background:#EEF1FF}
 @media (min-width:600px){ .stg631{aspect-ratio:3/1.3} .op631{font-size:17px} }
