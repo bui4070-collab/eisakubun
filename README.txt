@@ -1,9 +1,9 @@
-まなびタウン v6.35 UPDATE（がっこう・だいがくの アイコンを イラストに・シマくんの せつめい）
+まなびタウン v6.36 UPDATE（バッジの すすみバー・大きな えき）
 
 アップロードする ファイル:
 - js/features.js        （上書き）
-- assets/images/v635/   （新しい フォルダ：アイコン 10まい）
-    ic_streak（れんぞく）/ ic_ticket（チケット・ヒント券）/ ic_fuku（ふくびき）/ ic_nigate（にがてノート）/
-    ic_goal（目標）/ ic_grad（だいがく・学位）/ ic_pals（なかま）/ ic_frag（かけら）/ ic_rnote（研究ノート）/ ic_mission（ミッション）
+- assets/images/v636/   （新しい フォルダ）
+    bg_bigstation.webp … 大きな えきの 背景
 
-超レアかくていレターは すでに ある 画像（v49/itm_superletter.webp）を つかいます。
+ほかの 絵は すでに ある 画像を つかいます
+（ハナ＝res_girl、らっこ＝res_otter、シマエナガ＝bird_*、電車＝trn_*、きっぷ＝itm_ticket、ちず＝so_map、きろく＝ui_record、メダル＝mi_medal）。

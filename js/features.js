@@ -7683,7 +7683,7 @@ try{ if(typeof curScreen!=='undefined' && curScreen==='town') renderTown(); }cat
 (function(){
 'use strict';
 const resBy = id => (save.town?.res || []).find(r => r.id===id);
-const VER = '6.35.0', IMG = './assets/images/v631/';
+const VER = '6.36.0', IMG = './assets/images/v631/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt = n => (typeof nf==='function' ? nf(n) : String(n));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -7743,6 +7743,8 @@ const chestImg = () => `<img class="chi633" src="${X(artSrc('ui_chest') || '')}"
 const IC635 = {streak:'ic_streak', ticket:'ic_ticket', fuku:'ic_fuku', nigate:'ic_nigate', goal:'ic_goal', grad:'ic_grad', pals:'ic_pals', frag:'ic_frag', rnote:'ic_rnote', mission:'ic_mission'};
 const ART635 = {letter:'ui_letter', building:'ui_building', school:'bld_school', write:'icon_write', study:'ui_study', chest:'ui_chest'};
 const ic = (k, cls='') => `<img class="ii635 ${cls}" src="${X(IC635[k] ? './assets/images/v635/' + IC635[k] + '.webp' : (artSrc(ART635[k]) || ''))}" alt="">`;
+const MEDAL_F = ['', 'sepia(1) saturate(1.6) hue-rotate(-15deg) brightness(.85)', 'grayscale(1) brightness(1.25)', 'saturate(1.3)', 'hue-rotate(260deg) saturate(1.6) drop-shadow(0 0 3px #FFD24A)'];
+const medal = (i, cls='') => i ? `<img class="md636 ${cls}" src="${X(artSrc('mi_medal')||'')}" style="filter:${MEDAL_F[i]}" alt="">` : `<span class="md636 none ${cls}"></span>`;
 let QUITFN = null, QUITOK = false, QUITMSG = '';
 const SUBJ_C = {jp:'#E8606A', math:'#3D8BE0', sci:'#3BAF6A', soc:'#E79A2B', en:'#9A6AD8'};
 const SK = Object.keys(SUBJ);
@@ -8032,7 +8034,8 @@ function schoolMain(){
       <div class="sbs631">${SK.map(subjBtn).join('')}</div></div>
     <div class="sec631"><div class="h631">ちょうせんする もんだい</div>
       <div class="dfs631">${Object.entries(D).map(([k,[n,ic]]) => `<button type="button" class="df631 ${ST.diff===k ? 'on' : ''}" data-diff="${k}">${recoDiff===k ? '<em class="rib631 g">おすすめ</em>' : ''}<span><img class="dfi633" src="${IMG633}${ic}.webp" alt=""></span><b>${n}</b><small>1もん ${CFG.coin[k]}コイン${k==='easy' ? '・★1まで' : ''}</small></button>`).join('')}</div></div>
-    <button type="button" class="bdg631" data-a="badge">${CFG.badge[s.badge].ic} ${CFG.badge[s.badge].n}バッジ　${bn ? `つぎの ${bn.b.n}まで ${bn.needSt ? `★${bn.needSt}こ` : '★OK'}／${bn.needD ? `あと${bn.needD}にち` : '日数OK'}${bn.each.length ? `／${bn.each.map(k => SUBJ[k]).join('・')} ★${bn.b.each}` : ''}` : 'さいこうの バッジ！'}</button>
+    <button type="button" class="bdg631 b636" data-a="badge"><div class="bt636">${medal(s.badge+1)}<b>${CFG.badge[s.badge].n}バッジ</b>${bn ? `<span>→ つぎは ${medal(bn.b ? s.badge+2 : 0,'s')}${bn.b.n}</span>` : '<span>さいこうの バッジ！</span>'}</div>
+      ${bn ? `<div class="bb636"><small>★ ${bn.tot}/${bn.b.st}</small><span class="bar631"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span></div><div class="bb636"><small>しゅっせき ${s.attend}/${bn.b.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/bn.b.d*100)}%"></i></span></div>${bn.each.length ? `<div class="bb636 e"><small>5きょうか ★${bn.b.each}ずつ：あと ${bn.each.map(k => SUBJ[k]).join('・')}</small></div>` : ''}` : ''}</button>
     <button type="button" class="go631" data-a="start" ${ST.subj && ST.diff ? '' : 'disabled'}>${ST.subj ? `${ic('write','big')} ${SUBJ[ST.subj]}の じゅぎょうを はじめる！` : 'きょうかを えらんでね'}</button>
     <div class="tools631">
       <button type="button" data-a="fuku" ${s.fuku ? '' : 'class="off"'}>${ic('fuku')} ふくびき<b>${s.fuku||0}</b></button>
@@ -8191,7 +8194,7 @@ async function runClass(subj, diff){
   /* バッジ */
   let badgeUp = null; const bn = badgeNext();
   if(good && bn && bn.ok){ s.badge++; badgeUp = bn.b; if(bn.b.rew){ total += bn.b.rew; } if(s.badge===3){ decoItem(true); if(!s.titles.includes('にじいろの がくしゅうしゃ')) s.titles.push('にじいろの がくしゅうしゃ'); }
-    lines.push(`${bn.b.ic} ${bn.b.n}バッジに しょうかく！${bn.b.rew ? ` +${bn.b.rew}` : ''}${s.badge===2 ? '・だいがく 入学試験に ちょうせん できるよ' : ''}`); }
+    lines.push(`🏅 ${bn.b.n}バッジに しょうかく！${bn.b.rew ? ` +${bn.b.rew}` : ''}${s.badge===2 ? '・だいがく 入学試験に ちょうせん できるよ' : ''}`); }
   if(total) pts(total, `がっこう ${SUBJ[subj]}の じゅぎょう`);
   persist();
   /* けっか がめん */
@@ -8206,7 +8209,7 @@ async function runClass(subj, diff){
     <ul class="ln631">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>
     ${total ? `<div class="tot631">ごうけい <b>+${fmt(total)}</b> pt${cry ? '　💎×' + cry : ''}</div>` : ''}
     ${stampNew ? `<div class="stp631">スタンプ ${stamps}/5 ${stamps===4 ? '<b>あと1つで かいきん賞！</b>' : ''}</div>` : ''}
-    ${nb ? `<div class="nx631">つぎの ${nb.b.ic}${nb.b.n}まで：${nb.needSt ? `★あと${nb.needSt}こ` : '★OK'}／${nb.needD ? `あと${nb.needD}にち` : '日数OK'}${bar(nb.tot, nb.b.st)}</div>` : ''}
+    ${nb ? `<div class="nx631">つぎの ${nb.b.n}まで：${nb.needSt ? `★あと${nb.needSt}こ` : '★OK'}／${nb.needD ? `あと${nb.needD}にち` : '日数OK'}${bar(nb.tot, nb.b.st)}</div>` : ''}
     ${limit ? `<p class="tmr631">きょうは いっぱい がんばったね！ あしたは ${SUBJ[special(addDay(L.d,1))]}の とくべつじゅぎょうが まってるよ</p>` : `<p class="tmr631">つぎは <b>${SUBJ[least]}</b>が いいかも？</p>`}
     <div class="rb631"><button type="button" class="btn gold" data-a="again">✏️ もう1じゅぎょう（${SUBJ[least]}）</button><button type="button" class="btn white" data-a="back">がっこうに もどる</button></div>
   </div></div>`;
@@ -8270,8 +8273,8 @@ async function reqView(){
 }
 async function badgeView(){
   const s = SV(), tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
-  await dialog(`<h2 class="dlgT">${CFG.badge[s.badge].ic} がっこうバッジ</h2><p class="dlgP">★ ごうけい <b>${tot}</b>　つうさん しゅっせき <b>${s.attend}にち</b></p>
-    <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${b.ic} ${b.n}</th><td>★${b.st}・${b.d}にち${b.each ? `・5きょうか ★${b.each}いじょう` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
+  await dialog(`<h2 class="dlgT">${medal(s.badge+1,'h')} がっこうバッジ</h2><p class="dlgP">★ ごうけい <b>${tot}</b>　つうさん しゅっせき <b>${s.attend}にち</b></p>
+    <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${medal(i+2)} ${b.n}</th><td>★${b.st}・${b.d}にち${b.each ? `・5きょうか ★${b.each}いじょう` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
     <div class="sbst631">${SK.map(k => `<span>${subjImg(k)} ★${s.stars[k]||0}</span>`).join('')}</div>
     <p class="dlgP facNote">ゴールドで だいがくの 入学試験に ちょうせん できるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
@@ -8410,7 +8413,7 @@ function uniMain(){
     ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:(r) => props[THM(UT.th).id] || '📚', cls:'clear633'})}
     <div class="sec631"><div class="h631">けんきゅう テーマ <small>きょう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes}かい${pm ? '（れんしゅうモード）' : ''}</small></div>
       <div class="ths631">${TH.map(x => { const open = thOpen(x), dd = thData(x.id);
-        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${thImg(x.id)}${open ? '' : '<i class="lk634">🔒</i>'}</span><b>${x.n}</b><small>${open ? `${LV[dd.lv]}・カード${nCards(x.id)}/15` : `あと けんきゅう ${x.need - u.total}かい`}</small>${open && nCards(x.id)===14 ? '<em class="last634">あと1まい！</em>' : ''}</button>`; }).join('')}</div></div>
+        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${thImg(x.id)}${open ? '' : '<i class="lk634"><svg viewBox="0 0 20 22" width="15" height="16"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg></i>'}</span><b>${x.n}</b><small>${open ? `${LV[dd.lv]}・カード${nCards(x.id)}/15` : `あと けんきゅう ${x.need - u.total}かい`}</small>${open && nCards(x.id)===14 ? '<em class="last634">あと1まい！</em>' : ''}</button>`; }).join('')}</div></div>
     <div class="sec631"><div class="h631">レベル</div><div class="lvs631">${LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(UT.th) : null;
       return `<button type="button" class="lv631 ${UT.lv===i ? 'on' : ''} ${on ? '' : 'lock'}" ${on ? `data-lv="${i}"` : ''}><b>${on ? '' : '🔒'}${n}</b><small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : '—'}</small>${nd ? bar(nd.cur, nd.tot) : ''}</button>`; }).join('')}</div></div>
     <div class="rw631 sm">🔎 しらべる3もん → かんがえる3もん → はっぴょう1もん　♥×3</div>
@@ -8803,6 +8806,12 @@ body.sc631on{overflow:hidden}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
+.md636{width:1.6em;height:1.6em;object-fit:contain;vertical-align:middle;display:inline-block}.md636.s{width:1.3em;height:1.3em}.md636.h{width:1.5em;height:1.5em}.md636.none{width:0}
+.b636{display:flex!important;flex-direction:column;gap:3px}
+.bt636{display:flex;align-items:center;gap:4px}.bt636 b{font-size:12.5px;color:#6B4A2A}.bt636 span{margin-left:auto;font-size:11px;color:#8A6A45;display:flex;align-items:center;gap:2px}
+.bb636{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:6px}.bb636 small{font-size:10.5px;color:#7A5634;white-space:nowrap}.bb636 .bar631{margin:0;height:8px}.bb636 .bar631.d i{background:linear-gradient(90deg,#9BE0AE,#3BAF6A)}
+.bb636.e{display:block}.bb636.e small{color:#D2601E;white-space:normal}
+
 /* v6.35 アイコン・ナビ */
 .ii635{width:1.45em;height:1.45em;object-fit:contain;display:inline-block;vertical-align:middle;margin:-3px 1px 0 0}
 .ii635.big{width:1.6em;height:1.6em;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
@@ -8890,6 +8899,520 @@ body.sc631on{overflow:hidden}
 .pp631{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-height:50vh;overflow-y:auto}
 .ppb631{border:2px solid #E6D6BB;background:#fff;border-radius:12px;padding:4px 2px;font:inherit;display:flex;flex-direction:column;align-items:center;min-width:0}.ppb631 img{height:46px;width:auto}.ppb631 b{font-size:11px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.ppb631 small{font-size:9.5px;color:#8A6A45}.ppb631.on{border-color:#5A6FD6;background:#EEF1FF}
 @media (min-width:600px){ .stg631{aspect-ratio:3/1.3} .op631{font-size:17px} }
+`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+
+/* =====================================================================
+   まなびタウン v6.36：大きな えき（仕様書 v0.1 STEP1〜5）
+   えきクイズ（たびクイズ 4コース＋ひみつの えき）・きっぷ・ちず・たびの きろく・ずかん・ランク
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.36.0', IMG = './assets/images/v636/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const A = k => X(artSrc(k) || '');
+const resBy = id => (save.town?.res || []).find(r => r.id===id);
+
+/* ---------- 駅データ（付録A：59駅）[id, 駅名, よみ, 県, ★, まちがい, 解説, おぼえかた] ---------- */
+const STN = [["st001", "秋葉原", "あきはばら", "東京都", 1, ["あきばはら", "あきはら", "しゅうようげん"], "「秋葉」は 火の神さまを まつる 秋葉神社から。むかしは「あきばはら」とも よばれた。", "あき・は・ばら と 3つに 分けて よもう。"], ["st002", "国立", "くにたち", "東京都", 1, ["こくりつ", "くにだち", "こくりゅう"], "国分寺（こくぶんじ）と 立川（たちかわ）の あいだに できたので 1文字ずつ とって「国立」。", "国＋立（たち）かわ ＝ くにたち。"], ["st003", "吉祥寺", "きちじょうじ", "東京都", 1, ["よししょうじ", "きっしょうじ", "きちしょうてら"], "「吉祥」は めでたい という いみ。むかし あった お寺の 名前から。", "「きちじょう」＝ 縁起が いい。"], ["st004", "麻布十番", "あざぶじゅうばん", "東京都", 1, ["まぬのじゅうばん", "あさぬのじゅうばん", "あざぶとおばん"], "「麻布」は 麻（あさ）の ぬのから。「十番」は 工事の 区わりの 番号から。", "あさ ぬの → あざぶ と よむ とくべつな 読み。"], ["st005", "十日市場", "とおかいちば", "神奈川県", 1, ["じゅうにちいちば", "とおかしじょう", "とおひいちば"], "むかし 毎月 10日に 市（いち）が ひらかれた 場所。", "10日は「とおか」。"], ["st006", "白老", "しらおい", "北海道", 1, ["はくろう", "しろおい", "しらろう"], "アイヌ語の「シラウオイ（アブが 多い ところ）」に 漢字を あてた。", "北海道の 駅は アイヌ語が もとの ことが 多いよ。"], ["st007", "御徒町", "おかちまち", "東京都", 2, ["おとちょう", "ごとまち", "みとまち"], "江戸時代、歩いて 将軍の おともを する「御徒（おかち）」の 武士が 住んだ 町。", "徒歩の「徒」は「かち（歩くこと）」。"], ["st008", "日暮里", "にっぽり", "東京都", 2, ["ひぐれさと", "にちぼり", "ひくれり"], "もとは「新堀（にいぼり）」。日が 暮れるのも わすれる 里、という 字を あてた。", "日（にっ）＋ 暮里（ぽり）。"], ["st009", "鶯谷", "うぐいすだに", "東京都", 2, ["おうこく", "うぐいすたに", "おうだに"], "「鶯」は 鳥の ウグイス。ウグイスが たくさん いた 谷から。", "鳥の 名前を 思い出そう。"], ["st010", "市ヶ谷", "いちがや", "東京都", 2, ["いちかたに", "しがや", "いちがたに"], "「ヶ」は「が」と よむ 小さな 字。「谷」を「や」と よむのは 関東に 多い。", "渋谷（しぶや）と 同じ「や」。"], ["st011", "神保町", "じんぼうちょう", "東京都", 2, ["かみほまち", "しんぽちょう", "かみやすちょう"], "江戸時代の 武士「神保（じんぼう）さん」の 屋敷が あった 町。本屋さんの 町で 有名。", "人の 名字が 町の 名前に なった。"], ["st012", "要町", "かなめちょう", "東京都", 2, ["ようまち", "いりちょう", "かなめまち"], "「要（かなめ）」は だいじな ところ という いみ。", "おうぎの「かなめ」と 同じ 読み。"], ["st013", "我孫子", "あびこ", "千葉県", 2, ["がそんし", "わがまごこ", "あそんし"], "むかしの 豪族の 名前に 漢字を あてたと いわれる。大阪にも 我孫子（あびこ）が ある。", "我（あ）孫（び）子（こ）と 1字ずつ。"], ["st014", "蘇我", "そが", "千葉県", 2, ["そうが", "すが", "そわれ"], "むかしの 豪族「蘇我氏」と ゆかりが あると いわれる 地名。", "歴史で ならう「蘇我氏」と 同じ よみ。"], ["st015", "烏丸", "からすま", "京都府", 2, ["うがん", "からすまる", "とりまる"], "「烏（からす）」＋「丸（ま）」。京都の 大きな 通りの 名前。", "「丸」を「ま」と よむのが ポイント。"], ["st016", "太秦", "うずまさ", "京都府", 2, ["たいしん", "ふとはた", "おおはた"], "むかし 秦（はた）氏が 絹を うず高く つんで 天皇に ささげた 話から。", "太（うず）秦（まさ）。映画の 村で 有名。"], ["st017", "香椎", "かしい", "福岡県", 2, ["こうしい", "かおりしい", "こうつい"], "香椎宮（かしいぐう）という 神社が ある 町。", "椎（しい）の 木の 香り。"], ["st018", "牧志", "まきし", "沖縄県", 2, ["ぼくし", "まきこころざし", "もくし"], "那覇の 国際通りの 近く。ゆいレールの 駅。", "牧（まき）＋志（し）。"], ["st019", "尾久", "おぐ", "東京都", 3, ["おく", "びきゅう", "おひさ"], "「おく」と よむ 地名が 多い 中、駅は「おぐ」。にごるのが ポイント。", "駅は「おぐ」、町は「おく」と よむ。"], ["st020", "馬喰町", "ばくろちょう", "東京都", 3, ["うまくいまち", "ばくいちょう", "まぐいちょう"], "「馬喰（ばくろう）」は 馬を 売り買いする 人。その 人たちの 町。", "馬（ば）喰（くろ）。"], ["st021", "雑司が谷", "ぞうしがや", "東京都", 3, ["ざつじがたに", "ざっしがや", "ぞうじがだに"], "むかし 寺の 雑用を する「雑司（ぞうし）」が 住んだ 谷。", "「雑」を「ぞう」と よむ 古い よみかた。"], ["st022", "茗荷谷", "みょうがだに", "東京都", 3, ["めいかや", "みょうかや", "めいにだに"], "むかし ミョウガの 畑が あった 谷。", "食べもの の ミョウガ。"], ["st023", "御成門", "おなりもん", "東京都", 3, ["ごせいもん", "みなりかど", "おなりかど"], "将軍が お寺に「お成り（おでかけ）」する ときに とおった 門。", "「お成り」は えらい人が 来ること。"], ["st024", "立会川", "たちあいがわ", "東京都", 3, ["りっかいがわ", "たちあいかわ", "たてあいがわ"], "川の 名前から。坂本龍馬の 像が ある。", "立（たち）会（あい）川（がわ）。"], ["st025", "鮫洲", "さめず", "東京都", 3, ["こうしゅう", "さめしま", "さめす"], "むかし 海で サメが とれた という 話から。運転免許の 試験場が 有名。", "鮫（さめ）洲（ず）。"], ["st026", "保谷", "ほうや", "東京都", 3, ["ほたに", "ほや", "ほうだに"], "「谷」を「や」と よむ 関東の 地名。", "保（ほう）谷（や）。"], ["st027", "石神井公園", "しゃくじいこうえん", "東京都", 3, ["いしがみいこうえん", "せきじんいこうえん", "いしかみいこうえん"], "石の 神さまを まつる「石神井（しゃくじい）」から。", "「石」を「しゃく」と よむ めずらしい 読み。"], ["st028", "行徳", "ぎょうとく", "千葉県", 3, ["こうとく", "ゆきとく", "いきとく"], "むかし えらい お坊さん「行徳さま」が いたと いわれる 地名。", "行（ぎょう）徳（とく）。"], ["st029", "生麦", "なまむぎ", "神奈川県", 3, ["せいばく", "いきむぎ", "なまばく"], "「生麦事件」で 歴史の 教科書にも 出る 地名。", "早口言葉「なまむぎ なまごめ…」と 同じ。"], ["st030", "弘明寺", "ぐみょうじ", "神奈川県", 3, ["こうみょうじ", "ひろあけじ", "こうめいじ"], "横浜で いちばん 古い お寺「弘明寺」から。", "「弘」を「ぐ」と よむ 仏教の 読み。"], ["st031", "安里", "あさと", "沖縄県", 3, ["やすさと", "あんり", "あざと"], "沖縄の 地名。ゆいレールの 駅。", "安（あ）里（さと）。"], ["st032", "美栄橋", "みえばし", "沖縄県", 3, ["びえいきょう", "うつくさかえばし", "みさかばし"], "那覇の まちなかに ある ゆいレールの 駅。", "美（み）栄（え）橋（ばし）。"], ["st033", "御器所", "ごきそ", "愛知県", 3, ["おきどころ", "ぎょきしょ", "みきしょ"], "むかし 神社の 器（うつわ）を つくった 所から。", "御（ご）器（き）所（そ）。"], ["st034", "十三", "じゅうそう", "大阪府", 3, ["じゅうさん", "とみ", "とおさ"], "淀川の 13番目の 渡し場が あった という 話から。", "「三」を「そう」と よむ。"], ["st035", "長万部", "おしゃまんべ", "北海道", 3, ["ちょうまんぶ", "ながまんべ", "おさまんぶ"], "アイヌ語の「オシャマムペ（カレイが いる ところ）」から。かにめしで 有名。", "北海道の アイヌ語 地名。"], ["st036", "倶知安", "くっちゃん", "北海道", 3, ["ぐちあん", "くちやす", "ともちあん"], "アイヌ語の「クッシャニ（くだの ような 川）」から。スキーで 有名。", "倶（くっ）知（ちゃ）安（ん）。"], ["st037", "厚岸", "あっけし", "北海道", 3, ["こうがん", "あつぎし", "あつきし"], "アイヌ語の「アッケウシ（ニレの 皮を はぐ ところ）」から。カキで 有名。", "厚（あっ）岸（けし）。"], ["st038", "発寒", "はっさむ", "北海道", 3, ["はつかん", "ほっかん", "はっかん"], "アイヌ語の「ハッサム」に 漢字を あてた。札幌の 駅。", "寒（さむ）い を つかった 字。"], ["st039", "分倍河原", "ぶばいがわら", "東京都", 4, ["ぶんばいかわら", "わけばいがわら", "ぶんぺいかわら"], "鎌倉時代の「分倍河原の 戦い」で 有名な 地名。", "分（ぶ）倍（ばい）河原（がわら）。"], ["st040", "千歳烏山", "ちとせからすやま", "東京都", 4, ["せんさいうやま", "ちとせうさん", "せんざいからすやま"], "千歳村と 烏山村の 名前を あわせた 駅名。", "烏（からす）は 黒い 鳥。"], ["st041", "九品仏", "くほんぶつ", "東京都", 4, ["きゅうひんぶつ", "くひんぼとけ", "ここのしなぶつ"], "お寺に 9体の 仏さま（九品仏）が あることから。", "九（く）品（ほん）仏（ぶつ）は 仏教の よみ。"], ["st042", "等々力", "とどろき", "東京都", 4, ["とうとうりき", "などなどちから", "ひとしりき"], "谷の 滝の 音が「とどろく」ように ひびいた ことから。", "「々」は 前の 字を くりかえす しるし。"], ["st043", "溜池山王", "ためいけさんのう", "東京都", 4, ["りゅうちさんおう", "たまりいけさんのう", "ためいけやまおう"], "むかしの「溜池（ためいけ）」と 日枝神社の「山王（さんのう）」から。", "山王は「さんのう」と よむ。"], ["st044", "外川", "とかわ", "千葉県", 4, ["そとがわ", "がいせん", "ほかがわ"], "銚子電鉄の 終点。海の 近くの 漁師町。", "「外」を「と」と よむ。"], ["st045", "八幡宿", "やわたじゅく", "千葉県", 4, ["はちまんやど", "はちまんじゅく", "やはたやど"], "八幡神社の 門前に できた 宿場町。", "八幡は「やわた」とも よむ。"], ["st046", "八丁畷", "はっちょうなわて", "神奈川県", 4, ["はっちょうあぜ", "やつちょうなわて", "はちちょうて"], "8丁（約870m）の まっすぐな あぜ道（畷）が あった ことから。", "「畷（なわて）」は 田んぼの まっすぐな 道。"], ["st047", "追浜", "おっぱま", "神奈川県", 4, ["おいはま", "ついひん", "おいがはま"], "「おいはま」が かわって「おっぱま」に なった。", "追（おっ）浜（ぱま）。"], ["st048", "逸見", "へみ", "神奈川県", 4, ["いつみ", "いっけん", "はやみ"], "むかしの 武士「逸見（へみ）氏」から。", "2文字で「へみ」。とても みじかい！"], ["st049", "四方津", "しおつ", "山梨県", 4, ["よもつ", "しほうづ", "よかたつ"], "まわり（四方）を 山に かこまれた 船着き場（津）。", "四方（しお）津（つ）。"], ["st050", "左沢", "あてらざわ", "山形県", 4, ["ひだりさわ", "さざわ", "ひだりざわ"], "川の 左がわ（あちら側）の 沢、という 意味から と いわれる。", "「左」を「あてら」と よむ とくべつな 読み。"], ["st051", "放出", "はなてん", "大阪府", 4, ["ほうしゅつ", "はなしで", "ほうで"], "むかし 池の 水を「放ち出す」場所 だった ことから。", "放（はな）出（てん）。"], ["st052", "栄生", "さこう", "愛知県", 4, ["えいせい", "さかお", "えいしょう"], "名古屋の 名鉄の 駅。", "栄（さ）生（こう）。"], ["st053", "祖師ヶ谷大蔵", "そしがやおおくら", "東京都", 5, ["そしがたにだいぞう", "そしかやだいぞう", "そしがやたいぞう"], "「祖師谷」と「大蔵」の 2つの 地名を あわせた 駅名。", "ウルトラマンの 町としても 有名。"], ["st054", "音威子府", "おといねっぷ", "北海道", 5, ["おんいしふ", "おといこふ", "ねいしふ"], "アイヌ語の「オトイネプ（にごった 川）」から。", "北海道で いちばん 人口が 少ない 村の 駅。"], ["st055", "小幌", "こぼろ", "北海道", 5, ["しょうこう", "おほろ", "こほろ"], "まわりに 道が なく、電車でしか 行けない「秘境駅」。", "小（こ）幌（ぼろ）。"], ["st056", "喜連瓜破", "きれうりわり", "大阪府", 5, ["きれんかは", "よろこれんうりやぶ", "きれんうりは"], "「喜連」と「瓜破」の 2つの 地名を あわせた 駅名。", "瓜（うり）を 破（わ）る ＝ うりわり。"], ["st057", "雑餉隈", "ざっしょのくま", "福岡県", 5, ["ざつしょうぐう", "ぞうしょうくま", "ざっしょうすみ"], "むかし 旅人に 食べ物（雑餉）を 出した 隈（すみっこ）から と いわれる。", "「の」が かくれている！"], ["st058", "帷子ノ辻", "かたびらのつじ", "京都府", 5, ["いしのつじ", "かたびらのみち", "いのこのつじ"], "「帷子（かたびら）」は うすい 着物。京福電車（らんでん）の 駅。", "ノ が 入っているのが ヒント。"], ["st059", "杁中", "いりなか", "愛知県", 5, ["えぶりなか", "いりちゅう", "かいなか"], "「杁（いり）」は 田んぼに 水を 入れる しかけ。名古屋の 地下鉄の 駅。", "「杁」は 日本で 作られた 漢字。"]];
+const SI = id => STN.find(s => s[0]===id);
+const prefOf = name => PREF.find(p => p[0]===name);
+
+/* ---------- 調整用パラメータ ---------- */
+const CFG = {free:3, buyMax:2, buyPt:30, tripMax:5, pt:{1:2,2:3,3:5,4:8,5:12}, perfect:20, combo3:5, secretP:.15, secretMul:3,
+  rank:[{n:'えきいん', d:0, s:0}, {n:'しゃしょう', d:7, s:10}, {n:'うんてんし', d:30, s:30}, {n:'えきちょう', d:60, s:50}, {n:'でんせつの えきちょう', d:100, s:59}]};
+const COURSE = [
+  {id:'mirai', n:'みらいタウン', pl:1, t:'10:08', c:'#F2A33A', lv:[1,2], mix:['yomi','yomi','soc','math'], rank:0},
+  {id:'umi',   n:'うみのまち',   pl:2, t:'10:15', c:'#3DA0E0', lv:[2,3], mix:['yomi','kaki','rail','en'], rank:0},
+  {id:'yama',  n:'やまのまち',   pl:3, t:'10:24', c:'#3BAF6A', lv:[3,4], mix:['yomi','yomi','pref','sci'], rank:1},
+  {id:'gaku',  n:'がくえんタウン', pl:4, t:'10:37', c:'#E8606A', lv:null, mix:['jp','math','sci','soc'], rank:2}
+];
+
+/* ---------- セーブ（save.town.station） ---------- */
+function S(){
+  const t = save.town || (save.town = {}); const s = t.station || (t.station = {});
+  s.tickets = s.tickets || {date:'', free:CFG.free, bought:0, trips:0};
+  s.trips = s.trips || {n:0, days:[]}; s.seen = s.seen || {}; s.stamps = s.stamps || {run:0, perfect:0, gold:0, list:[]};
+  s.rank = s.rank || 0; s.bestCombo = s.bestCombo || 0; s.streak = s.streak || {n:0, last:''};
+  return s;
+}
+function TK(){ const s = S(), d = dayKey(); if(s.tickets.date !== d){ s.tickets = {date:d, free:CFG.free, bought:0, trips:0, cry:0}; } return s.tickets; }
+const ticketsLeft = () => TK().free;
+const readOK = id => (S().seen[id]?.ok || 0) > 0;
+const nRead = () => STN.filter(x => readOK(x[0])).length;
+const tripDays = () => S().trips.days.length;
+const userStar = () => { const g = Number(save.settings?.grade56 || 0) || 3; return g <= 2 ? 1 : g <= 4 ? 2 : g <= 6 ? 3 : 4; };
+function rankUp(){
+  const s = S(), out = [];
+  while(s.rank < CFG.rank.length - 1){ const R = CFG.rank[s.rank + 1]; if(tripDays() >= R.d && nRead() >= R.s){ s.rank++; out.push(R.n); } else break; }
+  return out;
+}
+const courseOpen = c => S().rank >= c.rank;
+
+/* ---------- 問題づくり ---------- */
+const SOC = [
+  ['東海道新幹線は 東京と どこを むすんでいる？','新大阪',['名古屋','博多','仙台'],'東京〜名古屋〜京都〜新大阪を むすぶ、日本で 最初の 新幹線（1964年）。'],
+  ['岩手県の 県庁所在地は？','盛岡市',['岩手市','仙台市','青森市'],'岩手県の 県庁所在地は 盛岡市。県の 名前と ちがう ので 注意！'],
+  ['愛知県の 県庁所在地は？','名古屋市',['愛知市','豊田市','岡崎市'],'愛知県の 県庁所在地は 名古屋市。'],
+  ['北海道新幹線は 本州と 北海道を 何で つないでいる？','青函トンネル',['瀬戸大橋','関門橋','明石海峡大橋'],'海の 下を とおる 青函トンネル（約54km）。'],
+  ['九州新幹線の 終点は どこ？','鹿児島中央',['熊本','長崎','宮崎'],'博多〜熊本〜鹿児島中央を むすぶ。'],
+  ['日本で いちばん 乗る人が 多い 駅は？','新宿駅',['東京駅','大阪駅','名古屋駅'],'新宿駅は 1日に 数百万人が 使う、世界でも いちばん 大きな 駅。'],
+  ['山手線は どんな 形に はしる？','輪（わ）の ように ぐるっと 1周',['まっすぐ 1本','Uの字','8の字'],'東京の まんなかを ぐるっと まわる 環状線。'],
+  ['沖縄県を はしる モノレールの 名前は？','ゆいレール',['ゆりかもめ','ポートライナー','ちんちん電車'],'那覇空港から 首里・てだこ浦西まで はしる。'],
+  ['「東京駅」の 赤レンガの 駅舎を 設計した 人は？','辰野金吾',['野口英世','福沢諭吉','伊能忠敬'],'1914年に 完成。2012年に もとの 姿に もどされた。'],
+  ['「のぞみ」「ひかり」「こだま」が はしるのは？','東海道新幹線',['東北新幹線','上越新幹線','北陸新幹線'],'いちばん はやいのが のぞみ、各駅に とまるのが こだま。']
+];
+const SCI = [
+  ['電車の 屋根の パンタグラフは なにから 電気を もらう？','架線（でんせん）',['レール','空気','太陽'],'屋根の 上の 電線（架線）に パンタグラフを おしあてて 電気を とる。','panta'],
+  ['レールの つなぎ目に すきまが あるのは なぜ？','夏に 鉄が のびても まがらないように',['音を 出すため','水を ながすため','軽くするため'],'金属は あたためると のびる。夏の 暑さで のびても ぶつからない ように すきまを あける。','rail'],
+  ['電車が ブレーキを かけると、モーターは なにに かわる？','発電機（電気を つくる）',['ヒーター','スピーカー','ポンプ'],'回生ブレーキ：モーターを 回されて 電気を つくり、ほかの 電車に おくる。',''],
+  ['リニアモーターカーが うくのに つかう ものは？','磁石の 力',['風の 力','水の 力','ばねの 力'],'つよい 磁石の 力で 車体を うかせて すすむ。',''],
+  ['電車の 中で ジャンプしても 同じ ところに おちるのは なぜ？','体も 電車と 同じ はやさで うごいているから',['電車が とまるから','空気が おすから','重力が ないから'],'うごいている ものは、そのまま うごき続けようと する（慣性）。',''],
+  ['電気を よく 通すのは どれ？','銅',['ゴム','ガラス','木'],'電線には 電気を 通しやすい 銅が つかわれる。ゴムや ガラスは 通さない。','']
+];
+const EN = [
+  ['Which ____ does the train leave from?（のりば）','platform',['ticket','exit','station'],'platform ＝ のりば・ホーム。'],
+  ['きっぷは えいごで？','ticket',['train','gate','map'],'ticket ＝ きっぷ。'],
+  ['でぐち は えいごで？','exit',['entrance','stairs','left'],'exit ＝ でぐち、entrance ＝ いりぐち。'],
+  ['えき は えいごで？','station',['street','school','stadium'],'station ＝ えき。'],
+  ['「つぎは 東京です」 Next stop is ____.','Tokyo',['train','stop','next'],'Next stop is 〜. ＝ つぎは 〜です。'],
+  ['かいだん は えいごで？','stairs',['elevator','door','seat'],'stairs ＝ かいだん。'],
+  ['のりかえ は えいごで？','transfer',['ticket','return','wait'],'transfer ＝ のりかえ。'],
+  ['せき（すわる ところ） は えいごで？','seat',['sheet','set','sit'],'seat ＝ せき。sit は「すわる」。']
+];
+function mathQ(){
+  const k = ri(0, 2);
+  if(k===0){ const h = ri(9, 17), m = ri(0, 5)*10 + choice([0,2,5,8]), d = choice([15,25,35,40,50]); const tm = h*60 + m + d, ans = `${Math.floor(tm/60)}:${String(tm%60).padStart(2,'0')}`;
+    const f = v => `${Math.floor(v/60)}:${String(v%60).padStart(2,'0')}`;
+    return {kind:'math', html:`<div class="sq636">${h}:${String(m).padStart(2,'0')} に でる でんしゃで ${d}ふん かかるよ。<br>つくのは なんじ なんぷん？</div>`, ans, opts:shuffle([ans, f(tm+10), f(tm-10), f(tm+60)]), ex:`${h}:${String(m).padStart(2,'0')} から ${d}ふん すすめると ${ans}。60ぷんで 1じかん くりあがるよ。`, fig:'clock', lv:2}; }
+  if(k===1){ const p = choice([120,140,150,160,170,190,210]), n = ri(2,4), tot = p*n, pay = tot < 500 ? 500 : 1000, ans = pay - tot;
+    const o = [...new Set([ans, ans+100, ans+10, ans>=20 ? ans-10 : ans+50])].slice(0,4);
+    return {kind:'math', html:`<div class="sq636">${p}円の きっぷを ${n}まい かって、${pay}円 だしたよ。<br>おつりは？</div>`, ans:ans+'円', opts:shuffle(o.map(v => v+'円')),
+      ex:`きっぷ代は ${p}×${n}＝${tot}円。おつりは ${pay}−${tot}＝${ans}円。`, lv:2}; }
+  const a = ri(1,2), am = ri(1,9)*100, b = ri(2,9)*50, tot = a*1000 + am + b, ans = `${Math.floor(tot/1000)}km${tot%1000}m`;
+  return {kind:'math', html:`<div class="sq636">えきから こうえんまで ${a}km${am}m、こうえんから がっこうまで ${b}m。<br>あわせて？</div>`, ans,
+    opts:shuffle([ans, `${Math.floor((tot+100)/1000)}km${(tot+100)%1000}m`, `${a}km${am+b-50}m`, `${a+1}km${(am+b)%1000}m`]).filter((v,i,a)=>a.indexOf(v)===i), ex:`m を そろえる：${a*1000+am}m ＋ ${b}m ＝ ${tot}m ＝ ${ans}。`, lv:3};
+}
+function fixedQ(list, kind){ const it = choice(list); return {kind, html:`<div class="sq636">${X(it[0])}</div>`, ans:it[1], opts:shuffle([it[1], ...it[2]]), ex:it[3], fig:it[4]||'', lv:2}; }
+/* 駅の えらびかた：★の めやす 70%／ひとつ上 20%／ひとつ下 10%、まちがえた 駅は 出やすい */
+function pickStation(lvRange, used){
+  const s = S(), d = dayKey();
+  let lv;
+  if(lvRange) lv = choice(lvRange);
+  else { const u = userStar(), r = Math.random(); lv = Math.max(1, Math.min(5, r < .7 ? u : r < .9 ? u + 1 : u - 1)); }
+  let L = STN.filter(x => x[4]===lv && !used.has(x[0]));
+  if(!L.length) L = STN.filter(x => Math.abs(x[4]-lv) <= 1 && !used.has(x[0]));
+  const w = L.map(x => { const q = s.seen[x[0]] || {}; let v = 1; if(q.ng > (q.ok||0)) v = 3; if(q.last===d) v *= .2; if(!q.ok) v *= 1.5; return v; });
+  let r = Math.random() * w.reduce((a,b) => a+b, 0); for(let i=0; i<L.length; i++){ r -= w[i]; if(r <= 0) return L[i]; } return L[0];
+}
+const kakiAlt = {秋:'穐',葉:'羽',原:'腹',国:'固',立:'竜',吉:'告',祥:'詳',寺:'時',麻:'摩',布:'怖',十:'重',番:'晩',日:'火',市:'志',場:'馬',白:'百',老:'郎',御:'語',徒:'途',町:'待',暮:'墓',里:'理',鶯:'桜',谷:'屋',神:'紳',保:'宝',要:'用',我:'画',孫:'損',子:'小',蘇:'祖',烏:'鳥',丸:'円',太:'大',秦:'泰',香:'高',椎:'推',牧:'枚',志:'士',尾:'美',久:'九',馬:'間',喰:'食',雑:'座',司:'士',茗:'名',荷:'加',成:'生',門:'問',会:'回',川:'河',鮫:'交',洲:'州',石:'岩',井:'居',公:'工',園:'円',行:'業',徳:'得',生:'正',麦:'莫',弘:'広',明:'名',安:'案',美:'見',栄:'英',橋:'端',器:'気',所:'処',三:'山',長:'永',万:'満',部:'辺',倶:'具',知:'千',厚:'暑',岸:'崖',発:'初',寒:'佐',分:'文',倍:'培',河:'川',歳:'才',山:'三',九:'久',品:'本',仏:'物',等:'到',力:'利',溜:'留',池:'地',王:'皇',外:'戸',八:'鉢',幡:'旗',宿:'祝',丁:'町',畷:'縄',追:'押',浜:'濱',逸:'一',見:'海',四:'志',方:'保',津:'塩',左:'阿',沢:'寺',放:'花',出:'天',祖:'素',師:'志',大:'太',蔵:'倉',音:'乙',威:'井',府:'布',小:'古',幌:'保',喜:'切',連:'恋',瓜:'宇',破:'割',餉:'所',隈:'熊',帷:'片',辻:'通',杁:'入',中:'仲'};
+function stationQ(st, mode){
+  const [id, nm, yo, pf, lv, dm] = st;
+  if(mode==='kaki' && lv >= 2){
+    const chars = [...nm].map((c,i) => [c,i]).filter(([c]) => kakiAlt[c]); const wrong = new Set();
+    for(let t=0; t<20 && wrong.size < 3; t++){ const [c,i] = choice(chars.length ? chars : [[nm[0],0]]); const a = [...nm]; a[i] = kakiAlt[c] || '田'; const w = a.join(''); if(w !== nm) wrong.add(w); }
+    if(wrong.size >= 3) return {kind:'kaki', st:id, html:`<div class="sq636">「<b class="yo636">${X(yo)}</b>」の 駅名は どれ？</div>`, ans:nm, opts:shuffle([nm, ...[...wrong].slice(0,3)]), lv};
+  }
+  if(mode==='pref'){ const p = prefOf(pf); const same = PREF.filter(x => x[2]===p[2] && x!==p); const opts = shuffle([pf, ...shuffle(same).slice(0,1).map(x=>x[0]), ...shuffle(PREF.filter(x => x!==p && x[2]!==p[2])).slice(0,2).map(x=>x[0])]);
+    return {kind:'pref', st:id, html:`<div class="sign636"><b>${X(nm)}</b><small>${X(yo)}</small></div><div class="sq636">この 駅が ある 都道府県は？</div>`, ans:pf, opts, lv}; }
+  return {kind:'yomi', st:id, html:`<div class="sign636"><b>${X(nm)}</b><small class="fu636">${X(yo)}</small></div><div class="sq636">この 駅名の よみかたは？</div>`, ans:yo, opts:shuffle([yo, ...dm]), lv};
+}
+function buildTrip(course, secret){
+  const used = new Set(), Q = [];
+  if(secret){ shuffle(STN.filter(x => x[4]===5)).slice(0,3).forEach(st => { used.add(st[0]); Q.push(stationQ(st, 'yomi')); }); return Q; }
+  const mix = shuffle(course.mix.slice());
+  mix.forEach(k => {
+    if(k==='yomi' || k==='kaki' || k==='pref'){ const st = pickStation(course.lv, used); used.add(st[0]); Q.push(stationQ(st, k)); }
+    else if(k==='soc' || k==='rail') Q.push(fixedQ(SOC, 'soc'));
+    else if(k==='sci') Q.push(fixedQ(SCI, 'sci'));
+    else if(k==='en') Q.push(fixedQ(EN, 'en'));
+    else if(k==='math') Q.push(mathQ());
+    else if(k==='jp'){ const st = pickStation(null, used); used.add(st[0]); Q.push(stationQ(st, Math.random() < .5 ? 'kaki' : 'yomi')); }
+  });
+  const last = pickStation(course.lv, used); Q.push(stationQ(last, 'yomi')); Q[Q.length-1].final = 1;
+  return Q;
+}
+
+/* ---------- 画面 ---------- */
+let ROOT = null, KEY = null, busy = false, Hline = '';
+function root(){ if(ROOT && document.body.contains(ROOT)) return ROOT; ROOT = document.createElement('div'); ROOT.id = 'stn636'; document.body.appendChild(ROOT); ROOT.addEventListener('click', onClick); return ROOT; }
+function close(){ if(!ROOT) return; ROOT.classList.remove('show'); document.body.classList.remove('stn636on'); setTimeout(() => { ROOT?.remove(); ROOT = null; }, 250); try{ persist(); }catch(e){} }
+function open(key){ KEY = key; root(); document.body.classList.add('stn636on'); requestAnimationFrame(() => ROOT.classList.add('show')); Hline = ''; main(); if(!(save.guide635||{}).station){ busy = true; setTimeout(() => guideStn().finally(() => { busy = false; main(); }), 450); } }
+const HANA = () => artSrc('res_girl'), OTTER = () => artSrc('res_otter');
+const ticketDots = () => { const t = TK(); return `<span class="tkd636">${Array.from({length:CFG.free + CFG.buyMax}, (_, i) => `<i class="${i < t.free ? 'on' : i < CFG.free + t.bought ? 'used' : ''}"></i>`).join('')}</span>`; };
+function hanaSay(){
+  const t = TK(), s = S();
+  if(Hline) return Hline;
+  if(secretToday()) return 'あれ？ いちばん 下の 行… なにか あるよ…！';
+  if(!t.free) return t.bought < CFG.buyMax ? 'きっぷが ないね。らっこさんに ポイントで かえるよ' : 'きょうは おやすみ かな？ また あした でかけよう！';
+  if(t.trips >= CFG.tripMax) return 'きょうは たくさん たびを したね！';
+  return choice(['いろいろな まちに でかけて みよう！','むずかしい 駅名、よめるかな？','きょうは どこに いく？','ちずが どんどん 色づくよ！']);
+}
+function secretToday(){ const s = S(), d = dayKey(); if(s.rank < 3) return false;
+  if(s.secretDate !== d){ s.secretDate = d; s.secretOn = Math.random() < CFG.secretP ? 1 : 0; s.secretDone = 0; persist(); }
+  return s.secretOn && !s.secretDone; }
+function main(){
+  if(!ROOT) return; const s = S(), t = TK(), sec = secretToday();
+  ROOT.innerHTML = `<div class="w636">
+    <div class="top636"><div class="sgn636"><span class="tr636"><img src="${A('trn_shinkansen')}" alt=""></span><div><b><ruby>大<rt>おお</rt></ruby>きな<ruby>駅<rt>えき</rt></ruby></b><small>いろいろな ところへ でかけよう！</small></div></div>
+      <button type="button" class="x636" data-a="close">✕</button></div>
+    <div class="brd636"><div class="bh636"><span class="clk636"></span>でんしゃの ごあんない<em>${ticketDots()}</em></div>
+      ${COURSE.map(c => { const op = courseOpen(c);
+        return `<button type="button" class="row636 ${op ? '' : 'lk'}" ${op ? `data-go="${c.id}"` : 'data-a="locked"'} style="--c:${c.c}"><span class="tm">${c.t}</span><b>${op ? c.n : '？？？'}</b><span class="pl">${op ? `のりば ${c.pl}` : `${lockSVG()} ${CFG.rank[c.rank].n}`}</span></button>`; }).join('')}
+      ${sec ? `<button type="button" class="row636 gold" data-go="secret"><span class="tm">??:??</span><b>ひみつの えき</b><span class="pl">★5</span></button>` : ''}</div>
+    <div class="stg636">
+      <div class="bub636" data-a="hana">${X(hanaSay())}</div>
+      <button type="button" class="ch636 hana" data-a="hana"><img src="${X(HANA())}" alt=""></button>
+      <button type="button" class="ch636 otter" data-a="otter"><img src="${X(OTTER())}" alt=""><i class="tkp636"><img src="${A('itm_ticket')}" alt=""></i></button>
+      <button type="button" class="ch636 bird" data-a="bird"><img src="${A('bird_wave')}" alt=""><i class="mpp636"><img src="${A('so_map')}" alt=""></i></button>
+    </div>
+    <div class="btn636s">
+      <button type="button" data-a="go"><img src="${A('trn_local')}" alt=""><b>まちに いく</b></button>
+      <button type="button" data-a="ticket"><img src="${A('itm_ticket')}" alt=""><b>きっぷを かう</b></button>
+      <button type="button" data-a="map"><img src="${A('so_map')}" alt=""><b>ちずを みる</b></button>
+      <button type="button" data-a="rec"><img src="${A('ui_record')}" alt=""><b>たびの きろく</b></button>
+    </div>
+    <div class="sub636"><span>${rankBadge()} ${CFG.rank[s.rank].n}</span><span>よめた駅 ${nRead()}/${STN.length}</span><button type="button" data-a="grade">⬆ グレードアップ</button><button type="button" data-a="help"><img src="${A('bird_think')}" alt=""> せつめい</button></div>
+  </div>`;
+}
+const lockSVG = () => `<svg class="lk636" viewBox="0 0 20 22"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/><circle cx="10" cy="14.5" r="1.7" fill="#7A5634"/></svg>`;
+const rankBadge = (r = S().rank) => `<img class="rk636 r${r}" src="${A('mi_medal')}" alt="">`;
+
+async function onClick(e){
+  const t = e.target.closest('[data-a],[data-go]'); if(!t || busy) return;
+  if(t.dataset.go){ busy = true; try{ await startTrip(t.dataset.go); } finally { busy = false; } return; }
+  const a = t.dataset.a;
+  if(a==='close') return close();
+  if(a==='hana'){ Hline = choice(['駅名には その 土地の むかしの お話が かくれているよ','北海道の 駅は アイヌ語から きた 名前が 多いんだ','「谷」を「や」と よむ 駅、いくつ しってる？','まちがえた 駅は また 出てくるよ。リベンジしよう！']); return main(); }
+  if(a==='otter'){ const k = TK(); Hline = ''; toast(`らっこ：「きっぷは あと ${k.free}まい だよ！」`); return; }
+  if(a==='bird'){ toast('シマエナガ：「ちずを みてみよう！ よめた 駅の 県に 色が つくよ」'); return; }
+  busy = true;
+  try{
+    if(a==='go') await pickCourse();
+    else if(a==='ticket') await ticketView();
+    else if(a==='map') mapView();
+    else if(a==='rec') recView();
+    else if(a==='locked') await dialog(`<h2 class="dlgT">${lockSVG()} まだ いけないよ</h2><p class="dlgP">ランクが 上がると いける まちが ふえるよ。<br>「たびの きろく」で つぎの ランクを みてみよう。</p>`, [{label:'わかった', cls:'gold', v:1}]);
+    else if(a==='grade'){ const k = KEY; close(); setTimeout(() => openBuilding(k), 300); }
+    else if(a==='help') await guideStn(true);
+  } finally { busy = false; }
+}
+async function pickCourse(){
+  const v = await dialog(`<h2 class="dlgT">どこに いく？</h2><div class="pc636">${COURSE.map(c => courseOpen(c) ? `<button type="button" class="btn white big" data-pc="${c.id}" style="border-color:${c.c}">のりば${c.pl}　${c.n}　<small>${c.lv ? '★' + c.lv.join('〜') : '学年に あわせる'}</small></button>` : `<button type="button" class="btn white big" disabled>${lockSVG()} ？？？（${CFG.rank[c.rank].n}で かいほう）</button>`).join('')}</div>`, [{label:'やめる', v:''}], 'wide');
+  void v;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if(!b) return; e.stopImmediatePropagation(); const id = b.dataset.pc; document.querySelector('#dlg')?.classList.remove('show'); setTimeout(() => { busy = true; startTrip(id).finally(() => { busy = false; }); }, 120); }, true);
+
+/* ---------- きっぷ ---------- */
+async function ticketView(){
+  const t = TK(), can = !t.free && t.bought < CFG.buyMax && t.trips < CFG.tripMax;
+  const v = await dialog(`<div class="dlgArt"><img src="${X(OTTER())}" alt="" style="height:86px"><img src="${A('itm_ticket')}" alt="" style="height:64px"></div><h2 class="dlgT">きっぷうりば</h2>
+    <p class="dlgP">きょうの きっぷ ${ticketDots()}<br>のこり <b>${t.free}まい</b>（まいにち ${CFG.free}まい むりょう）</p>
+    <p class="dlgP facNote">つかいきったら ${CFG.buyPt}ポイントで かえるよ（1日 ${CFG.buyMax}まいまで）。<br>きょうの たび ${t.trips}/${CFG.tripMax}かい</p>`,
+    can ? [{label:`${CFG.buyPt}ポイントで かう`, cls:'gold', v:1}, {label:'とじる', v:0}] : [{label:'とじる', cls:'gold', v:0}], 'wide');
+  if(!v) return main();
+  if((save.points?.bal||0) < CFG.buyPt){ toast('ポイントが たりないよ'); return main(); }
+  addPoints(-CFG.buyPt, 'きっぷを かった', true); t.free++; t.bought++; persist(); sound('ok'); toast('らっこ：「まいど ありがとう！」'); main();
+}
+
+/* ---------- たびクイズ ---------- */
+let QUIT = null;
+async function startTrip(cid){
+  const t = TK(), secret = cid==='secret', c = secret ? {id:'secret', n:'ひみつの えき', c:'#D4A017', pl:'？'} : COURSE.find(x => x.id===cid);
+  if(!c) return;
+  if(!secret && !courseOpen(c)) return;
+  if(t.trips >= CFG.tripMax){ await dialog(`<h2 class="dlgT">きょうは おしまい</h2><p class="dlgP">1日の たびは ${CFG.tripMax}かい まで。また あした！</p>`, [{label:'わかった', cls:'gold', v:1}]); return main(); }
+  if(!secret && !t.free){ Hline = t.bought < CFG.buyMax ? 'きっぷが ないね。らっこさんに ポイントで かえるよ' : 'きょうは おやすみ かな？'; main(); return ticketView(); }
+  if(!secret) t.free--;
+  t.trips++; if(secret){ S().secretDone = 1; } persist();
+  const Q = buildTrip(c, secret), s = S();
+  /* 発車演出 */
+  ROOT.innerHTML = `<div class="dep636" data-skip="1" style="--c:${c.c}"><div class="win636"><div class="scn636"></div><img class="trn636" src="${A(secret ? 'trn_steam' : 'trn_express')}" alt=""></div>
+    <b>${X(c.n)} ゆき　はっしゃ します！</b><small>らっこ：「きっぷ、おあずかりします！」　（タッチで スキップ）</small></div>`;
+  sound('fan');
+  await Promise.race([sleep(1800), new Promise(r => ROOT.querySelector('[data-skip]').addEventListener('click', r, {once:true}))]);
+  let got = 0, ok = 0, combo = 0, best = 0, quit = false, news = [];
+  const ug = userStar();
+  for(let i=0; i<Q.length; i++){
+    const q = Q[i]; let hinted = false, removed = new Set();
+    const route = `<div class="rt636" style="--c:${c.c}">${Q.map((_, k) => `<i class="${k < i ? 'd' : k===i ? 'c' : ''} ${k===Q.length-1 ? 'f' : ''}">${k===Q.length-1 ? '★' : ''}</i>`).join('<b></b>')}<img class="tri636" src="${A('trn_local')}" alt="" style="left:calc(${(i/(Q.length-1))*100}% - 14px)"></div>`;
+    const r = await new Promise(res => {
+      QUIT = () => res({quit:true});
+      const draw = (msg) => {
+        ROOT.innerHTML = `<div class="w636 qz636"><div class="qc636">
+          <div class="qh636"><span>${secret ? '✨' : ''}${X(c.n)}ゆき　${i+1}/${Q.length}${q.final ? '　しゅうてん！' : ''}</span>${combo >= 2 ? `<b class="cb636">れんぞく ${combo}</b>` : ''}<button type="button" class="qt636" data-q="quit">とちゅうで おりる</button></div>
+          ${route}<div class="qb636">${q.html}</div>
+          ${msg ? `<div class="hn636"><img src="${A('bird_think')}" alt="">${msg}</div>` : ''}
+          <div class="ops636">${q.opts.map(o => `<button type="button" class="op636" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
+          ${q.st && !hinted ? `<button type="button" class="hb636" data-q="hint"><img src="${X(HANA())}" alt=""> ヒント（ポイント はんぶん）</button>` : ''}
+        </div></div>`;
+        ROOT.querySelectorAll('.op636').forEach(b => b.onclick = () => { const v = b.dataset.o, good = v===q.ans; b.classList.add(good ? 'ok' : 'ng'); ROOT.querySelectorAll('.op636').forEach(x => x.disabled = true); setTimeout(() => res({ok:good, v}), good ? 650 : 450); sound(good ? 'ok' : 'ng'); if(good){ const f = ROOT.querySelector('.fu636'); if(f) f.classList.add('show'); } });
+        const qb = ROOT.querySelector('[data-q="quit"]'); if(qb) qb.onclick = async () => { const v = await dialog('<h2 class="dlgT">とちゅうで おりる？</h2><p class="dlgP">ここまでの ポイントは もらえるよ。<br>（きっぷは もどらないよ）</p>', [{label:'のりつづける', cls:'gold', v:0}, {label:'おりる', cls:'white', v:1}]); if(v) res({quit:true}); };
+        const hb = ROOT.querySelector('[data-q="hint"]'); if(hb) hb.onclick = () => { hinted = true; const st = SI(q.st); let m;
+          if(q.kind==='pref' || Math.random() < .5){ const wrong = q.opts.filter(o => o!==q.ans); shuffle(wrong).slice(0,2).forEach(o => removed.add(o)); m = 'こたえを 2つに しぼったよ'; }
+          else m = `この 駅は <b>${X(st[3])}</b> に あるよ`; draw(m); };
+      };
+      draw('');
+    });
+    QUIT = null;
+    if(r.quit){ quit = true; break; }
+    const st = q.st && SI(q.st);
+    if(st){ const sv = s.seen[st[0]] || (s.seen[st[0]] = {ok:0, ng:0, last:''}); sv.last = dayKey(); if(r.ok){ if(!sv.ok) news.push(st); sv.ok++; } else sv.ng++; }
+    if(r.ok){
+      ok++; combo++; best = Math.max(best, combo);
+      let p = CFG.pt[q.lv] || 3; if(q.lv <= ug - 2) p = Math.max(1, Math.round(p*.5)); if(q.lv > ug) p = Math.round(p*1.5);
+      if(hinted) p = Math.max(1, Math.round(p/2)); if(secret) p *= CFG.secretMul;
+      if(combo > 0 && combo % 3 === 0) p += CFG.combo3;
+      got += p;
+      await popMsg(r.ok, combo >= 3 && combo % 3 === 0 ? `3れんぞく！ +${p}` : `やったね！ +${p}`);
+    } else {
+      combo = 0;
+      const v = await explain(q, r.v, c);
+      if(v==='quit'){ quit = true; break; }
+    }
+  }
+  s.bestCombo = Math.max(s.bestCombo, best);
+  /* とうちゃく */
+  const done = !quit, perfect = done && ok===Q.length, lines = []; let cry = 0;
+  if(done){
+    const d = dayKey(); s.trips.n++; if(!s.trips.days.includes(d)) s.trips.days.push(d);
+    if(s.streak.last !== d){ const y = new Date(); y.setDate(y.getDate()-1); s.streak.n = s.streak.last === dayKey(y) ? s.streak.n + 1 : 1; s.streak.last = d; }
+    const kind = secret ? (ok===Q.length ? 'gold' : 'run') : perfect ? 'perfect' : 'run';
+    s.stamps[kind==='gold' ? 'gold' : kind==='perfect' ? 'perfect' : 'run']++; s.stamps.list.push({d, c:c.id, k:kind}); if(s.stamps.list.length > 120) s.stamps.list.shift();
+    if(perfect){ got += secret ? CFG.perfect*3 : CFG.perfect; lines.push(`🌟 パーフェクト！ ボーナス +${secret ? CFG.perfect*3 : CFG.perfect}`); }
+    const tk = TK(); if(ok >= Math.min(4, Q.length) && !tk.cry){ tk.cry = 1; save.crystal = (save.crystal||0) + 1; cry = 1; lines.push('💎 すいしょう +1（きょうの 水晶は もらったよ）'); }
+    else if(tk.cry) lines.push('💎 きょうの 水晶は もう もらったよ');
+  }
+  if(got) addPoints(got, `大きな えき ${c.n}`, true);
+  const ups = rankUp();
+  persist();
+  ROOT.innerHTML = `<div class="w636 qz636"><div class="qc636 arr636">
+    <h2>${quit ? 'とちゅうで おりたよ' : secret && perfect ? '✨ ひみつの えきに とうちゃく！' : 'とうちゃく！'}</h2>
+    <div class="arc636">${done ? `<div class="stp636 ${secret && perfect ? 'gold' : perfect ? 'pf' : ''}">${stampSVG(c, secret && perfect ? 'gold' : perfect ? 'pf' : '')}</div>` : ''}
+      <img class="ah636" src="${X(HANA())}" alt=""><img class="ao636" src="${X(OTTER())}" alt=""><img class="ab636" src="${A('bird_cheer')}" alt=""></div>
+    <p class="sc636">${ok}/${Q.length} せいかい　${best >= 2 ? `さいだい れんぞく ${best}` : ''}</p>
+    <div class="tot636">+${got} ポイント</div>
+    ${lines.length ? `<ul class="ln636">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>` : ''}
+    ${news.length ? `<div class="nw636"><b>ずかんに とうろく！</b>${news.map(st => `<span><ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby></span>`).join('')}</div>` : ''}
+    ${ups.map(n => `<div class="up636">${rankBadge(CFG.rank.findIndex(x => x.n===n))} ランクアップ！「${X(n)}」</div>`).join('')}
+    <button type="button" class="btn gold" data-a="back">えきに もどる</button></div></div>`;
+  if(done){ confetti(perfect ? 2500 : 1200); sound('fan'); }
+  if(secret && perfect) setTimeout(() => confetti(3000), 600);
+  ROOT.querySelector('[data-a="back"]').onclick = e => { e.stopPropagation(); Hline = done ? 'とうちゃく！ たのしかったね' : ''; main(); };
+}
+function popMsg(ok, txt){ return new Promise(r => { const p = ROOT.querySelector('.qc636'); if(!p) return r(); p.insertAdjacentHTML('beforeend', `<div class="pop636"><img src="${X(HANA())}" alt=""><b>${X(txt)}</b></div>`); setTimeout(r, 850); }); }
+function explain(q, v, c){
+  return new Promise(res => {
+    const st = q.st && SI(q.st); let body = '';
+    if(st){ const p = prefOf(st[3]);
+      body = `<div class="ex636"><div class="sign636 big"><b>${X(st[1])}</b><small class="fu636 show">${X(st[2])}</small></div>
+        <div class="exr636"><div class="exm636">${p ? jpMapFull(p) : ''}<small>${X(st[3])}</small></div>
+        <div class="ext636"><p><b>① 正しい よみ：</b>${X(st[1])}（${X(st[2])}）</p><p><b>② 場所：</b>${X(st[3])}</p><p><b>③ 漢字：</b>${X(st[6])}</p><p class="tip"><b>④ おぼえかた：</b>${X(st[7])}</p></div></div>
+        ${v ? `<p class="yv636">きみの こたえ：${X(v)}</p>` : ''}</div>`; }
+    else body = `<div class="ex636"><p class="ans636">こたえ：<b>${X(q.ans)}</b></p>${q.fig ? figSVG(q.fig) : ''}<p>${X(q.ex || '')}</p>${v ? `<p class="yv636">きみの こたえ：${X(v)}</p>` : ''}</div>`;
+    ROOT.innerHTML = `<div class="w636 qz636"><div class="qc636"><div class="hn636 ng"><img src="${X(HANA())}" alt="">だいじょうぶ、いっしょに みてみよう</div>${body}
+      <div class="exb636"><button type="button" class="btn gold" data-x="next">わかった！ つぎへ</button><button type="button" class="btn white" data-x="quit">とちゅうで おりる</button></div></div></div>`;
+    ROOT.querySelector('[data-x="next"]').onclick = () => res('next');
+    ROOT.querySelector('[data-x="quit"]').onclick = () => res('quit');
+  });
+}
+function figSVG(k){
+  if(k==='rail') return `<svg viewBox="0 0 300 90" class="fg636"><text x="10" y="18" font-size="12">ふゆ</text><rect x="40" y="8" width="110" height="14" fill="#9AA4B0"/><rect x="160" y="8" width="110" height="14" fill="#9AA4B0"/><text x="10" y="70" font-size="12">なつ</text><rect x="40" y="58" width="117" height="14" fill="#E07A5F"/><rect x="153" y="58" width="117" height="14" fill="#E07A5F"/><text x="150" y="46" font-size="11" text-anchor="middle" fill="#C0392B">あたたまると のびて すきまが へる</text></svg>`;
+  if(k==='panta') return `<svg viewBox="0 0 300 110" class="fg636"><line x1="0" y1="12" x2="300" y2="12" stroke="#555" stroke-width="2"/><text x="230" y="9" font-size="10">架線</text><path d="M110 14 L150 50 L190 14" fill="none" stroke="#333" stroke-width="3"/><rect x="60" y="50" width="180" height="40" rx="8" fill="#5BA3E0"/><text x="150" y="76" font-size="12" fill="#fff" text-anchor="middle">電車</text><text x="200" y="40" font-size="10" fill="#C0392B">パンタグラフ ⚡</text></svg>`;
+  if(k==='clock') return '';
+  return '';
+}
+const stampSVG = (c, k) => `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="${k==='gold' ? '#D4A017' : '#D9363E'}" stroke-width="6"/><circle cx="60" cy="60" r="44" fill="none" stroke="${k==='gold' ? '#D4A017' : '#D9363E'}" stroke-width="2"/>
+  <rect x="34" y="48" width="52" height="22" rx="6" fill="${k==='gold' ? '#D4A017' : '#D9363E'}"/><circle cx="44" cy="74" r="4" fill="${k==='gold' ? '#D4A017' : '#D9363E'}"/><circle cx="76" cy="74" r="4" fill="${k==='gold' ? '#D4A017' : '#D9363E'}"/>
+  <text x="60" y="38" font-size="13" font-weight="900" text-anchor="middle" fill="${k==='gold' ? '#D4A017' : '#D9363E'}">${X(c.n).slice(0,7)}</text><text x="60" y="96" font-size="11" font-weight="900" text-anchor="middle" fill="${k==='gold' ? '#D4A017' : '#D9363E'}">${k==='gold' ? 'ひみつ' : k==='pf' ? 'パーフェクト' : dayKey().slice(5).replace('-','/')}</text></svg>`;
+
+/* ---------- ちず ---------- */
+function mapView(pick){
+  const s = S(), cnt = {}; STN.forEach(x => { if(readOK(x[0])) cnt[x[3]] = (cnt[x[3]]||0) + 1; });
+  const col = n => n >= 5 ? '#E8414B' : n >= 2 ? '#FF8A65' : '#FFC1A6';
+  const dots = PREF.map(p => { const n = cnt[p[0]] || 0, [x,y] = prefXY(p), has = STN.some(st => st[3]===p[0]);
+    return `<circle class="pd636" data-pf="${X(p[0])}" cx="${x}" cy="${y}" r="${n ? 9 : 5}" fill="${n ? col(n) : has ? '#fff' : '#C9D3C4'}" stroke="${n ? '#fff' : '#8AA'}" stroke-width="2"/>${n ? `<text x="${x}" y="${y+3.5}" font-size="10" font-weight="900" text-anchor="middle" fill="#fff" pointer-events="none">${n}</text>` : ''}`; }).join('');
+  const sel = pick && STN.filter(st => st[3]===pick);
+  ROOT.innerHTML = `<div class="w636 qz636"><div class="qc636 mp636"><div class="qh636"><span><img class="hi636" src="${A('so_map')}" alt=""> ちずを みる</span><button type="button" class="qt636" data-m="back">もどる</button></div>
+    <div class="mpw636"><svg class="jpMap" viewBox="0 0 400 440">${jpBase()}${dots}</svg></div>
+    <div class="lg636"><span><i style="background:#FFC1A6"></i>1</span><span><i style="background:#FF8A65"></i>2〜4</span><span><i style="background:#E8414B"></i>5〜</span><span><i style="background:#fff;border:1.5px solid #8AA"></i>まだ</span></div>
+    <div class="hn636"><img src="${A('bird_think')}" alt="">${sel ? `<div><b>${X(pick)}</b>：${sel.filter(st => readOK(st[0])).map(st => `<ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby>`).join('・') || 'まだ よめた 駅が ないよ'}${sel.some(st => !readOK(st[0])) ? `<small>（まだ ${sel.filter(st => !readOK(st[0])).length}駅 あるよ）</small>` : ''}</div>` : 'まるを タッチすると その 県の 駅が 見られるよ'}</div></div></div>`;
+  ROOT.querySelector('[data-m="back"]').onclick = e => { e.stopPropagation(); main(); };
+  ROOT.querySelectorAll('[data-pf]').forEach(c => c.addEventListener('click', e => { e.stopPropagation(); mapView(c.dataset.pf); }));
+}
+/* ---------- たびの きろく・ずかん ---------- */
+function recView(tab='rank'){
+  const s = S(), nx = CFG.rank[s.rank + 1];
+  const bar = (a, b) => `<span class="br636"><i style="width:${Math.min(100, b ? a/b*100 : 100)}%"></i></span>`;
+  let body = '';
+  if(tab==='rank') body = `<div class="rkb636">${CFG.rank.map((R, i) => `<div class="${i <= s.rank ? 'got' : ''} ${i===s.rank ? 'now' : ''}">${rankBadge(i)}<b>${R.n}</b><small>${i ? `${R.d}日・${R.s===59 ? '全' : R.s}駅` : 'はじめ'}</small></div>`).join('')}</div>
+    ${nx ? `<div class="nxt636"><b>つぎの「${nx.n}」まで</b><p>たびを した日 ${tripDays()}/${nx.d}日 ${bar(tripDays(), nx.d)}</p><p>よめた駅 ${nRead()}/${nx.s}駅 ${bar(nRead(), nx.s)}</p></div>` : '<div class="nxt636"><b>さいこうの ランク！</b></div>'}
+    <div class="sts636"><span>たびの かいすう<b>${s.trips.n}</b></span><span>れんぞく<b>${s.streak.n}日</b></span><span>さいこう れんぞく正解<b>${s.bestCombo}</b></span></div>`;
+  if(tab==='stamp') body = `<div class="sts636"><span>かんそう<b>${s.stamps.run}</b></span><span>パーフェクト<b>${s.stamps.perfect}</b></span><span>きんいろ<b>${s.stamps.gold}</b></span></div>
+    <div class="stl636">${s.stamps.list.slice().reverse().slice(0,24).map(x => { const c = COURSE.find(y => y.id===x.c) || {n:'ひみつの えき'}; return `<div class="${x.k}">${stampSVG(c, x.k==='gold' ? 'gold' : x.k==='perfect' ? 'pf' : '')}</div>`; }).join('') || '<p class="dlgP">まだ スタンプが ないよ。たびに でかけよう！</p>'}</div>`;
+  if(tab==='zukan') body = `<p class="zk636h">よめた駅 ${nRead()}/${STN.length}　✿＝にがて</p><div class="zk636">${STN.map(st => { const q = s.seen[st[0]] || {}, okk = q.ok > 0, weak = q.ng > (q.ok||0);
+    return `<div class="${okk ? 'ok' : ''}">${okk ? `<ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby><small>${X(st[3])}　${'★'.repeat(st[4])}</small>` : `<b>？？？</b><small>${X(st[3])}　${'★'.repeat(st[4])}</small>`}${weak ? '<i>✿</i>' : ''}</div>`; }).join('')}</div>`;
+  ROOT.innerHTML = `<div class="w636 qz636"><div class="qc636 rc636"><div class="qh636"><span><img class="hi636" src="${A('ui_record')}" alt=""> たびの きろく</span><button type="button" class="qt636" data-r="back">もどる</button></div>
+    <div class="tb636">${[['rank','ランク'],['stamp','スタンプ帳'],['zukan','駅名ずかん']].map(([k,n]) => `<button type="button" class="${tab===k ? 'on' : ''}" data-r="${k}">${n}</button>`).join('')}</div>${body}</div></div>`;
+  ROOT.querySelectorAll('[data-r]').forEach(b => b.onclick = e => { e.stopPropagation(); b.dataset.r==='back' ? main() : recView(b.dataset.r); });
+}
+/* ---------- シマくんの せつめい ---------- */
+async function guideStn(force){
+  const g = save.guide635 || (save.guide635 = {}); if(g.station && !force) return; g.station = 1; persist();
+  const P = [['bird_wave','ようこそ「大きな えき」へ！','電車に のって いろいろな まちへ おでかけ！<br>とちゅうの 駅で <b>クイズ</b>が 出るよ。'],
+    ['bird_think','むずかしい 駅名に ちょうせん','「御徒町」「日暮里」… 日本には よみにくい 駅名が いっぱい！<br>まちがえても、ちずと 漢字の おはなしで おしえるよ。'],
+    ['bird_thumb','きっぷと ごほうび','きっぷは まいにち <b>3まい</b>。5もん とくと とうちゃく！<br>ポイント・すいしょう・スタンプが もらえるよ。'],
+    ['bird_cheer','めざせ えきちょう！','たびを した日と よめた駅が ふえると ランクアップ。<br>あたらしい まちに 行けるように なるよ。えきちょうに なると…？']];
+  for(let i=0; i<P.length; i++){ const [art, t, b] = P[i], last = i===P.length-1;
+    const v = await dialog(`<div class="gd635"><div class="gdb635"><img src="${A(art)}" alt=""></div><div class="gdt635"><b>シマくん</b><h3>${t}</h3><p>${b}</p></div></div><div class="gdd635">${P.map((_, k) => `<i class="${k===i ? 'on' : ''}"></i>`).join('')}</div>`,
+      last ? [{label:'わかった！', cls:'gold', v:1}] : [{label:'つぎへ ▶', cls:'gold', v:1}, {label:'スキップ', cls:'white', v:0}], 'wide gdw635');
+    if(!v) break; }
+}
+
+/* ---------- まちの「大きな えき」を タッチ ---------- */
+let swap = null;
+const restore = () => { if(swap && save.town && save.town.cells[swap.k]==='__stn636') save.town.cells[swap.k] = swap.id; swap = null; };
+window.addEventListener('pointerup', e => {
+  if(typeof curScreen==='undefined' || curScreen!=='town' || townEdit || !save.town) return;
+  if(e.target.closest('#townMap .walker,.car2')) return;
+  const c = e.target.closest('#townMap .cell'); if(!c) return;
+  const k = `${c.dataset.x},${c.dataset.y}`; if(save.town.cells[k] !== 'bigstation') return;
+  restore(); swap = {k, id:'bigstation'}; save.town.cells[k] = '__stn636'; setTimeout(restore, 600);
+}, true);
+window.addEventListener('click', e => {
+  if(!swap) return; const c = e.target.closest && e.target.closest('#townMap .cell'); const s = swap; restore();
+  if(!c || `${c.dataset.x},${c.dataset.y}` !== s.k) return;
+  e.stopImmediatePropagation(); e.preventDefault(); open(s.k);
+}, true);
+const _show636 = show; show = function(){ if(ROOT) close(); return _show636.apply(this, arguments); };
+window.__stn636 = {open, close, S, STN, buildTrip, COURSE, CFG};
+
+const css = document.createElement('style');
+css.textContent = `
+#stn636{position:fixed;inset:0;z-index:66;background:#F3EFE4;overflow-y:auto;overflow-x:hidden;opacity:0;transition:opacity .22s;overscroll-behavior:contain}
+#stn636.show{opacity:1}
+#stn636::before{content:"";position:fixed;inset:0;background:url(${IMG}bg_bigstation.webp) center top/cover no-repeat;z-index:0}
+#stn636>*{position:relative;z-index:1}
+body.stn636on{overflow:hidden}
+.w636{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:6px;padding:calc(6px + env(safe-area-inset-top)) 8px calc(10px + env(safe-area-inset-bottom))}
+.top636{display:flex;align-items:flex-start;gap:6px}
+.sgn636{flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#FFF8E8,#F6E5C2);border:3px solid #8A5A2B;border-radius:14px;padding:4px 10px;box-shadow:0 3px 0 #6B4220}
+.sgn636 .tr636 img{height:30px;width:auto;display:block}
+.sgn636 b{display:block;font-size:22px;color:#6B3A12;line-height:1.3}.sgn636 rt{font-size:9px}.sgn636 small{font-size:10.5px;font-weight:800;color:#8A5A2B}
+.x636{flex:none;width:38px;height:38px;border-radius:50%;border:3px solid #fff;background:#E8606A;color:#fff;font:inherit;font-weight:900;font-size:17px;box-shadow:0 3px 0 #B5434C}
+.brd636{background:#1E2430;border:4px solid #4A5160;border-radius:12px;padding:5px 6px 6px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+.bh636{display:flex;align-items:center;gap:6px;color:#fff;font-weight:900;font-size:13px;padding:0 2px 4px;border-bottom:1px dashed #4A5160;margin-bottom:3px}
+.bh636 em{margin-left:auto;font-style:normal}
+.clk636{width:16px;height:16px;border-radius:50%;background:#fff;position:relative}.clk636::after{content:"";position:absolute;left:7px;top:3px;width:2px;height:6px;background:#333;box-shadow:2px 4px 0 -0px #333}
+.tkd636{display:inline-flex;gap:3px}.tkd636 i{width:10px;height:10px;border-radius:50%;border:2px solid #FFC94D}.tkd636 i.on{background:#FFC94D}.tkd636 i.used{border-color:#666}
+.row636{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:6px;width:100%;border:none;background:none;padding:4px 2px;font:inherit;font-family:ui-monospace,monospace;border-bottom:1px solid #2E3542;text-align:left}
+.row636 .tm{color:#FFD24A;font-weight:900;font-size:15px}.row636 b{color:var(--c);font-size:15px;font-family:'Zen Maru Gothic',sans-serif;filter:brightness(1.35)}.row636 .pl{color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;gap:3px;font-family:'Zen Maru Gothic',sans-serif}
+.row636.lk b,.row636.lk .tm{color:#777!important;filter:none}.row636.lk .pl{color:#999}
+.row636.gold{background:linear-gradient(90deg,rgba(255,210,74,.25),rgba(255,210,74,.05));animation:gl636 1.2s ease-in-out infinite alternate}.row636.gold b,.row636.gold .tm{color:#FFD24A;filter:none}
+@keyframes gl636{to{background:rgba(255,210,74,.4)}}
+.lk636{width:14px;height:15px}
+.stg636{position:relative;flex:1;min-height:215px}
+.bub636{position:absolute;left:4%;top:4px;max-width:60%;background:#fff;border:3px solid #F2A33A;border-radius:16px;padding:6px 10px;font-weight:900;font-size:13px;color:#6B4A2A;line-height:1.45;box-shadow:0 3px 0 rgba(0,0,0,.1);cursor:pointer}
+.bub636::after{content:"";position:absolute;left:24px;bottom:-14px;border:8px solid transparent;border-top:10px solid #F2A33A}
+.ch636{position:absolute;bottom:0;border:none;background:none;padding:0;cursor:pointer}
+.ch636 img{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 3px rgba(0,0,0,.2))}
+.ch636.hana{left:2%;width:33%;animation:sway631 2.4s ease-in-out infinite alternate}
+.ch636.otter{left:36%;width:29%;animation:sway631 2.8s ease-in-out infinite alternate-reverse}
+.ch636.bird{right:2%;width:26%;animation:sway631 2.2s ease-in-out infinite alternate}
+.tkp636,.mpp636{position:absolute;font-style:normal;width:40%;right:-6%;bottom:12%}.mpp636{left:-10%;right:auto}
+.btn636s{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.btn636s button{border:3px solid #fff;background:linear-gradient(180deg,#FFFDF5,#F3E7CF);border-radius:16px;padding:4px 2px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;box-shadow:0 4px 0 #CDB48C;min-width:0}
+.btn636s img{height:44px;width:auto;max-width:100%;object-fit:contain}
+.btn636s b{font-size:11.5px;color:#6B4A2A;white-space:nowrap}
+.sub636{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:800;color:#6B4A2A}
+.sub636 span,.sub636 button{background:rgba(255,255,255,.9);border:none;border-radius:99px;padding:3px 9px;font:inherit;display:inline-flex;align-items:center;gap:3px}
+.sub636 button img{width:18px;height:18px}
+.rk636{width:20px;height:20px;object-fit:contain;vertical-align:middle}
+.rk636.r0{filter:sepia(1) saturate(1.6) hue-rotate(-15deg) brightness(.85)}.rk636.r1{filter:grayscale(1) brightness(1.25)}.rk636.r2{filter:saturate(1.3)}.rk636.r3{filter:hue-rotate(160deg) saturate(1.4)}.rk636.r4{filter:hue-rotate(260deg) saturate(1.6) drop-shadow(0 0 3px #FFD24A)}
+/* 発車 */
+.dep636{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(30,36,48,.8);color:#fff;text-align:center;padding:20px}
+.dep636 b{font-size:18px}.dep636 small{font-size:12px;opacity:.85}
+.win636{position:relative;width:min(88vw,420px);aspect-ratio:2/1;border:8px solid #DDE3EA;border-radius:22px;overflow:hidden;background:linear-gradient(#9FD6FF,#E6F5FF)}
+.scn636{position:absolute;inset:0;background:repeating-linear-gradient(90deg,#7CC47A 0 40px,#5DAE5B 40px 70px,#9AD08F 70px 120px);top:55%;animation:scn636 .6s linear infinite}
+.scn636::before{content:"";position:absolute;left:0;right:0;top:-40px;height:40px;background:repeating-linear-gradient(90deg,transparent 0 60px,#BFD8E8 60px 90px,transparent 90px 150px);animation:scn636 1.4s linear infinite}
+@keyframes scn636{from{background-position:0 0}to{background-position:-240px 0}}
+.trn636{position:absolute;left:50%;bottom:6%;height:42%;transform:translateX(-50%);animation:hop631 .25s ease-in-out infinite alternate}
+/* もんだい */
+.qz636{justify-content:center}
+.qc636{position:relative;background:rgba(255,252,244,.97);border-radius:22px;padding:10px;box-shadow:0 8px 28px rgba(30,30,50,.35);border:3px solid #fff;display:flex;flex-direction:column;gap:7px}
+.qh636{display:flex;align-items:center;gap:6px;font-weight:900;font-size:13px;color:#6B4A2A}
+.qt636{margin-left:auto;border:none;background:#fff;border-radius:99px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;white-space:nowrap}
+.cb636{background:#FF7A45;color:#fff;border-radius:99px;padding:0 8px;font-size:11px}
+.rt636{position:relative;display:flex;align-items:center;padding:12px 14px 4px}
+.rt636 i{flex:none;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #C9C2B4;font-style:normal;font-size:10px;line-height:10px;text-align:center;color:#C9A000}
+.rt636 i.d{background:var(--c);border-color:var(--c)}.rt636 i.c{border-color:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 30%,transparent)}.rt636 i.f{width:20px;height:20px;line-height:14px;font-size:13px}
+.rt636 b{flex:1;height:4px;background:#C9C2B4}
+.tri636{position:absolute;top:-6px;height:22px;width:auto;transition:left .6s;margin-left:14px}
+.qb636{background:#fff;border-radius:16px;padding:10px;box-shadow:0 2px 0 #EADCC4;text-align:center}
+.sign636{display:inline-flex;flex-direction:column;align-items:center;min-width:70%;background:#fff;border:3px solid #2F6FA3;border-radius:10px;padding:6px 14px 4px;box-shadow:0 4px 0 #2F6FA3;margin:2px auto 8px;position:relative}
+.sign636::after{content:"";position:absolute;left:0;right:0;bottom:0;height:7px;background:#2F6FA3;border-radius:0 0 6px 6px}
+.sign636 b{font-size:34px;letter-spacing:4px;color:#1D2A36;line-height:1.2}
+.sign636 small{font-size:14px;font-weight:800;color:#2F6FA3;margin-bottom:8px;min-height:1.2em}
+.sign636 .fu636{opacity:0;transform:translateY(6px);transition:all .5s}.sign636 .fu636.show{opacity:1;transform:none}
+.sign636.big b{font-size:30px}
+.sq636{font-size:15.5px;font-weight:800;color:#4A3A2A;line-height:1.6}.yo636{font-size:20px;color:#2F6FA3}
+.ops636{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.op636{border:2.5px solid #D6C9B0;background:#fff;border-radius:14px;padding:11px 4px;font:inherit;font-weight:900;font-size:16px;color:#3A2E22;min-height:52px;box-shadow:0 3px 0 #D6C9B0;word-break:break-all}
+.op636:disabled{opacity:.45}.op636.ok{background:#E3F7E8;border-color:#3BAF6A;opacity:1}.op636.ng{background:#FFE7E7;border-color:#E8414B;opacity:1}
+.hb636{align-self:center;display:inline-flex;align-items:center;gap:4px;border:none;background:#FFF3D2;border-radius:99px;padding:3px 12px 3px 3px;font:inherit;font-size:12px;font-weight:900;color:#B5701C}
+.hb636 img{width:30px;height:30px;object-fit:contain;border-radius:50%;background:#fff}
+.hn636{display:flex;align-items:center;gap:6px;background:#FFFBE0;border:2px dashed #F2C94C;border-radius:12px;padding:5px 8px;font-size:13px;font-weight:800;color:#8A5A00}
+.hn636.ng{background:#EEF6FF;border-color:#8AB4E0;color:#2F5A86}
+.hn636 img{width:40px;height:40px;object-fit:contain;flex:none}
+.pop636{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:#fff;border:3px solid #FFC94D;border-radius:18px;padding:8px 14px;display:flex;align-items:center;gap:6px;box-shadow:0 6px 18px rgba(0,0,0,.2);animation:pop631 .3s}
+.pop636 img{height:56px}.pop636 b{font-size:16px;color:#D2601E;white-space:nowrap}
+.ex636{text-align:left}.ex636 .sign636{display:flex;margin:0 auto 6px;width:max-content}
+.exr636{display:flex;gap:8px;align-items:flex-start}
+.exm636{flex:none;width:42%;text-align:center}.exm636 svg{width:100%;height:auto}.exm636 small{font-weight:900;color:#C0392B}
+.ext636{flex:1;min-width:0;font-size:13px;line-height:1.55}.ext636 p{margin:0 0 4px}.ext636 .tip{background:#EFFAEA;border-radius:8px;padding:3px 6px;color:#2E7D32}
+.yv636{font-size:12px;color:#B23;margin:4px 0 0}.ans636{font-size:16px}
+.fg636{width:100%;max-width:300px;display:block;margin:4px auto}
+.exb636{display:flex;flex-direction:column;gap:6px}.exb636 .btn{width:100%}
+/* とうちゃく */
+.arr636{text-align:center}.arr636 h2{margin:2px 0;color:#2F6FA3;font-size:22px}
+.arc636{position:relative;height:130px}
+.arc636 .ah636{position:absolute;left:0;bottom:0;height:120px;animation:hop631 .5s ease-in-out infinite alternate}
+.arc636 .ao636{position:absolute;right:22%;bottom:0;height:100px;animation:hop631 .45s ease-in-out infinite alternate-reverse}
+.arc636 .ab636{position:absolute;right:0;bottom:0;height:80px;animation:hop631 .55s ease-in-out infinite alternate}
+.stp636{position:absolute;left:50%;top:0;width:110px;transform:translateX(-50%) rotate(-10deg);animation:stamp636 .5s cubic-bezier(.3,1.6,.6,1) .3s both}
+.stp636 svg{width:100%;height:auto}
+@keyframes stamp636{from{transform:translateX(-50%) scale(2.2) rotate(-25deg);opacity:0}to{transform:translateX(-50%) scale(1) rotate(-10deg);opacity:1}}
+.sc636{margin:0;font-weight:900;color:#6B4A2A}.tot636{font-size:24px;font-weight:900;color:#D2601E}
+.ln636{list-style:none;margin:0;padding:6px 8px;background:#FFF8EA;border-radius:12px;text-align:left;font-size:12.5px;font-weight:800}
+.nw636{background:#EEF6FF;border-radius:12px;padding:6px;font-size:13px}.nw636 b{display:block;color:#2F6FA3}.nw636 span{display:inline-block;margin:4px 6px 0;font-size:16px;font-weight:900}.nw636 rt{font-size:9px}
+.up636{background:linear-gradient(90deg,#FFE08A,#FFF3C4);border-radius:12px;padding:6px;font-weight:900;color:#8A5A00;animation:pop2 .5s}
+.up636 .rk636{width:28px;height:28px}
+/* ちず・きろく */
+.mpw636{background:#CFEBFF;border-radius:14px;overflow:hidden}.mpw636 svg{width:100%;height:auto;display:block}
+.pd636{cursor:pointer}
+.lg636{display:flex;justify-content:center;gap:8px;font-size:11px;font-weight:800}.lg636 i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:2px;vertical-align:middle}
+.hn636 rt{font-size:8px}
+.hi636{width:24px;height:24px;vertical-align:middle}
+.tb636{display:flex;gap:4px}.tb636 button{flex:1;border:2px solid #E6D6BB;background:#fff;border-radius:10px;padding:5px;font:inherit;font-weight:900;font-size:12.5px;color:#7A5634}.tb636 button.on{background:#2F6FA3;color:#fff;border-color:#2F6FA3}
+.rkb636{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
+.rkb636>div{background:#F3F0E8;border-radius:10px;padding:4px 1px;text-align:center;opacity:.55;display:flex;flex-direction:column;align-items:center}
+.rkb636>div.got{opacity:1;background:#FFF6DA}.rkb636>div.now{outline:3px solid #F2A33A}
+.rkb636 .rk636{width:34px;height:34px}.rkb636 b{font-size:10px;line-height:1.2;color:#6B4A2A}.rkb636 small{font-size:9px;color:#8A6A45}
+.nxt636{background:#fff;border-radius:12px;padding:6px 10px;font-size:12.5px;font-weight:800;color:#6B4A2A}.nxt636 p{margin:4px 0 0}
+.br636{display:block;height:8px;border-radius:99px;background:#EFE5D3;overflow:hidden;margin-top:2px}.br636 i{display:block;height:100%;background:linear-gradient(90deg,#8FD0F7,#2F6FA3)}
+.sts636{display:flex;gap:4px}.sts636 span{flex:1;background:#EEF6FF;border-radius:10px;padding:4px;text-align:center;font-size:10.5px;font-weight:800;display:flex;flex-direction:column}.sts636 b{font-size:16px;color:#2F6FA3}
+.stl636{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.stl636>div{background:#fff;border-radius:10px;padding:3px}.stl636 svg{width:100%;height:auto;display:block}
+.zk636h{margin:0;font-size:12px;font-weight:800;color:#6B4A2A}
+.zk636{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;max-height:52vh;overflow-y:auto}
+.zk636>div{position:relative;background:#F3F0E8;border-radius:10px;padding:4px;text-align:center;font-weight:900;font-size:14px;color:#999}
+.zk636>div.ok{background:#fff;color:#1D2A36;border:2px solid #2F6FA3}.zk636 rt{font-size:8.5px;color:#2F6FA3}.zk636 small{display:block;font-size:9px;color:#8A6A45;font-weight:800}
+.zk636 i{position:absolute;right:3px;top:1px;font-style:normal;color:#E8606A;font-size:13px}
+.pc636{display:flex;flex-direction:column;gap:6px}.pc636 .btn{border-left:8px solid}
+@media (max-height:640px){ .stg636{min-height:170px} .btn636s img{height:36px} }
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
