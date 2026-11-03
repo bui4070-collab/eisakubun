@@ -9976,8 +9976,8 @@ const all = P => P.an.concat([P.rare]);
 const anBy = (P, id) => all(P).find(a => a[0]===id);
 const NEW645 = {giraffe:'an_giraffe', panda:'an_panda', penguin:'an_penguin', penguin2:'an_penguin', turtle:'an_turtle', clownfish:'an_clownfish', octopus:'an_octopus'};
 const NEW646 = {lion:1, camel:1, redpanda:1, monkey:1, polarbear:1, seal:1, flamingo:1, whitetiger:1, seahorse:1, manta:1, shark:1, whaleshark:1};
-const artOf = a => NEW646[a[0]] ? './assets/images/v646/an_' + a[0] + '.webp' : NEW645[a[0]] ? './assets/images/v645/' + NEW645[a[0]] + '.webp' : a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
-const isNew = a => !!NEW646[a[0]] || !!NEW645[a[0]] || a[3].startsWith('v644:');
+const artOf = a => a[3].startsWith('v647:') ? './assets/images/v647/' + a[3].slice(5) + '.webp' : NEW646[a[0]] ? './assets/images/v646/an_' + a[0] + '.webp' : NEW645[a[0]] ? './assets/images/v645/' + NEW645[a[0]] + '.webp' : a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
+const isNew = a => a[3].startsWith('v647:') || !!NEW646[a[0]] || !!NEW645[a[0]] || a[3].startsWith('v644:');
 
 /* ---------- セーブ ---------- */
 function SV(P){ const k = P.key==='zoo' ? 'zoo644' : 'aq644'; const s = save[k] || (save[k] = {seen:{}, perfect:0, complete:0});
@@ -10399,6 +10399,94 @@ body.zq644on{overflow:hidden}
 .t646 .tb644{align-items:center;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
 .t646 .tb644{gap:6px;padding-left:6px;padding-right:6px}.go644.g646{flex:1 1 0!important;min-width:0;width:auto;padding:0 20% 2px 23%!important}.go644.g646 span{font-size:clamp(15px,4.6vw,20px)!important;line-height:1.1;text-align:center}.go644.g646 small{margin-top:1px}.zk644.z646{flex:none!important;width:68px!important;height:68px!important}
 @media (max-height:640px){ .qt644{font-size:16px} .op644 button{min-height:54px;font-size:14px} }
+`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.47
+   ・どうぶつえん／すいぞくかん：のこり 4しゅるいの 水彩・「！」の いち・ゴールの かんばん
+   ・ホームの ロゴを 大きく
+   ・能力の実：のうりょくの すぐ下に だす／あげても がめんが もどらない
+   ・住民の おねがい：12じかんで きえる（かなえられる おねがいは のこす）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.47.0', I7 = './assets/images/v647/';
+/* ---------- どうぶつ ---------- */
+try{ const Z = window.__zq644; if(Z){ const add = {pelican:'an_pelican', parrot:'an_parrot', crab:'an_crab', hermit:'an_hermit'};
+  [Z.PLACE.zoo, Z.PLACE.aq].forEach(P => P.an.forEach(a => { if(add[a[0]]) a[3] = 'v647:' + add[a[0]]; })); } }catch(e){ console.warn(e); }
+/* ---------- 能力の実 ---------- */
+const FB = () => save.fruits || {};
+function placeFruit(){
+  const body = document.querySelector('#dlgBody'); if(!body) return; const fp = body.querySelector('.fruitPanel'); if(!fp || fp.dataset.v647) return;
+  fp.dataset.v647 = 1; const ab = body.querySelector('.abList'); if(ab) ab.after(fp);
+  fp.querySelectorAll('[data-feed] small').forEach(sm => { const m = sm.textContent.match(/(\d+)\s*→\s*(\d+)/); if(m) sm.textContent = `${m[1]}→${m[2]}`; });
+}
+new MutationObserver(() => placeFruit()).observe(document.body, {childList:true, subtree:true});
+window.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-feed]'); if(!b || !b.closest('#dlgBody')) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const [rid, k] = b.dataset.feed.split('|'), r = save.town.res.find(x => x.id===rid), B = FB(); if(!r || !B[k]) return;
+  B[k]--; r.ab[k] = (r.ab[k]||0) + 1; persist(); sound('ok');
+  const body = document.querySelector('#dlgBody'), ab = body.querySelector('.abList'); if(ab) ab.innerHTML = abBars(r);
+  const fp = body.querySelector('.fruitPanel'); if(fp){ fp.querySelectorAll('[data-feed]').forEach(x => { const kk = x.dataset.feed.split('|')[1], a2 = ABILITIES.find(q => q.id===kk), n = B[kk]||0;
+      const bb = x.querySelector('b'); if(bb) bb.textContent = '×' + n; const sm = x.querySelector('small'); if(sm && a2) sm.textContent = `${r.ab[kk]||0}→${(r.ab[kk]||0)+1}`; x.disabled = !n; });
+    b.classList.remove('fed647'); void b.offsetWidth; b.classList.add('fed647'); b.querySelector('.up647')?.remove(); b.insertAdjacentHTML('beforeend', '<i class="up647">+1</i>'); }
+  const ai = ABILITIES.findIndex(a => a.id===k), row = ab && ab.querySelectorAll('.abRow')[ai]; if(row){ row.classList.add('fed647'); }
+  toast(`${r.name}の ${ABILITIES[ai] ? ABILITIES[ai].n : ''}が ${r.ab[k]}に あがった！`);
+  try{ renderCurrent(); }catch(_){}
+}, true);
+/* ---------- 住民の おねがい：じかんぎれ ---------- */
+const REQ_LIFE = 12*60*60*1000;
+const leftOf = q => (q.at||Date.now()) + REQ_LIFE - Date.now();
+try{
+  reqTick = (orig => function(){
+    try{ const D = reqData(), t = save.town; const gone = [];
+      D.list = D.list.filter(q => { if(!q.at){ q.at = Date.now(); return true; } let done = false; try{ done = reqDone(q); }catch(_){} if(done || leftOf(q) > 0) return true; gone.push(q); return false; });
+      if(gone.length){ persist(); const r = t && t.res.find(x => x.id===gone[0].rid); setTimeout(() => toast(`${r ? r.name + 'の ' : ''}おねがいは おわったよ。また たのみに くるかも！`), 600); }
+    }catch(e){ console.warn(e); }
+    return orig.apply(this, arguments);
+  })(reqTick);
+}catch(e){ console.warn('req647', e); }
+const hrs = ms => ms >= 3600e3 ? `あと ${Math.ceil(ms/3600e3)}じかん` : `あと ${Math.max(1, Math.ceil(ms/60e3))}ぷん`;
+function stampReq(){
+  try{ const D = reqData(); document.querySelectorAll('[data-reqrow]').forEach(row => { const q = D.list.find(x => x.rid===row.dataset.reqrow); if(!q || row.querySelector('.tl647')) return;
+    let done = false; try{ done = reqDone(q); }catch(_){} if(done) return;
+    const ms = leftOf(q), sm = row.querySelector('.reqT small'); if(sm) sm.insertAdjacentHTML('beforeend', `<em class="tl647 ${ms < 2*3600e3 ? 'soon' : ''}">⏳${hrs(ms)}</em>`); }); }catch(e){}
+}
+try{ renderReqPanel = (orig => function(){ const o = orig.apply(this, arguments); stampReq(); return o; })(renderReqPanel); }catch(e){}
+setInterval(() => { if(typeof curScreen!=='undefined' && curScreen==='town' && !document.hidden){ try{ const D = reqData(), n = D.list.length; reqTick(); if(D.list.length !== n){ renderReqPanel(); try{ markRequests(); }catch(_){} } }catch(_){} } }, 60000);
+
+const css = document.createElement('style');
+css.textContent = `
+/* ！を まるの まんなかに */
+.ex644{display:flex!important;align-items:center;justify-content:center;padding:0!important;line-height:1!important;font-size:0!important}
+.ex644::before{content:"";width:8px;height:22px;border-radius:4px;background:#fff;margin-top:-8px;box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.ex644::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;border-radius:50%;background:#fff;transform:translate(-50%,11px)}
+/* ゴール */
+.end644{background:url(${I7}goal.webp) center/contain no-repeat!important;border:none!important;width:150px;height:150px;padding:0!important;display:flex;align-items:center;justify-content:center;border-radius:0!important}
+.end644 b{display:block;white-space:nowrap;font-size:22px;color:#6B3A12;text-shadow:0 2px 0 #FFF3D2;margin-top:6px;letter-spacing:2px}
+/* ホームの ロゴ */
+body.scr-home #btnBack{display:none!important}
+body.scr-home #topbar .sign.logo img.mainLogo{max-height:88px!important;height:88px!important;max-width:min(58vw,300px)!important}
+body.scr-home #topbar{min-height:96px;align-items:center}
+@media (max-width:360px){ body.scr-home #topbar .sign.logo img.mainLogo{max-height:72px!important;height:72px!important} }
+/* 能力の実 */
+#dlgBody .fruitPanel{margin:8px 0 4px}
+#dlgBody .fruitPanel .fruitGrid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:4px!important}
+#dlgBody .fruitPanel .fruitGrid button{position:relative;padding:4px 1px!important;min-width:0}
+#dlgBody .fruitPanel .fruitGrid button span{font-size:9.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#dlgBody .fruitPanel .fruitGrid button small{font-size:9px!important;white-space:nowrap}
+#dlgBody .fruitPanel .fruitGrid img{width:34px!important;height:34px!important}
+.fed647{animation:fed647 .6s ease-out}
+@keyframes fed647{0%{transform:scale(1)}40%{transform:scale(1.12);background:#FFF3C4}100%{transform:scale(1)}}
+.up647{position:absolute;left:50%;top:-4px;transform:translateX(-50%);font-style:normal;font-weight:900;color:#E8604A;font-size:15px;animation:up647 .9s ease-out forwards;pointer-events:none}
+@keyframes up647{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-24px)}}
+.abRow.fed647{border-radius:8px}
+/* おねがいの のこり じかん */
+.tl647{font-style:normal;margin-left:6px;color:#7A8A9A;font-weight:800}.tl647.soon{color:#E8604A}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
