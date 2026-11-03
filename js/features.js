@@ -7989,6 +7989,9 @@ async function onClick(e){
     if(a==='close') close();
     else if(a==='start') await runClass(ST.subj, ST.diff);
     else if(a==='pick') await pickDiff(t.dataset.k);
+    else if(a==='pickth') await pickTheme(t.dataset.k);
+    else if(a==='thlock') await dialog('<h2 class="dlgT">まだ ひらいて いないよ</h2><p class="dlgP">けんきゅうの かいすうが ふえると あたらしい こうざが ひらくよ。</p>', [{label:'わかった', cls:'gold', v:1}]);
+    else if(a==='uchest'){ const L = DL(); L.umis = L.umis || {chest:0}; if(L.umis.chest) toast('きょうの ごほうびは もらったよ'); else if(!UMIS.every(m => m.ok(L))) toast('ミッションを ぜんぶ クリアしてね'); else if(dayOK()){ L.umis.chest = 1; const u = UV(); pts(80, 'だいがく ミッション'); u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; } persist(); sound('fan'); confetti(1500); await dialog(`<div class="dlgArt"><img src="${IMG634}th_space.webp" alt="" style="height:90px"></div><h2 class="dlgT">すてきな ごほうび！</h2><p class="dlgP">コイン +80<br>${ic('frag')} ひらめきの かけら +1</p>`, [{label:'やったー！', cls:'gold', v:1}]); uniMain(); } }
     else if(a==='cal') await calendar();
     else if(a==='mis') await misInfo();
     else if(a==='chest') await openChest();
@@ -8425,48 +8428,84 @@ function uniMates(n){
   const all = RES(), u = UV(), p = u.partner && resBy(u.partner);
   const L = shuffle(all.filter(r => r !== p)).slice(0, p ? n - 1 : n); if(p) L.unshift(p); return L;
 }
+const UMIS = [
+  {id:'res1', t:'けんきゅうを 1かい せいこう', ic:'rnote', ok:L => L.res >= 1},
+  {id:'two',  t:'2つの テーマで けんきゅう', ic:'pals', ok:L => L.chain.length >= 2},
+  {id:'reco', t:'おすすめ テーマに ちょうせん', ic:'grad', ok:L => L.chain.includes(recoTheme())}
+];
+const UMC = ['#FDE3E6','#DDEBFB','#E3F5E1'];
+function uTop(sub){
+  const u = UV(), s = SV(), D = CFG.degree[u.degree];
+  return `<div class="tp639 tpu641"><header class="hd639">
+      <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>まちへ</b></button>
+      <img class="lg639" src="${IMG634}logo_univ.webp" alt="だいがく">
+      <button type="button" class="st639" data-a="${u.enrolled ? 'deg' : 'cal'}"><span>${ic('streak')} れんぞく <em>${s.streak||0}</em> にち</span><span>${u.enrolled ? `${ic('grad')} <em class="g">${fmt(u.degPt)}</em>` : `<i class="sx639">★</i> <em class="g">${SK.reduce((a,k) => a + (s.stars[k]||0), 0)}</em>`}</span></button>
+    </header>
+    <div class="cp639"><span>＼ ${sub} ／</span></div>
+    <button type="button" class="pal639 u1" data-upal="0" aria-label="ハナ"></button><button type="button" class="pal639 u2" data-upal="1" aria-label="フクロウ"></button><button type="button" class="pal639 u3" data-upal="2" aria-label="アザラシ"></button>
+    <span class="pb639 u1" data-upal="0">もっと しりたい！</span><span class="pb639 u2" data-upal="1">まなびは みらいを ひろげるよ！</span><span class="pb639 u3" data-upal="2">いっしょに たのしく まなぼう！</span></div>`;
+}
+const UPAL = [['もっと しりたい！','はっけん したい！','カード あつめよう！','つぎは どの こうざ？'],
+  ['まなびは みらいを ひろげるよ！','しらべて かんがえて はっぴょう！','まちがえても ひらめきの かけらに なるよ','おすすめは ×1.3 だよ'],
+  ['いっしょに たのしく まなぼう！','レシピ ふえたら カフェに いこう！','ノーミスだと キラカード！','きょうも けんきゅう がんばろ〜']];
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-upal]'); if(!t || !ROOT || !ROOT.contains(t)) return; e.stopPropagation();
+  const k = t.dataset.upal, b = ROOT.querySelector(`.pb639[data-upal="${k}"]`); if(!b) return; const L2 = UPAL[k]; let v; do{ v = choice(L2); }while(v===b.textContent);
+  b.textContent = v; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); sound('tap'); }, true);
 function uniMain(){
   if(!ROOT) return; ROOT.classList.remove('bgS633'); ROOT.classList.add('bgU634'); addRecipeMenus(); setTimeout(gakkai, 400); const u = UV(), s = SV(), L = DL();
   if(!u.enrolled) return uniLocked();
-  const reco = recoTheme();
-  if(!UT.th || !thOpen(THM(UT.th))) UT.th = reco;
-  const d = thData(UT.th); if(UT.lv > d.lv) UT.lv = d.lv;
-  const dn = degNext(), D = CFG.degree[u.degree], props = TH.reduce((o,t) => (o[t.id] = t.prop, o), {});
-  const t = THM(UT.th), pm = L.res >= CFG.fullRes;
-  const mul = t.mul * (UT.th===reco ? CFG.recoMul : 1) * CFG.chain[Math.min(2, L.chain.filter(x => x!==UT.th).length)];
-  const p = u.partner && resBy(u.partner);
-  ROOT.innerHTML = `<div class="wrap631 uni">
-    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG634}logo_univ.webp" alt="だいがく"><small>${UV().title ? '🏅 ' + X(UV().title) : 'むずかしいけど ごほうびは 大きいよ'}</small></div>
-      <button type="button" class="stk631 deg" data-a="deg"><b>${ic('grad')} ${D.n}</b><small>${dn ? `${fmt(u.degPt)}/${fmt(dn.D.pt)}` : fmt(u.degPt)}</small></button></header>
-    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:(r) => props[THM(UT.th).id] || '📚', cls:'clear633'})}
-    <div class="sec631"><div class="h631">けんきゅう テーマ <small>きょう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes}かい${pm ? '（れんしゅうモード）' : ''}</small></div>
-      <div class="ths631">${TH.map(x => { const open = thOpen(x), dd = thData(x.id);
-        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${thImg(x.id)}${open ? '' : '<i class="lk634"><svg viewBox="0 0 20 22" width="15" height="16"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg></i>'}</span><b>${x.n}</b><small>${open ? `${LV[dd.lv]}・カード${nCards(x.id)}/15` : `あと けんきゅう ${x.need - u.total}かい`}</small>${open && nCards(x.id)===14 ? '<em class="last634">あと1まい！</em>' : ''}</button>`; }).join('')}</div></div>
-    <div class="sec631"><div class="h631">レベル</div><div class="lvs631">${LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(UT.th) : null;
-      return `<button type="button" class="lv631 ${UT.lv===i ? 'on' : ''} ${on ? '' : 'lock'}" ${on ? `data-lv="${i}"` : ''}><b>${on ? '' : '🔒'}${n}</b><small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : '—'}</small>${nd ? bar(nd.cur, nd.tot) : ''}</button>`; }).join('')}</div></div>
-    <div class="rw631 sm">🔎 しらべる3もん → かんがえる3もん → はっぴょう1もん　♥×3</div>
-    <button type="button" class="go631 uni" data-a="rstart">${ic('rnote','big')} けんきゅうを はじめる！</button>
-    <div class="tools631">
-      <button type="button" data-a="partner">${ic('pals')} なかま${p ? `<b class="nm">${X(p.name)}</b>` : ''}</button>
-      <button type="button" data-a="note">${ic('rnote')} 研究ノート<b>${TH.reduce((a,t) => a + nCards(t.id), 0)}/135</b></button>
-      ${secretChip()}
-      <span class="chip631">${ic('frag')} かけら ${u.frag}/5</span><span class="chip631">${ic('ticket')} ヒント ${u.tickets}</span>
-      <button type="button" data-a="toschool">${ic('school')} がっこう</button>
-      <button type="button" data-a="help" class="hp635"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
-    </div></div>`;
+  const reco = recoTheme(); if(!UT.th || !thOpen(THM(UT.th))) UT.th = reco;
+  const dn = degNext(), D = CFG.degree[u.degree], p = u.partner && resBy(u.partner);
+  L.umis = L.umis || {chest:0}; const done = UMIS.map(m => m.ok(L)), all = done.every(Boolean);
+  const tile = (a, img, n, badge, extra='') => `<button type="button" class="tl639" data-a="${a}"><span class="ti">${img}</span><b>${n}</b>${badge ? `<i class="bd639 ${badge==='!' ? 'red' : ''}">${badge}</i>` : ''}${extra}</button>`;
+  const stars3 = id => { const d = thData(id), n = d.s.some(Boolean) ? d.lv + 1 : 0; return stars(n); };
+  ROOT.innerHTML = `<div class="wrap631 uni s639 u641">${uTop('しらべて かんがえて せかいを ひろげよう！')}
+    <section class="pn639 pu641 ms639"><div class="ph639">${ic('grad')}<b>だいがくの ミッション</b><span class="ct639">${done.filter(Boolean).length}/3</span></div>
+      <div class="mw639"><ol>${UMIS.map((m,i) => `<li class="${done[i] ? 'ok' : ''}" style="--bg:${UMC[i]}"><i class="ck639 n">${done[i] ? '<svg viewBox="0 0 20 20"><path d="M4 10.5L8.5 15L16 6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : i+1}</i><span class="mi639">${ic(m.ic)}</span><span class="mt639">${m.id==='reco' ? `おすすめ「${X(THM(reco).n)}」に ちょうせん` : X(m.t)}</span></li>`).join('')}</ol>
+      <button type="button" class="cs639 ${all && !L.umis.chest ? 'glow' : ''} ${L.umis.chest ? 'got' : ''}" data-a="uchest"><img class="chi633" src="${IMG634}th_space.webp" alt=""><small>${L.umis.chest ? 'もらったよ！' : all ? 'タッチで うけとる！' : 'ぜんぶ できたら<br>すてきな ごほうび！'}</small></button></div></section>
+    <section class="pn639 pu641"><div class="ph639">${ic('rnote')}<b>まなべる こうざ</b><span class="hint639">＼ すきな こうざを えらんで まなぼう！ ／</span></div>
+      <div class="tg641">${TH.map(x => { const open = thOpen(x);
+        return `<button type="button" class="tc641 ${open ? '' : 'lk'}" ${open ? `data-a="pickth" data-k="${x.id}"` : 'data-a="thlock"'} style="--c:${TH_C[x.id]}">${x.id===reco && open ? '<em class="x15">×1.3</em>' : ''}${L.chain.includes(x.id) ? '<i class="sp639">✔</i>' : ''}${open && nCards(x.id)===14 ? '<em class="last634">あと1まい</em>' : ''}
+          <span class="si">${thImg(x.id)}${open ? '' : '<i class="lk641"><svg viewBox="0 0 20 22"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg></i>'}</span>
+          <b>${x.n.replace(/（.*）/,'')}</b>${open ? stars3(x.id) : `<small>あと ${x.need - u.total}かい</small>`}${open ? `<small>カード ${nCards(x.id)}/15</small>` : ''}</button>`; }).join('')}</div>
+      <div class="stp639">きょうの けんきゅう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes} ${'<i class="on"></i>'.repeat(Math.min(L.res, CFG.fullRes))}${'<i></i>'.repeat(Math.max(0, CFG.fullRes - L.res))} ${L.res >= CFG.fullRes ? '<b>まんかい！</b>' : ''}</div></section>
+    <section class="pn639 pu641"><div class="ph639"><svg class="pi639" viewBox="0 0 32 32"><path d="M4 24L6 10L12 16L16 6L20 16L26 10L28 24Z" fill="#FFD24A" stroke="#B5701C" stroke-width="2" stroke-linejoin="round"/><rect x="4" y="24" width="24" height="4" rx="1.5" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/></svg><b>これまでの きろく</b><span class="dl639"></span></div>
+      <div class="tls639">
+        ${tile('deg', ic('grad'), D.n, '', dn ? `<span class="mb639"><i style="width:${Math.min(100, u.degPt/dn.D.pt*100)}%"></i></span>` : '')}
+        ${tile('note', ic('rnote'), '研究ノート', TH.reduce((a,t) => a + nCards(t.id), 0) || '')}
+        ${tile('partner', ic('pals'), 'なかま', '', p ? `<small class="nm641">${X(p.name)}</small>` : '')}
+        ${tile('secret', `<span class="sil634"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100 - Math.round(masters()/9*100)}%"></span>`, u.secret ? 'ひみつ' : '？？？', `${masters()}/9`)}
+      </div>
+      <div class="sub639">
+        <span class="chip641">${ic('frag')} かけら ${u.frag}/5</span><span class="chip641">${ic('ticket')} ヒント ${u.tickets}</span>
+        <button type="button" data-a="toschool">${ic('school')} がっこう</button>
+        <button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
+      </div></section>
+  </div>`;
   persist();
 }
+async function pickTheme(id){
+  const t = THM(id), d = thData(id), reco = recoTheme() === id, L = DL(); sound('ok');
+  const btns = LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(id) : null;
+    return {label:`<b>${on ? '' : '<svg viewBox="0 0 20 22" width="14" height="15"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg>'}${n}</b>${stars(i+1)}<small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : 'まだ'}</small>${(UT.lv===i && on) ? '<i>まえかい</i>' : ''}`, cls:`white lv641 l${i} ${on ? '' : 'off'}`, v:on ? 'L'+i : ''}; });
+  const v = await dialog(`<div class="pk639" style="--c:${TH_C[id]}"><span class="pki">${thImg(id)}</span><div><b>${X(t.n)}</b>${reco ? '<em>おすすめ ×1.3！</em>' : ''}<small>${L.res >= CFG.fullRes ? 'きょうは れんしゅうモード' : `カード ${nCards(id)}/15・きょう ${L.res}/${CFG.fullRes}かい`}</small></div></div>
+    <p class="dlgP">どの レベルで けんきゅう する？<br><small>しらべる3もん → かんがえる3もん → はっぴょう1もん　♥×3</small></p>`, btns.concat([{label:'やめる', cls:'white cancel639', v:''}]), 'wide dfw639');
+  if(!v || v[0] !== 'L') return;
+  UT.th = id; UT.lv = +v.slice(1); await runResearch(id, UT.lv);
+}
 function uniLocked(){
-  const s = SV(), u = UV(), L = DL(), gold = s.badge >= 2, bn = badgeNext();
-  const toGold = s.badge < 2 ? (() => { const b = CFG.badge[2], tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0); return {st:Math.max(0, b.st - tot), d:Math.max(0, b.d - s.attend), tot, b}; })() : null;
-  ROOT.innerHTML = `<div class="wrap631 uni">
-    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG634}logo_univ.webp" alt="だいがく"><small>がっこう ゴールドバッジで 入学試験</small></div><span></span></header>
-    ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => choice(['📚','💻','🔭','🧪']), cls:'locked clear633'})}
-    <div class="lock631"><b>🔒 入学まで</b>${toGold ? `<p>🥇ゴールドバッジまで：★あと <b>${toGold.st}</b>こ・あと <b>${toGold.d}</b>にち</p>${bar(toGold.tot, toGold.b.st)}` : `<p>🥇 ゴールド たっせい！ 入学試験に ちょうせん できるよ</p>`}
-      <p class="sm">入学試験：10もん中 7もん せいかいで ごうかく（5きょうか 2もんずつ）</p></div>
-    <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : `${ic('write','big')} 入学試験に ちょうせん！`) : `${ic('write','big')} 入学試験（ゴールドで かいほう）`}</button>
-    <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学は また あした' : `${ic('study','big')} 体験入学（1日1もん・せいかいで +10）`}</button>
-    <div class="tools631"><button type="button" data-a="toschool">${ic('school')} がっこうへ</button></div></div>`;
+  const s = SV(), L = DL(), gold = s.badge >= 2;
+  const b2 = CFG.badge[2], tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
+  ROOT.innerHTML = `<div class="wrap631 uni s639 u641">${uTop('がっこうで ゴールドバッジを めざそう！')}
+    <section class="pn639 pu641"><div class="ph639"><svg class="pi639" viewBox="0 0 20 22"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg><b>入学まで</b></div>
+      ${gold ? '<p class="lk641p">🥇 ゴールド たっせい！ 入学試験に ちょうせん できるよ</p>' : `<div class="bdb639"><b>${medal(3,'s')} ゴールドバッジまで</b><div class="bb636"><small>★ ${tot}/${b2.st}</small><span class="bar631"><i style="width:${Math.min(100, tot/b2.st*100)}%"></i></span></div><div class="bb636"><small>しゅっせき ${s.attend}/${b2.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/b2.d*100)}%"></i></span></div></div>`}
+      <p class="lk641p sm">入学試験：10もん中 7もん せいかいで ごうかく（5きょうか 2もんずつ）</p>
+      <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : `${ic('write','big')} 入学試験に ちょうせん！`) : `${ic('write','big')} 入学試験（ゴールドで かいほう）`}</button>
+      <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学は また あした' : `${ic('study','big')} 体験入学（1日1もん・せいかいで +10）`}</button></section>
+    <section class="pn639 pu641"><div class="ph639">${ic('rnote')}<b>まなべる こうざ</b><span class="hint639">＼ 入学すると えらべるよ ／</span></div>
+      <div class="tg641">${TH.map(x => `<span class="tc641 lk" style="--c:${TH_C[x.id]}"><span class="si">${thImg(x.id)}</span><b>${x.n.replace(/（.*）/,'')}</b></span>`).join('')}</div>
+      <div class="sub639"><button type="button" data-a="toschool">${ic('school')} がっこうへ</button><button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button></div></section>
+  </div>`;
 }
 async function trial(){
   const L = DL(); if(L.trial) return; L.trial = 1;
@@ -8834,6 +8873,44 @@ body.sc631on{overflow:hidden}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
+/* ===== v6.41 だいがく ===== */
+#sc631.bgU634{background:#EADFC4}
+#sc631.bgU634::before{background:url(./assets/images/v641/bg_univ_pals.webp) center top/cover no-repeat!important;filter:blur(6px);opacity:.55}
+.s639.u641{container-type:inline-size;background:#EADFC4 url(./assets/images/v641/bg_univ_pals.webp) center top/100% auto no-repeat}
+.tp639.tpu641{min-height:86cqw}
+.tpu641 .lg639{max-width:170px}
+.tpu641 .cp639 span{font-size:11.5px}
+.pal639.u1{left:19%;width:24%;top:42cqw;height:40cqw}.pal639.u2{left:43%;width:22%;top:44cqw;height:38cqw}.pal639.u3{left:65%;width:28%;top:51cqw;height:31cqw}
+.pb639.u1,.pb639.u2,.pb639.u3{max-width:29cqw;line-height:1.25;font-size:clamp(11px,3.2cqw,15px);padding:5px 8px}
+.pb639.u1{left:1cqw;top:32cqw}.pb639.u1::after{left:66%}
+.pb639.u2{left:37cqw;top:31cqw;animation-delay:.9s}.pb639.u2::after{left:44%}
+.pb639.u3{right:1cqw;top:37cqw;animation-delay:1.8s}.pb639.u3::after{right:58%}
+.pu641{background:rgba(250,251,255,.97);border-color:#C9D3F2;box-shadow:0 4px 0 #AFBDE8,0 6px 14px rgba(40,50,120,.15)}
+.pu641 .ph639 b{color:#33407A}
+.ck639.n{font-style:normal;font-size:12px;font-weight:900;color:#fff;background:#8C9AD6;border-color:#8C9AD6}
+.u641 .cs639{background:#EEF1FF}.u641 .cs639 small{color:#3F4E9E}
+.tg641{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tc641{position:relative;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 10%,#fff);border-radius:16px;padding:6px 2px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;box-shadow:0 3px 0 color-mix(in srgb,var(--c) 40%,#fff)}
+.tc641:active{transform:translateY(2px)}
+.tc641 .si{position:relative;height:42px}.tc641 .si .thi634{width:42px;height:42px}
+.tc641 b{font-size:12.5px;color:color-mix(in srgb,var(--c) 75%,#000);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tc641 small{font-size:9px;color:#6A74A8;font-weight:800;white-space:nowrap}
+.tc641 .st631{font-size:13px}
+.tc641.lk{filter:grayscale(.75);opacity:.7}
+.lk641{position:absolute;right:-8px;bottom:-4px;width:18px;height:20px}.lk641 svg{width:100%;height:100%}
+.tc641 .last634{left:50%;right:auto;transform:translateX(-50%);bottom:-8px}
+.u641 .stp639 i{border-color:#AFBDE8}.u641 .stp639 i.on{background:#5A6FD6;border-color:#5A6FD6}.u641 .stp639 b{color:#3F55C4}
+.nm641{font-size:9.5px;color:#5A6FD6;font-weight:900;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl639 .sil634{width:40px;height:40px;border-radius:12px}
+.chip641{display:inline-flex;align-items:center;gap:3px;background:#EEF1FF;border-radius:99px;padding:4px 10px;font-size:11.5px;font-weight:900;color:#3F4E9E}.chip641 .ii635{width:20px;height:20px;margin:0}
+.lk641p{margin:4px 2px;font-size:13px;font-weight:900;color:#33407A}.lk641p.sm{font-size:11px;color:#6A74A8}
+.pu641 .go631{width:100%;margin-top:6px}
+.btn.lv641{position:relative;display:flex!important;flex-direction:column;align-items:center;gap:1px;padding:8px 2px!important;border:2px solid #C9D3F2!important;border-radius:16px!important;min-width:0;background:#F6F8FF!important}
+.btn.lv641 b{font-size:13px;color:#33407A;display:flex;align-items:center;gap:2px}.btn.lv641 small{font-size:9.5px;color:#6A74A8}.btn.lv641 .st631{font-size:13px}
+.btn.lv641.l1{border-color:#9DB0F2!important}.btn.lv641.l2{border-color:#B79AF0!important;background:#F7F2FF!important}
+.btn.lv641.off{opacity:.55;pointer-events:none}
+.btn.lv641 i{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:900;background:#fff;color:#6A74A8;border:1.5px solid #C9D3F2;border-radius:8px;padding:0 5px;white-space:nowrap}
+
 /* ===== v6.40 がっこう：フクロウ＆アザラシの 背景・ロゴ ===== */
 #sc631.bgS633{background:#F3DCAB}
 #sc631.bgS633::before{background:url(./assets/images/v639/bg_school_pals.webp) center top/cover no-repeat!important;filter:blur(6px) saturate(1.1);opacity:.6}
@@ -8903,7 +8980,7 @@ body.sc631on{overflow:hidden}
 .cs639 small{font-size:10px;font-weight:900;color:#8A5A12;line-height:1.35;text-align:center}
 .cs639.glow{animation:glow631 .9s ease-in-out infinite alternate;background:#FFE08A}.cs639.got{opacity:.6}
 .sj639{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
-.sb639{position:relative;border:3px solid var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);border-radius:16px;padding:7px 1px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;box-shadow:0 4px 0 color-mix(in srgb,var(--c) 55%,#fff);transition:transform .1s}
+.sb639{position:relative;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);border-radius:16px;padding:7px 1px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;box-shadow:0 3px 0 color-mix(in srgb,var(--c) 40%,#fff);transition:transform .1s}
 .sb639:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--c) 55%,#fff)}
 .sb639 .si .sic633{width:46px;height:46px;display:block;margin:0}
 .sb639 b{font-size:14px;color:var(--c);white-space:nowrap;filter:brightness(.85)}
@@ -8911,10 +8988,10 @@ body.sc631on{overflow:hidden}
 .sb639 small{font-size:9px;color:#8A6A45;font-weight:800;white-space:nowrap}
 .sb639.glow{animation:glow631 1.2s ease-in-out infinite alternate}
 .x15{position:absolute;left:-4px;top:-9px;font-style:normal;font-size:10px;font-weight:900;background:#FF6B4A;color:#fff;border-radius:8px;padding:0 5px;transform:rotate(-8deg);box-shadow:0 2px 0 #C94A22;z-index:1}
-.sp639{position:absolute;right:-5px;top:-7px;width:22px;height:22px;border-radius:50%;background:#E8414B;color:#fff;font-style:normal;font-size:13px;line-height:22px;text-align:center;font-weight:900;transform:rotate(-12deg);box-shadow:0 2px 0 #A82A32}
+.sp639{position:absolute;right:3px;top:3px;width:17px;height:17px;border-radius:50%;background:#fff;border:2px solid #5BBF6A;color:#3BAF6A;font-style:normal;font-size:10px;line-height:13px;text-align:center;font-weight:900;box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .stp639{display:flex;align-items:center;gap:4px;justify-content:center;margin-top:7px;font-size:11.5px;font-weight:900;color:#7A5634}
-.stp639 i{width:13px;height:13px;border-radius:50%;border:2px solid #E8A0A6;background:#fff}.stp639 i.on{background:#E8414B;border-color:#E8414B}
-.stp639 b{color:#E8414B;animation:blink634 .8s ease-in-out infinite alternate}
+.stp639 i{width:13px;height:13px;border-radius:50%;border:2px solid #A8D8B0;background:#fff}.stp639 i.on{background:#5BBF6A;border-color:#5BBF6A}
+.stp639 b{color:#3B9F5A;animation:blink634 .8s ease-in-out infinite alternate}
 .tls639{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .tl639{position:relative;border:2.5px solid #EADCC4;background:#fff;border-radius:16px;padding:6px 2px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;box-shadow:0 3px 0 #E3D3B4}
 .tl639 .ti{height:40px;display:flex;align-items:center}
@@ -9048,7 +9125,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.40.0', IMG = './assets/images/v636/';
+const VER = '6.41.0', IMG = './assets/images/v636/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const A = k => X(artSrc(k) || '');
