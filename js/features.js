@@ -8780,7 +8780,7 @@ body.sc631on{overflow:hidden}
 #sc631.bgS633{background:#F6E9C8}
 #sc631.bgS633::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_school.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
 #sc631.bgS633>*{position:relative;z-index:1}
-#sc631.bgS633 .hd631{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
+#sc631.bgS633 .hd631{background:none!important;position:relative}
 .logo633{height:62px;width:auto;max-width:100%;display:block;margin:0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
 #sc631.bgS633 .tt631 small{background:rgba(255,255,255,.85);border-radius:99px;padding:0 6px;display:inline-block;max-width:100%}
 .stg631.clear633{background:none;border:none;box-shadow:none;aspect-ratio:3/1.15}
@@ -8836,7 +8836,7 @@ body.sc631on{overflow:hidden}
 #sc631.bgU634{background:#EEF1E4}
 #sc631.bgU634::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_univ.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
 #sc631.bgU634>*{position:relative;z-index:1}
-#sc631.bgU634 .hd631{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
+#sc631.bgU634 .hd631{background:none!important;position:relative}
 #sc631.bgU634 .tt631 small{background:rgba(255,255,255,.85);border-radius:99px;padding:0 6px;display:inline-block;max-width:100%;color:#3F55C4}
 #sc631.bgU634 .sec631,#sc631.bgU634 .lock631,#sc631.bgU634 .rw631{background:rgba(255,255,255,.92)}
 #sc631.bgU634 .wrap631.result{min-height:100%;justify-content:flex-end}
@@ -8911,7 +8911,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.36.0', IMG = './assets/images/v636/';
+const VER = '6.37.0', IMG = './assets/images/v636/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const A = k => X(artSrc(k) || '');
@@ -9059,7 +9059,7 @@ function main(){
   if(!ROOT) return; const s = S(), t = TK(), sec = secretToday();
   ROOT.innerHTML = `<div class="w636">
     <div class="top636"><div class="sgn636"><span class="tr636"><img src="${A('trn_shinkansen')}" alt=""></span><div><b><ruby>大<rt>おお</rt></ruby>きな<ruby>駅<rt>えき</rt></ruby></b><small>いろいろな ところへ でかけよう！</small></div></div>
-      <button type="button" class="x636" data-a="close">✕</button></div>
+      <button type="button" class="x636" data-a="close" aria-label="とじる"><svg viewBox="0 0 16 16"><path d="M3 3L13 13M13 3L3 13" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></button></div>
     <div class="brd636"><div class="bh636"><span class="clk636"></span>でんしゃの ごあんない<em>${ticketDots()}</em></div>
       ${COURSE.map(c => { const op = courseOpen(c);
         return `<button type="button" class="row636 ${op ? '' : 'lk'}" ${op ? `data-go="${c.id}"` : 'data-a="locked"'} style="--c:${c.c}"><span class="tm">${c.t}</span><b>${op ? c.n : '？？？'}</b><span class="pl">${op ? `のりば ${c.pl}` : `${lockSVG()} ${CFG.rank[c.rank].n}`}</span></button>`; }).join('')}
@@ -9231,18 +9231,41 @@ const stampSVG = (c, k) => `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r
   <text x="60" y="38" font-size="13" font-weight="900" text-anchor="middle" fill="${k==='gold' ? '#D4A017' : '#D9363E'}">${X(c.n).slice(0,7)}</text><text x="60" y="96" font-size="11" font-weight="900" text-anchor="middle" fill="${k==='gold' ? '#D4A017' : '#D9363E'}">${k==='gold' ? 'ひみつ' : k==='pf' ? 'パーフェクト' : dayKey().slice(5).replace('-','/')}</text></svg>`;
 
 /* ---------- ちず ---------- */
+const MV = {x:0, y:0, w:400};
+const clampMV = () => { MV.w = Math.max(100, Math.min(400, MV.w)); const h = MV.w*1.1; MV.x = Math.max(0, Math.min(400 - MV.w, MV.x)); MV.y = Math.max(0, Math.min(440 - h, MV.y)); };
+function mapDots(){
+  const cnt = {}; STN.forEach(x => { if(readOK(x[0])) cnt[x[3]] = (cnt[x[3]]||0) + 1; });
+  const col = n => n >= 5 ? '#E8414B' : n >= 2 ? '#FF8A65' : '#FFC1A6', k = Math.max(.32, MV.w/400);
+  return PREF.map(p => { const n = cnt[p[0]] || 0, [x,y] = prefXY(p), has = STN.some(st => st[3]===p[0]);
+    const r = (n ? 9 : 5) * k, lab = MV.w <= 200 && (has || n) ? `<text x="${x}" y="${y + r + 9*k}" font-size="${(8.5*k).toFixed(2)}" font-weight="900" text-anchor="middle" fill="#3A4A3A" stroke="#fff" stroke-width="${(2.4*k).toFixed(2)}" paint-order="stroke" pointer-events="none">${X(p[0].replace(/[都府県]$/,''))}</text>` : '';
+    return `<circle class="pd636" data-pf="${X(p[0])}" cx="${x}" cy="${y}" r="${Math.max(r, 7*k).toFixed(2)}" fill="transparent"/><circle cx="${x}" cy="${y}" r="${r.toFixed(2)}" fill="${n ? col(n) : has ? '#fff' : '#C9D3C4'}" stroke="${n ? '#fff' : '#8AA'}" stroke-width="${(2*k).toFixed(2)}" pointer-events="none"/>${n ? `<text x="${x}" y="${y + 3.5*k}" font-size="${(10*k).toFixed(2)}" font-weight="900" text-anchor="middle" fill="#fff" pointer-events="none">${n}</text>` : ''}${lab}`; }).join('');
+}
 function mapView(pick){
-  const s = S(), cnt = {}; STN.forEach(x => { if(readOK(x[0])) cnt[x[3]] = (cnt[x[3]]||0) + 1; });
-  const col = n => n >= 5 ? '#E8414B' : n >= 2 ? '#FF8A65' : '#FFC1A6';
-  const dots = PREF.map(p => { const n = cnt[p[0]] || 0, [x,y] = prefXY(p), has = STN.some(st => st[3]===p[0]);
-    return `<circle class="pd636" data-pf="${X(p[0])}" cx="${x}" cy="${y}" r="${n ? 9 : 5}" fill="${n ? col(n) : has ? '#fff' : '#C9D3C4'}" stroke="${n ? '#fff' : '#8AA'}" stroke-width="2"/>${n ? `<text x="${x}" y="${y+3.5}" font-size="10" font-weight="900" text-anchor="middle" fill="#fff" pointer-events="none">${n}</text>` : ''}`; }).join('');
-  const sel = pick && STN.filter(st => st[3]===pick);
+  const sel = pick && STN.filter(st => st[3]===pick); clampMV();
   ROOT.innerHTML = `<div class="w636 qz636"><div class="qc636 mp636"><div class="qh636"><span><img class="hi636" src="${A('so_map')}" alt=""> ちずを みる</span><button type="button" class="qt636" data-m="back">もどる</button></div>
-    <div class="mpw636"><svg class="jpMap" viewBox="0 0 400 440">${jpBase()}${dots}</svg></div>
+    <div class="mpw636"><svg class="jpMap" viewBox="${MV.x} ${MV.y} ${MV.w} ${MV.w*1.1}"><g class="base636">${jpBase()}</g><g class="dots636">${mapDots()}</g></svg>
+      <div class="zm636"><button type="button" data-z="in">＋</button><button type="button" data-z="out">－</button><button type="button" data-z="all" class="sm">ぜんぶ</button></div></div>
     <div class="lg636"><span><i style="background:#FFC1A6"></i>1</span><span><i style="background:#FF8A65"></i>2〜4</span><span><i style="background:#E8414B"></i>5〜</span><span><i style="background:#fff;border:1.5px solid #8AA"></i>まだ</span></div>
-    <div class="hn636"><img src="${A('bird_think')}" alt="">${sel ? `<div><b>${X(pick)}</b>：${sel.filter(st => readOK(st[0])).map(st => `<ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby>`).join('・') || 'まだ よめた 駅が ないよ'}${sel.some(st => !readOK(st[0])) ? `<small>（まだ ${sel.filter(st => !readOK(st[0])).length}駅 あるよ）</small>` : ''}</div>` : 'まるを タッチすると その 県の 駅が 見られるよ'}</div></div></div>`;
+    <div class="hn636"><img src="${A('bird_think')}" alt="">${sel ? `<div><b>${X(pick)}</b>：${sel.filter(st => readOK(st[0])).map(st => `<ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby>`).join('・') || 'まだ よめた 駅が ないよ'}${sel.some(st => !readOK(st[0])) ? `<small>（まだ ${sel.filter(st => !readOK(st[0])).length}駅 あるよ）</small>` : ''}</div>` : 'ゆび 2本や ＋で ひろげて、まるを タッチすると その 県の 駅が 見られるよ'}</div></div></div>`;
   ROOT.querySelector('[data-m="back"]').onclick = e => { e.stopPropagation(); main(); };
-  ROOT.querySelectorAll('[data-pf]').forEach(c => c.addEventListener('click', e => { e.stopPropagation(); mapView(c.dataset.pf); }));
+  const svg = ROOT.querySelector('.mpw636 svg'), wrap = ROOT.querySelector('.mpw636');
+  const apply = () => { clampMV(); svg.setAttribute('viewBox', `${MV.x} ${MV.y} ${MV.w} ${MV.w*1.1}`); svg.querySelector('.dots636').innerHTML = mapDots(); };
+  const zoomAt = (f, fx=.5, fy=.5) => { const cx = MV.x + MV.w*fx, cy = MV.y + MV.w*1.1*fy; MV.w *= f; MV.x = cx - MV.w*fx; MV.y = cy - MV.w*1.1*fy; apply(); };
+  ROOT.querySelectorAll('[data-z]').forEach(b => b.onclick = e => { e.stopPropagation(); const z = b.dataset.z; if(z==='all'){ MV.x = 0; MV.y = 0; MV.w = 400; apply(); } else zoomAt(z==='in' ? .6 : 1/.6); });
+  /* ゆびで うごかす・2本で ひろげる */
+  const pts = new Map(); let moved = 0, last = null, d0 = 0, w0 = 0, wx = 0, wy = 0;
+  const rel = (cx, cy) => { const r = svg.getBoundingClientRect(); return [(cx - r.left)/r.width, (cy - r.top)/r.height]; };
+  svg.addEventListener('pointerdown', e => { pts.set(e.pointerId, [e.clientX, e.clientY]); svg.setPointerCapture(e.pointerId); moved = 0; last = [e.clientX, e.clientY];
+    if(pts.size===2){ const [a, b2] = [...pts.values()]; d0 = Math.hypot(a[0]-b2[0], a[1]-b2[1]); w0 = MV.w; const [fx, fy] = rel((a[0]+b2[0])/2, (a[1]+b2[1])/2); wx = MV.x + fx*MV.w; wy = MV.y + fy*MV.w*1.1; } });
+  svg.addEventListener('pointermove', e => { if(!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); const r = svg.getBoundingClientRect();
+    if(pts.size===2){ const [a, b2] = [...pts.values()], d = Math.hypot(a[0]-b2[0], a[1]-b2[1]); if(d0 > 10){ const [fx, fy] = rel((a[0]+b2[0])/2, (a[1]+b2[1])/2); MV.w = Math.max(100, Math.min(400, w0 * d0 / d)); MV.x = wx - fx*MV.w; MV.y = wy - fy*MV.w*1.1; apply(); } moved = 99; return; }
+    const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY]; moved += Math.abs(dx) + Math.abs(dy);
+    if(moved > 6 && MV.w < 400){ MV.x -= dx * MV.w / r.width; MV.y -= dy * MV.w / r.width; apply(); } });
+  const up = e => { pts.delete(e.pointerId); if(pts.size < 2) d0 = 0; };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  svg.addEventListener('wheel', e => { e.preventDefault(); const [fx, fy] = rel(e.clientX, e.clientY); zoomAt(e.deltaY < 0 ? .85 : 1/.85, fx, fy); }, {passive:false});
+  svg.addEventListener('click', e => { if(moved > 6) return; const c = e.target.closest('[data-pf]'); if(!c) return; e.stopPropagation(); mapView(c.dataset.pf); });
+  void wrap;
 }
 /* ---------- たびの きろく・ずかん ---------- */
 function recView(tab='rank'){
@@ -9303,7 +9326,7 @@ body.stn636on{overflow:hidden}
 .sgn636{flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#FFF8E8,#F6E5C2);border:3px solid #8A5A2B;border-radius:14px;padding:4px 10px;box-shadow:0 3px 0 #6B4220}
 .sgn636 .tr636 img{height:30px;width:auto;display:block}
 .sgn636 b{display:block;font-size:22px;color:#6B3A12;line-height:1.3}.sgn636 rt{font-size:9px}.sgn636 small{font-size:10.5px;font-weight:800;color:#8A5A2B}
-.x636{flex:none;width:38px;height:38px;border-radius:50%;border:3px solid #fff;background:#E8606A;color:#fff;font:inherit;font-weight:900;font-size:17px;box-shadow:0 3px 0 #B5434C}
+.x636{flex:none;width:40px;height:40px;border-radius:50%;border:3px solid #fff;background:#E8606A;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #B5434C;line-height:0}.x636 svg{width:16px;height:16px;display:block}
 .brd636{background:#1E2430;border:4px solid #4A5160;border-radius:12px;padding:5px 6px 6px;box-shadow:0 4px 10px rgba(0,0,0,.25)}
 .bh636{display:flex;align-items:center;gap:6px;color:#fff;font-weight:900;font-size:13px;padding:0 2px 4px;border-bottom:1px dashed #4A5160;margin-bottom:3px}
 .bh636 em{margin-left:auto;font-style:normal}
@@ -9392,7 +9415,8 @@ body.stn636on{overflow:hidden}
 .up636{background:linear-gradient(90deg,#FFE08A,#FFF3C4);border-radius:12px;padding:6px;font-weight:900;color:#8A5A00;animation:pop2 .5s}
 .up636 .rk636{width:28px;height:28px}
 /* ちず・きろく */
-.mpw636{background:#CFEBFF;border-radius:14px;overflow:hidden}.mpw636 svg{width:100%;height:auto;display:block}
+.mpw636{position:relative;background:#CFEBFF;border-radius:14px;overflow:hidden;touch-action:none}.mpw636 svg{touch-action:none}.mpw636 .base636 *{vector-effect:non-scaling-stroke}
+.zm636{position:absolute;right:6px;top:6px;display:flex;flex-direction:column;gap:5px}.zm636 button{width:38px;height:38px;border-radius:50%;border:2.5px solid #fff;background:#2F6FA3;color:#fff;font:inherit;font-size:22px;font-weight:900;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.25)}.zm636 button.sm{font-size:10px;background:#5A8FBF}.mpw636 svg{width:100%;height:auto;display:block}
 .pd636{cursor:pointer}
 .lg636{display:flex;justify-content:center;gap:8px;font-size:11px;font-weight:800}.lg636 i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:2px;vertical-align:middle}
 .hn636 rt{font-size:8px}
