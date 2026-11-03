@@ -7973,7 +7973,10 @@ const bar = (a, b, cls='') => `<span class="bar631 ${cls}"><i style="width:${Mat
 /* ---------- クリック ---------- */
 let ST = {subj:null, diff:null};
 async function onClick(e){
-  const t = e.target.closest('[data-a],[data-who],[data-subj],[data-diff],[data-th],[data-lv]'); if(!t || busy) return;
+  const t = e.target.closest('[data-a],[data-who],[data-subj],[data-diff],[data-th],[data-lv],[data-pal]'); if(!t || busy) return;
+  if(e.target.closest('[data-pal]') && CUR==='school'){ const k = e.target.closest('[data-pal]').dataset.pal, b = ROOT.querySelector(`.pb639[data-pal="${k}"]`);
+    const OW = ['いっしょに 学ぼう！','どの きょうかに する？','★を あつめよう！','わからなくても だいじょうぶ！','きょうも えらいね！'], SE = ['きっと できるよ！','ミッション がんばろ！','れんぞくで せいかい めざそう！','たからばこ あけたいな〜','ぼくも おうえん してるよ！'];
+    if(b){ const L2 = k==='0' ? OW : SE; let v; do{ v = choice(L2); }while(v===b.textContent && L2.length > 1); b.textContent = v; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); sound('tap'); } return; }
   if(t.dataset.who && t.classList.contains('pl639')){ const r = resBy(t.dataset.who), b = t.querySelector('.bb639'); if(r && b){ b.textContent = sayOf(r); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; sound('tap'); } return; }
   if(t.dataset.who){ const r = resBy(t.dataset.who); if(r) bubble(t, CUR==='uni' ? speak(r, choice(['この データ、おもしろい！','つぎの はっけんは なにかな','いっしょに けんきゅう しよう！','ひらめいた かも…！'])) : sayOf(r)); return; }
   if(t.dataset.subj){ ST.subj = t.dataset.subj; sound('ok'); schoolMain(); return; }
@@ -8028,17 +8031,16 @@ function schoolMain(){
   const tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
   const MIC = {sp:subjImg(sp), rev:ic('nigate'), c3:ic('streak'), two:ic('mission')};
   const MCOL = ['#FDE3E6','#DDEBFB','#FFF1C9'];
-  const pals = ml.slice(0, 2), pos = [[27,'l'],[73,'r']];
-  const sayL = ['いっしょに 学ぼう！','きっと できるよ！','きょうも がんばろう！','どの きょうかに する？','★を あつめよう！'];
   const tile = (a, img, n, badge, extra='') => `<button type="button" class="tl639" data-a="${a}"><span class="ti">${img}</span><b>${n}</b>${badge ? `<i class="bd639 ${badge==='!' ? 'red' : ''}">${badge}</i>` : ''}${extra}</button>`;
   ROOT.innerHTML = `<div class="wrap631 school s639">
-    <header class="hd639">
+    <div class="tp639"><header class="hd639">
       <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>まちへ</b></button>
-      <div class="sg639"><i class="lf l"></i><i class="lf r"></i><img src="${X(artSrc('icon_kokugo')||'')}" alt=""><div><small>まなびタウンの</small><b>がっこう</b></div></div>
+      <img class="lg639" src="./assets/images/v639/logo_school.webp" alt="がっこう">
       <button type="button" class="st639" data-a="cal"><span>${ic('streak')} れんぞく <em>${s.streak||0}</em> にち</span><span><i class="sx639">★</i> <em class="g">${tot}</em></span></button>
     </header>
     <div class="cp639"><span>＼ ${dayOK() ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '日づけが もどっているよ'} ／</span></div>
-    <div class="sc639">${pals.map((r, i) => `<button type="button" class="pl639 ${pos[i][1]}" data-who="${X(r.id)}" style="left:${pos[i][0]}%;animation-delay:${i*.4}s"><span class="bb639">${X(speak(r, sayL[(i + new Date().getDate()) % sayL.length]))}</span><img src="${X(rsrc(r))}" alt=""><em>${X(r.name)}</em></button>`).join('')}</div>
+    <button type="button" class="pal639 ow" data-pal="0" aria-label="フクロウせんせい"></button><button type="button" class="pal639 se" data-pal="1" aria-label="アザラシくん"></button>
+    <span class="pb639 ow" data-pal="0">いっしょに 学ぼう！</span><span class="pb639 se" data-pal="1">きっと できるよ！</span></div>
     <section class="pn639 ms639"><div class="ph639">${ic('mission')}<b>きょうの ミッション</b><span class="ct639">${M.done.filter(Boolean).length}/3</span></div>
       <div class="mw639"><ol data-a="mis">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}" style="--bg:${MCOL[i]}"><i class="ck639">${M.done[i] ? '<svg viewBox="0 0 20 20"><path d="M4 10.5L8.5 15L16 6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</i><span class="mi639">${MIC[m.id]||ic('mission')}</span><span class="mt639">${X(m.t)}</span></li>`).join('')}</ol>
       <button type="button" class="cs639 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ！' : M.done.every(Boolean) ? 'タッチで あける！' : 'ぜんぶ できたら<br>ごほうびが もらえるよ！'}</small></button></div></section>
@@ -8832,6 +8834,23 @@ body.sc631on{overflow:hidden}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
+/* ===== v6.40 がっこう：フクロウ＆アザラシの 背景・ロゴ ===== */
+#sc631.bgS633{background:#F3DCAB}
+#sc631.bgS633::before{background:url(./assets/images/v639/bg_school_pals.webp) center top/cover no-repeat!important;filter:blur(6px) saturate(1.1);opacity:.6}
+.s639{container-type:inline-size;background:#F3DCAB url(./assets/images/v639/bg_school_pals.webp) center top/100% auto no-repeat;padding-left:8px;padding-right:8px;box-shadow:0 0 30px rgba(0,0,0,.15)}
+.tp639{position:relative;min-height:88cqw}
+.lg639{justify-self:center;width:100%;max-width:200px;height:auto;display:block;margin-top:-4px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.18));animation:sg639 3s ease-in-out infinite}
+.hd639{grid-template-columns:auto minmax(0,1fr) auto!important}
+.cp639{position:relative;z-index:2}
+.pal639{position:absolute;top:48cqw;height:38cqw;border:none;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pal639.ow{left:18%;width:33%}.pal639.se{left:51%;width:33%}
+.pb639{position:absolute;top:31cqw;z-index:3;max-width:40cqw;background:#fff;border:3px solid #6B4A2A;border-radius:20px;padding:6px 11px;font-size:clamp(12px,3.6cqw,17px);line-height:1.35;font-weight:900;color:#4A3420;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.12);cursor:pointer;animation:bub639 2.6s ease-in-out infinite}
+.pb639.ow{left:4cqw;transform-origin:70% 100%}.pb639.se{right:4cqw;transform-origin:30% 100%;animation-delay:1.3s}
+.pb639::after{content:"";position:absolute;bottom:-13px;border:7px solid transparent;border-top:10px solid #6B4A2A}
+.pb639.ow::after{left:70%}.pb639.se::after{right:62%}
+.pb639.pop{animation:pbp639 .35s ease-out, bub639 2.6s ease-in-out .35s infinite}
+@keyframes pbp639{from{transform:scale(.6)}to{transform:scale(1)}}
+
 /* ===== v6.39 がっこう（テンション UP） ===== */
 #sc631.bgS633::before{background:url(./assets/images/v639/bg_school_gate.webp) center top/cover no-repeat!important}
 .s639{gap:9px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
@@ -9029,7 +9048,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.39.0', IMG = './assets/images/v636/';
+const VER = '6.40.0', IMG = './assets/images/v636/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const A = k => X(artSrc(k) || '');
