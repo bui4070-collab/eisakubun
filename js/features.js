@@ -7974,6 +7974,7 @@ const bar = (a, b, cls='') => `<span class="bar631 ${cls}"><i style="width:${Mat
 let ST = {subj:null, diff:null};
 async function onClick(e){
   const t = e.target.closest('[data-a],[data-who],[data-subj],[data-diff],[data-th],[data-lv]'); if(!t || busy) return;
+  if(t.dataset.who && t.classList.contains('pl639')){ const r = resBy(t.dataset.who), b = t.querySelector('.bb639'); if(r && b){ b.textContent = sayOf(r); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; sound('tap'); } return; }
   if(t.dataset.who){ const r = resBy(t.dataset.who); if(r) bubble(t, CUR==='uni' ? speak(r, choice(['この データ、おもしろい！','つぎの はっけんは なにかな','いっしょに けんきゅう しよう！','ひらめいた かも…！'])) : sayOf(r)); return; }
   if(t.dataset.subj){ ST.subj = t.dataset.subj; sound('ok'); schoolMain(); return; }
   if(t.dataset.diff){ ST.diff = t.dataset.diff; SV().lastDiff = ST.diff; sound('ok'); schoolMain(); return; }
@@ -7984,6 +7985,7 @@ async function onClick(e){
   try{
     if(a==='close') close();
     else if(a==='start') await runClass(ST.subj, ST.diff);
+    else if(a==='pick') await pickDiff(t.dataset.k);
     else if(a==='cal') await calendar();
     else if(a==='mis') await misInfo();
     else if(a==='chest') await openChest();
@@ -8023,29 +8025,41 @@ function schoolMain(){
   const D = {easy:['かんたん','df_easy'], normal:['ふつう','df_normal'], hard:['むずかしい','df_hard']};
   const base = CFG.coin[ST.diff] || 10, mul = (ST.subj===sp ? 1.5 : 1);
   const pm = ST.subj && (L.cnt[ST.subj]||0) >= CFG.fullClass;
-  ROOT.innerHTML = `<div class="wrap631 school">
-    <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG633}logo_school.webp" alt="がっこう"><small>${dayOK() ? (special(L.d)===sp ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '') : '⚠️ 日づけが もどっているよ'}</small></div>
-      <button type="button" class="stk631" data-a="cal"><b>${ic('streak')} れんぞく ${s.streak||0}にち</b><small>${ic('ticket')}×${s.tickets||0}</small></button></header>
-    ${stage('bg_school', ml, {cls:'clear633'})}
-    <div class="mis633"><div class="mh633" data-a="mis"><b>${ic('mission')} きょうの ミッション</b><span class="mc633">${M.done.filter(Boolean).length}/3</span></div>
-      <div class="mb633"><ol data-a="mis">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}"><i>${M.done[i] ? '✓' : i+1}</i><span>${X(m.t)}</span></li>`).join('')}</ol>
-      <button type="button" class="chest633 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ' : M.done.every(Boolean) ? 'あける！' : 'ぜんぶで'}</small></button></div></div>
-    <div class="sec631"><div class="h631">きょうの じゅぎょう <small>スタンプ ${stamps}/5${stamps===4 ? ' <b class="hot">あと1つで かいきん賞！</b>' : stamps===5 ? ' 🏅 かいきん賞！' : ''}</small></div>
-      <div class="sbs631">${SK.map(subjBtn).join('')}</div></div>
-    <div class="sec631"><div class="h631">ちょうせんする もんだい</div>
-      <div class="dfs631">${Object.entries(D).map(([k,[n,ic]]) => `<button type="button" class="df631 ${ST.diff===k ? 'on' : ''}" data-diff="${k}">${recoDiff===k ? '<em class="rib631 g">おすすめ</em>' : ''}<span><img class="dfi633" src="${IMG633}${ic}.webp" alt=""></span><b>${n}</b><small>1もん ${CFG.coin[k]}コイン${k==='easy' ? '・★1まで' : ''}</small></button>`).join('')}</div></div>
-    <button type="button" class="bdg631 b636" data-a="badge"><div class="bt636">${medal(s.badge+1)}<b>${CFG.badge[s.badge].n}バッジ</b>${bn ? `<span>→ つぎは ${medal(bn.b ? s.badge+2 : 0,'s')}${bn.b.n}</span>` : '<span>さいこうの バッジ！</span>'}</div>
-      ${bn ? `<div class="bb636"><small>★ ${bn.tot}/${bn.b.st}</small><span class="bar631"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span></div><div class="bb636"><small>しゅっせき ${s.attend}/${bn.b.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/bn.b.d*100)}%"></i></span></div>${bn.each.length ? `<div class="bb636 e"><small>5きょうか ★${bn.b.each}ずつ：あと ${bn.each.map(k => SUBJ[k]).join('・')}</small></div>` : ''}` : ''}</button>
-    <button type="button" class="go631" data-a="start" ${ST.subj && ST.diff ? '' : 'disabled'}>${ST.subj ? `${ic('write','big')} ${SUBJ[ST.subj]}の じゅぎょうを はじめる！` : 'きょうかを えらんでね'}</button>
-    <div class="tools631">
-      <button type="button" data-a="fuku" ${s.fuku ? '' : 'class="off"'}>${ic('fuku')} ふくびき<b>${s.fuku||0}</b></button>
-      <button type="button" data-a="notes">${ic('nigate')} にがて<b>${s.notes.length}</b></button>
-      <button type="button" data-a="goal">${ic('goal')} しゅうの 目標${s.goal?.done ? '<b>✓</b>' : !s.goal?.g ? '<b class="red">!</b>' : ''}</button>
-      <button type="button" data-a="req">${ic('letter')} おねがい${s.req && !s.req.done ? '<b class="red">!</b>' : ''}</button>
-      <button type="button" data-a="touni">${ic('grad')} だいがく</button>
-      <button type="button" data-a="grade">${ic('building')} たてもの</button>
-      <button type="button" data-a="help" class="hp635"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
-    </div></div>`;
+  const tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
+  const MIC = {sp:subjImg(sp), rev:ic('nigate'), c3:ic('streak'), two:ic('mission')};
+  const MCOL = ['#FDE3E6','#DDEBFB','#FFF1C9'];
+  const pals = ml.slice(0, 2), pos = [[27,'l'],[73,'r']];
+  const sayL = ['いっしょに 学ぼう！','きっと できるよ！','きょうも がんばろう！','どの きょうかに する？','★を あつめよう！'];
+  const tile = (a, img, n, badge, extra='') => `<button type="button" class="tl639" data-a="${a}"><span class="ti">${img}</span><b>${n}</b>${badge ? `<i class="bd639 ${badge==='!' ? 'red' : ''}">${badge}</i>` : ''}${extra}</button>`;
+  ROOT.innerHTML = `<div class="wrap631 school s639">
+    <header class="hd639">
+      <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>まちへ</b></button>
+      <div class="sg639"><i class="lf l"></i><i class="lf r"></i><img src="${X(artSrc('icon_kokugo')||'')}" alt=""><div><small>まなびタウンの</small><b>がっこう</b></div></div>
+      <button type="button" class="st639" data-a="cal"><span>${ic('streak')} れんぞく <em>${s.streak||0}</em> にち</span><span><i class="sx639">★</i> <em class="g">${tot}</em></span></button>
+    </header>
+    <div class="cp639"><span>＼ ${dayOK() ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '日づけが もどっているよ'} ／</span></div>
+    <div class="sc639">${pals.map((r, i) => `<button type="button" class="pl639 ${pos[i][1]}" data-who="${X(r.id)}" style="left:${pos[i][0]}%;animation-delay:${i*.4}s"><span class="bb639">${X(speak(r, sayL[(i + new Date().getDate()) % sayL.length]))}</span><img src="${X(rsrc(r))}" alt=""><em>${X(r.name)}</em></button>`).join('')}</div>
+    <section class="pn639 ms639"><div class="ph639">${ic('mission')}<b>きょうの ミッション</b><span class="ct639">${M.done.filter(Boolean).length}/3</span></div>
+      <div class="mw639"><ol data-a="mis">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}" style="--bg:${MCOL[i]}"><i class="ck639">${M.done[i] ? '<svg viewBox="0 0 20 20"><path d="M4 10.5L8.5 15L16 6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</i><span class="mi639">${MIC[m.id]||ic('mission')}</span><span class="mt639">${X(m.t)}</span></li>`).join('')}</ol>
+      <button type="button" class="cs639 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ！' : M.done.every(Boolean) ? 'タッチで あける！' : 'ぜんぶ できたら<br>ごほうびが もらえるよ！'}</small></button></div></section>
+    <section class="pn639"><div class="ph639"><img class="pi639" src="${X(artSrc('ui_study')||'')}" alt=""><b>きょうの じゅぎょう</b><span class="hint639">＼ すきな きょうかから はじめよう！ ／</span></div>
+      <div class="sj639">${SK.map(k => { const bb = L.best[k]||0, n = L.cnt[k]||0, glow = stamps===4 && bb < 1;
+        return `<button type="button" class="sb639 ${glow ? 'glow' : ''}" data-a="pick" data-k="${k}" style="--c:${SUBJ_C[k]}">${k===sp ? '<em class="x15">×1.5</em>' : ''}${bb >= 1 ? '<i class="sp639">✔</i>' : ''}<span class="si">${subjImg(k)}</span><b>${SUBJ[k]}</b>${stars(bb)}<small>${n >= CFG.fullClass ? 'れんしゅう' : `きょう ${n}/${CFG.fullClass}`}</small></button>`; }).join('')}</div>
+      <div class="stp639">スタンプ ${stamps}/5 ${'<i class="on"></i>'.repeat(stamps)}${'<i></i>'.repeat(5-stamps)} ${stamps===4 ? '<b>あと1つで かいきん賞！</b>' : stamps===5 ? '<b>かいきん賞！</b>' : ''}</div></section>
+    <section class="pn639"><div class="ph639"><svg class="pi639" viewBox="0 0 32 32"><path d="M4 24L6 10L12 16L16 6L20 16L26 10L28 24Z" fill="#FFD24A" stroke="#B5701C" stroke-width="2" stroke-linejoin="round"/><rect x="4" y="24" width="24" height="4" rx="1.5" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/></svg><b>これまでの きろく</b><span class="dl639"></span></div>
+      <div class="tls639">
+        ${tile('badge', medal(s.badge+1), 'バッジ', '', bn ? `<span class="mb639"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span>` : '')}
+        ${tile('fuku', ic('fuku'), 'ふくびき', s.fuku ? s.fuku : '')}
+        ${tile('notes', ic('nigate'), 'にがて', s.notes.length ? s.notes.length : '')}
+        ${tile('goal', ic('goal'), 'しゅうの<br>目標', s.goal?.done ? '✓' : !s.goal?.g ? '!' : '')}
+      </div>
+      <div class="sub639">
+        <button type="button" data-a="req">${ic('letter')} おねがい${s.req && !s.req.done ? '<i class="bd639 red">!</i>' : ''}</button>
+        <button type="button" data-a="touni">${ic('grad')} だいがく</button>
+        <button type="button" data-a="grade">${ic('building')} たてもの</button>
+        <button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
+      </div></section>
+  </div>`;
   persist();
   /* 週の はじめ：つうしんぼ・目標 */
   if(!busy) setTimeout(weekStart, 350);
@@ -8271,11 +8285,23 @@ async function reqView(){
     <p class="dlgP facNote">${R.done ? '✅ たっせい ずみ（また らいしゅう）' : `${SUBJ[R.subj]}の じゅぎょうを 1かい うけると たっせい（きずな+3・コイン+50）`}</p>`, R.done ? [{label:'とじる', cls:'gold', v:0}] : [{label:`${subjImg(R.subj)} ${SUBJ[R.subj]}を えらぶ`, cls:'gold', v:1}, {label:'あとで', v:0}], 'wide');
   if(v){ ST.subj = R.subj; schoolMain(); }
 }
+async function pickDiff(k){
+  const s = SV(), L = DL(), sp = special(L.d), n = L.cnt[k]||0;
+  const rec = (L.best[k]||0) >= 3 && {easy:'normal', normal:'hard'}[s.lastDiff];
+  const D = [['easy','かんたん','df_easy','★1まで'],['normal','ふつう','df_normal','★3まで'],['hard','むずかしい','df_hard','★3＋ボーナス']];
+  sound('ok');
+  const v = await dialog(`<div class="pk639" style="--c:${SUBJ_C[k]}"><span class="pki">${subjImg(k)}</span><div><b>${SUBJ[k]}</b>${k===sp ? '<em>とくべつ ×1.5！</em>' : ''}<small>${n >= CFG.fullClass ? 'きょうは れんしゅうモード（コイン×0.2）' : `きょう ${n}/${CFG.fullClass}かい`}</small></div></div><p class="dlgP">どの もんだいに ちょうせん する？</p>`,
+    D.map(([d, nm, im, sub]) => ({label:`<img src="${IMG633}${im}.webp" alt=""><b>${nm}</b><small>${sub}</small>${rec===d ? '<em>おすすめ</em>' : ''}${(s.lastDiff||'normal')===d ? '<i>まえかい</i>' : ''}`, cls:`white df639 ${d}`, v:d})).concat([{label:'やめる', cls:'white cancel639', v:''}]), 'wide dfw639');
+  if(!v) return;
+  ST.subj = k; ST.diff = v; s.lastDiff = v; persist();
+  await runClass(k, v);
+}
 async function badgeView(){
   const s = SV(), tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
   await dialog(`<h2 class="dlgT">${medal(s.badge+1,'h')} がっこうバッジ</h2><p class="dlgP">★ ごうけい <b>${tot}</b>　つうさん しゅっせき <b>${s.attend}にち</b></p>
     <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${medal(i+2)} ${b.n}</th><td>★${b.st}・${b.d}にち${b.each ? `・5きょうか ★${b.each}いじょう` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
     <div class="sbst631">${SK.map(k => `<span>${subjImg(k)} ★${s.stars[k]||0}</span>`).join('')}</div>
+    ${(() => { const bn = badgeNext(); return bn ? `<div class="bdb639"><b>つぎの ${medal(s.badge+2,'s')}${bn.b.n}まで</b><div class="bb636"><small>★ ${bn.tot}/${bn.b.st}</small><span class="bar631"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span></div><div class="bb636"><small>しゅっせき ${s.attend}/${bn.b.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/bn.b.d*100)}%"></i></span></div>${bn.each.length ? `<div class="bb636 e"><small>5きょうか ★${bn.b.each}ずつ：あと ${bn.each.map(k => SUBJ[k]).join('・')}</small></div>` : ''}</div>` : ''; })()}
     <p class="dlgP facNote">ゴールドで だいがくの 入学試験に ちょうせん できるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
 
@@ -8806,6 +8832,98 @@ body.sc631on{overflow:hidden}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
+/* ===== v6.39 がっこう（テンション UP） ===== */
+#sc631.bgS633::before{background:url(./assets/images/v639/bg_school_gate.webp) center top/cover no-repeat!important}
+.s639{gap:9px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+.hd639{display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 0 0}
+.bk639{display:flex;align-items:center;gap:2px;border:3px solid #fff;background:linear-gradient(180deg,#FFF6E2,#F7E3BE);border-radius:18px;padding:5px 7px 5px 4px;font:inherit;box-shadow:0 3px 0 #C9A36A,0 4px 8px rgba(0,0,0,.15)}
+.bk639 svg{width:24px;height:24px;background:#F07B54;border-radius:50%;padding:3px}.bk639 b{font-size:12.5px;color:#6B3A12;white-space:nowrap}
+.sg639{position:relative;justify-self:center;display:flex;align-items:center;gap:4px;padding:5px 10px 6px 6px;background:linear-gradient(180deg,#F8DCA8,#E9BC78);border:3.5px solid #8A5A2B;border-radius:16px;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 4px 0 #6B4220,0 6px 10px rgba(0,0,0,.18);transform:rotate(-1.5deg);animation:sg639 3s ease-in-out infinite}
+@keyframes sg639{50%{transform:rotate(1deg) translateY(-2px)}}
+.sg639::before{content:"";position:absolute;inset:3px;border-radius:11px;background:repeating-linear-gradient(175deg,rgba(150,90,30,.08) 0 3px,transparent 3px 9px);pointer-events:none}
+.sg639 img{width:30px;height:30px;object-fit:contain;flex:none}
+.sg639 div{display:flex;flex-direction:column;line-height:1;white-space:nowrap;word-break:keep-all}
+.sg639 small{font-size:10.5px;font-weight:900;color:#7A4A1A;letter-spacing:1px}
+.sg639 b{font-size:27px;font-weight:900;color:#5A2E0C;letter-spacing:2px;text-shadow:0 2px 0 #FFF2D6}
+.sg639 .lf{position:absolute;top:-11px;width:18px;height:22px;background:radial-gradient(ellipse at 40% 40%,#9BE07A,#4CAF50);border-radius:0 80% 0 80%;border:2px solid #2E7D32}
+.sg639 .lf.l{left:-6px;transform:rotate(-30deg)}.sg639 .lf.r{right:-6px;transform:rotate(60deg) scaleX(-1)}
+.st639{display:flex;flex-direction:column;align-items:center;gap:1px;border:3px solid #F7C35F;background:#FFFBEF;border-radius:16px;padding:3px 6px;font:inherit;box-shadow:0 3px 0 #E8B04A}
+.st639 span{display:flex;align-items:center;gap:1px;font-size:10px;font-weight:900;color:#6B4A2A;white-space:nowrap}
+.st639 em{font-style:normal;font-size:20px;color:#E8414B;line-height:1}.st639 em.g{color:#6B4A2A}
+.st639 .ii635{width:18px;height:18px;margin:0}.sx639{font-style:normal;color:#FFB400;font-size:22px;line-height:1;text-shadow:0 1px 0 #C98A00}
+.cp639{text-align:center;margin-top:-2px}
+.cp639 span{display:inline-block;font-size:13px;font-weight:900;color:#6B3A12;background:rgba(255,255,255,.85);border-radius:99px;padding:2px 12px;box-shadow:0 2px 4px rgba(0,0,0,.1)}
+.sc639{position:relative;height:205px;margin:0 -4px}
+.pl639{position:absolute;bottom:0;transform:translateX(-50%);width:38%;max-width:170px;border:none;background:none;padding:0;animation:hop639 1.6s ease-in-out infinite}
+@keyframes hop639{0%,100%{translate:0 0}50%{translate:0 -7px}}
+.pl639 img{width:100%;height:150px;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 5px 4px rgba(0,0,0,.25))}
+.pl639 em{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);font-style:normal;font-size:10.5px;font-weight:900;background:#fff;border-radius:99px;padding:0 8px;color:#6B4A2A;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.bb639{position:absolute;bottom:150px;width:max-content;max-width:128px;background:#fff;border:3px solid #6B4A2A;border-radius:18px;padding:5px 9px;font-size:12.5px;line-height:1.35;font-weight:900;color:#4A3420;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.12);animation:bub639 2.4s ease-in-out infinite}
+.pl639.l .bb639{left:-4%}.pl639.r .bb639{right:-4%}
+.bb639::after{content:"";position:absolute;bottom:-12px;border:7px solid transparent;border-top:9px solid #6B4A2A}
+.pl639.l .bb639::after{left:60%}.pl639.r .bb639::after{right:60%}
+@keyframes bub639{50%{transform:scale(1.05) rotate(-2deg)}}
+.pn639{background:rgba(255,253,246,.97);border:3px solid #F1D9AA;border-radius:22px;padding:9px 9px 10px;box-shadow:0 4px 0 #E3C489,0 6px 14px rgba(120,80,20,.15)}
+.ph639{display:flex;align-items:center;gap:6px;margin:0 2px 7px}
+.ph639 b{font-size:16px;color:#5A3A1A;letter-spacing:1px;white-space:nowrap}
+.ph639 .ii635,.pi639{width:28px;height:28px;margin:0;object-fit:contain;flex:none}
+.ct639{margin-left:auto;background:#F2A33A;color:#fff;border-radius:99px;padding:1px 10px;font-weight:900;font-size:13px}
+.hint639{margin-left:auto;font-size:9.5px;font-weight:900;color:#B5701C;white-space:nowrap}@media (max-width:430px){.hint639{display:none}}
+.dl639{flex:1;height:0;border-bottom:3px dotted #E3C489;margin-left:4px}
+.mw639{display:flex;gap:7px;align-items:stretch}
+.mw639 ol{list-style:none;margin:0;padding:0;flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.mw639 li{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:14px;padding:5px 8px;min-height:36px}
+.ck639{flex:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2.5px solid #CFC2AA;display:flex;align-items:center;justify-content:center}
+.ck639 svg{width:15px;height:15px}
+.mw639 li.ok .ck639{background:#3BAF6A;border-color:#3BAF6A;animation:pop2 .4s}
+.mi639 .ii635,.mi639 .sic633{width:24px;height:24px;margin:0}
+.mt639{font-size:13px;font-weight:900;color:#5A4430;line-height:1.25}
+.mw639 li.ok .mt639{color:#3B8F5A;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:rgba(59,143,90,.55)}
+.cs639{flex:none;width:30%;max-width:130px;border:none;background:#FFF4D2;border-radius:16px;padding:6px 4px;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.cs639 .chi633{width:62px;height:62px}
+.cs639 small{font-size:10px;font-weight:900;color:#8A5A12;line-height:1.35;text-align:center}
+.cs639.glow{animation:glow631 .9s ease-in-out infinite alternate;background:#FFE08A}.cs639.got{opacity:.6}
+.sj639{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.sb639{position:relative;border:3px solid var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);border-radius:16px;padding:7px 1px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;box-shadow:0 4px 0 color-mix(in srgb,var(--c) 55%,#fff);transition:transform .1s}
+.sb639:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--c) 55%,#fff)}
+.sb639 .si .sic633{width:46px;height:46px;display:block;margin:0}
+.sb639 b{font-size:14px;color:var(--c);white-space:nowrap;filter:brightness(.85)}
+.sb639 .st631{font-size:14px}
+.sb639 small{font-size:9px;color:#8A6A45;font-weight:800;white-space:nowrap}
+.sb639.glow{animation:glow631 1.2s ease-in-out infinite alternate}
+.x15{position:absolute;left:-4px;top:-9px;font-style:normal;font-size:10px;font-weight:900;background:#FF6B4A;color:#fff;border-radius:8px;padding:0 5px;transform:rotate(-8deg);box-shadow:0 2px 0 #C94A22;z-index:1}
+.sp639{position:absolute;right:-5px;top:-7px;width:22px;height:22px;border-radius:50%;background:#E8414B;color:#fff;font-style:normal;font-size:13px;line-height:22px;text-align:center;font-weight:900;transform:rotate(-12deg);box-shadow:0 2px 0 #A82A32}
+.stp639{display:flex;align-items:center;gap:4px;justify-content:center;margin-top:7px;font-size:11.5px;font-weight:900;color:#7A5634}
+.stp639 i{width:13px;height:13px;border-radius:50%;border:2px solid #E8A0A6;background:#fff}.stp639 i.on{background:#E8414B;border-color:#E8414B}
+.stp639 b{color:#E8414B;animation:blink634 .8s ease-in-out infinite alternate}
+.tls639{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.tl639{position:relative;border:2.5px solid #EADCC4;background:#fff;border-radius:16px;padding:6px 2px 5px;font:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;box-shadow:0 3px 0 #E3D3B4}
+.tl639 .ti{height:40px;display:flex;align-items:center}
+.tl639 .ti .ii635,.tl639 .ti .md636{width:40px;height:40px;margin:0}
+.tl639 b{font-size:11.5px;color:#5A4430;line-height:1.2;text-align:center}
+.bd639{position:absolute;right:-5px;top:-7px;min-width:22px;height:22px;border-radius:99px;background:#F2A33A;color:#fff;font-style:normal;font-weight:900;font-size:12px;line-height:22px;padding:0 5px;border:2px solid #fff;box-shadow:0 2px 3px rgba(0,0,0,.2)}
+.bd639.red{background:#E8414B;animation:hop639 1s ease-in-out infinite}
+.mb639{display:block;width:80%;height:6px;border-radius:99px;background:#EFE5D3;overflow:hidden}.mb639 i{display:block;height:100%;background:linear-gradient(90deg,#FFD25A,#F2A33A)}
+.sub639{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:8px}
+.sub639 button{position:relative;display:inline-flex;align-items:center;gap:3px;border:none;background:#FFF6E4;border-radius:99px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:900;color:#6B4A2A}
+.sub639 img{width:20px;height:20px;object-fit:contain}.sub639 .ii635{width:20px;height:20px;margin:0}
+.sub639 .bd639{position:static;min-width:16px;height:16px;line-height:16px;font-size:10px;padding:0 4px;border:none}
+/* むずかしさ えらび */
+.pk639{display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--c) 12%,#fff);border:3px solid var(--c);border-radius:16px;padding:6px 10px}
+.pk639 .pki .sic633{width:56px;height:56px;margin:0}
+.pk639 div{display:flex;flex-direction:column;text-align:left}.pk639 b{font-size:22px;color:var(--c);filter:brightness(.85)}.pk639 small{font-size:11px;color:#7A5634;font-weight:800}
+.pk639 em{font-style:normal;font-size:11px;font-weight:900;color:#fff;background:#FF6B4A;border-radius:8px;padding:0 6px;align-self:flex-start}
+.dfw639 #dlgBtns{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.btn.df639{position:relative;display:flex!important;flex-direction:column;align-items:center;gap:1px;padding:8px 2px!important;border:3px solid #EADCC4!important;border-radius:16px!important;min-width:0}
+.btn.df639 img{width:52px;height:52px;object-fit:contain}.btn.df639 b{font-size:15px;color:#5A4430}.btn.df639 small{font-size:10px;color:#8A6A45}
+.btn.df639.easy{border-color:#9BD58A!important;background:#F2FBEE!important}.btn.df639.normal{border-color:#FFD25A!important;background:#FFFAE6!important}.btn.df639.hard{border-color:#F59AB0!important;background:#FFF0F4!important}
+.btn.df639 em{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;font-weight:900;background:#3BAF6A;color:#fff;border-radius:8px;padding:0 6px;white-space:nowrap}
+.btn.df639 i{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:900;background:#fff;color:#8A6A45;border:1.5px solid #EADCC4;border-radius:8px;padding:0 5px;white-space:nowrap}
+.dfw639 .btn.cancel639{grid-column:1/-1;margin-top:6px}
+.bdb639{background:#FFF8EA;border-radius:12px;padding:6px 8px;margin:6px 0;text-align:left}.bdb639>b{font-size:12.5px;color:#6B4A2A;display:flex;align-items:center;gap:3px;margin-bottom:3px}
+@media (max-width:360px){ .sg639 b{font-size:26px} .ph639 b{font-size:15px} .hint639{display:none} }
+.sg639{min-width:0}
+
 .md636{width:1.6em;height:1.6em;object-fit:contain;vertical-align:middle;display:inline-block}.md636.s{width:1.3em;height:1.3em}.md636.h{width:1.5em;height:1.5em}.md636.none{width:0}
 .b636{display:flex!important;flex-direction:column;gap:3px}
 .bt636{display:flex;align-items:center;gap:4px}.bt636 b{font-size:12.5px;color:#6B4A2A}.bt636 span{margin-left:auto;font-size:11px;color:#8A6A45;display:flex;align-items:center;gap:2px}
@@ -8911,7 +9029,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.38.0', IMG = './assets/images/v636/';
+const VER = '6.39.0', IMG = './assets/images/v636/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const A = k => X(artSrc(k) || '');
