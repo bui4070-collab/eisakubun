@@ -9832,7 +9832,7 @@ document.head.appendChild(css);
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.45.0', IMG = './assets/images/v644/';
+const VER = '6.46.0', IMG = './assets/images/v644/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 /* [id, なまえ, エリア, 絵（あたらしい 水彩 → なければ 住民の 絵）, まめちしき, [もんだい, せいかい, まちがい1, まちがい2, ★, かいせつ]...] */
@@ -9975,8 +9975,9 @@ const PLACE = {
 const all = P => P.an.concat([P.rare]);
 const anBy = (P, id) => all(P).find(a => a[0]===id);
 const NEW645 = {giraffe:'an_giraffe', panda:'an_panda', penguin:'an_penguin', penguin2:'an_penguin', turtle:'an_turtle', clownfish:'an_clownfish', octopus:'an_octopus'};
-const artOf = a => NEW645[a[0]] ? './assets/images/v645/' + NEW645[a[0]] + '.webp' : a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
-const isNew = a => !!NEW645[a[0]] || a[3].startsWith('v644:');
+const NEW646 = {lion:1, camel:1, redpanda:1, monkey:1, polarbear:1, seal:1, flamingo:1, whitetiger:1, seahorse:1, manta:1, shark:1, whaleshark:1};
+const artOf = a => NEW646[a[0]] ? './assets/images/v646/an_' + a[0] + '.webp' : NEW645[a[0]] ? './assets/images/v645/' + NEW645[a[0]] + '.webp' : a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
+const isNew = a => !!NEW646[a[0]] || !!NEW645[a[0]] || a[3].startsWith('v644:');
 
 /* ---------- セーブ ---------- */
 function SV(P){ const k = P.key==='zoo' ? 'zoo644' : 'aq644'; const s = save[k] || (save[k] = {seen:{}, perfect:0, complete:0});
@@ -10001,18 +10002,18 @@ const logo = () => P.logo ? `<img class="lg644" src="${P.logo}" alt="${P.n}">` :
 const hanaStand = (cls='') => `<div class="hn644 ${cls}"><i style="background-image:url(${IMG}hana_walk.webp)"></i></div>`;
 
 function top(){
-  if(!ROOT) return; stopLoop(); const s = SV(P), left = CFG.perDay - s.daily.walks;
-  ROOT.innerHTML = `<div class="w644 tp"><div class="bg644 ${P.key==='zoo' ? 'sav' : 'tunnel'} top"><i class="l1"></i><i class="l2"></i><i class="l3"></i>${P.key==='aq' ? '<i class="ray"></i>' : ''}</div>
+  if(!ROOT) return; stopLoop(); const s = SV(P), left = CFG.perDay - s.daily.walks, I6 = './assets/images/v646/';
+  const zones = P.key==='zoo' ? [[0,40,66,18,22],[1,66,68,25,22]] : [[0,56,42,38,32]];
+  ROOT.innerHTML = `<div class="w644 tp t646"><div class="tbg646" style="background-image:url(${I6}top_${P.key}.webp)"></div>
+    <div class="tim646"><img src="${I6}top_${P.key}.webp" alt="">
+      ${zones.map(([i,x,y,w,h]) => `<button type="button" class="gz646" data-z="guide" data-i="${i}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%" aria-label="ガイド"></button>`).join('')}
+      <span class="bb644 hidden"></span></div>
     <header class="hd644">${backBtn()}${logo()}${cryChip()}</header>
-    <div class="ts644">
-      ${P.key==='zoo' ? `<img class="tz644 a" src="${X(artOf(ZOO_AN[1]))}" alt=""><img class="tz644 b" src="${X(artOf(ZOO_AN[2]))}" alt="">` : `<img class="tz644 c" src="${X(artOf(AQ_AN[7]))}" alt=""><img class="tz644 d" src="${X(artOf(AQ_AN[2]))}" alt="">`}
-      ${hanaStand('top')}
-      ${P.guides.map((g, i) => `<button type="button" class="gd644 g${i}" data-z="guide" data-i="${i}"><img src="${X(artSrc(g) || '')}" alt=""></button>`).join('')}
-      <span class="bb644 hidden"></span>
-    </div>
-    <div class="tb644"><button type="button" class="go644" data-z="walk" ${left > 0 ? '' : 'disabled'}><span>${left > 0 ? `${P.n}を あるく` : 'きょうは もう おしまい'}</span><small>${left > 0 ? `きょう あと ${left}かい` : 'また あした あそぼう！'}</small></button>
-      <button type="button" class="zk644" data-z="zukan"><img src="${X(artSrc('ui_zukan') || '')}" alt=""><b>ずかん</b></button></div>
+    <div class="ts644"></div>
+    <div class="tb644"><button type="button" class="go644 g646 ${P.key}" data-z="walk" ${left > 0 ? '' : 'disabled'} style="background-image:url(${I6}btn_${P.key}.webp)"><span>${left > 0 ? `${P.n}を<br>あるく` : 'きょうは<br>もう おしまい'}</span><small>${left > 0 ? `きょう あと ${left}かい` : 'また あした あそぼう！'}</small></button>
+      <button type="button" class="zk644 z646 ${P.key}" data-z="zukan"><img src="${X(artSrc('ui_zukan') || '')}" alt=""><b>ずかん</b></button></div>
   </div>`;
+  setTimeout(() => { const z = ROOT && ROOT.querySelector('.gz646'); if(z) say(z, P.key==='zoo' ? 'いっしょに みて まわろう！' : 'うみの ふしぎに であおう！'); }, 450);
 }
 function say(el, t){ const b = ROOT.querySelector('.bb644'); if(!b) return; b.textContent = t; b.classList.remove('hidden', 'pop'); void b.offsetWidth; b.classList.add('pop');
   const r = el.getBoundingClientRect(), pr = b.parentElement.getBoundingClientRect(); b.style.left = Math.max(4, Math.min(pr.width - 170, r.left - pr.left + r.width/2 - 80)) + 'px'; b.style.top = Math.max(0, r.top - pr.top - 54) + 'px'; }
@@ -10374,6 +10375,29 @@ body.zq644on{overflow:hidden}
 #zq644.aq .bg644 .ray{opacity:.6}
 .w644.zk .bg644,.w644.rs .bg644{filter:blur(2px) brightness(1.05)}
 .lg644{max-width:230px}
+
+/* v6.46：トップの イラスト・ボタン */
+.t646{background:#9FD3EA}
+.tbg646{position:absolute;inset:-20px;background-size:cover;background-position:center;filter:blur(14px) brightness(1.05);z-index:0}
+.tim646{position:absolute;left:50%;top:0;height:100%;aspect-ratio:2/3;transform:translateX(-50%);z-index:1}
+.tim646>img{width:100%;height:100%;object-fit:cover;display:block}
+.gz646{position:absolute;border:none;background:none;padding:0;border-radius:40%;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.gz646:active{background:rgba(255,255,255,.18)}
+.t646 .hd644,.t646 .tb644{z-index:3}
+.t646 .ts644{z-index:2;pointer-events:none}
+.t646 .bb644{z-index:4}
+.go644.g646{position:relative;background-color:transparent!important;background-position:center!important;background-size:100% 100%!important;background-repeat:no-repeat!important;border:none!important;box-shadow:none!important;aspect-ratio:720/220;padding:0 22% 2px 21%!important;justify-content:center;filter:drop-shadow(0 6px 6px rgba(0,0,0,.25));transition:transform .1s}
+.go644.g646:active{transform:translateY(3px) scale(.98)}
+.go644.g646 span{font-size:clamp(15px,5vw,21px);line-height:1.15;white-space:nowrap}
+.go644.g646 small{font-size:clamp(9px,2.8vw,11.5px)}
+.go644.g646.zoo{color:#6B3A12;text-shadow:0 2px 0 #FFF3D2}
+.go644.g646.aq{color:#fff;text-shadow:0 2px 0 #1F5F95,0 0 6px #2C8FD0}
+.go644.g646:disabled{filter:grayscale(.7) opacity(.85)}
+.zk644.z646{align-self:center;width:76px;height:76px;border-radius:50%;border:4px solid #fff;box-shadow:0 4px 0 #CDB48C,0 6px 10px rgba(0,0,0,.2)}
+.zk644.z646.aq{background:#EAF8FF;box-shadow:0 4px 0 #8FBFE0,0 6px 10px rgba(0,0,0,.2)}
+.zk644.z646 img{width:38px;height:38px}
+.t646 .tb644{align-items:center;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.t646 .tb644{gap:6px;padding-left:6px;padding-right:6px}.go644.g646{flex:1 1 0!important;min-width:0;width:auto;padding:0 20% 2px 23%!important}.go644.g646 span{font-size:clamp(15px,4.6vw,20px)!important;line-height:1.1;text-align:center}.go644.g646 small{margin-top:1px}.zk644.z646{flex:none!important;width:68px!important;height:68px!important}
 @media (max-height:640px){ .qt644{font-size:16px} .op644 button{min-height:54px;font-size:14px} }
 `;
 document.head.appendChild(css);
