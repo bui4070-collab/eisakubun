@@ -9975,6 +9975,7 @@ const PLACE = {
 const all = P => P.an.concat([P.rare]);
 const anBy = (P, id) => all(P).find(a => a[0]===id);
 const NEW645 = {giraffe:'an_giraffe', panda:'an_panda', penguin:'an_penguin', penguin2:'an_penguin', turtle:'an_turtle', clownfish:'an_clownfish', octopus:'an_octopus'};
+const SC648 = {monkey:.55, redpanda:.55, koala:.55, penguin:.6, penguin2:.6, panda:.72, lion:.85, zebra:.85, whitetiger:.85, polarbear:.8, seal:.5, pelican:.7, parrot:.55, flamingo:.9, giraffe:1.15, elephant:1.05, crab:.42, hermit:.42, starfish:.42, gardeneel:.6, clownfish:.45, seahorse:.5, puffer:.5, jelly:.7, octopus:.65, turtle:.8, shark:.9, manta:.95, whaleshark:1.1};
 const NEW646 = {lion:1, camel:1, redpanda:1, monkey:1, polarbear:1, seal:1, flamingo:1, whitetiger:1, seahorse:1, manta:1, shark:1, whaleshark:1};
 const artOf = a => a[3].startsWith('v647:') ? './assets/images/v647/' + a[3].slice(5) + '.webp' : NEW646[a[0]] ? './assets/images/v646/an_' + a[0] + '.webp' : NEW645[a[0]] ? './assets/images/v645/' + NEW645[a[0]] + '.webp' : a[3].startsWith('v644:') ? IMG + a[3].slice(5) + '.webp' : (artSrc(a[3]) || '');
 const isNew = a => a[3].startsWith('v647:') || !!NEW646[a[0]] || !!NEW645[a[0]] || a[3].startsWith('v644:');
@@ -10016,7 +10017,7 @@ function top(){
   setTimeout(() => { const z = ROOT && ROOT.querySelector('.gz646'); if(z) say(z, P.key==='zoo' ? 'いっしょに みて まわろう！' : 'うみの ふしぎに であおう！'); }, 450);
 }
 function say(el, t){ const b = ROOT.querySelector('.bb644'); if(!b) return; b.textContent = t; b.classList.remove('hidden', 'pop'); void b.offsetWidth; b.classList.add('pop');
-  const r = el.getBoundingClientRect(), pr = b.parentElement.getBoundingClientRect(); b.style.left = Math.max(4, Math.min(pr.width - 170, r.left - pr.left + r.width/2 - 80)) + 'px'; b.style.top = Math.max(0, r.top - pr.top - 54) + 'px'; }
+  const r = el.getBoundingClientRect(), pr = b.parentElement.getBoundingClientRect(); b.style.left = Math.max(4, Math.min(pr.width - 170, r.left - pr.left + r.width/2 - 80)) + 'px'; b.style.top = Math.max(0, r.top - pr.top - 54 - (el.classList.contains('gz646') && P.key==='zoo' ? 92 : 0)) + 'px'; }
 
 /* ---------- あるく ---------- */
 function startWalk(){
@@ -10035,7 +10036,7 @@ function drawWalk(){
   if(!ROOT) return; const a = areaAt(W.i), an = P.areas.find(x => x[0]===a);
   ROOT.innerHTML = `<div class="w644 wk"><header class="hd644">${backBtn()}<div class="as644"><b>${X(an ? an[1] : '')}</b></div>${cryChip()}</header>
     <div class="sc644" data-z="scene"><div class="bg644 ${a}"><i class="l1"></i><i class="l2"></i><i class="l3"></i>${P.key==='aq' ? '<i class="ray"></i><i class="bub"></i>' : ''}</div>
-      <div class="wd644">${W.list.map((x, i) => `<div class="an644 ${x[2]==='rare' ? 'gold' : ''} ${i < W.i ? 'done' : ''}" data-i="${i}" style="left:${posOf(i)}px"><div class="ai644 ${P.key==='aq' && !['crab','hermit','penguin2','starfish','gardeneel'].includes(x[0]) ? 'sw' : ''}"><img src="${X(artOf(x))}" alt="" class="${isNew(x) ? 'wc' : 'tmp'}"><button type="button" class="ex644 hidden" data-z="ex">！</button></div></div>`).join('')}
+      <div class="wd644">${W.list.map((x, i) => `<div class="an644 ${x[2]==='rare' ? 'gold' : ''} ${i < W.i ? 'done' : ''}" data-i="${i}" style="left:${posOf(i)}px"><div style="--sc:${SC648[x[0]]||1}" class="ai644 ${P.key==='aq' && !['crab','hermit','penguin2','starfish','gardeneel'].includes(x[0]) ? 'sw' : ''}"><img src="${X(artOf(x))}" alt="" class="${isNew(x) ? 'wc' : 'tmp'}"><button type="button" class="ex644 hidden" data-z="ex">！</button></div></div>`).join('')}
         <div class="end644" style="left:${posOf(W.list.length) - 80}px"><b>ゴール</b></div></div>
       <div class="hw644"><i style="background-image:url(${IMG}hana_walk.webp)"></i><span class="hb644 hidden"></span></div>
       <div class="tip644"><span>◀ ひだり</span><b>がめんを タッチしている あいだ あるくよ</b><span>みぎ ▶</span></div>
@@ -10069,7 +10070,8 @@ function place(){
   sc.style.setProperty('--px', off + 'px');
   const h = ROOT.querySelector('.hw644 i'); if(h){ const moving = W.dir && !W.stop; const fr = moving ? Math.floor(W.frame) % 6 : 2; h.style.backgroundPositionX = `${fr * 20}%`; h.parentElement.classList.toggle('flip', W.dir < 0); h.parentElement.classList.toggle('mv', !!moving); }
   /* エリアの かんばん */
-  const a = areaAt(W.i), bg = ROOT.querySelector('.sc644 .bg644'); if(bg && !bg.classList.contains(a)){ bg.className = `bg644 ${a}`; const an = P.areas.find(x => x[0]===a) || ['', P.rare[1]]; const as = ROOT.querySelector('.as644 b'); if(as){ as.textContent = a==='rare' ? '？？？' : an[1]; as.parentElement.classList.remove('pop'); void as.offsetWidth; as.parentElement.classList.add('pop'); } }
+  const k = Math.max(0, Math.min(W.list.length - 1, Math.round((W.x + 205 - 420) / CFG.gap))), a = areaAt(k), bgs = ROOT.querySelectorAll('.sc644 .bg644'), bg = bgs[bgs.length - 1];
+  if(bg && !bg.classList.contains(a)){ const nb = bg.cloneNode(true); nb.className = `bg644 ${a} fade648`; bg.after(nb); requestAnimationFrame(() => nb.classList.add('in')); setTimeout(() => { bgs.forEach(x => x.remove()); nb.classList.remove('fade648','in'); }, 900); const an = P.areas.find(x => x[0]===a) || ['', P.rare[1]]; const as = ROOT.querySelector('.as644 b'); if(as){ as.textContent = a==='rare' ? '？？？' : an[1]; as.parentElement.classList.remove('pop'); void as.offsetWidth; as.parentElement.classList.add('pop'); } }
 }
 function arrive(){
   W.stop = true; W.dir = 0; const a = W.list[W.i], el = ROOT.querySelector(`.an644[data-i="${W.i}"]`);
@@ -10210,7 +10212,7 @@ window.addEventListener('click', e => {
   e.stopImmediatePropagation(); e.preventDefault(); open(HOOK[s.id], s.k);
 }, true);
 const _show644 = show; show = function(){ if(ROOT) close(); return _show644.apply(this, arguments); };
-window.__zq644 = {open, close, PLACE, SV, SH, get W(){ return W; }, quiz, finish};
+window.__zq644 = {open, close, PLACE, SV, SH, get W(){ return W; }, quiz, finish, drawWalk:() => drawWalk()};
 
 /* ---------- BGM：クイズ中は さげる・すいぞくかんは ひかえめ ---------- */
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#zq644') || v === 0) return v; return document.querySelector('#zq644 .qz') ? .07 : document.querySelector('#zq644.aq') ? .14 : v; }; } }catch(e){}
@@ -10413,7 +10415,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.47.0', I7 = './assets/images/v647/';
+const VER = '6.48.0', I7 = './assets/images/v647/';
 /* ---------- どうぶつ ---------- */
 try{ const Z = window.__zq644; if(Z){ const add = {pelican:'an_pelican', parrot:'an_parrot', crab:'an_crab', hermit:'an_hermit'};
   [Z.PLACE.zoo, Z.PLACE.aq].forEach(P => P.an.forEach(a => { if(add[a[0]]) a[3] = 'v647:' + add[a[0]]; })); } }catch(e){ console.warn(e); }
@@ -10461,6 +10463,14 @@ setInterval(() => { if(typeof curScreen!=='undefined' && curScreen==='town' && !
 
 const css = document.createElement('style');
 css.textContent = `
+
+/* v6.48 */
+.an644 img{max-height:calc(min(250px,36vh) * var(--sc,1))!important}
+.an644 img.tmp,.ai644.sw img{max-height:calc(min(170px,25vh) * var(--sc,1) * 1.4)!important}
+.ai644{--sc:1}
+.bg644.fade648{opacity:0;transition:opacity .85s ease}.bg644.fade648.in{opacity:1}
+.zk644.z646 b{white-space:nowrap;font-size:11.5px;letter-spacing:0;line-height:1.1}
+.zk644.z646{padding:0!important}
 /* ！を まるの まんなかに */
 .ex644{display:flex!important;align-items:center;justify-content:center;padding:0!important;line-height:1!important;font-size:0!important}
 .ex644::before{content:"";width:8px;height:22px;border-radius:4px;background:#fff;margin-top:-8px;box-shadow:0 1px 0 rgba(0,0,0,.15)}
