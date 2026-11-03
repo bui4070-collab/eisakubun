@@ -7683,7 +7683,7 @@ try{ if(typeof curScreen!=='undefined' && curScreen==='town') renderTown(); }cat
 (function(){
 'use strict';
 const resBy = id => (save.town?.res || []).find(r => r.id===id);
-const VER = '6.34.0', IMG = './assets/images/v631/';
+const VER = '6.35.0', IMG = './assets/images/v631/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt = n => (typeof nf==='function' ? nf(n) : String(n));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -7740,6 +7740,9 @@ const IMG633 = './assets/images/v633/';
 const SUBJ_ART = {jp:'icon_kokugo', math:'icon_sansu', sci:'icon_rika', soc:'icon_shakai', en:'icon_write'};
 const subjImg = k => `<img class="sic633" src="${X(artSrc(SUBJ_ART[k]) || '')}" alt="">`;
 const chestImg = () => `<img class="chi633" src="${X(artSrc('ui_chest') || '')}" alt="">`;
+const IC635 = {streak:'ic_streak', ticket:'ic_ticket', fuku:'ic_fuku', nigate:'ic_nigate', goal:'ic_goal', grad:'ic_grad', pals:'ic_pals', frag:'ic_frag', rnote:'ic_rnote', mission:'ic_mission'};
+const ART635 = {letter:'ui_letter', building:'ui_building', school:'bld_school', write:'icon_write', study:'ui_study', chest:'ui_chest'};
+const ic = (k, cls='') => `<img class="ii635 ${cls}" src="${X(IC635[k] ? './assets/images/v635/' + IC635[k] + '.webp' : (artSrc(ART635[k]) || ''))}" alt="">`;
 let QUITFN = null, QUITOK = false, QUITMSG = '';
 const SUBJ_C = {jp:'#E8606A', math:'#3D8BE0', sci:'#3BAF6A', soc:'#E79A2B', en:'#9A6AD8'};
 const SK = Object.keys(SUBJ);
@@ -7924,7 +7927,32 @@ function root(){
   return ROOT;
 }
 function close(){ QUITOK = false; QUITFN = null; if(ROOT){ ROOT.classList.remove('show'); setTimeout(() => { if(ROOT && !ROOT.classList.contains('show')){ ROOT.remove(); ROOT = null; } }, 250); } CUR = null; document.body.classList.remove('sc631on'); try{ persist(); }catch(e){} }
-function open(kind, key){ KEY = key; CUR = kind; root(); ROOT.classList.toggle('bgS633', kind==='school'); ROOT.classList.toggle('bgU634', kind!=='school'); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain(); }
+const GUIDE = {
+  school:[['bird_wave','ようこそ「がっこう」へ！','ここでは まちの なかまと いっしょに<br><b>こくご・さんすう・りか・しゃかい・えいご</b>の じゅぎょうが うけられるよ。'],
+    ['bird_think','じゅぎょうの うけかた','① きょうかを えらぶ<br>② かんたん／ふつう／むずかしい を えらぶ<br>③ 5もん とくと、はなまるの かずで <b>★</b>が もらえるよ。<br>まちがえても <b>ヒント</b>で もういちど ちょうせん できるよ！'],
+    ['bird_thumb','まいにちの おたのしみ','<b>きょうの ミッション</b>を 3つ クリアすると たからばこ。<br>5きょうか ぜんぶで <b>かいきん賞</b>と ふくびき券！<br>まいにち くると <b>れんぞく しゅっせき</b>が のびるよ。'],
+    ['bird_cheer','めざせ だいがく！','★を あつめて バッジを <b>ゴールド</b>に すると、<br>「だいがく」の 入学試験に ちょうせん できるよ。<br>さあ、はじめよう！']],
+  uni:[['bird_wave','ここは「だいがく」！','がっこうより <b>むずかしい</b> けど、<br>ごほうびも ずっと 大きいよ。'],
+    ['bird_think','入学するには？','がっこうで <b>ゴールドバッジ</b>に なると 入学試験（10もん中 7もん）に ちょうせん できるよ。<br>それまでは <b>体験入学</b>で 1日1もん ためせるよ。'],
+    ['bird_think','けんきゅうの しかた','テーマと レベルを えらんで けんきゅう スタート！<br><b>しらべる → かんがえる → はっぴょう</b>。<br>♥が 3つ なくなると しっぱいだよ。'],
+    ['bird_thumb','あつめて たのしい','せいこうすると <b>はっけんカード</b>が もらえるよ。研究ノートを うめよう！<br>テーマを マスターすると カフェの <b>とくべつ レシピ</b>。<br>ぜんぶ マスターすると…<b>ひみつ</b>が わかるかも？']]
+};
+async function guide(kind, force){
+  const g = save.guide635 || (save.guide635 = {}); if(g[kind] && !force) return false;
+  g[kind] = 1; persist();
+  const P = GUIDE[kind];
+  for(let i=0; i<P.length; i++){
+    const [art, t, body] = P[i], last = i === P.length - 1;
+    const v = await dialog(`<div class="gd635"><div class="gdb635"><img src="${X(artSrc(art)||'')}" alt=""></div><div class="gdt635"><b>シマくん</b><h3>${t}</h3><p>${body}</p></div></div>
+      <div class="gdd635">${P.map((_, k) => `<i class="${k===i ? 'on' : ''}"></i>`).join('')}</div>`,
+      last ? [{label:'わかった！', cls:'gold', v:1}] : [{label:'つぎへ ▶', cls:'gold', v:1}, {label:'スキップ', cls:'white', v:0}], 'wide gdw635');
+    if(!v) break;
+  }
+  return true;
+}
+function open(kind, key){ KEY = key; CUR = kind; root(); ROOT.classList.toggle('bgS633', kind==='school'); ROOT.classList.toggle('bgU634', kind!=='school'); document.body.classList.add('sc631on'); requestAnimationFrame(() => ROOT.classList.add('show')); kind==='school' ? schoolMain() : uniMain();
+  const gk = kind==='school' ? 'school' : 'uni';
+  if(!(save.guide635||{})[gk]){ busy = true; setTimeout(() => guide(gk).finally(() => { busy = false; if(CUR==='school') schoolMain(); else if(CUR) uniMain(); }), 450); } }
 function stage(bg, list, opt={}){
   const pos = opt.pos || [[14,88],[33,95],[67,95],[86,88],[50,82]];
   return `<div class="stg631 ${opt.cls||''}"><img class="bg" src="${IMG}${bg}.webp" alt="">
@@ -7971,6 +7999,7 @@ async function onClick(e){
     else if(a==='deg') await degreeView();
     else if(a==='partner') await pickPartner();
     else if(a==='note') noteBook(UT.th);
+    else if(a==='help') await guide(CUR==='school' ? 'school' : 'uni', true);
     else if(a==='secret') await secretView();
   } finally { busy = false; }
 }
@@ -7994,9 +8023,9 @@ function schoolMain(){
   const pm = ST.subj && (L.cnt[ST.subj]||0) >= CFG.fullClass;
   ROOT.innerHTML = `<div class="wrap631 school">
     <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG633}logo_school.webp" alt="がっこう"><small>${dayOK() ? (special(L.d)===sp ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '') : '⚠️ 日づけが もどっているよ'}</small></div>
-      <button type="button" class="stk631" data-a="cal"><b>🔥 れんぞく ${s.streak||0}にち</b><small>🎫×${s.tickets||0}</small></button></header>
+      <button type="button" class="stk631" data-a="cal"><b>${ic('streak')} れんぞく ${s.streak||0}にち</b><small>${ic('ticket')}×${s.tickets||0}</small></button></header>
     ${stage('bg_school', ml, {cls:'clear633'})}
-    <div class="mis633"><div class="mh633" data-a="mis"><b>📋 きょうの ミッション</b><span class="mc633">${M.done.filter(Boolean).length}/3</span></div>
+    <div class="mis633"><div class="mh633" data-a="mis"><b>${ic('mission')} きょうの ミッション</b><span class="mc633">${M.done.filter(Boolean).length}/3</span></div>
       <div class="mb633"><ol data-a="mis">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}"><i>${M.done[i] ? '✓' : i+1}</i><span>${X(m.t)}</span></li>`).join('')}</ol>
       <button type="button" class="chest633 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ' : M.done.every(Boolean) ? 'あける！' : 'ぜんぶで'}</small></button></div></div>
     <div class="sec631"><div class="h631">きょうの じゅぎょう <small>スタンプ ${stamps}/5${stamps===4 ? ' <b class="hot">あと1つで かいきん賞！</b>' : stamps===5 ? ' 🏅 かいきん賞！' : ''}</small></div>
@@ -8004,21 +8033,22 @@ function schoolMain(){
     <div class="sec631"><div class="h631">ちょうせんする もんだい</div>
       <div class="dfs631">${Object.entries(D).map(([k,[n,ic]]) => `<button type="button" class="df631 ${ST.diff===k ? 'on' : ''}" data-diff="${k}">${recoDiff===k ? '<em class="rib631 g">おすすめ</em>' : ''}<span><img class="dfi633" src="${IMG633}${ic}.webp" alt=""></span><b>${n}</b><small>1もん ${CFG.coin[k]}コイン${k==='easy' ? '・★1まで' : ''}</small></button>`).join('')}</div></div>
     <button type="button" class="bdg631" data-a="badge">${CFG.badge[s.badge].ic} ${CFG.badge[s.badge].n}バッジ　${bn ? `つぎの ${bn.b.n}まで ${bn.needSt ? `★${bn.needSt}こ` : '★OK'}／${bn.needD ? `あと${bn.needD}にち` : '日数OK'}${bn.each.length ? `／${bn.each.map(k => SUBJ[k]).join('・')} ★${bn.b.each}` : ''}` : 'さいこうの バッジ！'}</button>
-    <button type="button" class="go631" data-a="start" ${ST.subj && ST.diff ? '' : 'disabled'}>${ST.subj ? `✏️ ${SUBJ[ST.subj]}の じゅぎょうを はじめる！` : 'きょうかを えらんでね'}</button>
+    <button type="button" class="go631" data-a="start" ${ST.subj && ST.diff ? '' : 'disabled'}>${ST.subj ? `${ic('write','big')} ${SUBJ[ST.subj]}の じゅぎょうを はじめる！` : 'きょうかを えらんでね'}</button>
     <div class="tools631">
-      <button type="button" data-a="fuku" ${s.fuku ? '' : 'class="off"'}>🎟 ふくびき<b>${s.fuku||0}</b></button>
-      <button type="button" data-a="notes">📒 にがて<b>${s.notes.length}</b></button>
-      <button type="button" data-a="goal">🎯 しゅうの 目標${s.goal?.done ? '<b>✓</b>' : !s.goal?.g ? '<b class="red">!</b>' : ''}</button>
-      <button type="button" data-a="req">💌 おねがい${s.req && !s.req.done ? '<b class="red">!</b>' : ''}</button>
-      <button type="button" data-a="touni">🎓 だいがく</button>
-      <button type="button" data-a="grade">⬆ たてもの</button>
+      <button type="button" data-a="fuku" ${s.fuku ? '' : 'class="off"'}>${ic('fuku')} ふくびき<b>${s.fuku||0}</b></button>
+      <button type="button" data-a="notes">${ic('nigate')} にがて<b>${s.notes.length}</b></button>
+      <button type="button" data-a="goal">${ic('goal')} しゅうの 目標${s.goal?.done ? '<b>✓</b>' : !s.goal?.g ? '<b class="red">!</b>' : ''}</button>
+      <button type="button" data-a="req">${ic('letter')} おねがい${s.req && !s.req.done ? '<b class="red">!</b>' : ''}</button>
+      <button type="button" data-a="touni">${ic('grad')} だいがく</button>
+      <button type="button" data-a="grade">${ic('building')} たてもの</button>
+      <button type="button" data-a="help" class="hp635"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
     </div></div>`;
   persist();
   /* 週の はじめ：つうしんぼ・目標 */
   if(!busy) setTimeout(weekStart, 350);
 }
 async function weekStart(){
-  const s = SV(), w = wkOf(D4()); if(busy || CUR!=='school') return;
+  const s = SV(), w = wkOf(D4()); if(busy || CUR!=='school' || !(save.guide635||{}).school) return;
   const pw = addDay(w, -7);
   if(s.repWk !== w && (s.wk[pw] || s.acc[pw])){ s.repWk = w; busy = true; try{ await report(pw); } finally { busy = false; } }
   else s.repWk = s.repWk || w;
@@ -8030,7 +8060,7 @@ async function report(pw){
   const acc = k => { const a = (s.acc[pw]||{})[k], b4 = [14,21,28].map(n => (s.acc[addDay(pw, -n)]||{})[k]).find(Boolean); return a && a[1] && b4 && b4[1] ? `${Math.round(b4[0]/b4[1]*100)}% → ${Math.round(a[0]/a[1]*100)}%` : ''; };
   const t = teacherFor(SK.slice().sort((a,b) => ((cur[b]||0)-(prev[b]||0)) - ((cur[a]||0)-(prev[a]||0)))[0]);
   const rows = SK.map(k => { const n = cur[k]||0, up = n - (prev[k]||0);
-    return `<tr><th>${SUBJ_IC[k]} ${SUBJ[k]}</th><td>★${n}</td><td>${lab(n)}${up > 0 ? `<b class="up631">+${up} ふえたよ！</b>` : ''}${acc(k) ? `<small>${acc(k)}</small>` : ''}</td></tr>`; }).join('');
+    return `<tr><th>${subjImg(k)} ${SUBJ[k]}</th><td>★${n}</td><td>${lab(n)}${up > 0 ? `<b class="up631">+${up} ふえたよ！</b>` : ''}${acc(k) ? `<small>${acc(k)}</small>` : ''}</td></tr>`; }).join('');
   await dialog(`<h2 class="dlgT">📗 つうしんぼ</h2><table class="rep631">${rows}</table>
     ${t ? `<div class="talkBubble"><b>${X(t.name)}せんせい</b>${X(speak(t, 'こんしゅうも いっしょに がんばろうね！'))}</div>` : ''}`, [{label:'こんしゅうも がんばる！', cls:'gold', v:1}], 'wide');
 }
@@ -8047,7 +8077,7 @@ function qPanel(head, body){
 /* 1もん：mode 'school'（ヒントで もういちど）／'one'（1かいだけ） */
 function askQ(m, head, mode, opt={}){
   return new Promise(res => {
-    const ans = m.ansF || m.ans; if(window.__t631) window.__ans631 = ans; let tries = 0, removed = new Set(opt.removed || []), timer = null, left = opt.sec || 0;
+    const ans = m.ansF || m.ans; let tries = 0, removed = new Set(opt.removed || []), timer = null, left = opt.sec || 0;
     const draw = (hint) => {
       const p = qPanel(head, `<div class="qq631">${m.html}</div>${m.say && typeof sayBtn==='function' ? sayBtn(m.say) : ''}
         ${hint ? `<div class="hint631">💡 ${hint}</div>` : ''}
@@ -8098,7 +8128,7 @@ async function runClass(subj, diff){
     if(i===revSlot){ note = pickNote(subj); if(note) m = noteQ(note); if(m) m.rev = 1; }
     if(!m) m = subjQ(subj, T, used, diff==='hard');
     used.add(m.key); noteRecent(m);
-    const head = `<div class="qh631" style="--c:${SUBJ_C[subj]}"><span>${SUBJ_IC[subj]} ${SUBJ[subj]}・${{easy:'かんたん',normal:'ふつう',hard:'むずかしい'}[diff]}</span>
+    const head = `<div class="qh631" style="--c:${SUBJ_C[subj]}"><span>${subjImg(subj)} ${SUBJ[subj]}・${{easy:'かんたん',normal:'ふつう',hard:'むずかしい'}[diff]}</span>
       <span class="dots631">${Array.from({length:n}, (_, k) => `<i class="${k < i ? 'd' : k===i ? 'c' : ''}"></i>`).join('')}</span>
       ${combo >= 2 ? `<b class="cb631">れんぞく！ ${combo}もん</b>` : ''}${teacher ? `<img class="tc631" src="${X(rsrc(teacher))}" alt="">` : ''}</div>
       ${m.rev ? '<div class="revt631">🔥 にがて リベンジ！</div>' : ''}${i===n-1 && hana===2 && diff!=='easy' ? '' : ''}${diff!=='easy' && hana + (n - i) >= 3 && hana >= 2 && i===n-1 && hana===4 ? '<div class="near631">あと1もんで ★3！</div>' : ''}`;
@@ -8194,14 +8224,14 @@ function pop(ic, txt){
 async function calendar(){
   const s = SV(), next = Object.keys(CFG.attendRew).map(Number).find(n => n > s.attend);
   const d = D4(), cells = Array.from({length:14}, (_, i) => addDay(d, i - 13));
-  await dialog(`<h2 class="dlgT">📅 しゅっせき</h2>
+  await dialog(`<h2 class="dlgT">${ic('streak','h')} しゅっせき</h2>
     <div class="cal631">${cells.map(c => `<span class="${s.wkDays[c] ? 'on' : ''} ${c===d ? 'td' : ''}"><small>${+c.slice(8)}</small>${s.wkDays[c] ? '🌸' : ''}</span>`).join('')}</div>
     <p class="dlgP">つうさん <b>${s.attend}にち</b>／れんぞく <b>${s.streak||0}にち</b><br>🎫 お休みチケット ${s.tickets||0}まい（まいしゅう月曜に 1まい・さいだい2まい）</p>
     ${next ? `<p class="dlgP facNote">つぎの おめでとうは ${next}にち（あと ${next - s.attend}にち）</p>` : ''}
     ${s.titles.length ? `<p class="dlgP">しょうごう：${s.titles.map(X).join('・')}</p>` : ''}`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
 async function misInfo(){
-  const M = missions(); await dialog(`<h2 class="dlgT">📋 きょうの ミッション</h2><ul class="mi631">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}">${M.done[i] ? '✅' : '⬜'} ${X(m.t)} <small>+${CFG.mission}</small></li>`).join('')}</ul>
+  const M = missions(); await dialog(`<h2 class="dlgT">${ic('mission','h')} きょうの ミッション</h2><ul class="mi631">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}">${M.done[i] ? '✅' : '⬜'} ${X(m.t)} <small>+${CFG.mission}</small></li>`).join('')}</ul>
     <p class="dlgP facNote">3つ ぜんぶで 🎁たからばこ（コイン+${CFG.chest}・きずな+1）。まいあさ 4じに かわるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
 async function openChest(){
@@ -8209,25 +8239,25 @@ async function openChest(){
   if(!M.done.every(Boolean)) return misInfo();
   if(!dayOK()) return; M.chest = 1; pts(CFG.chest, 'がっこう ミッション たからばこ'); const r = choice(mates()); if(r) addBond(r.id, 1, false);
   persist(); sound('fan'); confetti(1500);
-  await dialog(`<div class="big631">🎁</div><h2 class="dlgT">たからばこ ゲット！</h2><p class="dlgP">コイン +${CFG.chest}${r ? `<br>💗 ${X(r.name)}と きずな +1` : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+  await dialog(`<div class="big631">${ic('chest','xl')}</div><h2 class="dlgT">たからばこ ゲット！</h2><p class="dlgP">コイン +${CFG.chest}${r ? `<br>💗 ${X(r.name)}と きずな +1` : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}]);
   schoolMain();
 }
 async function doFuku(){
-  const s = SV(); if(!s.fuku) return dialog(`<h2 class="dlgT">🎟 ふくびき</h2><p class="dlgP">かいきん賞（5きょうか スタンプ）で ふくびき券が もらえるよ。<br>ハズレなし！</p>`, [{label:'とじる', cls:'gold', v:1}]);
+  const s = SV(); if(!s.fuku) return dialog(`<h2 class="dlgT">${ic('fuku','h')} ふくびき</h2><p class="dlgP">かいきん賞（5きょうか スタンプ）で ふくびき券が もらえるよ。<br>ハズレなし！</p>`, [{label:'とじる', cls:'gold', v:1}]);
   s.fuku--; const o = fukubiki(); persist(); sound('fan'); confetti(1200);
-  await dialog(`<div class="big631 spin631">🎰</div><h2 class="dlgT">あたり！</h2><p class="dlgP"><b>${X(o.t)}</b></p><p class="dlgP facNote">のこり ふくびき券 ${s.fuku}まい</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+  await dialog(`<div class="big631 spin631">${ic('fuku','xl')}</div><h2 class="dlgT">あたり！</h2><p class="dlgP"><b>${X(o.t)}</b></p><p class="dlgP facNote">のこり ふくびき券 ${s.fuku}まい</p>`, [{label:'やったー！', cls:'gold', v:1}]);
   schoolMain();
 }
 async function notesView(){
   const s = SV(); const by = SK.map(k => [k, s.notes.filter(n => n.subj===k)]);
-  await dialog(`<h2 class="dlgT">📒 にがてノート</h2><p class="dlgP">いま <b>${s.notes.length}こ</b>　そつぎょう <b>${s.grad||0}こ</b></p>
-    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${SUBJ_IC[k]} ${SUBJ[k]}</b><span>${L.length}こ</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
+  await dialog(`<h2 class="dlgT">${ic('nigate','h')} にがてノート</h2><p class="dlgP">いま <b>${s.notes.length}こ</b>　そつぎょう <b>${s.grad||0}こ</b></p>
+    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${subjImg(k)} ${SUBJ[k]}</b><span>${L.length}こ</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
     <p class="dlgP facNote">「ふつう」の じゅぎょうで リベンジ（+${CFG.revenge}）。べつべつの 日に 3かい せいかいで そつぎょう！</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
 async function goalView(){
   const s = SV(), G = s.goal;
-  if(G && G.g){ const p = goalProg(); return dialog(`<h2 class="dlgT">🎯 こんしゅうの 目標</h2><p class="dlgP"><b>${X(p[2])}</b>：${p[0]} / ${p[1]}${p[3]}</p>${bar(p[0], p[1])}<p class="dlgP facNote">${G.done ? '✅ たっせい！ しゅうかんバッジ ゲット' : 'たっせいで コイン+100・きずな+2'}</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide'); }
-  const v = await dialog(`<h2 class="dlgT">🎯 こんしゅうの 目標を えらぼう</h2><p class="dlgP">じぶんで 1つ えらんでね（たっせいで コイン+100・きずな+2）</p>`,
+  if(G && G.g){ const p = goalProg(); return dialog(`<h2 class="dlgT">${ic('goal','h')} こんしゅうの 目標</h2><p class="dlgP"><b>${X(p[2])}</b>：${p[0]} / ${p[1]}${p[3]}</p>${bar(p[0], p[1])}<p class="dlgP facNote">${G.done ? '✅ たっせい！ しゅうかんバッジ ゲット' : 'たっせいで コイン+100・きずな+2'}</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide'); }
+  const v = await dialog(`<h2 class="dlgT">${ic('goal','h')} こんしゅうの 目標を えらぼう</h2><p class="dlgP">じぶんで 1つ えらんでね（たっせいで コイン+100・きずな+2）</p>`,
     [{label:'📅 5にち きょうしつに くる', cls:'white big', v:'days'}, {label:'⭐ ★を 15こ あつめる', cls:'white big', v:'stars'}, {label:'📒 にがてを 3つ そつぎょう', cls:'white big', v:'grad'}, {label:'あとで', cls:'', v:''}], 'wide');
   if(v){ G.g = v; persist(); toast('目標を きめたよ！'); schoolMain(); }
 }
@@ -8235,14 +8265,14 @@ async function reqView(){
   const s = SV(), R = s.req, r = R && resBy(R.rid);
   if(!r) return dialog(`<h2 class="dlgT">💌 おねがい</h2><p class="dlgP">いまは おねがいは ないよ</p>`, [{label:'とじる', cls:'gold', v:1}]);
   const v = await dialog(`<div class="dlgArt"><img src="${X(rsrc(r))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(r.name)}</b>${X(speak(r, R.done ? 'てつだって くれて ありがとう！' : `${SUBJ[R.subj]}の しゅくだい てつだって！`))}</div>
-    <p class="dlgP facNote">${R.done ? '✅ たっせい ずみ（また らいしゅう）' : `${SUBJ[R.subj]}の じゅぎょうを 1かい うけると たっせい（きずな+3・コイン+50）`}</p>`, R.done ? [{label:'とじる', cls:'gold', v:0}] : [{label:`${SUBJ_IC[R.subj]} ${SUBJ[R.subj]}を えらぶ`, cls:'gold', v:1}, {label:'あとで', v:0}], 'wide');
+    <p class="dlgP facNote">${R.done ? '✅ たっせい ずみ（また らいしゅう）' : `${SUBJ[R.subj]}の じゅぎょうを 1かい うけると たっせい（きずな+3・コイン+50）`}</p>`, R.done ? [{label:'とじる', cls:'gold', v:0}] : [{label:`${subjImg(R.subj)} ${SUBJ[R.subj]}を えらぶ`, cls:'gold', v:1}, {label:'あとで', v:0}], 'wide');
   if(v){ ST.subj = R.subj; schoolMain(); }
 }
 async function badgeView(){
   const s = SV(), tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
   await dialog(`<h2 class="dlgT">${CFG.badge[s.badge].ic} がっこうバッジ</h2><p class="dlgP">★ ごうけい <b>${tot}</b>　つうさん しゅっせき <b>${s.attend}にち</b></p>
     <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${b.ic} ${b.n}</th><td>★${b.st}・${b.d}にち${b.each ? `・5きょうか ★${b.each}いじょう` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
-    <div class="sbst631">${SK.map(k => `<span>${SUBJ_IC[k]} ★${s.stars[k]||0}</span>`).join('')}</div>
+    <div class="sbst631">${SK.map(k => `<span>${subjImg(k)} ★${s.stars[k]||0}</span>`).join('')}</div>
     <p class="dlgP facNote">ゴールドで だいがくの 入学試験に ちょうせん できるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
 
@@ -8376,21 +8406,22 @@ function uniMain(){
   const p = u.partner && resBy(u.partner);
   ROOT.innerHTML = `<div class="wrap631 uni">
     <header class="hd631"><button type="button" class="back631" data-a="close">‹ まちへ</button><div class="tt631"><img class="logo633" src="${IMG634}logo_univ.webp" alt="だいがく"><small>${UV().title ? '🏅 ' + X(UV().title) : 'むずかしいけど ごほうびは 大きいよ'}</small></div>
-      <button type="button" class="stk631 deg" data-a="deg"><b>${D.n}</b><small>${dn ? `${fmt(u.degPt)}/${fmt(dn.D.pt)}` : fmt(u.degPt)}</small></button></header>
+      <button type="button" class="stk631 deg" data-a="deg"><b>${ic('grad')} ${D.n}</b><small>${dn ? `${fmt(u.degPt)}/${fmt(dn.D.pt)}` : fmt(u.degPt)}</small></button></header>
     ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:(r) => props[THM(UT.th).id] || '📚', cls:'clear633'})}
     <div class="sec631"><div class="h631">けんきゅう テーマ <small>きょう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes}かい${pm ? '（れんしゅうモード）' : ''}</small></div>
       <div class="ths631">${TH.map(x => { const open = thOpen(x), dd = thData(x.id);
-        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${thImg(x.id)}${open ? '' : '<i class="lk634">🔒</i>'}</span><b>${x.n}</b><small>${open ? `${LV[dd.lv]}・🃏${nCards(x.id)}/15` : `あと けんきゅう ${x.need - u.total}かい`}</small>${open && nCards(x.id)===14 ? '<em class="last634">あと1まい！</em>' : ''}</button>`; }).join('')}</div></div>
+        return `<button type="button" class="th631 ${UT.th===x.id ? 'on' : ''} ${open ? '' : 'lock'}" ${open ? `data-th="${x.id}"` : ''}>${x.id===reco && open ? '<em class="rib631 g">おすすめ×1.3</em>' : ''}${L.chain.includes(x.id) ? '<em class="ck631">✔</em>' : ''}<span class="ic">${thImg(x.id)}${open ? '' : '<i class="lk634">🔒</i>'}</span><b>${x.n}</b><small>${open ? `${LV[dd.lv]}・カード${nCards(x.id)}/15` : `あと けんきゅう ${x.need - u.total}かい`}</small>${open && nCards(x.id)===14 ? '<em class="last634">あと1まい！</em>' : ''}</button>`; }).join('')}</div></div>
     <div class="sec631"><div class="h631">レベル</div><div class="lvs631">${LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(UT.th) : null;
       return `<button type="button" class="lv631 ${UT.lv===i ? 'on' : ''} ${on ? '' : 'lock'}" ${on ? `data-lv="${i}"` : ''}><b>${on ? '' : '🔒'}${n}</b><small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : '—'}</small>${nd ? bar(nd.cur, nd.tot) : ''}</button>`; }).join('')}</div></div>
     <div class="rw631 sm">🔎 しらべる3もん → かんがえる3もん → はっぴょう1もん　♥×3</div>
-    <button type="button" class="go631 uni" data-a="rstart">🔬 けんきゅうを はじめる！</button>
+    <button type="button" class="go631 uni" data-a="rstart">${ic('rnote','big')} けんきゅうを はじめる！</button>
     <div class="tools631">
-      <button type="button" data-a="partner">🤝 なかま${p ? `<b class="nm">${X(p.name)}</b>` : ''}</button>
-      <button type="button" data-a="note">📓 研究ノート<b>${TH.reduce((a,t) => a + nCards(t.id), 0)}/135</b></button>
+      <button type="button" data-a="partner">${ic('pals')} なかま${p ? `<b class="nm">${X(p.name)}</b>` : ''}</button>
+      <button type="button" data-a="note">${ic('rnote')} 研究ノート<b>${TH.reduce((a,t) => a + nCards(t.id), 0)}/135</b></button>
       ${secretChip()}
-      <span class="chip631">✨ かけら ${u.frag}/5</span><span class="chip631">🎟 ヒント ${u.tickets}</span>
-      <button type="button" data-a="toschool">🏫 がっこう</button>
+      <span class="chip631">${ic('frag')} かけら ${u.frag}/5</span><span class="chip631">${ic('ticket')} ヒント ${u.tickets}</span>
+      <button type="button" data-a="toschool">${ic('school')} がっこう</button>
+      <button type="button" data-a="help" class="hp635"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
     </div></div>`;
   persist();
 }
@@ -8402,14 +8433,14 @@ function uniLocked(){
     ${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => choice(['📚','💻','🔭','🧪']), cls:'locked clear633'})}
     <div class="lock631"><b>🔒 入学まで</b>${toGold ? `<p>🥇ゴールドバッジまで：★あと <b>${toGold.st}</b>こ・あと <b>${toGold.d}</b>にち</p>${bar(toGold.tot, toGold.b.st)}` : `<p>🥇 ゴールド たっせい！ 入学試験に ちょうせん できるよ</p>`}
       <p class="sm">入学試験：10もん中 7もん せいかいで ごうかく（5きょうか 2もんずつ）</p></div>
-    <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : '📝 入学試験に ちょうせん！') : '📝 入学試験（ゴールドで かいほう）'}</button>
-    <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学は また あした' : '🎒 体験入学（1日1もん・せいかいで +10）'}</button>
-    <div class="tools631"><button type="button" data-a="toschool">🏫 がっこうへ</button></div></div>`;
+    <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : `${ic('write','big')} 入学試験に ちょうせん！`) : `${ic('write','big')} 入学試験（ゴールドで かいほう）`}</button>
+    <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学は また あした' : `${ic('study','big')} 体験入学（1日1もん・せいかいで +10）`}</button>
+    <div class="tools631"><button type="button" data-a="toschool">${ic('school')} がっこうへ</button></div></div>`;
 }
 async function trial(){
   const L = DL(); if(L.trial) return; L.trial = 1;
   const t = choice(TH.slice(0, 3)), m = themeQ(t, 0, new Set(), 1);
-  const r = await askQ(m, `<div class="qh631 uni"><span>🎒 体験入学：${t.ic} ${t.n}</span></div>`, 'one');
+  const r = await askQ(m, `<div class="qh631 uni"><span>🎒 体験入学：${thImg(t.id,'ii635')} ${t.n}</span></div>`, 'one');
   if(r.ok){ if(dayOK()) pts(10, 'だいがく 体験入学'); await pop('🎉', 'せいかい！ +10　だいがくって おもしろいね！'); }
   else await explainStep(m, r.v, `<div class="qh631 uni"><span>🎒 体験入学</span></div>`, [{label:'わかった！', cls:'gold', v:1}]);
   persist(); uniMain();
@@ -8451,8 +8482,8 @@ async function exam(){
 async function pickPartner(){
   const u = UV(), all = RES(), t = THM(UT.th);
   if(!all.length) return;
-  const v = await dialog(`<h2 class="dlgT">🤝 研究なかまを えらぶ</h2><p class="dlgP facNote">とくいな きょうかが テーマと あうと ヒントが 1かい むりょう（きずなLv3いじょうで +1）</p>
-    <div class="pp631">${all.slice(0, 24).map(r => `<button type="button" class="ppb631 ${u.partner===r.id ? 'on' : ''}" data-pp="${X(r.id)}"><img src="${X(rsrc(r))}" alt=""><b>${X(r.name)}</b><small>${SUBJ_IC[fav(r)]}${SUBJ[fav(r)]}${bondLv(r.id) >= 2 ? ` 💗${bondLv(r.id)}` : ''}</small></button>`).join('')}</div>`, [{label:'とじる', v:''}], 'wide');
+  const v = await dialog(`<h2 class="dlgT">${ic('pals','h')} 研究なかまを えらぶ</h2><p class="dlgP facNote">とくいな きょうかが テーマと あうと ヒントが 1かい むりょう（きずなLv3いじょうで +1）</p>
+    <div class="pp631">${all.slice(0, 24).map(r => `<button type="button" class="ppb631 ${u.partner===r.id ? 'on' : ''}" data-pp="${X(r.id)}"><img src="${X(rsrc(r))}" alt=""><b>${X(r.name)}</b><small>${subjImg(fav(r))}${SUBJ[fav(r)]}${bondLv(r.id) >= 2 ? ` 💗${bondLv(r.id)}` : ''}</small></button>`).join('')}</div>`, [{label:'とじる', v:''}], 'wide');
   void v;
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-pp]'); if(!b) return; UV().partner = b.dataset.pp; persist(); document.querySelectorAll('.ppb631').forEach(x => x.classList.toggle('on', x===b)); toast('なかまを きめたよ'); if(CUR==='uni') uniMain(); }, true);
@@ -8472,7 +8503,7 @@ async function runResearch(id, lv){
   outer: for(const [sn, cnt, sk] of stages){
     for(let i=0; i<cnt; i++){
       const m = themeQ(t, lv, used, sk); used.add(m.key); noteRecent(m); qi++;
-      const head = `<div class="qh631 uni"><span>${t.ic} ${t.n}・${LV[lv]}</span><span class="stg2">ステージ${sk}「${sn}」</span>${practice ? '<b class="cb631">れんしゅう</b>' : `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`}</div>
+      const head = `<div class="qh631 uni"><span>${thImg(t.id,'ii635')} ${t.n}・${LV[lv]}</span><span class="stg2">ステージ${sk}「${sn}」</span>${practice ? '<b class="cb631">れんしゅう</b>' : `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`}</div>
         <div class="nb631">📓 ${Array.from({length:7}, (_, k) => `<i class="${k < qi - 1 ? 'on' : ''}"></i>`).join('')}</div>`;
       const r = await askQ(m, head, 'one', {sec: sk===3 ? CFG.stageSec[lv] : 0, tool, onTool});
       if(r.quit) return quitOut();
@@ -8486,7 +8517,7 @@ async function runResearch(id, lv){
   }
   QUITOK = false; QUITFN = null;
   if(failed){
-    const v = await explainStep(lastM, lastV, `<div class="qh631 uni"><span>${t.ic} ${t.n}</span><b class="lf631">♡♡♡</b></div><div class="revt631">けんきゅうは しっぱい… でも かいせつを よめば まえに すすめるよ</div>`, [{label:'✅ わかった！', cls:'gold', v:'w'}]);
+    const v = await explainStep(lastM, lastV, `<div class="qh631 uni"><span>${thImg(t.id,'ii635')} ${t.n}</span><b class="lf631">♡♡♡</b></div><div class="revt631">けんきゅうは しっぱい… でも かいせつを よめば まえに すすめるよ</div>`, [{label:'✅ わかった！', cls:'gold', v:'w'}]);
     if(v==='w'){ u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; toast('✨ かけら 5こで ヒント券 1まい！'); } }
     persist();
     ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>けんきゅう しっぱい…</h2><p class="hn631">✨ ひらめきの かけら +1（${u.frag}/5）</p><p class="tmr631">おなじ テーマで もういちど ちょうせん できるよ</p>
@@ -8559,7 +8590,7 @@ function cardHTML(id, i, flip){
 }
 function noteBook(th){
   if(!ROOT) return; th = th && THM(th) ? th : TH[0].id; const own = cardsOf(th), tot = TH.reduce((a,t) => a + nCards(t.id), 0);
-  ROOT.innerHTML = `<div class="wrap631 nb634w"><header class="hd631"><button type="button" class="back631" data-nb="back">‹ だいがく</button><div class="tt631"><b class="nbt634">📓 研究ノート</b><small>はっけんカード ${tot}/135</small></div><span></span></header>
+  ROOT.innerHTML = `<div class="wrap631 nb634w"><header class="hd631"><button type="button" class="back631" data-nb="back">‹ だいがく</button><div class="tt631"><b class="nbt634">${ic('rnote')} 研究ノート</b><small>はっけんカード ${tot}/135</small></div><span></span></header>
     <div class="nbt634s">${TH.map(t => `<button type="button" class="nbtab634 ${t.id===th ? 'on' : ''}" data-nb="${t.id}" style="--tc:${TH_C[t.id]}">${thImg(t.id)}<small>${nCards(t.id)}/15</small>${nCards(t.id)===14 ? '<em class="last634">あと1まい</em>' : ''}</button>`).join('')}</div>
     <div class="nbp634" style="--tc:${TH_C[th]}"><div class="nbh634">${thImg(th)}<b>${THM(th).n}</b><span>${own.length}/15${own.length===15 ? ' 👑 コンプリート' : ''}</span></div>
       ${LV.map((n, k) => `<div class="nbl634">${n}</div><div class="nbg634">${[0,1,2,3,4].map(j => { const i = k*5+j; return own.includes(i) ? `<button type="button" class="mini634 ${isKira(i) ? 'kira' : ''}" data-cd="${th}|${i}">${thImg(th,'ci634')}<small>No.${i+1}</small></button>` : `<span class="mini634 off">${isKira(i) ? '✨' : ''}？</span>`; }).join('')}</div>`).join('')}
@@ -8603,7 +8634,7 @@ async function gakkai(){
 setInterval(() => { if(document.hidden || CUR || typeof curScreen==='undefined' || !['town','home','myhome'].includes(curScreen)) return; gakkai(); }, 5000);
 async function degreeView(){
   const u = UV();
-  await dialog(`<h2 class="dlgT">🎓 学位</h2><p class="dlgP">いま：<b>${CFG.degree[u.degree].n}</b>　学位ポイント <b>${fmt(u.degPt)}</b>　けんきゅうした日 <b>${u.days}にち</b></p>
+  await dialog(`<h2 class="dlgT">${ic('grad','h')} 学位</h2><p class="dlgP">いま：<b>${CFG.degree[u.degree].n}</b>　学位ポイント <b>${fmt(u.degPt)}</b>　けんきゅうした日 <b>${u.days}にち</b></p>
     ${(UV().titles||[]).length ? `<p class="dlgP">しょうごう：${UV().titles.map(X).join('・')}</p>` : ''}${(UV().recipes||[]).length ? `<p class="dlgP facNote">🍰 おぼえた レシピ：${UV().recipes.map(k => RECIPE[k] ? RECIPE[k][1] : '').join('・')}（カフェの メニューに あるよ）</p>` : ''}
     <table class="rep631">${CFG.degree.slice(1).map((D, i) => `<tr class="${u.degree >= i+1 ? 'got' : ''}"><th>${D.n}</th><td>${fmt(D.pt)}pt・${D.d}にち${D.adv ? '・アドバンス1テーマ' : ''}${D.mas ? `・マスター${D.mas}テーマ` : ''}</td><td>${u.degree >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
 }
@@ -8772,6 +8803,26 @@ body.sc631on{overflow:hidden}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
+/* v6.35 アイコン・ナビ */
+.ii635{width:1.45em;height:1.45em;object-fit:contain;display:inline-block;vertical-align:middle;margin:-3px 1px 0 0}
+.ii635.big{width:1.6em;height:1.6em;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.ii635.h{width:1.5em;height:1.5em}
+.ii635.xl{width:84px;height:84px}
+.sic633{width:1.45em;height:1.45em;object-fit:contain;display:inline-block;vertical-align:middle;margin-top:-3px}
+.sb631 .sic633{width:34px;height:34px;display:block;margin:0}
+.tools631 button,.chip631{display:inline-flex;align-items:center;gap:2px}
+.stk631 b,.stk631 small{display:flex!important;align-items:center;justify-content:center;gap:2px}
+.stk631 .ii635{width:18px;height:18px;margin:0}
+.hp635 img{width:20px;height:20px;object-fit:contain}
+.gd635{display:flex;gap:10px;align-items:flex-end;text-align:left}
+.gdb635{flex:none;width:96px;animation:hop631 .8s ease-in-out infinite alternate}.gdb635 img{width:100%;height:auto;display:block}
+.gdt635{position:relative;flex:1;min-width:0;background:#FFFDF4;border:3px solid #F2C94C;border-radius:16px;padding:8px 10px}
+.gdt635::before{content:"";position:absolute;left:-12px;bottom:18px;border:8px solid transparent;border-right:10px solid #F2C94C}
+.gdt635>b{display:inline-block;background:#5BB0E8;color:#fff;border-radius:99px;font-size:11px;padding:0 8px;margin-bottom:2px}
+.gdt635 h3{margin:2px 0 4px;font-size:16px;color:#6B4A2A}
+.gdt635 p{margin:0;font-size:13.5px;line-height:1.6;color:#4A3A2A}
+.gdd635{display:flex;justify-content:center;gap:5px;margin-top:8px}.gdd635 i{width:8px;height:8px;border-radius:50%;background:#E3D6BE}.gdd635 i.on{background:#F2A33A;width:18px;border-radius:99px}
+
 /* v6.34 だいがく */
 #sc631.bgU634{background:#EEF1E4}
 #sc631.bgU634::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_univ.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
