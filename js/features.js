@@ -10018,6 +10018,16 @@ const backBtn = (a='town') => `<button type="button" class="bk644" data-z="${a}"
 const logo = () => P.logo ? `<img class="lg644" src="${P.logo}" alt="${P.n}">` : `<div class="lgt644"><small>まなびタウンの</small><b>${P.n}</b></div>`;
 const hanaStand = (cls='') => `<div class="hn644 ${cls}"><i style="background-image:url(${IMG}hana_walk.webp)"></i></div>`;
 
+/* v6.50：iPad よこ がめんの みぎがわ（きょうの けんがく・ずかんの あつまりぐあい） */
+function side650(s, left){
+  const L = all(P), seen = s.seen || {}, has = a => (seen[a[0]]||{}).card, got = L.filter(has).length;
+  const rows = P.areas.concat([['rare','とくべつな いきもの']]).map(ar => { const xs = L.filter(a => a[2]===ar[0]); if(!xs.length) return '';
+    return `<button type="button" class="ar650" data-z="zukan"><span class="an650"><b>${X(ar[1])}</b><em>${xs.filter(has).length}/${xs.length}</em></span><span class="th650">${xs.map(a => `<i class="${has(a) ? 'on' : ''} ${ar[0]==='rare' ? 'g' : ''}"><img src="${X(artOf(a))}" alt="" loading="lazy"></i>`).join('')}</span></button>`; }).join('');
+  return `<aside class="ls650"><div class="lp650">
+    <div class="lh650"><b>きょうの けんがく</b><span class="dt650">${Array.from({length:CFG.perDay}, (_, i) => `<i class="${i < CFG.perDay - left ? 'u' : ''}"></i>`).join('')}</span><small>${left > 0 ? `あと ${left}かい` : 'また あした'}</small></div>
+    <div class="lz650"><b>${P.key==='zoo' ? 'しゃしんずかん' : 'かいがらずかん'}</b><span class="br650"><i style="width:${L.length ? Math.round(got/L.length*100) : 0}%"></i></span><small>${got}/${L.length}</small></div>
+    <div class="ars650">${rows}</div></div></aside>`;
+}
 function top(){
   if(!ROOT) return; stopLoop(); const s = SV(P), left = CFG.perDay - s.daily.walks, I6 = './assets/images/v646/';
   const zones = P.key==='zoo' ? [[0,40,66,18,22],[1,66,68,25,22]] : [[0,56,42,38,32]];
@@ -10027,6 +10037,7 @@ function top(){
       <span class="bb644 hidden"></span></div>
     <header class="hd644">${backBtn()}${logo()}${cryChip()}</header>
     <div class="ts644"></div>
+    ${side650(s, left)}
     <div class="tb644"><button type="button" class="go644 g646 ${P.key}" data-z="walk" ${left > 0 ? '' : 'disabled'} style="background-image:url(${I6}btn_${P.key}.webp)"><span>${left > 0 ? `${P.n}を<br>あるく` : 'きょうは<br>もう おしまい'}</span><small>${left > 0 ? `きょう あと ${left}かい` : 'また あした あそぼう！'}</small></button>
       <button type="button" class="zk644 z646 ${P.key}" data-z="zukan"><img src="${X(artSrc('ui_zukan') || '')}" alt=""><b>ずかん</b></button></div>
   </div>`;
@@ -10513,6 +10524,169 @@ body.scr-home #topbar{min-height:96px;align-items:center}
 .abRow.fed647{border-radius:8px}
 /* おねがいの のこり じかん */
 .tl647{font-style:normal;margin-left:6px;color:#7A8A9A;font-weight:800}.tl647.soon{color:#E8604A}
+`;
+document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.50
+   ・ホームの ロゴ：大きすぎ → ちょうどよく（ポイント・すいしょうに かさならない）
+   ・がっこう／だいがく／どうぶつえん／すいぞくかん：iPad よこ がめん レイアウト
+   ・がめんの むき：スマホ＝たて こてい／iPad＝よこ こてい（ちがう むきの ときは「まわしてね」がめん）
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.50.0';
+
+/* ---------- がめんの むき ---------- */
+const touch = () => (window.matchMedia && matchMedia('(pointer:coarse)').matches) || navigator.maxTouchPoints > 1;
+const isTab = () => Math.min(screen.width, screen.height) >= 600;            // iPad・タブレット（スマホは 600 みまん）
+const want = () => !touch() ? null : isTab() ? 'landscape' : 'portrait';
+function isLand(){
+  const t = screen.orientation && screen.orientation.type; if(t) return t.indexOf('landscape') === 0;
+  if(typeof window.orientation === 'number') return Math.abs(window.orientation) === 90;
+  return innerWidth > innerHeight;
+}
+let OV = null;
+function overlay(){
+  if(OV && document.body.contains(OV)) return OV;
+  OV = document.createElement('div'); OV.id = 'rot650'; OV.setAttribute('role', 'alert');
+  document.body.appendChild(OV); return OV;
+}
+function draw(w){
+  const o = overlay(), tab = w === 'landscape', bird = (typeof artSrc === 'function' && (artSrc('bird_wave') || artSrc('bird_think'))) || '';
+  o.className = tab ? 'tab' : 'ph';
+  o.innerHTML = `<div class="rc650">
+    <div class="dv650"><svg viewBox="0 0 120 120" aria-hidden="true">
+      <path class="ar" d="M22 60a38 38 0 0 1 64-28" fill="none" stroke="#F2A33A" stroke-width="7" stroke-linecap="round"/><path class="ar" d="M78 22l10 11-14 4z" fill="#F2A33A"/>
+      <g class="dev"><rect x="${tab ? 30 : 42}" y="${tab ? 40 : 28}" width="${tab ? 60 : 36}" height="${tab ? 44 : 64}" rx="${tab ? 7 : 8}" fill="#fff" stroke="#6B4A2A" stroke-width="4"/>
+        <rect x="${tab ? 36 : 47}" y="${tab ? 46 : 35}" width="${tab ? 48 : 26}" height="${tab ? 32 : 48}" rx="3" fill="#BFE6F7"/></g>
+    </svg></div>
+    ${bird ? `<img class="bd650" src="${bird}" alt="">` : ''}
+    <b>${tab ? 'iPadを よこに してね' : 'スマホを たてに してね'}</b>
+    <small>${tab ? 'まなびタウンは よこむきで あそぶよ' : 'まなびタウンは たてむきで あそぶよ'}</small></div>`;
+}
+function check(){
+  const w = want(); if(!w){ document.body.classList.remove('rot650on'); return; }
+  document.documentElement.classList.toggle('dev-tab', w === 'landscape');
+  document.documentElement.classList.toggle('dev-ph', w === 'portrait');
+  const bad = (w === 'landscape') !== isLand();
+  if(bad){ if(!document.body.classList.contains('rot650on') || !OV || OV.className !== (w === 'landscape' ? 'tab' : 'ph')) draw(w); }
+  document.body.classList.toggle('rot650on', bad);
+}
+/* ブラウザが ゆるす ときだけ ほんとうに こてい（Android の ホーム画面アプリ・全画面など） */
+function tryLock(){ const w = want(); try{ if(w && screen.orientation && screen.orientation.lock) screen.orientation.lock(w).catch(() => {}); }catch(e){} }
+const later = () => { check(); [120, 400, 900].forEach(t => setTimeout(check, t)); };
+addEventListener('orientationchange', later); addEventListener('resize', later);
+try{ screen.orientation && screen.orientation.addEventListener('change', later); }catch(e){}
+document.addEventListener('pointerdown', tryLock, {once:true, capture:true});
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later); else later();
+
+/* ---------- CSS ---------- */
+const LAND = '(orientation:landscape) and (min-width:900px) and (min-height:560px)';
+const css = document.createElement('style');
+css.textContent = `
+/* ===== ホームの ロゴ（v6.48 の 88px を とりけし） ===== */
+body.scr-home #topbar{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto auto;column-gap:6px;row-gap:4px;align-items:center;min-height:0!important}
+body.scr-home #topbar #btnBack,body.scr-home #topbar .spacer,body.scr-home #topbar #btnHome{display:none!important}
+body.scr-home #topbar .sign.logo{grid-column:1;grid-row:1 / span 2;align-self:center;display:block!important;min-width:0;width:100%}
+body.scr-home #topbar .sign.logo img.mainLogo{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:70px!important}
+body.scr-home #topbar #btnBgm643{grid-column:2;grid-row:1;justify-self:end}
+body.scr-home #topbar #btnSettings{grid-column:3;grid-row:1}
+body.scr-home #topbar #ptPill{grid-column:2 / span 2;grid-row:2;justify-self:end}
+@media (min-width:700px){ body.scr-home #topbar .sign.logo img.mainLogo{max-height:84px!important} }
+@media (max-width:360px){ body.scr-home #topbar .sign.logo img.mainLogo{max-height:58px!important} }
+
+/* ===== まわしてね がめん ===== */
+#rot650{display:none}
+body.rot650on #rot650{display:flex;position:fixed;inset:0;z-index:2147483000;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#FFF9EC,#FBE7C2);touch-action:none}
+body.rot650on{overflow:hidden!important}
+.rc650{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:20px}
+.dv650 svg{width:120px;height:120px;display:block}
+.dv650 .dev{transform-origin:60px 60px;animation:rot650 2.4s ease-in-out infinite}
+#rot650.ph .dv650 .dev{animation-name:rotP650}
+@keyframes rot650{0%,25%{transform:rotate(90deg)}55%,100%{transform:rotate(0deg)}}
+@keyframes rotP650{0%,25%{transform:rotate(-90deg)}55%,100%{transform:rotate(0deg)}}
+.dv650 .ar{animation:arr650 2.4s ease-in-out infinite}@keyframes arr650{0%,20%{opacity:0}35%,60%{opacity:1}80%,100%{opacity:0}}
+.bd650{width:96px;height:auto;margin-top:-6px;filter:drop-shadow(0 4px 3px rgba(0,0,0,.15));animation:hop639 1.6s ease-in-out infinite}
+.rc650 b{font-size:22px;font-weight:900;color:#6B3A12;letter-spacing:1px}
+.rc650 small{font-size:13px;font-weight:800;color:#8A6A45}
+
+/* ===== iPad よこ：がっこう・だいがく ===== */
+.ls650{display:none}
+@media ${LAND}{
+  .wrap631.s639{max-width:min(1280px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:16px;row-gap:10px;align-items:start;align-content:start;min-height:100%;
+    padding:0 16px calc(16px + env(safe-area-inset-bottom));background:rgba(255,248,232,.25)!important;box-shadow:none}
+  .wrap631.s639>.tp639{grid-column:1;grid-row:1 / 5;align-self:start;position:sticky;top:0;container-type:inline-size;min-height:0;aspect-ratio:100/88;
+    background:#F3DCAB url(./assets/images/v639/bg_school_pals.webp) center top/calc(100% + 16px) auto no-repeat;border-radius:0 0 28px 28px;box-shadow:0 6px 18px rgba(80,50,10,.22)}
+  .wrap631.s639.u641>.tp639{aspect-ratio:100/86;background:#EADFC4 url(./assets/images/v641/bg_univ_pals.webp) center top/calc(100% + 16px) auto no-repeat}
+  .wrap631.s639>.tp639 .hd639{padding-left:10px;padding-right:10px}
+  .wrap631.s639>.pn639{grid-column:2}
+  .wrap631.s639>.pn639:first-of-type{margin-top:calc(12px + env(safe-area-inset-top))}
+  .wrap631.s639 .sb639 .si .sic633{width:54px;height:54px}
+  .wrap631.s639 .sb639{padding:9px 1px 7px}
+  .wrap631.s639 .tc641{padding:8px 2px 7px}
+  .wrap631.s639 .tl639 .ti{height:48px}.wrap631.s639 .tl639 .ti .ii635,.wrap631.s639 .tl639 .ti .md636{width:48px;height:48px}
+  .wrap631.s639 .mw639 li{min-height:42px}.wrap631.s639 .mt639{font-size:14.5px}
+  .wrap631.s639 .sub639 button{font-size:13px;padding:6px 12px}
+  /* じゅぎょう・けっか・ノートは すこし ひろく */
+  .wrap631:not(.s639){max-width:760px}
+  .card633 .qz631{padding:16px 16px}
+}
+
+/* ===== iPad よこ：どうぶつえん・すいぞくかん ===== */
+@media ${LAND}{
+  #zq644 .w644{max-width:none}
+  /* トップ：ひだりに イラスト／みぎに メニュー */
+  .w644.t646{container-type:size}
+  .t646 .tim646{left:0;transform:none;box-shadow:6px 0 18px rgba(0,0,0,.18)}
+  .t646 .hd644{grid-template-columns:calc(100cqh * 2 / 3 - 8px) minmax(0,1fr) auto;padding-right:16px}
+  .t646 .hd644 .bk644{justify-self:start}
+  .t646 .lg644{max-width:320px}
+  .t646 .lgt644 b{font-size:30px}
+  .t646 .ts644{display:none}
+  .t646 .ls650,.t646 .tb644{margin-left:calc(100cqh * 2 / 3)}
+  .t646 .ls650{display:flex;position:relative;z-index:3;flex:1;min-height:0;padding:10px 18px 8px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .t646 .tb644{padding:0 18px calc(14px + env(safe-area-inset-bottom));justify-content:center}
+  .t646 .go644.g646{max-width:440px}
+  .t646 .zk644.z646{width:84px!important;height:84px!important}.t646 .zk644.z646 img{width:44px;height:44px}
+  .lp650{width:100%;max-width:560px;margin:auto;display:flex;flex-direction:column;gap:8px;background:rgba(255,252,244,.94);border:3px solid #fff;border-radius:22px;padding:12px 14px;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+  #zq644.aq .lp650{background:rgba(244,251,255,.95)}
+  .lh650,.lz650{display:flex;align-items:center;gap:8px}
+  .lh650 b,.lz650 b{font-size:15px;color:#6B4A2A;white-space:nowrap}#zq644.aq .lh650 b,#zq644.aq .lz650 b{color:#1F4F7A}
+  .lh650 small,.lz650 small{margin-left:auto;font-size:13px;font-weight:900;color:#B5701C;white-space:nowrap}#zq644.aq .lh650 small,#zq644.aq .lz650 small{color:#2F6FA3}
+  .dt650{display:flex;gap:5px}.dt650 i{width:16px;height:16px;border-radius:50%;background:#FFC65A;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}.dt650 i.u{background:#E6DCCB}
+  #zq644.aq .dt650 i{background:#6FD0F5}#zq644.aq .dt650 i.u{background:#D5E3EC}
+  .br650{flex:1;min-width:60px;height:10px;border-radius:99px;background:#EFE5D3;overflow:hidden}.br650 i{display:block;height:100%;background:linear-gradient(90deg,#FFD25A,#F2A33A)}
+  #zq644.aq .br650{background:#DCEAF2}#zq644.aq .br650 i{background:linear-gradient(90deg,#8FDDF7,#2C8FD0)}
+  .ars650{display:flex;flex-direction:column;gap:6px}
+  .ar650{display:flex;flex-direction:column;gap:4px;border:2.5px solid #F1E2C4;background:#fff;border-radius:16px;padding:6px 8px;font:inherit;text-align:left;box-shadow:0 3px 0 #EADCC4}
+  #zq644.aq .ar650{border-color:#CDE7F4;box-shadow:0 3px 0 #BFDDEE}
+  .ar650:active{transform:translateY(2px)}
+  .an650{display:flex;align-items:center;gap:6px}.an650 b{font-size:13px;color:#5A3A1A}#zq644.aq .an650 b{color:#1F4F7A}
+  .an650 em{margin-left:auto;font-style:normal;font-size:12px;font-weight:900;color:#fff;background:#F2A33A;border-radius:99px;padding:0 9px}#zq644.aq .an650 em{background:#2F8FD0}
+  .th650{display:flex;flex-wrap:wrap;gap:4px}
+  .th650 i{width:44px;height:44px;border-radius:50%;background:#FFF8EA;border:2.5px solid #E6D6BB;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #zq644.aq .th650 i{background:#EEF8FF;border-color:#BFDDEE}
+  .th650 img{width:88%;height:88%;object-fit:contain;filter:brightness(0) opacity(.22)}
+  .th650 i.on img{filter:none}.th650 i.g{border-color:#FFD24A}.th650 i.g.on{box-shadow:0 0 6px 1px rgba(255,196,0,.7)}
+  /* クイズ：ひだりに いきもの／みぎに もんだい */
+  .w644.qz{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .w644.qz .hd644{grid-column:1 / -1}
+  .w644.qz .qs644{grid-column:1;grid-row:2;min-height:0}
+  .w644.qz .qc644{grid-column:2;grid-row:2;margin:8px 14px calc(12px + env(safe-area-inset-bottom)) 4px;border:4px solid #F1D9AA;border-radius:22px;justify-content:center;overflow-y:auto;padding:14px 14px}
+  #zq644.aq .w644.qz .qc644{border-color:#9FD3EE}
+  .w644.qz .qt644{font-size:21px}
+  .w644.qz .op644 button{min-height:76px;font-size:17px}
+  .w644.qz .qa644{max-width:62%}
+  /* あるく：よこに ひろい */
+  .w644.wk .hw644{left:20%}
+  /* けっか・ずかん */
+  .w644.rs .rc644{width:min(680px,calc(100% - 24px));margin-left:auto;margin-right:auto}
+  .w644.zk .zg644{width:min(1040px,calc(100% - 24px));margin-left:auto;margin-right:auto}
+  .w644.zk .zg644>div{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
