@@ -10692,47 +10692,55 @@ document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 })();
 
+
+
 /* =====================================================================
-   まなびタウン v6.51：そうごう びょういん（仕様書 v0.1　STEP1・STEP2）
-   ・STEP1：トップ（スマホ たて／iPad よこ を じどうで きりかえ）
-   ・STEP2：びょういんの なか（スマホ＝リスト／iPad＝だんめんず）、へやの なか（しんさつしつ）
-   ・画像は すべて ./assets/images/hospital/ （STEP3 いこうも おなじ フォルダに たす）
-   ・まだ ない 画像は じどうで かわりの 表示に なる（あとから 画像を おくだけで きりかわる）
+   まなびタウン v6.52：そうごう びょういん（仕様書 v0.1　STEP1〜STEP3）
+   ・STEP1：トップ（スマホ たて／iPad よこ＝ロビーの え）
+   ・STEP2：びょういんの なか（スマホ＝リスト／iPad＝だんめんずの え を タッチ）、へやの なか（6へや）
+   ・STEP3：いりょうクイズ（5もん・3たく・ヒント・ポイント・水晶）／へやの もんだい（3もん）
+   ・画像は すべて ./assets/images/hospital/
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.51.0', IMG = './assets/images/hospital/';
+const VER = '6.52.0', IMG = './assets/images/hospital/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
+const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const today = () => (typeof dayKey === 'function' ? dayKey() : new Date().toISOString().slice(0, 10));
+const snd = t => { try{ sound(t); }catch(e){} };
+const CFG = {set:5, room:3, pt:{1:2, 2:4, 3:6}, perfect:10, cryNeed:3, cryDay:3};
 
 /* ---------- セーブ（save.town.hospital） ---------- */
 function HS(){
   const t = save.town || (save.town = {}); const h = t.hospital || (t.hospital = {});
-  h.days = h.days || []; h.right = h.right || {total:0, theme:{}};
-  h.seen = h.seen || {}; ['rooms','tools','jobs','equip','body'].forEach(k => { h.seen[k] = h.seen[k] || {}; });
+  h.days = h.days || []; h.right = h.right || {total:0, theme:{}}; h.right.theme = h.right.theme || {};
+  h.seen = h.seen || {}; ['rooms','tools','jobs','equip','body','q'].forEach(k => { h.seen[k] = h.seen[k] || {}; });
   h.stickers = h.stickers || {}; h.cards = h.cards || {}; h.rank = h.rank || 0; h.badges = h.badges || [];
   h.daily = h.daily || {d:'', quiz:0, cry:0};
+  if(h.daily.d !== today()) h.daily = {d:today(), quiz:0, cry:0};
+  h.best = h.best || {perfect:0};
   return h;
 }
 
 /* ---------- データ ---------- */
 const STAFF = {
   deer:{n:'シカ', job:'おいしゃさん', em:'🦌', face:'face_deer'}, rabbit:{n:'ウサギ', job:'かんごし', em:'🐰', face:'face_rabbit'},
-  hedgehog:{n:'ハリネズミ', job:'うけつけ', em:'🦔'}, tanuki:{n:'タヌキ', job:'やくざいし', em:'🍃'},
-  raccoon:{n:'アライグマ', job:'けんさぎし', em:'🦝'}, beaver:{n:'ビーバー', job:'きゅうきゅうたい', em:'🦫'},
-  boar:{n:'イノシシ', job:'しゅじゅつ・リハビリ', em:'🐗'}, skunk:{n:'スカンク', job:'えいようし', em:'🦨'}
+  hedgehog:{n:'ハリネズミ', job:'うけつけ', em:'🦔', face:'face_hedgehog'}, tanuki:{n:'タヌキ', job:'やくざいし', em:'🍃', face:'face_tanuki'},
+  raccoon:{n:'アライグマ', job:'けんさぎし', em:'🦝', face:'face_raccoon'}, beaver:{n:'ビーバー', job:'きゅうきゅうたい', em:'🦫'},
+  boar:{n:'イノシシ', job:'しゅじゅつ・リハビリ', em:'🐗', face:'face_boar'}, skunk:{n:'スカンク', job:'えいようし', em:'🦨', face:'face_skunk'}
 };
-/* fl＝かい、st＝スタッフ、ready＝へやの なかに はいれる、view＝見学のみ */
+/* hz＝だんめんず（inside_tab.webp）の 中の いち［x1,y1,x2,y2］（%） */
 const ROOMS = [
-  {id:'uketsuke', n:'うけつけ',       sub:'はじめに ここへ',          fl:'1F', st:'hedgehog', em:'🦔', c:'#F28AA6'},
-  {id:'machiai',  n:'まちあいしつ',   sub:'みんなが すごす ばしょ',   fl:'1F', st:'rabbit',   em:'🪑', c:'#F2A33A'},
-  {id:'shinsatsu',n:'しんさつしつ',   sub:'おいしゃさんに みてもらうよ', fl:'1F', st:'deer',  em:'🩺', c:'#3BAF6A', ready:1},
-  {id:'kensa',    n:'けんさしつ',     sub:'レントゲンや CTなど',      fl:'2F', st:'raccoon',  em:'🩻', c:'#2E8BD6'},
-  {id:'yakkyoku', n:'やっきょく',     sub:'くすりを もらうよ',        fl:'B1F', st:'tanuki',  em:'💊', c:'#8E6BD8'},
-  {id:'shujutsu', n:'しゅじゅつしつ', sub:'しゅじゅつを する へや',   fl:'3F', st:'boar',     em:'🏥', c:'#1FA3A3'},
-  {id:'nyuin',    n:'にゅういんびょうとう', sub:'とまって げんきに なる へや', fl:'3F', st:'rabbit', em:'🛏️', c:'#1FA3A3', view:1,
+  {id:'uketsuke', n:'うけつけ',       sub:'はじめに ここへ',              fl:'1F',  st:'hedgehog', em:'🦔', c:'#F28AA6', hz:[8.5,46,33.6,63]},
+  {id:'machiai',  n:'まちあいしつ',   sub:'みんなが すごす ばしょ',       fl:'1F',  st:'rabbit',   em:'🪑', c:'#F2A33A', hz:[34,46,67,63]},
+  {id:'shinsatsu',n:'しんさつしつ',   sub:'おいしゃさんに みてもらうよ',  fl:'1F',  st:'deer',     em:'🩺', c:'#3BAF6A', hz:[67.4,46,92,63]},
+  {id:'kensa',    n:'けんさしつ',     sub:'レントゲンや CTなど',          fl:'2F',  st:'raccoon',  em:'🩻', c:'#2E8BD6', hz:[8.5,29.6,92,45.4]},
+  {id:'yakkyoku', n:'やっきょく',     sub:'くすりを もらうよ',            fl:'B1F', st:'tanuki',   em:'💊', c:'#8E6BD8', hz:[8.5,64,39,80]},
+  {id:'shujutsu', n:'しゅじゅつしつ', sub:'しゅじゅつを する へや',       fl:'3F',  st:'boar',     em:'🏥', c:'#1FA3A3', hz:[8.5,9.5,50.2,29]},
+  {id:'nyuin',    n:'にゅういんびょうとう', sub:'とまって げんきに なる へや', fl:'3F', st:'rabbit', em:'🛏️', c:'#1FA3A3', view:1, hz:[50.6,9.5,92,29],
    say:'ここは にゅういん びょうとう。ゆっくり ねて、からだを なおす へやだよ。'},
-  {id:'shokudo',  n:'しょくどう',     sub:'おいしく たべて げんきに', fl:'B1F', st:'skunk',   em:'🍽️', c:'#F2A33A', view:1,
+  {id:'shokudo',  n:'しょくどう',     sub:'おいしく たべて げんきに',     fl:'B1F', st:'skunk',    em:'🍽️', c:'#F2A33A', view:1, hz:[60,64,92,80],
    say:'えいようしの スカンクさんが、バランスの よい ごはんを かんがえて いるよ。'}
 ];
 const RM = id => ROOMS.find(r => r.id === id);
@@ -10741,12 +10749,12 @@ const EXTRA = [
   {id:'equip', n:'とくべつな せつび',  sub:'きゅうきゅうしゃや ヘリ',     em:'🚑', c:'#8E6BD8'}
 ];
 const FLOORS = [
-  {f:'3F',  n:'しゅじゅつしつ・にゅういん', c:'#1FA3A3', rooms:['shujutsu','nyuin']},
-  {f:'2F',  n:'けんさしつ',                 c:'#2E8BD6', rooms:['kensa']},
-  {f:'1F',  n:'うけつけ・まちあいしつ・しんさつしつ', c:'#E8608A', rooms:['uketsuke','machiai','shinsatsu']},
-  {f:'B1F', n:'やっきょく・しょくどう',     c:'#F28A2E', rooms:['yakkyoku','shokudo']}
+  {f:'3F',  n:'しゅじゅつしつ・にゅういん', c:'#1FA3A3', y:[9.5,29]},
+  {f:'2F',  n:'けんさしつ',                 c:'#2E8BD6', y:[29.6,45.4]},
+  {f:'1F',  n:'うけつけ・まちあいしつ・しんさつしつ', c:'#E8608A', y:[46,63]},
+  {f:'B1F', n:'やっきょく・しょくどう',     c:'#F28A2E', y:[64,80]}
 ];
-/* へやの どうぐ（しんさつしつ）。hs＝え の 中の キラキラの いち（%） */
+/* へやの どうぐ。hs＝え の 中の キラキラ（%）。em＝アイコンが ない ときの えもじ */
 const TOOLS = {
   shinsatsu:[
     {id:'stetho', n:'ちょうしんき', btn:'ちょうしんき<br>を みる', say:'ちょうしんきで しんぞうの おとを きくよ',
@@ -10759,15 +10767,157 @@ const TOOLS = {
      d:'「C」の かたちの わの、あいている ほうを こたえて、めの みえかたを しらべるよ。', m:'とおくを みたり、めを やすめたり すると めに やさしいよ', hs:null},
     {id:'height', n:'しんちょうけい', btn:'せの たかさ<br>を はかる', say:'せすじを ピンと のばして たってね',
      d:'せの たかさを はかる どうぐ。まっすぐ たつと、ただしく はかれるよ。', m:'ねている あいだに からだが そだつよ。よく ねようね', hs:[64,24]}
+  ],
+  uketsuke:[
+    {id:'card', em:'💳', n:'しんさつけん', btn:'しんさつけん<br>を みる', say:'しんさつけんを だしてね',
+     d:'この びょういんで「あなたは だれか」が わかる カード。2かいめ からは これを だすよ。', m:'なくさない ように、だいじに しまって おこう'},
+    {id:'num', em:'🔢', n:'じゅんばんの ふだ', btn:'じゅんばんの<br>ふだ', say:'ばんごうで よぶから まっててね',
+     d:'よばれる じゅんばんが わかる ふだ。ばんごうが でたら しんさつしつへ いくよ。', m:'じゅんばんを まもると、みんなが きもちよく まてるね'},
+    {id:'sheet', em:'📝', n:'もんしんひょう', btn:'もんしんひょう<br>を かく', say:'いつから どこが へんか かいてね',
+     d:'からだの ようすを かく かみ。いつから・どこが・どんなふうに ぐあいが わるいか かくと、せんせいに つたわるよ。', m:'おうちの ひとと いっしょに かこう'}
+  ],
+  machiai:[
+    {id:'book', em:'📚', n:'えほん', btn:'えほん<br>を よむ', say:'しずかに よんで まとうね',
+     d:'まちあいしつで よめる ほん。よんだら もとの ばしょに もどそう。', m:'しずかに まつのも、びょういんの だいじな マナー'},
+    {id:'wash', em:'🧼', n:'てあらいの ポスター', btn:'てあらい<br>ポスター', say:'ゆびの あいだも あらってね',
+     d:'てあらいの じゅんばんが かいてある ポスター。てのひら・てのこう・ゆびの あいだ・つめ・てくび を あらうよ。', m:'せっけんで 30びょう くらい あらうと ばいきんが へるよ'},
+    {id:'mask', em:'😷', n:'マスク', btn:'マスク<br>を みる', say:'せきが でる ときは マスクを しようね',
+     d:'せきや くしゃみの しぶきが まわりに とばない ように する もの。はなまで しっかり おおうよ。', m:'マスクが ない ときは、ひじの うちがわで くちを おおう'}
+  ],
+  kensa:[
+    {id:'xray', em:'🩻', n:'レントゲン', btn:'レントゲン<br>を みる', say:'うごかずに じっと してね',
+     d:'からだの なかを とおる ひかりの ような もので、ほねの しゃしんを とる きかい。', m:'ほねは しろく うつるよ'},
+    {id:'ct', em:'🍩', n:'CT', btn:'CT<br>を みる', say:'ドーナツの なかを くぐるよ',
+     d:'ドーナツの ような わの なかを くぐって、からだを わぎりに した ような しゃしんを たくさん とる きかい。', m:'コンピューターで からだの なかを たちたいに みられるよ'},
+    {id:'blood', em:'🧪', n:'けつえき けんさ', btn:'けつえき<br>けんさ', say:'ちょっとだけ ちを しらべるよ',
+     d:'すこしの ちを とって、ちの なかの ようすを しらべる けんさ。からだの げんきさが いろいろ わかるよ。', m:'ちには からだの じょうほうが いっぱい'}
+  ],
+  yakkyoku:[
+    {id:'shelf', em:'🗄️', n:'くすりの たな', btn:'くすりの<br>たな', say:'くすりは たくさん しゅるいが あるよ',
+     d:'いろいろな くすりが ならぶ たな。やくざいしさんが、せんせいの かいた「しょほうせん」を みて ただしい くすりを えらぶよ。', m:'くすりを まちがえない ように なんども たしかめるよ'},
+    {id:'bag', em:'🛍️', n:'くすりの ふくろ', btn:'くすりの<br>ふくろ', say:'のむ じかんが かいて あるよ',
+     d:'くすりの ふくろには、のむ じかん（あさ・ひる・よる、しょくご など）や かずが かいて あるよ。', m:'くすりは みずか ぬるまゆで のもう'},
+    {id:'note', em:'📒', n:'おくすりてちょう', btn:'おくすり<br>てちょう', say:'のんだ くすりを きろく するよ',
+     d:'どんな くすりを もらったか きろく する てちょう。ちがう びょういんでも みせると あんしんだよ。', m:'じぶんの くすりは じぶんだけの もの。ひとに あげないでね'}
+  ],
+  shujutsu:[
+    {id:'light', em:'💡', n:'しゅじゅつの ライト', btn:'ライト<br>を みる', say:'かげが できにくい ライトだよ',
+     d:'たくさんの ひかりで てらすので、てや どうぐの かげが できにくい ライト。', m:'「むえいとう（かげが ない あかり）」と いうよ'},
+    {id:'wash', em:'🧼', n:'てあらい', btn:'てあらい<br>を みる', say:'ひじまで ていねいに あらうよ',
+     d:'しゅじゅつの まえには、ゆびさきから ひじまで ていねいに あらって ばいきんを へらすよ。', m:'あらった あとは きれいな てぶくろを するよ'},
+    {id:'cap', em:'🧢', n:'マスクと ぼうし', btn:'マスクと<br>ぼうし', say:'かみのけも ぜんぶ しまうよ',
+     d:'ばいきんや かみのけが はいらない ように、マスクと ぼうしを つけるよ。', m:'しゅじゅつしつは とても せいけつに しているよ'}
   ]
 };
-const SAY_TOP = {
+const ROOMPIC = id => id === 'shinsatsu' ? `${IMG}room_shinsatsu_ph.webp` : `${IMG}rm_${id}.webp`;
+const SAY = {
   hana:['びょういんって どんな ところかな？','いろいろ みて みたい！','てあらい したよ！'],
   deer:['いっしょに まなぼう！','からだを たいせつに しようね','わからない ことは なんでも きいてね'],
   rabbit:['ようこそ そうごう びょういんへ！','どこに いって みようか？','てを あらうと ばいきんが へるよ'],
-  hedgehog:['こんにちは！','はじめに うけつけへ どうぞ','しんさつけんを だしてね'],
+  hedgehog:['こんにちは！ うけつけは こちら','はじめに うけつけへ どうぞ','しんさつけんを だしてね'],
+  boar:['リハビリで げんきに なるぞ！','からだを うごかすのは きもちいい！'],
+  bench:['じゅんばんを まって いるよ','えほんを よんで まって いるんだ'],
   lobby:['どこに いって みようかな？','けんこうな みらいを いっしょに つくろう！']
 };
+
+/* ---------- いりょうクイズの もんだい
+   [テーマ, ★, もんだい, せいかい, ちがう1, ちがう2, かいせつ]
+   ジャンル（6.2）：health＝けんこう・せいかつ（machiai も ふくむ）／body＝からだ／job＝しごと（uketsuke・nyuin も ふくむ）
+                    med＝しんさつ・けんさ・くすり（shinsatsu・kensa・yakkyoku・shujutsu）／equip＝とくべつな せつび ---------- */
+const QS = [
+  ['health',1,'かぜや かんせんしょうを ふせぐために たいせつなのは？','てを あらう','あまいものを たくさん たべる','よるふかしを する','せっけんで てを あらうと、ばいきんが へるよ'],
+  ['health',1,'てを あらう ときに つかうと よいのは？','せっけん','すな','ジュース','せっけんの あわが よごれと ばいきんを おとすよ'],
+  ['health',1,'はを みがく じかんは？','まいにち あさと よる','おやつの ときだけ','たべた あとは しない','まいにちの おてあてで むしばを ふせごう'],
+  ['health',2,'てあらいで あらい わすれやすい ところは？','ゆびの あいだや つめ','てのひらの まんなか','てのこうの まんなか','ゆびの あいだ・つめ・てくびも わすれずに あらおう'],
+  ['health',1,'せきや くしゃみが でる ときは？','マスクや ひじで くちを おおう','ひとに むけて する','おおきく くちを あける','しぶきが まわりに とばない ように しよう'],
+  ['health',1,'からだを そだてる ために たいせつなのは？','よく ねる','よるふかしを する','ごはんを ぬく','ねている あいだに からだが そだつよ'],
+  ['health',1,'そとから かえったら まず するのは？','てあらい・うがい','すぐに おやつ','そのまま ねる','そとの ばいきんを おうちに もちこまない ように しよう'],
+  ['health',1,'あつい ひに たいせつなのは？','こまめに みずを のむ','のみものを がまんする','ずっと ひなたに いる','ねっちゅうしょうを ふせぐには、こまめな すいぶんと きゅうけいが だいじ'],
+  ['health',2,'むしばに なりやすいのは？','あまいものを だらだら たべる','ごはんの あとに はを みがく','みずを のむ','だらだら たべると、くちの なかが むしばに なりやすく なるよ'],
+  ['health',1,'ごはんの ときに たいせつなのは？','いろいろな ものを バランスよく','すきな ものだけ','おかしだけ','いろいろな しょくひんで、からだに ひつような えいようが とれるよ'],
+  ['health',2,'よく かんで たべると どう なる？','しょうかを たすける','はが とける','ねむれなく なる','つばが でて、い の はたらきを たすけるよ'],
+  ['health',3,'しょうがくせいが 1にちに ねると よい じかんの めやすは？','9〜12じかん','3〜4じかん','15〜18じかん','しょうがくせいは 9〜12じかん くらい ねるのが めやすだよ'],
+  ['health',2,'すりきずが できたら まず どうする？','みずで きれいに あらう','どろを つける','そのまま ほうって おく','きずぐちを ながして、おうちの ひとに みせよう'],
+  ['health',1,'うんどうの まえに すると よいのは？','じゅんび たいそう','いきなり ぜんりょくで はしる','たくさん たべる','からだを あたためると けがを しにくいよ'],
+  ['health',2,'めを たいせつに するには？','ときどき とおくを みて やすむ','くらい ところで ちかくから ほんを よむ','ずっと がめんを みる','めを やすめる じかんを つくろう'],
+  ['machiai',1,'まちあいしつで まつ ときは？','しずかに すわって まつ','はしりまわる','おおごえで うたう','ぐあいの わるい ひとも いるから、しずかに まとう'],
+  ['machiai',1,'びょういんで マスクを する わけは？','ばいきんを ひろげない ため','かっこいい から','あつい から','じぶんも まわりの ひとも まもれるよ'],
+  ['machiai',1,'いりぐちに ある しょうどくえきは なにに つかう？','てを きれいに する','のみもの','かみを あらう','びょういんに はいる ときに てを しょうどく しよう'],
+  ['machiai',1,'まちあいしつの えほんを よんだ あとは？','もとの ばしょに もどす','もって かえる','ゆかに おく','つぎの ひとも よめる ように もどそう'],
+  ['machiai',2,'びょういんで スマホや ゲームの おとは？','きまりを まもって おとを ださない','おおきな おとで ならす','でんわで おおごえで はなす','びょういんの きまりを まもろう'],
+  ['machiai',1,'じぶんの なまえが よばれたら？','へんじを して いく','かくれる','かえる','げんきに「はい」と こたえよう'],
+  ['uketsuke',1,'びょういんに ついたら はじめに いくのは？','うけつけ','しゅじゅつしつ','しょくどう','まずは うけつけで「きました」と つたえるよ'],
+  ['uketsuke',2,'しんさつけんは なにに つかう？','びょういんで じぶんだと わかる ように','おかねの かわり','えを かく かみ','2かいめ からは しんさつけんを だすよ'],
+  ['uketsuke',1,'うけつけで もらう じゅんばんの ふだで わかるのは？','よばれる じゅんばん','あしたの てんき','くすりの あじ','ばんごうで じゅんばんに よばれるよ'],
+  ['uketsuke',2,'「もんしんひょう」に かくのは？','からだの ようす','しゅくだいの こたえ','すきな たべもの','いつから どこが へんかを かくと、せんせいに つたわるよ'],
+  ['uketsuke',3,'びょういんで みせる、けんこうほけんの しょうめいは？','ほけんしょう','としょかんの カード','ポイントカード','ほけんしょう（マイナほけんしょう など）を みせるよ'],
+  ['shinsatsu',1,'しんぞうの おとを きく どうぐは？','ちょうしんき','たいおんけい','ものさし','ちょうしんきで しんぞうや はいの おとを きくよ'],
+  ['shinsatsu',2,'げんきな ときの たいおんは どのくらい？','36ど くらい','30ど くらい','40ど くらい','たいおんは だいたい 36〜37ど くらいだよ'],
+  ['shinsatsu',2,'ひざの したを たたいて しらべる どうぐは？','はんしゃけんさの ハンマー','だいくの かなづち','ちょうしんき','あしが ピョンと うごくか しらべるよ'],
+  ['shinsatsu',2,'めの けんさで「C」の かたちを みて こたえるのは？','あいている ほう','いろ','かずの おおさ','わの きれめが どっちに あるかを こたえるよ'],
+  ['shinsatsu',1,'しんちょうけいで はかるのは？','せの たかさ','からだの おもさ','たいおん','まっすぐ たって はかるよ'],
+  ['shinsatsu',1,'たいじゅうけいで はかるのは？','からだの おもさ','せの たかさ','めの みえかた','からだの せいちょうが わかるよ'],
+  ['shinsatsu',1,'のどを みて もらう ときに いう ことばは？','「あー」','「んー」','「しーっ」','くちを おおきく あけて「あー」と いうと、のどの おくが みえるよ'],
+  ['shinsatsu',1,'たいおんけいを はさむ ばしょは？','わきの した','あたまの うえ','あしの うら','わきの したに しっかり はさんで はかるよ'],
+  ['shinsatsu',2,'ちょうしんきで きけるのは？','しんぞうや はいの おと','ゆめの なかみ','かんがえごと','からだの なかの おとで ようすが わかるよ'],
+  ['kensa',1,'レントゲンで よく みえるのは？','ほね','かんがえて いる こと','においの もと','ほねは レントゲンで しろく うつるよ'],
+  ['kensa',3,'CTで わかるのは？','からだを わぎりに した ような しゃしん','そとの けしき','こえの おおきさ','たくさんの しゃしんで からだの なかを みるよ'],
+  ['kensa',2,'けつえき けんさで しらべるのは？','ちの なかの ようす','めの みえかた','せの たかさ','ちを しらべると、からだの げんきさが わかるよ'],
+  ['kensa',1,'レントゲンを とる ときは？','うごかずに じっと する','ジャンプする','うたう','うごくと しゃしんが ぶれて しまうよ'],
+  ['kensa',3,'おなかの なかを、おとの はねかえりで みる けんさは？','ちょうおんぱ（エコー）','たいおんけい','めの けんさ','きこえない おとで、からだの なかを みるよ'],
+  ['kensa',3,'MRIは なにを つかって からだの なかを うつす？','おおきな じしゃくと でんぱ','ひかりと かがみ','かぜと みず','つよい じしゃくの ちからを つかうよ'],
+  ['yakkyoku',2,'くすりは なにで のむ？','みず または ぬるまゆ','ジュース','ミルクだけ','みずか ぬるまゆで のむのが きほんだよ'],
+  ['yakkyoku',1,'じぶんの くすりを ともだちに あげて いい？','あげない','どんどん あげる','こうかん する','くすりは その ひとに あわせて だされて いるよ'],
+  ['yakkyoku',2,'「しょくご」に のむ くすりは いつ のむ？','ごはんを たべた あと','ごはんの まえ','ねる まえ だけ','しょくご ＝ ごはんの あと だよ'],
+  ['yakkyoku',3,'「しょくぜん」に のむ くすりは いつ のむ？','ごはんの まえ','ごはんの あと','あさ おきて すぐ だけ','しょくぜん ＝ ごはんの まえ だよ'],
+  ['yakkyoku',2,'もらった くすりを きろく する てちょうは？','おくすりてちょう','れんらくちょう','じゆうちょう','ちがう びょういんでも みせると あんしんだよ'],
+  ['yakkyoku',2,'くすりを しまう ばしょは？','こどもの てが とどかない すずしい ところ','ひの あたる まどべ','おふろば','あつさや しめりけで くすりが かわる ことも あるよ'],
+  ['yakkyoku',3,'よく なった きが しても くすりは？','いわれた とおりに のむ','すぐに すてる','2ばい のむ','かってに やめず、せんせいや やくざいしさんに きこう'],
+  ['shujutsu',1,'しゅじゅつの まえに、ていねいに するのは？','てあらい','おやつ','ダンス','ゆびさきから ひじまで ていねいに あらうよ'],
+  ['shujutsu',2,'しゅじゅつしつで マスクと ぼうしを する わけは？','ばいきんや かみのけが はいらない ように','さむい から','かっこいい から','しゅじゅつしつは とても せいけつに するよ'],
+  ['shujutsu',3,'しゅじゅつしつの まるい ライトの とくちょうは？','かげが できにくい','いろが かわる','おとが でる','「むえいとう」と いって、かげが できにくいよ'],
+  ['shujutsu',2,'しゅじゅつの とき、いたくない ように する くすりは？','ますい','めぐすり','ばんそうこう','ますいで ねむって いる あいだに しゅじゅつ するよ'],
+  ['shujutsu',2,'しゅじゅつの どうぐは どうやって つかう？','きれいに めっきん して つかう','そのまま つかう','あらわずに つかう','ばいきんを なくしてから つかうよ'],
+  ['nyuin',2,'びょういんの ごはんを かんがえるのは？','えいようし','おいしゃさん','うけつけ','えいようしさんが バランスの よい ごはんを かんがえるよ'],
+  ['nyuin',1,'にゅういん している ひとの おみまいでは？','しずかに すごす','おおさわぎ する','とびはねる','ゆっくり やすめる ように しずかに しよう'],
+  ['nyuin',2,'にゅういん びょうとうで、こまった ときに おす ボタンは？','ナースコール','エレベーターの ボタン','テレビの ボタン','おすと かんごしさんが きて くれるよ'],
+  ['nyuin',3,'てんてきは なにを する？','くすりや すいぶんを ゆっくり からだに いれる','ねつを はかる','せの たかさを はかる','ぽたぽたと すこしずつ からだに いれるよ'],
+  ['nyuin',1,'にゅういん している ときに たいせつなのは？','ゆっくり やすむ','よる おそくまで あそぶ','ずっと ゲーム','しっかり やすんで、からだを なおそう'],
+  ['body',1,'しんぞうの おおきさは どのくらい？','こぶし くらい','スイカ くらい','ビーだま くらい','じぶんの こぶし くらいの おおきさだよ'],
+  ['body',1,'しんぞうの はたらきは？','からだじゅうに ちを おくる','ものを かんがえる','たべものを こなす','しんぞうは ちを おくる ポンプだよ'],
+  ['body',1,'いきを すって さんそを とりいれるのは？','はい','い','ほね','はいで さんそを とりいれるよ'],
+  ['body',1,'たべものを こなす（しょうか する）のは？','い','はい','のう','い で たべものを どろどろに するよ'],
+  ['body',1,'かんがえたり おぼえたり するのは？','のう','い','ちょう','のうは からだの しれいとうだよ'],
+  ['body',1,'からだを ささえて いるのは？','ほね','かみのけ','つめ','ほねが からだの はしらに なって いるよ'],
+  ['body',2,'えいようを きゅうしゅう する ながい くだは？','ちょう','はい','しんぞう','ちょうで えいようを とりいれるよ'],
+  ['body',3,'おとなの からだの ほねの かずは だいたい？','200こ くらい','20こ くらい','2000こ くらい','おとなは 200こ くらいの ほねが あるよ'],
+  ['body',3,'からだの なかで いちばん おおきな ぞうきの ひとつは？','かんぞう','みみ','つめ','かんぞうは おなかの みぎうえに ある おおきな ぞうきだよ'],
+  ['body',2,'ほねを ひっぱって からだを うごかすのは？','きんにく','かみのけ','つめ','きんにくが ちぢむと からだが うごくよ'],
+  ['body',2,'ちを からだじゅうに はこぶ くだは？','けっかん','ほね','かみのけ','けっかんは からだじゅうに はりめぐらされて いるよ'],
+  ['body',3,'いきを はくと からだから でていくのは？','にさんかたんそ','さんそだけ','すなぼこり','さんそを とりいれて、にさんかたんそを だすよ'],
+  ['body',2,'しんぞうや はいは、ねて いる ときは？','ずっと はたらいて いる','とまって いる','やすんで いる','ねて いる あいだも ずっと はたらいて いるよ'],
+  ['body',1,'のうが ある ところは？','あたまの なか','おなかの なか','あしの なか','かたい ほね（ずがいこつ）に まもられて いるよ'],
+  ['job',2,'くすりを ととのえて わたすのは？','やくざいし','けんさぎし','えいようし','やくざいしさんが ただしい くすりを わたすよ'],
+  ['job',1,'びょうきや けがを しんさつ するのは？','おいしゃさん','えいようし','うけつけ','おいしゃさんが からだを しらべて なおしかたを かんがえるよ'],
+  ['job',1,'かんじゃさんの おせわを して、せんせいを たすけるのは？','かんごし','やくざいし','コック','かんごしさんは いつも そばで ささえて くれるよ'],
+  ['job',2,'レントゲンや けつえきの けんさを するのは？','けんさの ぎしさん','うけつけ','えいようし','けんさの せんもんかが しらべて くれるよ'],
+  ['job',2,'からだを うごかす れんしゅうを てつだうのは？','リハビリの せんせい','うけつけ','やくざいし','リハビリで からだの うごきを とりもどすよ'],
+  ['job',1,'びょういんに きた ひとを むかえて あんない するのは？','うけつけの ひと','しゅじゅつの せんせい','えいようし','うけつけは びょういんの はじまりの ばしょ'],
+  ['job',1,'きゅうきゅうしゃで かけつけるのは？','きゅうきゅうたい','やくざいし','えいようし','きゅうきゅうたいいんが すぐに かけつけるよ'],
+  ['equip',1,'きゅうきゅうしゃを よぶ でんわばんごうは？','119','110','117','110は けいさつ。きゅうきゅうしゃと しょうぼうは 119'],
+  ['equip',2,'110ばんに でんわ すると つながるのは？','けいさつ','しょうぼう・きゅうきゅう','じほう（いまの じかん）','じけんや じこの ときは 110ばん'],
+  ['equip',2,'ドクターヘリの よい ところは？','はやく とおくまで いける','みずの なかを すすめる','じめんを ほれる','おいしゃさんが ヘリで いそいで かけつけるよ'],
+  ['equip',3,'しゅじゅつロボットを うごかすのは？','おいしゃさん','ロボットが ひとりで','かんじゃさん','おいしゃさんが そうさして、こまかい しゅじゅつを するよ'],
+  ['equip',1,'きゅうきゅうしゃの なかに あるのは？','ねたまま はこべる ベッドや てあての どうぐ','おもちゃ だけ','なにも ない','はこびながら てあてが できるよ'],
+  ['equip',2,'119ばんで「かじですか？ きゅうきゅうですか？」と きかれたら？','「きゅうきゅうです」と こたえる','だまって きる','なまえだけ いう','おちついて、ばしょと ようすを つたえよう'],
+  ['equip',2,'CTスキャナーは どんな かたち？','ドーナツの ような わ','れいぞうこの ような はこ','ながい はしご','わの なかを ねたまま くぐるよ']
+];
+const GENRE = {health:['health','machiai'], body:['body'], job:['job','uketsuke','nyuin'], med:['shinsatsu','kensa','yakkyoku','shujutsu'], equip:['equip']};
+const GW = [['health',30],['body',25],['job',20],['med',15],['equip',10]];
+const THEME = {health:'けんこう・せいかつ', machiai:'まちあいしつ', uketsuke:'うけつけ', shinsatsu:'しんさつしつ', kensa:'けんさしつ', yakkyoku:'やっきょく', shujutsu:'しゅじゅつしつ', nyuin:'にゅういん', body:'からだ', job:'びょういんの しごと', equip:'とくべつな せつび'};
+const TPIC = {health:'rm_shokudo', machiai:'rm_machiai', uketsuke:'rm_uketsuke', shinsatsu:'rm_shinsatsu', kensa:'rm_kensa', yakkyoku:'rm_yakkyoku', shujutsu:'rm_shujutsu', nyuin:'rm_nyuin', body:'rm_body', job:'top_tab', equip:'rm_equip'};
+const QTABS = [['mix','まぜこぜ',null],['shinsatsu','しんさつしつ',['shinsatsu']],['kensa','けんさしつ',['kensa']],['yakkyoku','やっきょく',['yakkyoku']],['nyuin','にゅういん',['nyuin','shujutsu']],['other','そのたの へや',['uketsuke','machiai']]];
+const maxStar = () => { const g = Number(save.menu && save.menu.grade) || 0; return !g ? 3 : g <= 2 ? 1 : g <= 4 ? 2 : 3; };
 
 /* ---------- アイコン（SVG） ---------- */
 const SV = {
@@ -10787,27 +10937,28 @@ const SV = {
   t_eye:'<svg viewBox="0 0 48 48"><rect x="8" y="3" width="32" height="42" rx="4" fill="#fff" stroke="#3A4A5A" stroke-width="3"/><g fill="none" stroke="#2A2A30" stroke-linecap="butt"><circle cx="24" cy="12" r="4.5" stroke-width="2.6" stroke-dasharray="24 4.3" transform="rotate(-10 24 12)"/><circle cx="17" cy="24" r="3.2" stroke-width="2" stroke-dasharray="16.5 3.6" transform="rotate(80 17 24)"/><circle cx="31" cy="24" r="3.2" stroke-width="2" stroke-dasharray="16.5 3.6" transform="rotate(170 31 24)"/><circle cx="15" cy="34" r="2.2" stroke-width="1.6" stroke-dasharray="11 2.8"/><circle cx="24" cy="34" r="2.2" stroke-width="1.6" stroke-dasharray="11 2.8" transform="rotate(90 24 34)"/><circle cx="33" cy="34" r="2.2" stroke-width="1.6" stroke-dasharray="11 2.8" transform="rotate(200 33 34)"/></g></svg>',
   t_height:'<svg viewBox="0 0 48 48"><rect x="20" y="3" width="9" height="40" rx="2" fill="#7B6BD8" stroke="#4A3A9A" stroke-width="2"/><path d="M29 9h4M29 15h3M29 21h4M29 27h3M29 33h4" stroke="#4A3A9A" stroke-width="2"/><rect x="12" y="10" width="17" height="4" rx="1.5" fill="#B9C6D2" stroke="#3A4A5A" stroke-width="1.5"/><rect x="12" y="42" width="25" height="4" rx="2" fill="#3A4A5A"/></svg>'
 };
-const tIc = id => SV['t_' + id] || '';
+const tIc = t => (t && SV['t_' + t.id]) || `<i class="em651">${t && t.em || ''}</i>`;
 
 /* ---------- がめんの きりかえ ---------- */
 const isTab = () => innerWidth >= 900 && innerWidth >= innerHeight;   // 仕様書 2.1
-let ROOT = null, KEY = null, V = {s:'top', room:null, tool:null, floor:null}, LAY = null;
+let ROOT = null, KEY = null, V = {s:'top', room:null, tool:null, floor:null}, LAY = null, Q = null;
 function root(){ if(ROOT && document.body.contains(ROOT)) return ROOT; ROOT = document.createElement('div'); ROOT.id = 'hp651'; document.body.appendChild(ROOT); return ROOT; }
-function open(key){ KEY = key; V = {s:'top', room:null, tool:null, floor:null}; HS(); root(); document.body.classList.add('hp651on'); requestAnimationFrame(() => ROOT && ROOT.classList.add('show')); render(); }
-function close(){ if(!ROOT) return; const r = ROOT; ROOT = null; r.classList.remove('show'); document.body.classList.remove('hp651on'); setTimeout(() => r.remove(), 250); try{ persist(); }catch(e){} }
-function go(s, o={}){ Object.assign(V, {s}, o); try{ sound('tap'); }catch(e){} render(); }
+function open(key){ KEY = key; V = {s:'top', room:null, tool:null, floor:null}; Q = null; HS(); root(); document.body.classList.add('hp651on'); requestAnimationFrame(() => ROOT && ROOT.classList.add('show')); render(); }
+function close(){ if(!ROOT) return; const r = ROOT; ROOT = null; Q = null; r.classList.remove('show'); document.body.classList.remove('hp651on'); setTimeout(() => r.remove(), 250); try{ persist(); }catch(e){} }
+function go(s, o={}){ Object.assign(V, {s}, o); snd('tap'); render(); }
 function render(){
   if(!ROOT) return; LAY = isTab() ? 'tab' : 'ph'; ROOT.className = `show ${LAY}`;
-  const f = {top, inside, room}[V.s] || top; ROOT.innerHTML = f(); after();
+  const f = {top, inside, room, quiz, result}[V.s] || top; ROOT.innerHTML = f(); after();
 }
 let rt = 0; addEventListener('resize', () => { if(!ROOT) return; clearTimeout(rt); rt = setTimeout(() => { if(ROOT && (isTab() ? 'tab' : 'ph') !== LAY) render(); }, 150); });
 
 /* ---------- きょうつうの パーツ ---------- */
 const chips = () => `<div class="ch651"><span class="cn651"><img src="${X(artSrc('hd_coin')||'')}" alt="" onerror="this.remove()"><b>${(save.points && save.points.bal) || 0}</b></span><span class="cy651"><img src="${X(artSrc('itm_crystal')||'')}" alt="" onerror="this.remove()"><b>${save.crystal || 0}</b></span></div>`;
+const refreshChips = () => { if(!ROOT) return; ROOT.querySelectorAll('.ch651').forEach(c => c.outerHTML = chips()); };
 const townBtn = () => `<button type="button" class="tw651" data-h="town">${SV.home}<b>${LAY === 'tab' ? 'まちに もどる' : 'まちへ'}</b></button>`;
 const backBtn = (to, label) => `<button type="button" class="bk651" data-h="${to}">${SV.back}<b>${label}</b></button>`;
 const sign = (main, small = 'そうごう びょういん') => `<div class="sg651"><small>${SV.cross}${small}</small><b>${main}</b></div>`;
-const face = (st, cls = '') => { const s = STAFF[st] || {}; return `<span class="fc651 ${cls}" style="--c:${s.c || '#fff'}">${s.face ? `<img src="${IMG}${s.face}.webp" alt="">` : `<i>${s.em || ''}</i>`}</span>`; };
+const face = (st, cls = '', attr = '') => { const s = STAFF[st] || {}; return `<span class="fc651 ${cls}" ${attr}>${s.face ? `<img src="${IMG}${s.face}.webp" alt="">` : `<i>${s.em || ''}</i>`}</span>`; };
 const thumb = r => `<span class="th651" style="--c:${r.c}"><i>${r.em}</i><img src="${IMG}rm_${r.id}.webp" alt="" onerror="this.remove()"></span>`;
 const MAINBTN = [
   {a:'inside', n:'びょういんを<br>みてみる', ic:'stetho', c:'pk'},
@@ -10817,6 +10968,8 @@ const MAINBTN = [
   {a:'equip',  n:'とくべつな<br>せつび',     ic:'monitor',c:'pu'}
 ];
 const mbtn = b => `<button type="button" class="mb651 ${b.c}" data-h="${b.a}"><span class="mi651">${SV[b.ic]}</span><b>${b.n}</b></button>`;
+const hz = (k, l, t, w, h) => `<button type="button" class="hz651" data-say="${k}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%"></button>`;
+const todayLine = () => { const d = HS().daily; return d.cry >= CFG.cryDay ? 'きょうの 水晶は ぜんぶ もらったよ' : `クイズで 3もん せいかい → 水晶（きょう あと ${CFG.cryDay - d.cry}こ）`; };
 
 /* ---------- STEP1：トップ ---------- */
 function top(){
@@ -10824,91 +10977,181 @@ function top(){
   const clinic = `<button type="button" class="cl651" data-h="clinic">🩹 けがの かんじゃさん${hurt ? `<em>${hurt}</em>` : ''}</button>`;
   if(LAY === 'ph') return `<div class="w651 tp ph">
     <div class="sk651"><div class="ib651 top"><img src="${IMG}top_ph.webp" alt="">
-      <button type="button" class="hz651" data-say="hana"   style="left:6%;top:46%;width:30%;height:46%"></button>
-      <button type="button" class="hz651" data-say="deer"   style="left:36%;top:36%;width:28%;height:54%"></button>
-      <button type="button" class="hz651" data-say="rabbit" style="left:64%;top:48%;width:28%;height:43%"></button>
+      ${hz('hana',6,46,30,46)}${hz('deer',36,36,28,54)}${hz('rabbit',64,48,28,43)}
       <span class="bb651 hidden"></span></div>
       <header class="hd651">${townBtn()}${chips()}</header>
       <div class="ts651">${sign('総合病院', 'まなびタウン')}${clinic}</div>
     </div>
     <div class="bt651">${MAINBTN.slice(0, 3).map(mbtn).join('')}</div>
-    <p class="ft651">からだを しらべる・とくべつな せつびは「びょういんを みてみる」の なかに あるよ</p>
+    <p class="ft651">${todayLine()}</p>
   </div>`;
-  /* iPad よこ：ロビーの え（top_tab.webp）が あれば ぜんめん、なければ ひだりに そとの え */
-  return `<div class="w651 tp tab">
-    <div class="lb651"><img class="lbi" src="${IMG}top_tab.webp" alt="" onload="this.closest('.w651').classList.add('lob')" onerror="this.remove()"></div>
-    <div class="tl651"><div class="ib651 top"><img src="${IMG}top_ph.webp" alt="">
-      <button type="button" class="hz651" data-say="hana"   style="left:6%;top:46%;width:30%;height:46%"></button>
-      <button type="button" class="hz651" data-say="deer"   style="left:36%;top:36%;width:28%;height:54%"></button>
-      <button type="button" class="hz651" data-say="rabbit" style="left:64%;top:48%;width:28%;height:43%"></button>
-      <span class="bb651 hidden"></span></div></div>
-    <div class="tr651">
-      <header class="hd651">${sign('総合病院', 'まなびタウン')}<span class="sp651"></span>${chips()}${townBtn()}</header>
-      <div class="gb651"><div class="gh651">${SV.search}<b>ごあんない</b></div>
-        ${FLOORS.map(f => `<button type="button" class="gf651" data-h="floor" data-f="${f.f}"><em style="--c:${f.c}">${f.f}</em><span>${f.n}</span>${SV.arrow}</button>`).join('')}
+  /* iPad よこ：ロビーの え（3:2）を がめんいっぱいに。あおい かんばんに「ごあんない」を かさねる */
+  return `<div class="w651 tp tab lob2">
+    <div class="sc651"><div class="ib651 lobby"><img src="${IMG}top_tab.webp" alt="">
+      ${hz('hedgehog',42,22,13,22)}${hz('bench',1,40,20,22)}${hz('hana',37,46,19,40)}${hz('rabbit',54,40,17,46)}${hz('boar',85,43,15,24)}
+      <div class="gb651 ov">
+        <div class="gh651">${SV.search}<b>ごあんない</b></div>
+        ${FLOORS.map(f => `<button type="button" class="gf651" data-h="floor" data-f="${f.f}"><em style="--c:${f.c}">${f.f}</em><span>${f.n}</span></button>`).join('')}
       </div>
-      <div class="tk651">${face('rabbit')}<span class="bq651" data-say="lobby">どこに いって みようかな？</span></div>
-      ${clinic}
-    </div>
+      <span class="bb651 hidden"></span></div></div>
+    <header class="hd651">${sign('総合病院', 'まなびタウン')}${clinic}<span class="sp651"></span>${chips()}${townBtn()}</header>
     <div class="bt651">${MAINBTN.map(mbtn).join('')}</div>
+    <p class="ft651 tb">${todayLine()}</p>
   </div>`;
 }
 
 /* ---------- STEP2：びょういんの なか ---------- */
 function inside(){
   const h = HS(), first = !h.seen.rooms.shinsatsu;
+  const tag = r => r.view ? '<em class="sn651 vw">けんがく</em>' : (h.seen.rooms[r.id] ? '<em class="sn651 ok">✔ みたよ</em>' : '');
   if(LAY === 'ph') return `<div class="w651 in ph">
     <header class="hd651 sm">${backBtn('top', 'もどる')}<b class="tt651">びょういんの なか</b>${chips()}</header>
     <div class="ls651">
-      ${ROOMS.filter(r => !r.view).map(r => `<button type="button" class="rc651 ${r.ready ? '' : 'soon'} ${first && r.ready ? 'hi' : ''}" data-h="room" data-r="${r.id}">${thumb(r)}
-        <span class="rt651"><b>${r.n}</b><small>${r.sub}</small></span>${r.ready ? '' : '<em class="sn651">じゅんび中</em>'}<i class="ar651">${SV.arrow}</i></button>`).join('')}
+      ${ROOMS.filter(r => !r.view).map(r => `<button type="button" class="rc651 ${first && r.id === 'shinsatsu' ? 'hi' : ''}" data-h="room" data-r="${r.id}">${thumb(r)}
+        <span class="rt651"><b>${r.n}</b><small>${r.sub}</small></span>${tag(r)}<i class="ar651">${SV.arrow}</i></button>`).join('')}
       ${EXTRA.map(r => `<button type="button" class="rc651 soon ex" data-h="${r.id}">${thumb(r)}<span class="rt651"><b>${r.n}</b><small>${r.sub}</small></span><em class="sn651">じゅんび中</em><i class="ar651">${SV.arrow}</i></button>`).join('')}
     </div>
     <div class="nb651">${face('rabbit', 'big')}<span class="bq651 r" data-say="rabbit">いろいろな ばしょを のぞいて みよう！</span></div>
   </div>`;
-  /* iPad：4かいだての だんめんず */
+  /* iPad：だんめんずの え を じかに タッチ */
   return `<div class="w651 in tab">
-    <header class="hd651">${backBtn('top', 'もどる')}${sign('びょういんの なか')}<span class="sp651"></span>${chips()}${townBtn()}</header>
-    <div class="bd651">
-      <div class="rf651"><span>${SV.cross}まなびタウン そうごう びょういん</span></div>
-      ${FLOORS.map(f => `<div class="fl651 ${V.floor === f.f ? 'on' : ''}" data-f="${f.f}"><div class="fn651" style="--c:${f.c}"><b>${f.f}</b><small>${f.n}</small></div>
-        <div class="fr651">${f.rooms.map(id => { const r = RM(id), s = STAFF[r.st];
-          return `<button type="button" class="cr651 ${r.ready ? '' : r.view ? 'vw' : 'soon'} ${first && r.ready ? 'hi' : ''}" data-h="room" data-r="${r.id}" style="--c:${r.c}">
-            ${thumb(r)}<span class="lb651n">${r.n}</span>${r.ready ? '' : `<em class="sn651">${r.view ? 'けんがく' : 'じゅんび中'}</em>`}
-            ${first && r.ready ? '<span class="pt651">👆<b>タッチして<br>はいろう！</b></span>' : ''}<small class="sf651">${s.em} ${s.job}</small></button>`; }).join('')}</div></div>`).join('')}
-      <div class="gd651"><div class="tk651">${face('rabbit')}<span class="bq651" data-say="lobby">どこに いって みよう？</span></div>
-        <div class="xb651">${EXTRA.map(r => `<button type="button" class="xc651" data-h="${r.id}" style="--c:${r.c}"><i>${r.em}</i><b>${r.n}</b></button>`).join('')}</div></div>
-    </div>
+    <header class="hd651">${backBtn('top', 'もどる')}${sign('びょういんの なか')}<span class="bq651 hb" data-say="lobby">いろいろな どうぶつたちが はたらいて いるよ！</span><span class="sp651"></span>${chips()}${townBtn()}</header>
+    <div class="cw651"><div class="ib651 cs">
+      <img src="${IMG}inside_tab.webp" alt="">
+      ${FLOORS.map(f => `<div class="fz651 ${V.floor === f.f ? 'on' : ''}" style="top:${f.y[0]}%;height:${f.y[1] - f.y[0]}%"><b style="--c:${f.c}">${f.f}</b></div>`).join('')}
+      ${ROOMS.map(r => `<button type="button" class="rz651 ${r.view ? 'vw' : ''} ${first && r.id === 'shinsatsu' ? 'hi' : ''}" data-h="room" data-r="${r.id}" style="left:${r.hz[0]}%;top:${r.hz[1]}%;width:${r.hz[2] - r.hz[0]}%;height:${r.hz[3] - r.hz[1]}%">
+          <span class="lb651n">${r.n}</span>${tag(r)}${first && r.id === 'shinsatsu' ? '<span class="pt651">👆<b>タッチして<br>はいろう！</b></span>' : ''}</button>`).join('')}
+      <span class="bb651 hidden"></span>
+      ${hz('hana',34,82,13,18)}${hz('rabbit',53,82,12,18)}
+      <div class="xb651">${EXTRA.map(r => `<button type="button" class="xc651" data-h="${r.id}" style="--c:${r.c}"><i>${r.em}</i><b>${r.n}</b></button>`).join('')}</div>
+    </div></div>
   </div>`;
 }
 
-/* ---------- STEP2：へやの なか（しんさつしつ） ---------- */
+/* ---------- STEP2：へやの なか ---------- */
 function room(){
   const r = RM(V.room), T = TOOLS[r.id] || [], h = HS(), seen = h.seen.tools[r.id] || {}, all = T.every(t => seen[t.id]);
-  const cur = T.find(t => t.id === V.tool);
-  const say = cur ? cur.say : 'キラキラ ひかる ものを タッチして しらべよう！';
+  const cur = T.find(t => t.id === V.tool), wide = r.id !== 'shinsatsu';
+  const say = cur ? cur.say : (wide ? 'したの どうぐを タッチして しらべよう！' : 'キラキラ ひかる ものを タッチして しらべよう！');
   const spots = T.filter(t => t.hs).map(t => `<button type="button" class="sp651k ${seen[t.id] ? 'got' : ''} ${V.tool === t.id ? 'on' : ''}" data-h="tool" data-t="${t.id}" style="left:${t.hs[0]}%;top:${t.hs[1]}%" aria-label="${t.n}">✦</button>`).join('');
-  const tbtns = T.map(t => `<button type="button" class="tb651 ${seen[t.id] ? 'got' : ''} ${V.tool === t.id ? 'on' : ''}" data-h="tool" data-t="${t.id}"><span>${tIc(t.id)}</span>${LAY === 'tab' ? `<b>${t.btn}</b>` : ''}${seen[t.id] ? '<i>✔</i>' : ''}</button>`).join('');
-  const card = cur ? `<div class="dc651"><h3>${cur.n}</h3><div class="di651">${tIc(cur.id)}</div><p>${cur.d}</p><p class="mm651">💡 ${cur.m}</p>
-      <div class="dn651"><button type="button" data-h="tool" data-t="${T[(T.indexOf(cur) + T.length - 1) % T.length].id}">‹</button><span>${T.indexOf(cur) + 1}/${T.length}</span><button type="button" data-h="tool" data-t="${T[(T.indexOf(cur) + 1) % T.length].id}">›</button></div></div>`
-    : `<div class="dc651 em"><h3>しらべて みよう</h3><p>え の なかの ✦ や、したの どうぐを タッチすると せつめいが でるよ。</p><p class="mm651">しらべた どうぐ ${Object.keys(seen).length}/${T.length}</p></div>`;
+  const tbtns = T.map(t => `<button type="button" class="tb651 ${seen[t.id] ? 'got' : ''} ${V.tool === t.id ? 'on' : ''}" data-h="tool" data-t="${t.id}"><span>${tIc(t)}</span>${LAY === 'tab' || T.length <= 3 ? `<b>${t.btn}</b>` : ''}${seen[t.id] ? '<i>✔</i>' : ''}</button>`).join('');
+  const k = cur ? T.indexOf(cur) : 0;
+  const card = cur ? `<div class="dc651"><h3>${cur.n}</h3><div class="di651">${tIc(cur)}</div><p>${cur.d}</p><p class="mm651">💡 ${cur.m}</p>
+      <div class="dn651"><button type="button" data-h="tool" data-t="${T[(k + T.length - 1) % T.length].id}">‹</button><span>${k + 1}/${T.length}</span><button type="button" data-h="tool" data-t="${T[(k + 1) % T.length].id}">›</button></div></div>`
+    : `<div class="dc651 em"><h3>しらべて みよう</h3><p>${wide ? 'したの どうぐを' : 'え の なかの ✦ や、したの どうぐを'} タッチすると せつめいが でるよ。</p><p class="mm651">しらべた どうぐ ${Object.keys(seen).length}/${T.length}</p></div>`;
   const go_ = `<button type="button" class="qz651 ${all ? 'glow' : ''}" data-h="rquiz"><span>${SV.book}</span><b>もんだいに<br>ちょうせん！</b>${SV.arrow}</button>`;
-  if(LAY === 'ph') return `<div class="w651 rm ph">
+  const pic = `<div class="ib651 room ${wide ? 'wd' : ''}"><img src="${ROOMPIC(r.id)}" alt="">${spots}</div>`;
+  if(LAY === 'ph') return `<div class="w651 rm ph ${wide ? 'wd' : ''}">
     <header class="hd651 sm">${backBtn('inside', 'へやえらび')}${sign(r.n)}${chips()}</header>
-    <div class="rs651"><div class="ib651 room"><img src="${IMG}room_${r.id}_ph.webp" alt="">${spots}</div>
-      <span class="bq651 rb">${X(say)}</span></div>
-    <div class="rp651"><p class="hn651">タッチして しらべよう</p><div class="tg651">${tbtns}</div>${go_}</div>
+    <div class="rs651">${pic}<span class="bq651 rb">${face(r.st, 'sm')}${X(say)}</span></div>
+    <div class="rp651"><p class="hn651">タッチして しらべよう</p><div class="tg651 n${T.length}">${tbtns}</div>${go_}</div>
     ${cur ? `<div class="sh651" data-h="shut">${card}</div>` : ''}
   </div>`;
-  return `<div class="w651 rm tab">
-    <div class="rl651"><div class="ib651 room"><img src="${IMG}room_${r.id}_ph.webp" alt="">${spots}</div></div>
+  return `<div class="w651 rm tab ${wide ? 'wd' : ''}">
+    <div class="rl651">${pic}</div>
     <div class="rr651">
       <header class="hd651">${backBtn('inside', 'へやえらび')}${sign(r.n)}<span class="sp651"></span>${chips()}${townBtn()}</header>
       <div class="tk651 dr">${face(r.st)}<span class="bq651">${X(say)}</span></div>
       ${card}
-      <div class="tg651">${tbtns}</div>${go_}
+      <div class="tg651 n${T.length}">${tbtns}</div>${go_}
     </div>
   </div>`;
+}
+
+/* ---------- STEP3：いりょうクイズ ---------- */
+function pool(themes, used){
+  const ms = maxStar(), base = QS.map((q, i) => ({q, i})).filter(o => (!themes || themes.includes(o.q[0])) && !used.has(o.i));
+  let L = base.filter(o => o.q[1] <= ms); if(L.length < 2) L = base;
+  const seen = HS().seen.q;   // まだ でて いない もんだいを さきに
+  const fresh = L.filter(o => !seen[o.i]); return fresh.length ? fresh : L;
+}
+function makeSet(tab, roomId){
+  const used = new Set(), out = [];
+  const take = th => { const L = pool(th, used); if(!L.length) return; const o = pick(L); used.add(o.i); out.push(o.i); };
+  if(roomId){ for(let n = 0; n < CFG.room; n++) take([roomId]); }
+  else{ const t = QTABS.find(x => x[0] === tab);
+    if(t && t[2]){ for(let n = 0; n < CFG.set; n++) take(t[2]); }
+    else{ /* ジャンルの はいぶん（6.2）：けんこう・からだ・しごと・しんさつ を 1もんずつ ＋ 1もんは おもみ つきで */
+      ['health','body','job','med'].forEach(g => take(GENRE[g]));
+      const tot = GW.reduce((a, w) => a + w[1], 0); let r = Math.random() * tot, g = 'equip'; for(const w of GW){ if((r -= w[1]) < 0){ g = w[0]; break; } } take(GENRE[g]);
+      out.splice(0, out.length, ...shuf(out)); } }
+  return out;
+}
+function startQuiz(tab = 'mix', roomId = null){
+  const ids = makeSet(tab, roomId);
+  Q = {tab, room:roomId, ids, n:0, ok:0, pts:0, hint:false, cut:null, ans:null, ord:null, log:[]};
+  newOrder(); go('quiz');
+}
+function newOrder(){ const q = QS[Q.ids[Q.n]]; Q.ord = shuf([q[3], q[4], q[5]]); Q.hint = false; Q.cut = null; Q.ans = null; }
+function quiz(){
+  const q = QS[Q.ids[Q.n]], tot = Q.ids.length, done = Q.ans !== null, right = done && Q.ans === q[3];
+  const dots = Q.ids.map((_, i) => `<i class="${i < Q.n ? (Q.log[i] ? 'o' : 'x') : i === Q.n ? 'c' : ''}"></i>`).join('');
+  const opts = Q.ord.map(o => { let c = ''; if(done){ if(o === q[3]) c = 'ok'; else if(o === Q.ans) c = 'ng'; else c = 'dim'; } else if(Q.cut === o) c = 'cut';
+    return `<button type="button" class="op651 ${c}" data-h="ans" data-o="${X(o)}" ${done || Q.cut === o ? 'disabled' : ''}>${X(o)}</button>`; }).join('');
+  const pt = Math.max(1, Math.ceil(CFG.pt[q[1]] / (Q.hint ? 2 : 1)));
+  const fb = done ? `<div class="fb651 ${right ? 'ok' : 'ng'}">
+      ${right ? `<div class="st651">せいかい！<small>+${pt}P</small></div>` : `<p class="og651">おしい！ こたえは「${X(q[3])}」だよ</p>`}
+      <p class="ex651">${face(right ? 'deer' : 'rabbit', 'sm')}${X(q[6])}</p>
+      <button type="button" class="nx651" data-h="next">${right ? (Q.n + 1 < tot ? 'つぎへ' : 'けっかを みる') : 'わかった！'} ›</button></div>` : '';
+  const hintBtn = `<button type="button" class="hb651 ${Q.hint || done ? 'used' : ''}" data-h="hint" ${Q.hint || done ? 'disabled' : ''}>${face('rabbit', 'sm')}<b>${Q.hint ? 'ヒントを つかったよ' : 'ヒント'}</b><small>${Q.hint ? 'ポイント はんぶん' : '2たくに なる（ポイント はんぶん）'}</small></button>`;
+  const title = Q.room ? `${RM(Q.room).n}の もんだい` : 'いりょうクイズ';
+  const pic = `<div class="qp651"><img src="${IMG}${TPIC[q[0]] || 'top_tab'}.webp" alt="" onerror="this.remove()"><span class="qtg651">${THEME[q[0]]}</span></div>`;
+  const head = `<div class="qh651"><span class="qn651">${Q.n + 1}<small>/${tot}</small></span><span class="dt651">${dots}</span><span class="sr651">${'★'.repeat(q[1])}</span></div>`;
+  if(LAY === 'ph') return `<div class="w651 qz ph">
+    <header class="hd651 sm">${backBtn('qback', 'やめる')}${sign(title)}${chips()}</header>
+    <div class="qb651">${pic}${head}<p class="qt651">${X(q[2])}</p><div class="ops651">${opts}</div>${done ? '' : hintBtn}</div>
+    ${fb}
+  </div>`;
+  return `<div class="w651 qz tab">
+    <header class="hd651">${backBtn('qback', 'やめる')}${sign(title)}<span class="sp651"></span>${chips()}${townBtn()}</header>
+    <div class="qm651">
+      <div class="ql651">${pic}<div class="qhn651"><img src="${IMG}top_ph.webp" alt="" class="hn2">${hintBtn}</div></div>
+      <div class="qr651">${head}<p class="qt651">${X(q[2])}</p><div class="ops651">${opts}</div>${fb}</div>
+    </div>
+    ${Q.room ? '' : `<nav class="qtb651">${QTABS.map(t => `<button type="button" class="${Q.tab === t[0] ? 'on' : ''}" data-h="qtab" data-t="${t[0]}">${t[1]}</button>`).join('')}</nav>`}
+  </div>`;
+}
+function answer(o){
+  if(!Q || Q.ans !== null) return; const q = QS[Q.ids[Q.n]], h = HS(); Q.ans = o; const right = o === q[3];
+  h.seen.q[Q.ids[Q.n]] = (h.seen.q[Q.ids[Q.n]] || 0) + 1; Q.log[Q.n] = right;
+  if(right){ const pt = Math.max(1, Math.ceil(CFG.pt[q[1]] / (Q.hint ? 2 : 1))); Q.ok++; Q.pts += pt;
+    try{ addPoints(pt, 'びょういん クイズ', true); }catch(e){}
+    h.right.total++; h.right.theme[q[0]] = (h.right.theme[q[0]] || 0) + 1;
+    if(!h.days.includes(today())) h.days.push(today());
+    snd('ok'); } else snd('ng');
+  persist(); render(); refreshChips();
+}
+function result(){
+  const R = Q.res, tot = Q.ids.length;
+  const msg = R.perfect ? 'ぜんぶ せいかい！ すごい！' : Q.ok >= tot - 1 ? 'よく できました！' : Q.ok >= 2 ? 'がんばったね！' : 'まちがえても だいじょうぶ。わかった ことが ふえたね！';
+  const rows = Q.ids.map((id, i) => `<li class="${Q.log[i] ? 'o' : 'x'}"><i>${Q.log[i] ? '○' : '△'}</i><span>${X(QS[id][2])}</span><b>${X(QS[id][3])}</b></li>`).join('');
+  const box = `<div class="rs651c ${R.perfect ? 'pf' : ''}">
+      ${R.perfect ? '<div class="gd651s">🏅<b>パーフェクト！</b></div>' : ''}
+      <h2>${Q.ok}<small>/${tot} もん せいかい</small></h2><p class="ms651">${msg}</p>
+      <div class="rw651"><span><img src="${X(artSrc('hd_coin')||'')}" alt="" onerror="this.remove()"><b>+${Q.pts + (R.perfect ? CFG.perfect : 0)}P</b>${R.perfect ? `<small>（パーフェクト +${CFG.perfect}）</small>` : ''}</span>
+        <span class="${R.cry ? '' : 'no'}"><img src="${X(artSrc('itm_crystal')||'')}" alt="" onerror="this.remove()"><b>${R.cry ? '水晶 +1' : R.cryFull ? 'きょうの 水晶は もらったよ' : `水晶は ${CFG.cryNeed}もん せいかいで`}</b></span></div>
+      <ul class="lg651">${rows}</ul>
+      <div class="rb651"><button type="button" class="again" data-h="again">もういちど</button><button type="button" class="tp" data-h="${Q.room ? 'backroom' : 'top'}">${Q.room ? 'へやに もどる' : 'びょういんの トップへ'}</button></div>
+    </div>`;
+  return `<div class="w651 res ${LAY}">
+    <header class="hd651 ${LAY === 'ph' ? 'sm' : ''}">${sign('けっか')}<span class="sp651"></span>${chips()}${LAY === 'tab' ? townBtn() : ''}</header>
+    <div class="rsw651">${LAY === 'tab' ? `<div class="rsl651"><img src="${IMG}top_ph.webp" alt=""></div>` : ''}${box}</div>
+  </div>`;
+}
+function finish(){
+  const h = HS(), tot = Q.ids.length, perfect = Q.ok === tot && tot >= CFG.set;
+  h.daily.quiz++; let cry = false, cryFull = h.daily.cry >= CFG.cryDay;
+  if(Q.ok >= CFG.cryNeed && !cryFull){ h.daily.cry++; save.crystal = (save.crystal || 0) + 1; cry = true; }
+  if(perfect){ try{ addPoints(CFG.perfect, 'びょういん クイズ パーフェクト', true); }catch(e){} h.best.perfect = (h.best.perfect || 0) + 1; }
+  Q.res = {perfect, cry, cryFull}; persist();
+  if(perfect || cry){ snd('fan'); try{ confetti(perfect ? 2200 : 1200); }catch(e){} }
+  go('result'); refreshChips();
+}
+async function leaveQuiz(){
+  if(Q && V.s === 'quiz' && (Q.n > 0 || Q.ans !== null)){
+    const v = await dialog('<h2 class="dlgT">クイズを やめる？</h2><p class="dlgP">ここまでの ポイントは もらえるよ。</p>', [{label:'つづける', cls:'white', v:false}, {label:'やめる', cls:'', v:true}]);
+    if(!v) return false; }
+  return true;
 }
 
 /* ---------- タッチ ---------- */
@@ -10919,36 +11162,42 @@ function bubble(el, txt){
   b.style.left = Math.max(4, Math.min(bx.width - 174, r.left - bx.left + r.width / 2 - 85)) + 'px';
   b.style.top = Math.max(4, r.top - bx.top - 46) + 'px';
 }
+const say2 = txt => { const b = ROOT && ROOT.querySelector('.bq651'); if(!b) return; b.textContent = txt; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); };
 function after(){
   if(!ROOT) return;
-  if(V.s === 'top' && LAY === 'ph') setTimeout(() => { const z = ROOT && ROOT.querySelector('.hz651[data-say="deer"]'); if(z) bubble(z, 'いっしょに まなぼう！'); }, 400);
-  if(V.s === 'inside' && V.floor){ const f = ROOT.querySelector(`.fl651[data-f="${V.floor}"]`); if(f) setTimeout(() => f.classList.remove('on'), 2400); }
+  if(V.s === 'top') setTimeout(() => { const z = ROOT && ROOT.querySelector(`.hz651[data-say="${LAY === 'ph' ? 'deer' : 'rabbit'}"]`); if(z) bubble(z, LAY === 'ph' ? 'いっしょに まなぼう！' : 'どこに いって みようかな？'); }, 400);
+  if(V.s === 'inside' && V.floor){ const f = ROOT.querySelector('.fz651.on'); if(f) setTimeout(() => f.classList.remove('on'), 2600); }
 }
-const soon = n => { try{ sound('tap'); }catch(e){} toast(`「${n}」は つぎの アップデートで あそべるよ！`); };
-document.addEventListener('click', e => {
+const soon = n => { snd('tap'); toast(`「${n}」は つぎの アップデートで あそべるよ！`); };
+document.addEventListener('click', async e => {
   if(!ROOT || !ROOT.contains(e.target)) return;
   const sy = e.target.closest('[data-say]');
-  if(sy && !e.target.closest('[data-h]')){ const k = sy.dataset.say, L = SAY_TOP[k] || SAY_TOP.lobby;
-    try{ sound('tap'); }catch(_){}
+  if(sy && !e.target.closest('[data-h]')){ const L = SAY[sy.dataset.say] || SAY.lobby; snd('tap');
     if(sy.classList.contains('bq651')){ let v; do{ v = pick(L); }while(L.length > 1 && v === sy.textContent); sy.textContent = v; sy.classList.remove('pop'); void sy.offsetWidth; sy.classList.add('pop'); }
     else bubble(sy, pick(L));
     return; }
-  const t = e.target.closest('[data-h]'); if(!t) return; const a = t.dataset.h;
-  if(a === 'town') return close();
+  const t = e.target.closest('[data-h]'); if(!t || t.disabled) return; const a = t.dataset.h;
+  if(a === 'town'){ if(V.s === 'quiz' && !(await leaveQuiz())) return; return close(); }
   if(a === 'top') return go('top');
   if(a === 'inside') return go('inside', {floor:null});
   if(a === 'floor') return go('inside', {floor:t.dataset.f});
-  if(a === 'room'){ const r = RM(t.dataset.r); if(!r) return;
-    if(r.view){ try{ sound('tap'); }catch(_){} const b = ROOT.querySelector('.bq651'); if(b){ b.textContent = r.say; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); } const h = HS(); h.seen.rooms[r.id] = 1; persist(); return; }
-    if(!r.ready){ const b = ROOT.querySelector('.bq651'); if(b){ b.textContent = `${r.n}は もうすぐ はいれるよ！ まずは しんさつしつへ どうぞ`; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); } try{ sound('tap'); }catch(_){} return; }
-    const h = HS(); h.seen.rooms[r.id] = 1; persist(); return go('room', {room:r.id, tool:null}); }
+  if(a === 'room'){ const r = RM(t.dataset.r); if(!r) return; const h = HS();
+    if(r.view){ snd('tap'); h.seen.rooms[r.id] = 1; persist(); if(LAY === 'tab'){ const b = ROOT.querySelector('.bb651'); if(b) return bubble(t, r.say); } return say2(r.say); }
+    h.seen.rooms[r.id] = 1; persist(); return go('room', {room:r.id, tool:null}); }
   if(a === 'tool'){ const h = HS(), m = h.seen.tools[V.room] || (h.seen.tools[V.room] = {}), was = Object.keys(m).length; m[t.dataset.t] = 1; persist();
     go('room', {tool:t.dataset.t});
-    const T = TOOLS[V.room] || []; if(was < T.length && T.every(x => m[x.id])){ try{ sound('fan'); confetti(900); }catch(_){} toast('ぜんぶ しらべたね！ もんだいに ちょうせん しよう！'); }
+    const T = TOOLS[V.room] || []; if(was < T.length && T.every(x => m[x.id])){ snd('fan'); try{ confetti(900); }catch(_){} toast('ぜんぶ しらべたね！ もんだいに ちょうせん しよう！'); }
     return; }
   if(a === 'shut'){ if(e.target.closest('.dc651')) return; return go('room', {tool:null}); }
-  if(a === 'rquiz') return soon('へやの もんだい');
-  if(a === 'quiz') return soon('いりょうクイズ');
+  if(a === 'rquiz') return startQuiz('mix', V.room);
+  if(a === 'quiz') return startQuiz('mix');
+  if(a === 'ans') return answer(t.dataset.o);
+  if(a === 'hint'){ if(!Q || Q.hint || Q.ans !== null) return; const q = QS[Q.ids[Q.n]]; Q.hint = true; Q.cut = pick([q[4], q[5]]); snd('tap'); return render(); }
+  if(a === 'next'){ if(!Q) return; if(Q.n + 1 < Q.ids.length){ Q.n++; newOrder(); snd('tap'); return render(); } return finish(); }
+  if(a === 'qtab'){ const nt = t.dataset.t; if(!Q || nt === Q.tab) return; if(!(await leaveQuiz())) return; return startQuiz(nt); }
+  if(a === 'qback'){ if(!(await leaveQuiz())) return; const r = Q && Q.room; Q = null; return r ? go('room', {room:r, tool:null}) : go('top'); }
+  if(a === 'again') return startQuiz(Q ? Q.tab : 'mix', Q ? Q.room : null);
+  if(a === 'backroom'){ const r = Q && Q.room; Q = null; return go('room', {room:r, tool:null}); }
   if(a === 'jobs') return soon('しごとを しる');
   if(a === 'body') return soon('からだを しらべる');
   if(a === 'equip') return soon('とくべつな せつび');
@@ -10971,10 +11220,10 @@ window.addEventListener('click', e => {
   e.stopImmediatePropagation(); e.preventDefault(); open(s.k);
 }, true);
 try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
-window.__hp651 = {open, close, HS, ROOMS, TOOLS, STAFF, render, get V(){ return V; }};
+window.__hp651 = {open, close, HS, ROOMS, TOOLS, STAFF, QS, render, startQuiz, get V(){ return V; }, get Q(){ return Q; }};
 
-/* ---------- BGM：びょういんは ひかえめ ---------- */
-try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#hp651') || v === 0) return v; return Math.min(v, .12); }; } }catch(e){}
+/* ---------- BGM：びょういんは ひかえめ・クイズ中は さらに ちいさく ---------- */
+try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#hp651') || v === 0) return v; return document.querySelector('#hp651 .qz') ? Math.min(v, .06) : Math.min(v, .12); }; } }catch(e){}
 
 /* ---------- CSS ---------- */
 const css = document.createElement('style');
@@ -11154,6 +11403,128 @@ body.hp651on{overflow:hidden}
 .rr651 .tb651{min-height:96px;padding:6px 2px}
 .rr651 .tb651 b{font-size:11.5px;line-height:1.25;color:#5A4430;text-align:center}
 .rr651 .qz651{min-height:72px}
+/* ===== v6.52 ついか ===== */
+.em651{font-style:normal;font-size:34px;line-height:1;display:block}
+.di651 .em651{font-size:76px}
+.fc651.sm{width:34px;height:34px;border-width:2px}
+.fc651.sm i{font-size:20px}
+.sn651.ok{background:#E3F5E1;color:#2E8B57}.sn651.vw{background:#FFF1D6;color:#C0702A}
+.ft651{color:#6B5A45}
+/* --- トップ iPad（ロビーの え） --- */
+.tp.tab.lob2{display:block;position:relative;background:#F6EEDD}
+.lob2 .sc651{position:absolute;inset:0;overflow:hidden}
+.lob2 .ib651.lobby{position:absolute;left:50%;top:0;width:max(100%,calc(100vh * 1.5));aspect-ratio:3/2;transform:translateX(-50%)}
+.lob2>.hd651{position:absolute;left:0;right:0;top:0;padding-left:16px;padding-right:16px}
+.lob2>.hd651 .ch651{margin-left:0}
+.lob2>.hd651 .cl651{margin-left:6px}
+.gb651.ov{position:absolute;left:64.9%;top:9.4%;width:18.3%;height:27.6%;max-width:none;margin:0;padding:1.1% 1.1% 1.2%;gap:3.5%;border-width:0;border-radius:10px;box-shadow:none;background:linear-gradient(180deg,#3E78C4,#2D5FA6);display:flex;flex-direction:column;align-self:auto}
+.gb651.ov .gh651{justify-content:center}.gb651.ov .gh651 b{font-size:clamp(14px,1.5vw,20px)}.gb651.ov .gh651 svg{width:18px;height:18px}
+.gb651.ov .gf651{flex:1;min-height:0;padding:0 6px;gap:6px;border-radius:8px}
+.gb651.ov .gf651 em{width:auto;min-width:2.4em;font-size:clamp(13px,1.45vw,19px)}
+.gb651.ov .gf651 span{font-size:clamp(9.5px,.95vw,13px);line-height:1.15}
+.lob2>.bt651{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.55) 40%);border:none;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:20px 16px calc(12px + env(safe-area-inset-bottom))}
+.lob2 .mb651{min-height:88px;flex-direction:row;gap:10px}
+.lob2 .mb651 .mi651 svg{width:44px;height:44px}.lob2 .mb651 b{font-size:17px;text-align:left}
+.ft651.tb{position:absolute;right:16px;bottom:calc(112px + env(safe-area-inset-bottom));margin:0;padding:3px 12px;background:rgba(255,255,255,.92);border-radius:99px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+/* --- びょういんの なか iPad（だんめんず） --- */
+.in.tab .hd651 .bq651.hb{font-size:13px;padding:4px 12px;margin-left:6px}
+.in.tab .hd651 .ch651{margin-left:0}
+.cw651{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 12px calc(10px + env(safe-area-inset-bottom))}
+.ib651.cs{aspect-ratio:3/2;width:min(100%,calc((100vh - 84px) * 1.5));border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 8px 24px rgba(40,60,90,.2)}
+.fz651{position:absolute;left:0;width:100%;pointer-events:none;transition:background .3s}
+.fz651 b{position:absolute;left:.6%;top:50%;transform:translateY(-50%);width:6.6%;padding:6px 0;text-align:center;background:var(--c);color:#fff;font-size:clamp(14px,2vw,26px);border-radius:10px;border:3px solid #fff;box-shadow:0 3px 6px rgba(0,0,0,.2)}
+.fz651.on{background:rgba(255,226,110,.38);animation:fon652 .7s ease-in-out 3 alternate}
+@keyframes fon652{to{background:rgba(255,226,110,.6)}}
+.rz651{position:absolute;border:3px solid transparent;background:transparent;border-radius:10px;padding:0}
+.rz651:active{background:rgba(255,255,255,.28);border-color:#fff}
+.rz651 .lb651n{top:4px;font-size:clamp(11px,1.15vw,15px)}
+.rz651 .sn651{right:4px;top:auto;bottom:4px}
+.rz651.hi{border-color:#FFD24A;animation:hi651 1s ease-in-out infinite alternate}
+.rz651 .pt651{right:4px;top:26%}
+.ib651.cs .xb651{position:absolute;right:1.2%;bottom:2.4%;display:flex;gap:8px}
+.ib651.cs .xc651{min-height:58px;padding:6px 12px}
+/* --- へやの なか（よこながの え） --- */
+.ib651.room.wd{aspect-ratio:3/2}
+.rm.ph.wd .rs651{display:flex;flex-direction:column;justify-content:center;gap:10px;padding:8px 12px}
+.rm.ph.wd .rs651 .ib651{position:relative;top:auto;transform:none;border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.rm.ph.wd .bq651.rb{position:relative;left:auto;right:auto;top:auto;order:-1}
+.bq651.rb .fc651{display:inline-flex;vertical-align:middle;margin-right:6px}
+.rm.tab.wd .rl651{width:50%;height:auto;display:flex;align-items:center;padding:16px 0 16px 16px}
+.rm.tab.wd .rl651 .ib651{height:auto;width:100%;border-radius:20px;overflow:hidden;border:5px solid #fff}
+.tg651.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rm.ph .tg651.n3 .tb651{min-height:76px}.rm.ph .tg651.n3 .tb651 b{font-size:11px;line-height:1.2;color:#5A4430;text-align:center}
+/* --- いりょうクイズ --- */
+.qz{background:linear-gradient(180deg,#EAF6FF,#FFF4F7)}
+.qz.ph .hd651 .sg651{flex:1}.qz.ph .hd651 .sg651 b{font-size:17px}
+.qb651{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 12px calc(12px + env(safe-area-inset-bottom))}
+.qp651{position:relative;flex:none;border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.12);background:#DDEFFB;aspect-ratio:16/8}
+.qp651 img{width:100%;height:100%;object-fit:cover;display:block}
+.qtg651{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.95);border-radius:99px;padding:2px 10px;font-size:12px;font-weight:900;color:#2E6FB5}
+.qh651{display:flex;align-items:center;gap:8px}
+.qn651{font-size:22px;font-weight:900;color:#2E6FB5}.qn651 small{font-size:13px;color:#7A8AA5}
+.dt651{display:flex;gap:5px;flex:1}.dt651 i{width:14px;height:14px;border-radius:50%;background:#DCE6F0;border:2px solid #fff}
+.dt651 i.c{background:#FFD24A}.dt651 i.o{background:#3BAF6A}.dt651 i.x{background:#F2A33A}
+.sr651{color:#F2A33A;font-size:16px;letter-spacing:1px}
+.qt651{margin:0;background:#fff;border-radius:18px;padding:12px 14px;font-size:19px;font-weight:900;line-height:1.5;color:#2A3A5A;box-shadow:0 3px 0 #D7E6F5;text-align:center}
+.ops651{display:flex;flex-direction:column;gap:8px}
+.op651{min-height:58px;border:3px solid #CFE0F2;background:#fff;border-radius:16px;font-size:17px;font-weight:900;color:#2A3A5A;box-shadow:0 4px 0 #CFE0F2;padding:6px 10px;line-height:1.3}
+.op651:active{transform:translateY(2px)}
+.op651.ok{background:#E3F7E8;border-color:#3BAF6A;box-shadow:0 4px 0 #3BAF6A;color:#1F7A3E}
+.op651.ng{background:#FFF0DD;border-color:#F2A33A;box-shadow:0 4px 0 #F2A33A}
+.op651.dim{opacity:.5}
+.op651.cut{opacity:.25;text-decoration:line-through}
+.hb651{display:flex;align-items:center;gap:8px;border:3px solid #F5B5C6;background:#FFF1F5;border-radius:16px;padding:6px 10px;text-align:left;min-height:52px}
+.hb651 b{font-size:15px;color:#D04A75}.hb651 small{font-size:11px;font-weight:800;color:#A07080;margin-left:auto}
+.hb651.used{opacity:.6}
+.fb651{position:absolute;left:0;right:0;bottom:0;z-index:10;background:#fff;border-radius:22px 22px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:8px;animation:up651 .25s ease-out;border-top:5px solid #3BAF6A}
+.fb651.ng{border-top-color:#F2A33A}
+.st651{align-self:center;font-size:28px;font-weight:900;color:#E8414B;border:4px solid #E8414B;border-radius:16px;padding:2px 18px;transform:rotate(-6deg);background:#FFF5F5;animation:stp652 .35s cubic-bezier(.2,1.6,.4,1)}
+.st651 small{font-size:18px;margin-left:8px;color:#D2601E}
+@keyframes stp652{from{transform:rotate(-6deg) scale(1.8);opacity:0}}
+.og651{margin:0;font-size:17px;font-weight:900;color:#C0702A;text-align:center}
+.ex651{margin:0;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;line-height:1.5;color:#3A2E22;background:#F6FAFF;border-radius:14px;padding:8px 10px}
+.nx651{min-height:56px;border:4px solid #fff;border-radius:20px;background:linear-gradient(180deg,#5FB4F5,#2E86E0);color:#fff;font-size:19px;font-weight:900;box-shadow:0 4px 0 #1C62B0}
+.fb651.ng .nx651{background:linear-gradient(180deg,#FFB04A,#F2861E);box-shadow:0 4px 0 #C2620C}
+/* クイズ iPad */
+.qz.tab .hd651 .ch651{margin-left:0}
+.qm651{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;padding:0 18px 8px}
+.ql651{min-height:0;display:flex;flex-direction:column;gap:10px}
+.ql651 .qp651{aspect-ratio:3/2}
+.qhn651{position:relative;flex:1;min-height:0;border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.12)}
+.qhn651 .hn2{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 78%}
+.qhn651 .hb651{position:absolute;left:10px;right:10px;bottom:10px;min-height:64px}
+.qr651{min-height:0;display:flex;flex-direction:column;justify-content:center;gap:12px;overflow-y:auto}
+.qz.tab .qt651{font-size:23px;padding:18px}
+.qz.tab .op651{min-height:72px;font-size:21px}
+.qtb651{flex:none;display:flex;gap:8px;padding:6px 18px calc(10px + env(safe-area-inset-bottom));justify-content:center}
+.qtb651 button{flex:1;max-width:190px;min-height:52px;border:3px solid #fff;border-radius:16px;background:#E3EEF8;color:#2E6FB5;font-size:15px;font-weight:900;box-shadow:0 3px 0 #BFD3E8}
+.qtb651 button.on{background:#2E86E0;color:#fff;box-shadow:0 3px 0 #1C62B0}
+.qz.tab .fb651{position:relative;left:auto;right:auto;bottom:auto;width:auto;border-radius:22px;border:5px solid #3BAF6A;padding:12px 14px;animation:pop651 .3s;flex-direction:row;flex-wrap:wrap;align-items:center}
+.qz.tab .fb651 .st651,.qz.tab .fb651 .og651{flex:none}.qz.tab .fb651 .ex651{flex:1 1 100%}.qz.tab .fb651 .nx651{flex:1 1 100%}
+.qz.tab .qr651{justify-content:flex-start;padding-top:6px}
+.qz.tab .fb651.ng{border-color:#F2A33A}
+.qz.tab .nx651{min-height:64px}
+/* けっか */
+.res{background:linear-gradient(180deg,#FFF6E0,#FFEFF4)}
+.res .hd651 .ch651{margin-left:0}
+.rsw651{flex:1;min-height:0;overflow-y:auto;padding:4px 12px calc(14px + env(safe-area-inset-bottom));display:flex;gap:16px}
+.rsl651{flex:none;width:30%;border-radius:20px;overflow:hidden;border:4px solid #fff}.rsl651 img{width:100%;height:100%;object-fit:cover;object-position:50% 75%}
+.rs651c{flex:1;min-width:0;background:#fff;border-radius:24px;border:4px solid #F7C35F;padding:14px;display:flex;flex-direction:column;gap:10px;text-align:center;box-shadow:0 6px 16px rgba(0,0,0,.1);height:max-content}
+.rs651c.pf{border-color:#FFD24A;box-shadow:0 0 0 4px rgba(255,210,74,.35),0 6px 16px rgba(0,0,0,.1)}
+.gd651s{align-self:center;display:flex;align-items:center;gap:6px;font-size:34px;animation:stp652 .5s cubic-bezier(.2,1.6,.4,1)}.gd651s b{font-size:24px;color:#C98A00}
+.rs651c h2{margin:0;font-size:44px;color:#2E6FB5}.rs651c h2 small{font-size:17px;color:#5A6A80;margin-left:4px}
+.ms651{margin:0;font-size:16px;font-weight:900;color:#6B4A2A}
+.rw651{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.rw651 span{display:flex;align-items:center;gap:6px;background:#FFF6DC;border-radius:99px;padding:5px 14px}
+.rw651 span.no{background:#F1F3F6}.rw651 img{width:26px;height:26px;object-fit:contain}.rw651 b{font-size:16px;color:#5A3A1A}.rw651 small{font-size:12px;color:#B5701C}
+.lg651{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;text-align:left}
+.lg651 li{display:flex;align-items:center;gap:8px;background:#F6FAFF;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:800}
+.lg651 li i{font-style:normal;font-size:18px;color:#3BAF6A;flex:none}.lg651 li.x i{color:#F2A33A}
+.lg651 li span{flex:1;min-width:0;color:#3A2E22}.lg651 li b{flex:none;color:#2E6FB5;max-width:40%}
+.rb651{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rb651 button{min-height:60px;border:4px solid #fff;border-radius:20px;font-size:17px;font-weight:900;color:#fff;background:linear-gradient(180deg,#FF8FB0,#EE5D88);box-shadow:0 4px 0 #C23E68}
+.rb651 button.tp{background:linear-gradient(180deg,#5FB4F5,#2E86E0);box-shadow:0 4px 0 #1C62B0}
+.res.tab .rb651 button{min-height:68px}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
