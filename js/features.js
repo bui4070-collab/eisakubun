@@ -10697,8 +10697,9 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 
 
 
+
 /* =====================================================================
-   まなびタウン v6.55：そうごう びょういん（仕様書 v0.1　STEP1〜STEP6）
+   まなびタウン v6.56：そうごう びょういん（仕様書 v0.1　STEP1〜STEP7）
    ・STEP1：トップ（スマホ たて／iPad よこ＝ロビーの え）
    ・STEP2：びょういんの なか（スマホ＝リスト／iPad＝だんめんずの え を タッチ）、へやの なか（6へや）
    ・STEP3：いりょうクイズ（5もん・3たく・ヒント・ポイント・水晶）／へやの もんだい（3もん）
@@ -10706,9 +10707,10 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.55.0', IMG = './assets/images/hospital/';
+const VER = '6.56.0', IMG = './assets/images/hospital/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
+const EI = v => /^@/.test(v || '') ? `<img class="ei655" src="${IMG}${v.slice(1)}.webp" alt="">` : (v || '');
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const today = () => (typeof dayKey === 'function' ? dayKey() : new Date().toISOString().slice(0, 10));
 const snd = t => { try{ sound(t); }catch(e){} };
@@ -10772,43 +10774,43 @@ const TOOLS = {
      d:'せの たかさを はかる どうぐ。まっすぐ たつと、ただしく はかれるよ。', m:'ねている あいだに からだが そだつよ。よく ねようね', hs:[64,24]}
   ],
   uketsuke:[
-    {id:'card', em:'💳', n:'しんさつけん', btn:'しんさつけん<br>を みる', say:'しんさつけんを だしてね',
+    {id:'card', em:'@ic_card', n:'しんさつけん', btn:'しんさつけん<br>を みる', say:'しんさつけんを だしてね',
      d:'この びょういんで「あなたは だれか」が わかる カード。2かいめ からは これを だすよ。', m:'なくさない ように、だいじに しまって おこう'},
-    {id:'num', em:'🔢', n:'じゅんばんの ふだ', btn:'じゅんばんの<br>ふだ', say:'ばんごうで よぶから まっててね',
+    {id:'num', em:'@ic_num', n:'じゅんばんの ふだ', btn:'じゅんばんの<br>ふだ', say:'ばんごうで よぶから まっててね',
      d:'よばれる じゅんばんが わかる ふだ。ばんごうが でたら しんさつしつへ いくよ。', m:'じゅんばんを まもると、みんなが きもちよく まてるね'},
-    {id:'sheet', em:'📝', n:'もんしんひょう', btn:'もんしんひょう<br>を かく', say:'いつから どこが へんか かいてね',
+    {id:'sheet', em:'@ic_sheet', n:'もんしんひょう', btn:'もんしんひょう<br>を かく', say:'いつから どこが へんか かいてね',
      d:'からだの ようすを かく かみ。いつから・どこが・どんなふうに ぐあいが わるいか かくと、せんせいに つたわるよ。', m:'おうちの ひとと いっしょに かこう'}
   ],
   machiai:[
-    {id:'book', em:'📚', n:'えほん', btn:'えほん<br>を よむ', say:'しずかに よんで まとうね',
+    {id:'book', em:'@ic_book', n:'えほん', btn:'えほん<br>を よむ', say:'しずかに よんで まとうね',
      d:'まちあいしつで よめる ほん。よんだら もとの ばしょに もどそう。', m:'しずかに まつのも、びょういんの だいじな マナー'},
-    {id:'wash', em:'🧼', n:'てあらいの ポスター', btn:'てあらい<br>ポスター', say:'ゆびの あいだも あらってね',
+    {id:'wash', em:'@ic_wash', n:'てあらいの ポスター', btn:'てあらい<br>ポスター', say:'ゆびの あいだも あらってね',
      d:'てあらいの じゅんばんが かいてある ポスター。てのひら・てのこう・ゆびの あいだ・つめ・てくび を あらうよ。', m:'せっけんで 30びょう くらい あらうと ばいきんが へるよ'},
-    {id:'mask', em:'😷', n:'マスク', btn:'マスク<br>を みる', say:'せきが でる ときは マスクを しようね',
+    {id:'mask', em:'@ic_mask', n:'マスク', btn:'マスク<br>を みる', say:'せきが でる ときは マスクを しようね',
      d:'せきや くしゃみの しぶきが まわりに とばない ように する もの。はなまで しっかり おおうよ。', m:'マスクが ない ときは、ひじの うちがわで くちを おおう'}
   ],
   kensa:[
-    {id:'xray', em:'🩻', n:'レントゲン', btn:'レントゲン<br>を みる', say:'うごかずに じっと してね',
+    {id:'xray', em:'@ic_xray', n:'レントゲン', btn:'レントゲン<br>を みる', say:'うごかずに じっと してね',
      d:'からだの なかを とおる ひかりの ような もので、ほねの しゃしんを とる きかい。', m:'ほねは しろく うつるよ'},
-    {id:'ct', em:'🍩', n:'CT', btn:'CT<br>を みる', say:'ドーナツの なかを くぐるよ',
+    {id:'ct', em:'@ic_ct', n:'CT', btn:'CT<br>を みる', say:'ドーナツの なかを くぐるよ',
      d:'ドーナツの ような わの なかを くぐって、からだを わぎりに した ような しゃしんを たくさん とる きかい。', m:'コンピューターで からだの なかを たちたいに みられるよ'},
-    {id:'blood', em:'🧪', n:'けつえき けんさ', btn:'けつえき<br>けんさ', say:'ちょっとだけ ちを しらべるよ',
+    {id:'blood', em:'@ic_blood', n:'けつえき けんさ', btn:'けつえき<br>けんさ', say:'ちょっとだけ ちを しらべるよ',
      d:'すこしの ちを とって、ちの なかの ようすを しらべる けんさ。からだの げんきさが いろいろ わかるよ。', m:'ちには からだの じょうほうが いっぱい'}
   ],
   yakkyoku:[
-    {id:'shelf', em:'🗄️', n:'くすりの たな', btn:'くすりの<br>たな', say:'くすりは たくさん しゅるいが あるよ',
+    {id:'shelf', em:'@ic_shelf', n:'くすりの たな', btn:'くすりの<br>たな', say:'くすりは たくさん しゅるいが あるよ',
      d:'いろいろな くすりが ならぶ たな。やくざいしさんが、せんせいの かいた「しょほうせん」を みて ただしい くすりを えらぶよ。', m:'くすりを まちがえない ように なんども たしかめるよ'},
-    {id:'bag', em:'🛍️', n:'くすりの ふくろ', btn:'くすりの<br>ふくろ', say:'のむ じかんが かいて あるよ',
+    {id:'bag', em:'@ic_bag', n:'くすりの ふくろ', btn:'くすりの<br>ふくろ', say:'のむ じかんが かいて あるよ',
      d:'くすりの ふくろには、のむ じかん（あさ・ひる・よる、しょくご など）や かずが かいて あるよ。', m:'くすりは みずか ぬるまゆで のもう'},
-    {id:'note', em:'📒', n:'おくすりてちょう', btn:'おくすり<br>てちょう', say:'のんだ くすりを きろく するよ',
+    {id:'note', em:'@ic_note', n:'おくすりてちょう', btn:'おくすり<br>てちょう', say:'のんだ くすりを きろく するよ',
      d:'どんな くすりを もらったか きろく する てちょう。ちがう びょういんでも みせると あんしんだよ。', m:'じぶんの くすりは じぶんだけの もの。ひとに あげないでね'}
   ],
   shujutsu:[
-    {id:'light', em:'💡', n:'しゅじゅつの ライト', btn:'ライト<br>を みる', say:'かげが できにくい ライトだよ',
+    {id:'light', em:'@ic_light', n:'しゅじゅつの ライト', btn:'ライト<br>を みる', say:'かげが できにくい ライトだよ',
      d:'たくさんの ひかりで てらすので、てや どうぐの かげが できにくい ライト。', m:'「むえいとう（かげが ない あかり）」と いうよ'},
-    {id:'wash', em:'🧼', n:'てあらい', btn:'てあらい<br>を みる', say:'ひじまで ていねいに あらうよ',
+    {id:'wash', em:'@ic_scrub', n:'てあらい', btn:'てあらい<br>を みる', say:'ひじまで ていねいに あらうよ',
      d:'しゅじゅつの まえには、ゆびさきから ひじまで ていねいに あらって ばいきんを へらすよ。', m:'あらった あとは きれいな てぶくろを するよ'},
-    {id:'cap', em:'🧢', n:'マスクと ぼうし', btn:'マスクと<br>ぼうし', say:'かみのけも ぜんぶ しまうよ',
+    {id:'cap', em:'@ic_cap', n:'マスクと ぼうし', btn:'マスクと<br>ぼうし', say:'かみのけも ぜんぶ しまうよ',
      d:'ばいきんや かみのけが はいらない ように、マスクと ぼうしを つけるよ。', m:'しゅじゅつしつは とても せいけつに しているよ'}
   ]
 };
@@ -10909,11 +10911,8 @@ const QS = [
   ['job',1,'きゅうきゅうしゃで かけつけるのは？','きゅうきゅうたい','やくざいし','えいようし','きゅうきゅうたいいんが すぐに かけつけるよ'],
   ['equip',1,'きゅうきゅうしゃを よぶ でんわばんごうは？','119','110','117','110は けいさつ。きゅうきゅうしゃと しょうぼうは 119'],
   ['equip',2,'110ばんに でんわ すると つながるのは？','けいさつ','しょうぼう・きゅうきゅう','じほう（いまの じかん）','じけんや じこの ときは 110ばん'],
-  ['equip',2,'ドクターヘリの よい ところは？','はやく とおくまで いける','みずの なかを すすめる','じめんを ほれる','おいしゃさんが ヘリで いそいで かけつけるよ'],
-  ['equip',3,'しゅじゅつロボットを うごかすのは？','おいしゃさん','ロボットが ひとりで','かんじゃさん','おいしゃさんが そうさして、こまかい しゅじゅつを するよ'],
   ['equip',1,'きゅうきゅうしゃの なかに あるのは？','ねたまま はこべる ベッドや てあての どうぐ','おもちゃ だけ','なにも ない','はこびながら てあてが できるよ'],
   ['equip',2,'119ばんで「かじですか？ きゅうきゅうですか？」と きかれたら？','「きゅうきゅうです」と こたえる','だまって きる','なまえだけ いう','おちついて、ばしょと ようすを つたえよう'],
-  ['equip',2,'CTスキャナーは どんな かたち？','ドーナツの ような わ','れいぞうこの ような はこ','ながい はしご','わの なかを ねたまま くぐるよ']
 ];
 const GENRE = {health:['health','machiai'], body:['body'], job:['job','uketsuke','nyuin'], med:['shinsatsu','kensa','yakkyoku','shujutsu'], equip:['equip']};
 const GW = [['health',30],['body',25],['job',20],['med',15],['equip',10]];
@@ -10960,6 +10959,53 @@ QS.push(
   ['equip',2,'しゅじゅつロボットの すごい ところは？','こまかい うごきが できる','そらを とべる','ごはんを つくる','ひとの てより こまかく うごかせるよ','robot'],
   ['equip',2,'しゅじゅつロボットの うでは どんな かたち？','ほそくて ながい','まるくて おおきい','やわらかい ぬいぐるみ','ほそい うでで ちいさな きずから しゅじゅつ できる ことも あるよ','robot']
 );
+/* v6.56：もんだい ついか（STEP7） */
+QS.push(
+  ['machiai',2,'まちあいしつで せきが でそうな ときは？','マスクを する','まわりの ひとに ちかづく','おおごえで はなす','まわりの ひとに うつさない ように しよう'],
+  ['machiai',2,'ぐあいの わるそうな ひとが いたら？','かんごしさんに しらせる','わらって みて いる','そのまま あそぶ','こまった ときは おとなに しらせよう'],
+  ['machiai',3,'くるまいすの ひとが とおる ときは？','みちを あけて まつ','まえを はしって よこぎる','いりぐちに すわりこむ','みんなが あんぜんに とおれる ように ゆずろう'],
+  ['machiai',1,'まちあいしつで でた ゴミは？','ゴミばこに すてる','ゆかに おく','いすの したに かくす','きれいに つかうと みんなが きもちいいね'],
+  ['machiai',3,'うつる びょうきの うたがいが ある ひとが まつ ばしょは？','ほかの ひとと わけた ばしょ','いちばん ひとが おおい ところ','しょくどう','ほかの ひとに うつらない ように わけて まつ ことが あるよ'],
+  ['uketsuke',1,'うけつけで さいしょに いう ことばは？','「こんにちは」','「さようなら」','「いただきます」','あいさつ すると きもちよく つたわるよ'],
+  ['uketsuke',2,'はじめて きた びょういんで つくって もらう カードは？','しんさつけん','としょかんカード','ポイントカード','つぎから これを だすと すぐに わかるよ'],
+  ['uketsuke',2,'しんさつが おわったら さいごに いく ところは？','おかいけい（うけつけ）','しゅじゅつしつ','けんさしつ','おかねを はらって、くすりの かみを もらうよ'],
+  ['uketsuke',3,'くすりを もらう ために、おいしゃさんが かく かみは？','しょほうせん','てがみ','けいやくしょ','この かみを やっきょくに だすよ'],
+  ['uketsuke',1,'よやくの じかんに おくれそうな ときは？','びょういんに でんわで しらせる','だまって いかない','よるに いく','れんらく すると びょういんも たすかるよ'],
+  ['shinsatsu',3,'ゆびさきに はさんで、ちの なかの さんそを はかる きかいは？','パルスオキシメーター','たいおんけい','しんちょうけい','ゆびを はさむ だけで いたくないよ'],
+  ['shinsatsu',3,'うでに まいて ぎゅっと しめて はかるのは？','けつあつ','たいおん','しりょく','しんぞうが ちを おしだす ちからを はかるよ'],
+  ['shinsatsu',2,'どこが いたいか きかれたら？','じぶんの ことばで つたえる','だまって いる','うそを いう','「いつから」「どこが」を つたえると わかりやすいよ'],
+  ['kensa',1,'けつえき けんさで ちを とる ときに つかうのは？','ちゅうしゃの はり','はさみ','ものさし','すこし チクッと するけど すぐ おわるよ'],
+  ['kensa',2,'しんでんずで わかるのは？','しんぞうの うごき','せの たかさ','めの いろ','むねに シールを はって、しんぞうの でんきを しらべるよ'],
+  ['kensa',2,'おしっこの けんさで わかるのは？','からだの なかの ようす','あしの はやさ','すきな たべもの','おしっこにも からだの じょうほうが いっぱい'],
+  ['kensa',1,'ちょうおんぱ けんさで おなかに ぬるのは？','ゼリー','ケチャップ','すな','ゼリーを ぬると なかが よく みえるよ'],
+  ['yakkyoku',1,'くすりの ふくろに かいて あるのは？','のむ じかんと かず','てんきよほう','まんが','かならず よんでから のもう'],
+  ['yakkyoku',2,'こなぐすりが にがてな ときは？','やくざいしさんに そうだん する','すてる','かくして のまない','のみやすい くふうを おしえて くれるよ'],
+  ['yakkyoku',3,'「とんぷく」の くすりは いつ のむ？','ぐあいが わるく なった ときだけ','まいにち あさ かならず','ごはんの まえ ずっと','いたい ときや ねつが たかい ときに のむ くすりだよ'],
+  ['yakkyoku',2,'めぐすりを さす ときに きを つけるのは？','いれものの さきを めに つけない','たくさん いれる','ともだちと かしあう','ばいきんが はいらない ように しよう'],
+  ['shujutsu',1,'しゅじゅつを する へやは？','しゅじゅつしつ','しょくどう','まちあいしつ','とても せいけつに して ある へやだよ'],
+  ['shujutsu',2,'しゅじゅつの まえに ごはんを たべない わけは？','ますいを あんぜんに する ため','おなかが すくと たのしい から','ふとらない ため','せんせいの いう とおりに しようね'],
+  ['shujutsu',2,'しゅじゅつの ふくの いろで おおいのは？','みどりや あお','まっか','くろ','あかい ちを みても めが つかれにくい いろだよ'],
+  ['shujutsu',3,'しゅじゅつの あと、きずを とじるのに つかうのは？','いとや テープ','のり','セロハンテープ だけ','きずを ぬったり テープで とめたり するよ'],
+  ['shujutsu',3,'しゅじゅつの あいだ、ますいや いきを みまもるのは？','ますいかの おいしゃさん','うけつけの ひと','えいようし','ねむって いる あいだも ずっと みまもって いるよ'],
+  ['nyuin',2,'にゅういん している ひとの ごはんを かんがえるのは？','えいようし','かんじゃさん じしん','うけつけ','からだに あわせた ごはんを かんがえて くれるよ'],
+  ['nyuin',1,'にゅういん して ねる へやを なんと いう？','びょうしつ','きょうしつ','しょくいんしつ','びょうとうの なかに びょうしつが あるよ'],
+  ['nyuin',3,'げんきに なって びょういんを でる ことを？','たいいん','にゅういん','てんこう','にゅういんの はんたいが たいいんだよ'],
+  ['nyuin',1,'にゅういん している ひとに あう ことを なんと いう？','おみまい','おつかい','おるすばん','しずかに、みじかい じかんで あいに いこう'],
+  ['nyuin',2,'にゅういん ちゅうに からだを うごかす れんしゅうを？','リハビリ','ピクニック','おひるね','リハビリで からだの うごきを とりもどすよ'],
+  ['job',1,'ごはんの えいようを かんがえるのは？','えいようし','けんさぎし','うけつけ','バランスの よい こんだてを かんがえるよ'],
+  ['job',2,'レントゲンを とる せんもんかは？','しんりょうほうしゃせんぎし','やくざいし','えいようし','ほうしゃせんを あんぜんに つかう プロだよ'],
+  ['job',3,'こどもの びょうきを みる かは？','しょうにか','がんか','じびか','しょうにかは こどもの せんもんだよ'],
+  ['job',3,'めの びょうきを みる かは？','がんか','しか','ひふか','がんかは めの せんもんだよ'],
+  ['job',2,'むしばの ちりょうを するのは？','はいしゃさん','じゅういさん','やくざいしさん','はいしゃさんで はの ちりょうを するよ'],
+  ['health',3,'ばいきんや ウイルスから からだを まもる しくみは？','めんえき','こきゅう','しょうか','めんえきは からだを まもる へいたいさんだよ'],
+  ['health',3,'よぼうせっしゅの もくてきは？','びょうきに かかりにくく する','せを のばす','はを しろく する','からだに びょうきへの そなえを させるよ'],
+  ['health',2,'ねる まえに ずっと がめんを みると？','ねむりが あさく なる','すぐ ぐっすり ねむれる','せが ぐんぐん のびる','ねる まえは がめんを やすもう'],
+  ['equip',3,'AEDを つかう とき、さいしょに する ことは？','ふたを あけて でんげんを いれる','たたいて みる','みずに いれる','AEDが こえで やりかたを おしえて くれるよ','ambulance'],
+  ['equip',3,'MRIの へやに もって はいっては いけない ものは？','てつの もの','パジャマ','タオル','つよい じしゃくに すいよせられて しまうよ','ct'],
+  ['equip',3,'ドクターヘリが とばないのは どんな とき？','よるや あらしの とき','はれた ひる','かぜの ない ひ','あんぜんの ため、くらい ときや てんきが わるい ときは とばないよ','heli'],
+  ['body',3,'ちの なかで さんそを はこぶ つぶは？','せっけっきゅう','はっけっきゅう','けっしょうばん','あかい ちの つぶが さんそを はこぶよ','heart'],
+  ['body',3,'けがを した とき、ちを かためて とめる つぶは？','けっしょうばん','せっけっきゅう','い','ちいさな つぶが あつまって ちを とめるよ','heart']
+);
 const maxStar = () => { const g = Number(save.menu && save.menu.grade) || 0; return !g ? 3 : g <= 2 ? 1 : g <= 4 ? 2 : 3; };
 
 /* ---------- アイコン（SVG） ---------- */
@@ -10980,7 +11026,7 @@ const SV = {
   t_eye:'<svg viewBox="0 0 48 48"><rect x="8" y="3" width="32" height="42" rx="4" fill="#fff" stroke="#3A4A5A" stroke-width="3"/><g fill="none" stroke="#2A2A30" stroke-linecap="butt"><circle cx="24" cy="12" r="4.5" stroke-width="2.6" stroke-dasharray="24 4.3" transform="rotate(-10 24 12)"/><circle cx="17" cy="24" r="3.2" stroke-width="2" stroke-dasharray="16.5 3.6" transform="rotate(80 17 24)"/><circle cx="31" cy="24" r="3.2" stroke-width="2" stroke-dasharray="16.5 3.6" transform="rotate(170 31 24)"/><circle cx="15" cy="34" r="2.2" stroke-width="1.6" stroke-dasharray="11 2.8"/><circle cx="24" cy="34" r="2.2" stroke-width="1.6" stroke-dasharray="11 2.8" transform="rotate(90 24 34)"/><circle cx="33" cy="34" r="2.2" stroke-width="1.6" stroke-dasharray="11 2.8" transform="rotate(200 33 34)"/></g></svg>',
   t_height:'<svg viewBox="0 0 48 48"><rect x="20" y="3" width="9" height="40" rx="2" fill="#7B6BD8" stroke="#4A3A9A" stroke-width="2"/><path d="M29 9h4M29 15h3M29 21h4M29 27h3M29 33h4" stroke="#4A3A9A" stroke-width="2"/><rect x="12" y="10" width="17" height="4" rx="1.5" fill="#B9C6D2" stroke="#3A4A5A" stroke-width="1.5"/><rect x="12" y="42" width="25" height="4" rx="2" fill="#3A4A5A"/></svg>'
 };
-const tIc = t => (t && SV['t_' + t.id]) || `<i class="em651">${t && t.em || ''}</i>`;
+const tIc = t => (t && !t.em && SV['t_' + t.id]) || `<i class="em651">${EI(t && t.em)}</i>`;
 
 
 /* ---------- STEP4：しごとを しる ---------- */
@@ -11006,20 +11052,20 @@ const JB = id => JOBS.find(j => j.id === id);
 JOBS.forEach(j => { SAY['job_' + j.id] = [j.say, `${j.n}の おしごと、やって みる？`, 'いつも みんなの ために がんばって いるよ']; });
 const GAME = {
   deer:{all:[
-    ['🐻','ねつが あって、のどが いたい…','かぜぐすり'],['🐼','ころんで ひざを すりむいた…','ばんそうこう'],['🐨','めが かゆくて まっか…','めぐすり'],
-    ['🐷','ぶつけて あしが はれた…','しっぷ'],['🐱','たべすぎて おなかが いたい…','いぐすり']],
-    items:{'かぜぐすり':'💊','ばんそうこう':'🩹','めぐすり':'💧','しっぷ':'🧊','いぐすり':'🍵'}},
-  rabbit:{items:[['🧼','せっけんを あわだてる'],['🤲','てのひら'],['✋','てのこう'],['🖐️','ゆびの あいだ'],['💅','つめ'],['⌚','てくび']], tip:'せっけんで 30びょう くらい ていねいに あらおう'},
+    ['@card_panda','ねつが あって、のどが いたい…','かぜぐすり'],['@card_lion','ころんで ひざを すりむいた…','ばんそうこう'],['@card_koala','めが かゆくて まっか…','めぐすり'],
+    ['@card_hippo','ぶつけて あしが はれた…','しっぷ'],['@card_cat','たべすぎて おなかが いたい…','いぐすり']],
+    items:{'かぜぐすり':'@md_kaze','ばんそうこう':'@md_bandage','めぐすり':'@md_eye','しっぷ':'@md_shippu','いぐすり':'@md_powder'}},
+  rabbit:{items:[['@hw_1','せっけんを あわだてる'],['@hw_2','てのひら'],['@hw_3','てのこう'],['@hw_4','ゆびの あいだ'],['@hw_5','つめ'],['@hw_6','てくび']], tip:'せっけんで 30びょう くらい ていねいに あらおう'},
   hedgehog:{tip:'ばんごうの ちいさい ひとから じゅんばんに'},
-  beaver:{items:[['☎️','119に でんわ'],['🚑','「きゅうきゅうです」'],['🏠','ばしょを いう'],['🗣️','ようすを いう'],['🙋','なまえを いう']], tip:'おちついて、ゆっくり はっきり はなそう'},
+  beaver:{items:[['@ic_phone','119に でんわ'],['@ic_ambulance','「きゅうきゅうです」'],['@ic_place','ばしょを いう'],['@ic_talk','ようすを いう'],['@ic_name','なまえを いう']], tip:'おちついて、ゆっくり はっきり はなそう'},
   tanuki:{rounds:[
     ['あさと よる','ごはんの あと',[1,0,1],'しょくご'],['ねる まえに 1かい','',[0,0,0],'ねるまえ'],['あさ・ひる・よる','ごはんの まえ',[1,1,1],'しょくぜん']]},
   raccoon:{rounds:([['skull','あたまを まもる ほね（ずがいこつ）'],['rib','しんぞうや はいを まもる ほね（あばらぼね）'],['spine','せなかの まんなかの ほね（せぼね）'],['leg','からだを ささえる ふとももの ほね'],['pelvis','こしの ほね（こつばん）']]).slice(0, 3)},
-  boar:{moves:[['🙆','うでを うえに'],['🙇','まえに たおす'],['🤸','よこに のばす'],['🦵','あしを のばす']], lens:[3, 4]},
-  skunk:{items:[['🍚','ごはん','y'],['🍞','パン','y'],['🐟','やきざかな','r'],['🍳','たまごやき','r'],['🥗','サラダ','g'],['🥦','ブロッコリー','g'],['🍰','ケーキ','x'],['🧃','ジュース','x']]}
+  boar:{moves:[['@mv_1','うでを うえに'],['@mv_2','まえに たおす'],['@mv_3','よこに のばす'],['@mv_4','あしを のばす']], lens:[3, 4]},
+  skunk:{items:[['@fd_rice','ごはん','y'],['@fd_bread','パン','y'],['@fd_fish','やきざかな','r'],['@fd_egg','たまごやき','r'],['@fd_salad','サラダ','g'],['@fd_broc','ブロッコリー','g'],['@fd_cake','ケーキ','x'],['@fd_juice','ジュース','x']]}
 };
 const GRP = {y:['しゅしょく','エネルギーに なる','#F2B33A'], r:['しゅさい','からだを つくる','#E8604A'], g:['ふくさい','ちょうしを ととのえる','#3BAF6A']};
-const HANA = ['🐻','🐼','🐨','🐷','🐱','🐰','🦊','🐧'];
+const HANA = ['@card_panda','@card_elephant','@card_koala','@card_penguin','@card_cat','@card_lamb','@card_fox','@card_owl','@card_giraffe','@card_lion'];
 let G = null, GT = [];
 const clearGT = () => { GT.forEach(clearTimeout); GT = []; };
 function newGame(id){
@@ -11042,14 +11088,14 @@ function gameBody(g){
   if(g.done) return `<div class="gw652"><img src="${IMG}staff_${g.id}.webp" alt=""><b>おしごと かんりょう！</b><small>${X(JB(g.id).n)}の おしごとが わかったね</small>
       <div class="gb652"><button type="button" class="ag652" data-h="gagain">もういちど</button><button type="button" class="ok652" data-h="gend">おわる</button></div></div>`;
   if(g.type === 'med'){ const r = g.rounds[g.r];
-    return `<div class="pt652"><span class="pe652">${r[0]}</span><span class="ps652">${X(r[1])}</span></div>
-      <div class="ch652 n3">${g.opts[g.r].map(o => `<button type="button" class="${g.sel.includes(o) ? 'ng' : ''}" data-h="gpick" data-v="${X(o)}"><i>${d.items[o]}</i><b>${o}</b></button>`).join('')}</div>`; }
+    return `<div class="pt652"><span class="pe652">${EI(r[0])}</span><span class="ps652">${X(r[1])}</span></div>
+      <div class="ch652 n3">${g.opts[g.r].map(o => `<button type="button" class="${g.sel.includes(o) ? 'ng' : ''}" data-h="gpick" data-v="${X(o)}"><i>${EI(d.items[o])}</i><b>${o}</b></button>`).join('')}</div>`; }
   if(g.type === 'order'){ const n = g.sel.length;
-    return `<div class="od652">${g.items.map((it, k) => `<span class="${k < n ? 'on' : ''}"><em>${k + 1}</em>${k < n ? `<i>${it.em}</i><b>${X(it.t)}</b>` : ''}</span>`).join('')}</div>
-      <div class="ch652 ord">${g.shown.map(it => `<button type="button" class="${g.sel.includes(it.i) ? 'used' : ''}" data-h="gpick" data-v="${it.i}" ${g.sel.includes(it.i) ? 'disabled' : ''}><i>${it.em}</i><b>${X(it.t)}</b></button>`).join('')}</div>
+    return `<div class="od652">${g.items.map((it, k) => `<span class="${k < n ? 'on' : ''}"><em>${k + 1}</em>${k < n ? `<i>${EI(it.em)}</i><b>${X(it.t)}</b>` : ''}</span>`).join('')}</div>
+      <div class="ch652 ord">${g.shown.map(it => `<button type="button" class="${g.sel.includes(it.i) ? 'used' : ''}" data-h="gpick" data-v="${it.i}" ${g.sel.includes(it.i) ? 'disabled' : ''}><i>${EI(it.em)}</i><b>${X(it.t)}</b></button>`).join('')}</div>
       ${d.tip ? `<p class="tp652">💡 ${d.tip}</p>` : ''}`; }
-  if(g.type === 'bag'){ const r = g.rounds[g.r], ic = ['☀️','🌤️','🌙'];
-    const bag = o => `<span class="bg652"><span class="bt652">${o.t.some(v => v) ? o.t.map((v, k) => `<i class="${v ? 'on' : ''}">${ic[k]}</i>`).join('') : '<i class="on">🛏️</i>'}</span><b>${o.w}</b></span>`;
+  if(g.type === 'bag'){ const r = g.rounds[g.r], ic = ['@tm_morning','@tm_noon','@tm_night'].map(EI);
+    const bag = o => `<span class="bg652"><span class="bt652">${o.t.some(v => v) ? o.t.map((v, k) => `<i class="${v ? 'on' : ''}">${ic[k]}</i>`).join('') : `<i class="on">${EI('@tm_bed')}</i>`}</span><b>${o.w}</b></span>`;
     return `<div class="rx652"><small>しょほうせん</small><b>${X(r[0])}${r[1] ? `<br>${X(r[1])}` : ''}</b></div>
       <div class="ch652 n3 bags">${g.opts[g.r].map((o, k) => `<button type="button" class="${g.sel.includes(k) ? 'ng' : ''}" data-h="gpick" data-v="${k}">${bag(o)}</button>`).join('')}</div>`; }
   if(g.type === 'bone'){ const r = g.rounds[g.r];
@@ -11066,14 +11112,14 @@ function gameBody(g){
       </svg></div>`; }
   if(g.type === 'simon'){ const seq = g.seqs[g.r], M = d.moves;
     if(g.phase === 'ready') return `<div class="sm652"><img src="${IMG}staff_boar.webp" alt=""><p>せんせいの うごきを よく みてね（${seq.length}こ）</p><button type="button" class="ok652" data-h="gshow">スタート！</button></div>`;
-    if(g.phase === 'show') return `<div class="sm652 show"><img src="${IMG}staff_boar.webp" alt=""><div class="mv652">${g.si >= 0 ? `<i>${M[seq[g.si]][0]}</i><b>${M[seq[g.si]][1]}</b>` : '<b>よーい…</b>'}</div><span class="gd652">${seq.map((_, k) => `<i class="${k <= g.si ? 'c' : ''}"></i>`).join('')}</span></div>`;
+    if(g.phase === 'show') return `<div class="sm652 show"><img src="${IMG}staff_boar.webp" alt=""><div class="mv652">${g.si >= 0 ? `<i>${EI(M[seq[g.si]][0])}</i><b>${M[seq[g.si]][1]}</b>` : '<b>よーい…</b>'}</div><span class="gd652">${seq.map((_, k) => `<i class="${k <= g.si ? 'c' : ''}"></i>`).join('')}</span></div>`;
     return `<p class="bq652">おなじ じゅんばんで タッチ！（${g.sel.length}/${seq.length}）</p>
-      <div class="od652 sim">${seq.map((m, k) => `<span class="${k < g.sel.length ? 'on' : ''}"><em>${k + 1}</em>${k < g.sel.length ? `<i>${M[m][0]}</i>` : ''}</span>`).join('')}</div>
-      <div class="ch652 n4">${M.map((m, k) => `<button type="button" data-h="gpick" data-v="${k}"><i>${m[0]}</i><b>${m[1]}</b></button>`).join('')}</div>`; }
+      <div class="od652 sim">${seq.map((m, k) => `<span class="${k < g.sel.length ? 'on' : ''}"><em>${k + 1}</em>${k < g.sel.length ? `<i>${EI(M[m][0])}</i>` : ''}</span>`).join('')}</div>
+      <div class="ch652 n4">${M.map((m, k) => `<button type="button" data-h="gpick" data-v="${k}"><i>${EI(m[0])}</i><b>${m[1]}</b></button>`).join('')}</div>`; }
   if(g.type === 'meal'){ const tray = g.sel.map(k => d.items.find(x => x[1] === k));
-    return `<div class="tr652">${[0, 1, 2].map(k => tray[k] ? `<button type="button" data-h="gdrop" data-v="${X(tray[k][1])}"><i>${tray[k][0]}</i><b>${tray[k][1]}</b></button>` : '<span></span>').join('')}</div>
+    return `<div class="tr652">${[0, 1, 2].map(k => tray[k] ? `<button type="button" data-h="gdrop" data-v="${X(tray[k][1])}"><i>${EI(tray[k][0])}</i><b>${tray[k][1]}</b></button>` : '<span></span>').join('')}</div>
       <div class="lg652">${Object.values(GRP).map(v => `<span style="--c:${v[2]}"><b>${v[0]}</b>${v[1]}</span>`).join('')}</div>
-      <div class="ch652 n4 meal">${g.shown.map(x => `<button type="button" class="${g.sel.includes(x[1]) ? 'used' : ''}" data-h="gpick" data-v="${X(x[1])}" ${g.sel.includes(x[1]) || g.sel.length >= 3 ? 'disabled' : ''}><i>${x[0]}</i><b>${x[1]}</b></button>`).join('')}</div>
+      <div class="ch652 n4 meal">${g.shown.map(x => `<button type="button" class="${g.sel.includes(x[1]) ? 'used' : ''}" data-h="gpick" data-v="${X(x[1])}" ${g.sel.includes(x[1]) || g.sel.length >= 3 ? 'disabled' : ''}><i>${EI(x[0])}</i><b>${x[1]}</b></button>`).join('')}</div>
       <button type="button" class="ok652 ${g.sel.length === 3 ? '' : 'off'}" data-h="gmeal" ${g.sel.length === 3 ? '' : 'disabled'}>できた！</button>`; }
   return '';
 }
@@ -11426,7 +11472,7 @@ const todayLine = () => { const d = HS().daily; return d.cry >= CFG.cryDay ? '�
 /* ---------- STEP1：トップ ---------- */
 function top(){
   const hurt = (save.town && save.town.res || []).filter(r => r.hurt).length;
-  const clinic = `<button type="button" class="cl651" data-h="clinic">🩹 けがの かんじゃさん${hurt ? `<em>${hurt}</em>` : ''}</button>`;
+  const clinic = `<button type="button" class="cl651" data-h="clinic">${EI('@ic_bandage')} けがの かんじゃさん${hurt ? `<em>${hurt}</em>` : ''}</button>`;
   if(LAY === 'ph') return `<div class="w651 tp ph">
     <div class="sk651"><div class="ib651 top"><img src="${IMG}top_ph.webp" alt="">
       ${hz('hana',6,46,30,46)}${hz('deer',36,36,28,54)}${hz('rabbit',64,48,28,43)}
@@ -11475,7 +11521,7 @@ function inside(){
           <span class="lb651n">${r.n}</span>${tag(r)}${first && r.id === 'shinsatsu' ? '<span class="pt651">👆<b>タッチして<br>はいろう！</b></span>' : ''}</button>`).join('')}
       <span class="bb651 hidden"></span>
       ${hz('hana',34,82,13,18)}${hz('rabbit',53,82,12,18)}
-      <div class="xb651">${EXTRA.map(r => `<button type="button" class="xc651" data-h="${r.id}" style="--c:${r.c}"><i>${r.em}</i><b>${r.n}</b></button>`).join('')}</div>
+      <div class="xb651">${EXTRA.map(r => `<button type="button" class="xc651" data-h="${r.id}" style="--c:${r.c}"><i>${EI(r.id === 'body' ? '@org_heart' : '@eq_ambulance')}</i><b>${r.n}</b></button>`).join('')}</div>
     </div></div>
   </div>`;
 }
@@ -12308,6 +12354,24 @@ body.hp651on{overflow:hidden}
 .rk654d .bd{width:150px;height:150px;object-fit:contain;animation:pfm654 .9s cubic-bezier(.2,1.6,.4,1) both}
 .rk654d .hn{position:absolute;right:0;bottom:-6px;width:96px}
 .it654d{display:flex;justify-content:center}.it654d img{width:140px;height:140px;object-fit:contain;border-radius:20px;animation:stp652 .5s cubic-bezier(.2,1.6,.4,1)}
+
+/* ===== v6.56：アイコンを イラストに ===== */
+.ei655{width:1em;height:1em;object-fit:contain;display:inline-block;vertical-align:middle;border-radius:18%}
+.ch652 button i .ei655{width:1.7em;height:1.7em}
+.pe652 .ei655{width:1.6em;height:1.6em;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.od652 span i .ei655{width:1.6em;height:1.6em}
+.bt652 i .ei655{width:1.25em;height:1.25em;border-radius:6px}
+.mv652 i .ei655{width:2.4em;height:2.4em}
+.tr652 button i .ei655{width:1.4em;height:1.4em;border-radius:50%}
+.em651 .ei655{width:1.45em;height:1.45em}
+.di651 .em651 .ei655{width:1.6em;height:1.6em;border-radius:22px}
+.xc651 i .ei655{width:1.5em;height:1.5em;border-radius:10px}
+.cl651 .ei655{width:1.4em;height:1.4em}
+
+.bags button{min-width:0;overflow:hidden;padding:6px 2px}
+.bt652{max-width:100%;box-sizing:border-box;padding:3px}
+.ch652 .bt652 i .ei655{width:clamp(18px,6.6vw,34px);height:clamp(18px,6.6vw,34px)}
+.ch652 button b{word-break:keep-all;overflow-wrap:anywhere}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
