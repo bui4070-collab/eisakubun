@@ -10696,8 +10696,9 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 
 
 
+
 /* =====================================================================
-   まなびタウン v6.54：そうごう びょういん（仕様書 v0.1　STEP1〜STEP5）
+   まなびタウン v6.55：そうごう びょういん（仕様書 v0.1　STEP1〜STEP6）
    ・STEP1：トップ（スマホ たて／iPad よこ＝ロビーの え）
    ・STEP2：びょういんの なか（スマホ＝リスト／iPad＝だんめんずの え を タッチ）、へやの なか（6へや）
    ・STEP3：いりょうクイズ（5もん・3たく・ヒント・ポイント・水晶）／へやの もんだい（3もん）
@@ -10705,7 +10706,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.54.0', IMG = './assets/images/hospital/';
+const VER = '6.55.0', IMG = './assets/images/hospital/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -11288,6 +11289,107 @@ function equip(){
 }
 SAY.beaver = ['きゅうきゅうしゃの ばんごうは 119 だよ！','あわてず、ばしょを つたえてね','ヘリも くるまも、いそいで かけつけるよ'];
 
+
+/* ---------- STEP6：ごほうび（ランクバッジ・しんさつけんカード・アイテム） ---------- */
+const RANKS = [
+  {n:'みならい',        d:0,   r:0,   b:'b_minarai',  give:[],           msg:'すべての へやを みられるよ'},
+  {n:'かんごし',        d:7,   r:30,  b:'b_kango',    give:['kit'],      msg:'きゅうきゅうセットを もらったよ'},
+  {n:'おいしゃさん',    d:30,  r:100, b:'b_isha',     give:['stetho'],   msg:'きんの ちょうしんきを もらったよ'},
+  {n:'めいい',          d:60,  r:250, b:'b_meii',     give:['frame'],    msg:'しんさつけんカードが きんの わくに なったよ'},
+  {n:'でんせつの めいい', d:100, r:400, b:'b_densetsu', give:['house'], stk:1, msg:'まちに おける「おいしゃさんの いえ」を もらったよ'}
+];
+const HITEMS = [
+  {id:'stetho', n:'きんの ちょうしんき', img:'it_gold_stetho', how:'「おいしゃさん」に なると もらえる', d:'ぴかぴかの ちょうしんき。めいいの あかし！'},
+  {id:'kit',    n:'きゅうきゅうセット', img:'it_kit',         how:'「かんごし」に なると もらえる',   d:'てあての どうぐが ぜんぶ はいった はこ'},
+  {id:'thermo', n:'たいおんけい',       img:'it_thermo',      how:'はじめて パーフェクトで もらえる', d:'ピピッと ねつを はかれるよ'},
+  {id:'charm',  n:'おくすりチャーム',   img:'it_charm',       how:'パーフェクト 5かいで もらえる',    d:'かばんに つけられる かわいい チャーム'},
+  {id:'house',  n:'おいしゃさんの いえ', img:'it_house',      how:'「でんせつの めいい」に なると もらえる', d:'まちに おける とくべつな たてもの'}
+];
+const HI = id => HITEMS.find(x => x.id === id);
+/* しんさつけんカード：テーマを はじめて せいかい → もらえる。★＝せいかい かいすう（1・5・15） */
+const CARDS = [
+  ['health','panda','パンダ','てあらい だいすき'],['machiai','cat','こねこ','しずかに まてるよ'],['uketsuke','penguin','ペンギン','しんさつけんを もって きたよ'],
+  ['shinsatsu','koala','コアラ','ちょうしんきが くすぐったい'],['kensa','dolphin','イルカ','CTも へっちゃら'],['yakkyoku','fox','きつね','くすりを ちゃんと のむよ'],
+  ['shujutsu','lion','ライオン','しゅじゅつ がんばった！'],['nyuin','lamb','ひつじ','ゆっくり ねて げんきに'],['body','elephant','ぞう','からだの ひみつ はかせ'],
+  ['job','owl','ふくろう','びょういんの しごと ものしり'],['equip','giraffe','きりん','ヘリに のって みたい'],['perfect','hippo','かば','パーフェクトの おいわい']
+];
+const cardStars = n => n >= 15 ? 3 : n >= 5 ? 2 : n >= 1 ? 1 : 0;
+const ITEM_HOUSE = 'hp_house';
+try{
+  DEFAULT_ART[ITEM_HOUSE] = IMG + 'it_house.webp';
+  if(!TOWN_ITEMS.some(x => x.id === ITEM_HOUSE)) TOWN_ITEMS.push({id:ITEM_HOUSE, type:'bld', cat:'bld', name:'おいしゃさんの いえ', art:ITEM_HOUSE, emoji:'🏥', price:0, price0:0, lv:1, dev:80, income:20, ev:'hp_reward'});
+  try{ ZUKAN_INFO[ITEM_HOUSE] = 'でんせつの めいいだけが もらえる、おいしゃさんの いえ。'; }catch(e){}
+}catch(e){}
+function RW(){ const h = HS(); h.items = h.items || {}; h.cardN = h.cardN || {}; return h; }
+function rankNow(h){
+  let k = 0; RANKS.forEach((R, i) => { if(h.days.length >= R.d && h.right.total >= R.r && (!R.stk || Object.keys(h.stickers).length >= JOBS.length)) k = i; });
+  return k;
+}
+function nextInfo(h){
+  const k = h.rank || 0, N = RANKS[k + 1]; if(!N) return null;
+  const dd = Math.max(0, N.d - h.days.length), rr = Math.max(0, N.r - h.right.total), ss = N.stk ? Math.max(0, JOBS.length - Object.keys(h.stickers).length) : 0;
+  const P = RANKS[k], pd = Math.min(1, (h.days.length - P.d) / Math.max(1, N.d - P.d)), pr = Math.min(1, (h.right.total - P.r) / Math.max(1, N.r - P.r));
+  return {N, dd, rr, ss, pd:Math.max(0, pd), pr:Math.max(0, pr)};
+}
+function giveItem(h, id, got){
+  if(h.items[id]) return; h.items[id] = today(); got.push({t:'item', id});
+  if(id === 'house'){ try{ const t = save.town; t.bag = t.bag || {}; t.bag[ITEM_HOUSE] = (t.bag[ITEM_HOUSE] || 0) + 1; }catch(e){} }
+}
+/* クイズの あとに よぶ：あたらしい カード・ランク・アイテム */
+function grantAfterQuiz(perfect){
+  const h = RW(), got = [];
+  ((Q && Q.newCards) || []).forEach(c => got.push({t:'card', id:c}));
+  const k = rankNow(h);
+  while((h.rank || 0) < k){ h.rank = (h.rank || 0) + 1; const R = RANKS[h.rank]; if(!h.badges.includes(R.b)) h.badges.push(R.b); got.push({t:'rank', id:h.rank}); R.give.forEach(g => { if(g !== 'frame') giveItem(h, g, got); }); }
+  if(perfect){
+    if(!h.cards.perfect){ h.cards.perfect = today(); h.cardN.perfect = 0; got.push({t:'card', id:'perfect'}); }
+    h.cardN.perfect = (h.cardN.perfect || 0) + 1;
+    if(h.best.perfect >= 1) giveItem(h, 'thermo', got);
+    if(h.best.perfect >= 5) giveItem(h, 'charm', got);
+  }
+  persist(); return got;
+}
+async function showGot(got){
+  for(const g of got){
+    if(g.t === 'rank'){ const R = RANKS[g.id]; snd('fan'); try{ confetti(2600); }catch(e){}
+      await dialog(`<div class="rk654d"><img class="bd" src="${IMG}${R.b}.webp" alt=""><img class="hn" src="${IMG}hana_yay.webp" alt=""></div><h2 class="dlgT">ランク アップ！</h2><p class="dlgP">きょうから <b>「${R.n}」</b>！<br>${R.msg}</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold'); }
+    if(g.t === 'item'){ const I = HI(g.id); snd('fan');
+      await dialog(`<div class="it654d"><img src="${IMG}${I.img}.webp" alt=""></div><h2 class="dlgT">アイテム ゲット！</h2><p class="dlgP"><b>${I.n}</b><br>${I.d}${g.id === 'house' ? '<br><small>まちの「もようがえ」の トレイに はいったよ</small>' : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}]); }
+  }
+}
+function cardHTML(c, h, big){
+  const got = h.cards[c[0]], n = c[0] === 'perfect' ? (h.cardN.perfect || 0) : (h.right.theme[c[0]] || 0), st = cardStars(n), gold = (h.rank || 0) >= 3;
+  if(!got) return `<div class="cd654 no"><span>？</span><b>${c[0] === 'perfect' ? 'パーフェクトで' : THEME[c[0]] + 'で'}<br>はじめて せいかい</b></div>`;
+  return `<div class="cd654 ${gold ? 'gold' : ''} ${big ? 'big' : ''}"><img src="${IMG}card_${c[1]}.webp" alt=""><b>${c[2]}</b><small>${c[3]}</small>
+    <span class="cs654">${[1, 2, 3].map(i => `<i class="${i <= st ? 'on' : ''}">★</i>`).join('')}</span><em>${c[0] === 'perfect' ? 'パーフェクト' : THEME[c[0]]}</em></div>`;
+}
+function rankBox(h, compact){
+  const R = RANKS[h.rank || 0], nx = nextInfo(h);
+  return `<div class="rb654 ${compact ? 'cp' : ''}"><img src="${IMG}${R.b}.webp" alt=""><div class="ri654"><small>いまの ランク</small><b>${R.n}</b>
+    ${nx ? `<div class="pg654"><span>あそんだ ひ<em>${h.days.length}/${nx.N.d}</em></span><i><s style="width:${Math.round(nx.pd * 100)}%"></s></i></div>
+      <div class="pg654 r"><span>せいかい<em>${h.right.total}/${nx.N.r}</em></span><i><s style="width:${Math.round(nx.pr * 100)}%"></s></i></div>
+      <p>つぎの「${nx.N.n}」まで あと <b>${nx.dd}にち</b>・<b>${nx.rr}もん</b>${nx.ss ? `・シール <b>${nx.ss}まい</b>` : ''}</p>` : '<p><b>さいこうの ランク！</b> おめでとう！</p>'}
+    </div></div>`;
+}
+function rewards(){
+  const h = RW(), nc = CARDS.filter(c => h.cards[c[0]]).length, ns = Object.keys(h.stickers).length;
+  const badges = `<div class="bg654">${RANKS.map((R, i) => `<span class="${i <= (h.rank || 0) ? 'on' : ''}"><img src="${IMG}${R.b}.webp" alt=""><b>${R.n}</b><small>${i ? `${R.d}にち・${R.r}もん${R.stk ? '＋シール ぜんぶ' : ''}` : 'はじめ'}</small></span>`).join('<i class="ar654">›</i>')}</div>`;
+  const items = `<div class="ig654">${HITEMS.map(I => h.items[I.id] ? `<span class="on"><img src="${IMG}${I.img}.webp" alt=""><b>${I.n}</b></span>` : `<span><i>？</i><b>${I.n}</b><small>${I.how}</small></span>`).join('')}</div>`;
+  const cards = `<div class="cg654">${CARDS.map(c => cardHTML(c, h)).join('')}</div>`;
+  const stk = `<button type="button" class="sl654" data-h="stickers"><span>${JOBS.map(j => h.stickers[j.id] ? `<img src="${IMG}stk_${j.id}.webp" alt="">` : '<i>？</i>').join('')}</span><b>スタッフシール ${ns}/${JOBS.length} ›</b></button>`;
+  const perf = `<div class="pf654"><img src="${IMG}perfect.webp" alt=""><span><small>クイズ ぜんぶ せいかい</small><b>${h.best.perfect || 0}かい</b></span></div>`;
+  const head = `<header class="hd651 ${LAY === 'ph' ? 'sm' : ''}">${backBtn('top', 'もどる')}${sign('ごほうび')}<span class="sp651"></span>${chips()}${LAY === 'tab' ? townBtn() : ''}</header>`;
+  if(LAY === 'ph') return `<div class="w651 rwd ph">${head}<div class="js652">
+      ${rankBox(h)}<h4 class="h654">ランクバッジ</h4>${badges}
+      <h4 class="h654">しんさつけんカード <em>${nc}/${CARDS.length}</em></h4>${cards}
+      <h4 class="h654">アイテム</h4>${items}${stk}${perf}</div></div>`;
+  return `<div class="w651 rwd tab">${head}
+    <div class="rm654">
+      <section class="rl654">${rankBox(h)}<div class="bx652"><h4>ランクバッジ</h4>${badges}</div><div class="bx652"><h4>アイテム</h4>${items}</div><div class="rr654b">${stk}${perf}</div></section>
+      <section class="rc654 bx652"><h4>しんさつけんカード <em>${nc}/${CARDS.length}</em><small>テーマを はじめて せいかいで もらえる。★は せいかいの かず（1・5・15）</small></h4>${cards}</section>
+    </div></div>`;
+}
+
 /* ---------- がめんの きりかえ ---------- */
 const isTab = () => innerWidth >= 900 && innerWidth >= innerHeight;   // 仕様書 2.1
 let ROOT = null, KEY = null, V = {s:'top', room:null, tool:null, floor:null}, LAY = null, Q = null;
@@ -11297,7 +11399,7 @@ function close(){ clearGT(); G = null; if(!ROOT) return; const r = ROOT; ROOT = 
 function go(s, o={}){ Object.assign(V, {s}, o); snd('tap'); render(); }
 function render(){
   if(!ROOT) return; LAY = isTab() ? 'tab' : 'ph'; ROOT.className = `show ${LAY}`;
-  const f = {top, inside, room, quiz, result, jobs, stickers, body, equip}[V.s] || top; ROOT.innerHTML = f(); after();
+  const f = {top, inside, room, quiz, result, jobs, stickers, body, equip, rewards}[V.s] || top; ROOT.innerHTML = f(); after();
 }
 let rt = 0; addEventListener('resize', () => { if(!ROOT) return; clearTimeout(rt); rt = setTimeout(() => { if(ROOT && (isTab() ? 'tab' : 'ph') !== LAY) render(); }, 150); });
 
@@ -11316,6 +11418,7 @@ const MAINBTN = [
   {a:'body',   n:'からだを<br>しらべる',     ic:'search', c:'or'},
   {a:'equip',  n:'とくべつな<br>せつび',     ic:'monitor',c:'pu'}
 ];
+const rwBtn = () => { const h = HS(), R = RANKS[h.rank || 0]; return `<button type="button" class="rwb654" data-h="rewards"><img src="${IMG}${R.b}.webp" alt="">ごほうび</button>`; };
 const mbtn = b => `<button type="button" class="mb651 ${b.c}" data-h="${b.a}"><span class="mi651">${SV[b.ic]}</span><b>${b.n}</b></button>`;
 const hz = (k, l, t, w, h) => `<button type="button" class="hz651" data-say="${k}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%"></button>`;
 const todayLine = () => { const d = HS().daily; return d.cry >= CFG.cryDay ? 'きょうの 水晶は ぜんぶ もらったよ' : `クイズで 3もん せいかい → 水晶（きょう あと ${CFG.cryDay - d.cry}こ）`; };
@@ -11328,7 +11431,7 @@ function top(){
     <div class="sk651"><div class="ib651 top"><img src="${IMG}top_ph.webp" alt="">
       ${hz('hana',6,46,30,46)}${hz('deer',36,36,28,54)}${hz('rabbit',64,48,28,43)}
       <span class="bb651 hidden"></span></div>
-      <header class="hd651">${townBtn()}${chips()}</header>
+      <header class="hd651">${townBtn()}${rwBtn()}${chips()}</header>
       <div class="ts651">${sign('総合病院', 'まなびタウン')}${clinic}</div>
     </div>
     <div class="bt651">${MAINBTN.slice(0, 3).map(mbtn).join('')}</div>
@@ -11343,7 +11446,7 @@ function top(){
         ${FLOORS.map(f => `<button type="button" class="gf651" data-h="floor" data-f="${f.f}"><em style="--c:${f.c}">${f.f}</em><span>${f.n}</span></button>`).join('')}
       </div>
       <span class="bb651 hidden"></span></div></div>
-    <header class="hd651">${sign('総合病院', 'まなびタウン')}${clinic}<span class="sp651"></span>${chips()}${townBtn()}</header>
+    <header class="hd651">${sign('総合病院', 'まなびタウン')}${clinic}<span class="sp651"></span>${rwBtn()}${chips()}${townBtn()}</header>
     <div class="bt651">${MAINBTN.map(mbtn).join('')}</div>
     <p class="ft651 tb">${todayLine()}</p>
   </div>`;
@@ -11466,6 +11569,7 @@ function answer(o){
   if(right){ const pt = Math.max(1, Math.ceil(CFG.pt[q[1]] / (Q.hint ? 2 : 1))); Q.ok++; Q.pts += pt;
     try{ addPoints(pt, 'びょういん クイズ', true); }catch(e){}
     h.right.total++; h.right.theme[q[0]] = (h.right.theme[q[0]] || 0) + 1;
+    if(!h.cards[q[0]] && CARDS.some(c => c[0] === q[0])){ h.cards[q[0]] = today(); (Q.newCards = Q.newCards || []).push(q[0]); }
     if(!h.days.includes(today())) h.days.push(today());
     snd('ok'); } else snd('ng');
   persist(); render(); refreshChips();
@@ -11479,12 +11583,15 @@ function result(){
       <h2>${Q.ok}<small>/${tot} もん せいかい</small></h2><p class="ms651">${msg}</p>
       <div class="rw651"><span><img src="${X(artSrc('hd_coin')||'')}" alt="" onerror="this.remove()"><b>+${Q.pts + (R.perfect ? CFG.perfect : 0)}P</b>${R.perfect ? `<small>（パーフェクト +${CFG.perfect}）</small>` : ''}</span>
         <span class="${R.cry ? '' : 'no'}"><img src="${X(artSrc('itm_crystal')||'')}" alt="" onerror="this.remove()"><b>${R.cry ? '水晶 +1' : R.cryFull ? 'きょうの 水晶は もらったよ' : `水晶は ${CFG.cryNeed}もん せいかいで`}</b></span></div>
+      ${(Q.got || []).some(x => x.t === 'card') ? `<div class="nc654"><b>🎉 あたらしい しんさつけんカード！</b><div class="cg654">${(Q.got || []).filter(x => x.t === 'card').map(x => cardHTML(CARDS.find(c => c[0] === x.id), RW())).join('')}</div></div>` : ''}
+      ${rankBox(RW(), true)}
       <ul class="lg651">${rows}</ul>
       <div class="rb651"><button type="button" class="again" data-h="again">もういちど</button><button type="button" class="tp" data-h="${Q.room ? 'backroom' : 'top'}">${Q.room ? 'もどる' : 'びょういんの トップへ'}</button></div>
     </div>`;
   return `<div class="w651 res ${LAY}">
     <header class="hd651 ${LAY === 'ph' ? 'sm' : ''}">${sign('けっか')}<span class="sp651"></span>${chips()}${LAY === 'tab' ? townBtn() : ''}</header>
     <div class="rsw651">${LAY === 'tab' ? `<div class="rsl651"><img src="${IMG}top_ph.webp" alt=""></div>` : ''}${box}</div>
+    ${Q.pfShow ? `<div class="pfo654"><span class="ry"></span><img class="md" src="${IMG}perfect.webp" alt=""><b>パーフェクト！</b><small>5もん ぜんぶ せいかい ＋${CFG.perfect}P</small><img class="hn" src="${IMG}hana_yay.webp" alt=""></div>` : ''}
   </div>`;
 }
 function finish(){
@@ -11493,8 +11600,10 @@ function finish(){
   if(Q.ok >= CFG.cryNeed && !cryFull){ h.daily.cry++; save.crystal = (save.crystal || 0) + 1; cry = true; }
   if(perfect){ try{ addPoints(CFG.perfect, 'びょういん クイズ パーフェクト', true); }catch(e){} h.best.perfect = (h.best.perfect || 0) + 1; }
   Q.res = {perfect, cry, cryFull}; persist();
-  if(perfect || cry){ snd('fan'); try{ confetti(perfect ? 2200 : 1200); }catch(e){} }
+  Q.got = grantAfterQuiz(perfect); Q.pfShow = perfect;
+  if(perfect || cry){ snd('fan'); try{ confetti(perfect ? 3000 : 1200); }catch(e){} }
   go('result'); refreshChips();
+  const myQ = Q; setTimeout(async () => { if(Q !== myQ || !ROOT) return; myQ.pfShow = false; const g = (myQ.got || []).filter(x => x.t !== 'card'); if(g.length){ await showGot(g); if(ROOT && Q === myQ && V.s === 'result'){ render(); refreshChips(); } } }, perfect ? 3000 : 600);
 }
 async function leaveQuiz(){
   if(Q && V.s === 'quiz' && (Q.n > 0 || Q.ans !== null)){
@@ -11550,6 +11659,7 @@ document.addEventListener('click', async e => {
   if(a === 'jobs'){ clearGT(); G = null; return go('jobs', {job:LAY === 'tab' ? (V.job || 'deer') : null}); }
   if(a === 'job'){ clearGT(); G = null; return go('jobs', {job:t.dataset.j}); }
   if(a === 'jback'){ clearGT(); if(G){ G = null; return go('jobs', {}); } return go('jobs', {job:null}); }
+  if(a === 'rewards'){ clearGT(); G = null; const g = grantAfterQuiz(false); go('rewards'); if(g.length) showGot(g).then(() => { if(ROOT && V.s === 'rewards') render(); }); return; }
   if(a === 'stickers'){ clearGT(); G = null; return go('stickers'); }
   if(a === 'gstart'){ newGame(V.job || 'deer'); V.job = G.id; return go('jobs', {}); }
   if(a === 'gquit' || a === 'gend'){ clearGT(); G = null; return go('jobs', {}); }
@@ -11587,7 +11697,7 @@ window.addEventListener('click', e => {
   e.stopImmediatePropagation(); e.preventDefault(); open(s.k);
 }, true);
 try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
-window.__hp651 = {open, close, HS, ROOMS, TOOLS, STAFF, QS, JOBS, ORGANS, EQUIPS, render, startQuiz, newGame, get G(){ return G; }, get V(){ return V; }, get Q(){ return Q; }};
+window.__hp651 = {open, close, HS, ROOMS, TOOLS, STAFF, QS, JOBS, ORGANS, EQUIPS, RANKS, CARDS, grantAfterQuiz, render, startQuiz, newGame, get G(){ return G; }, get V(){ return V; }, get Q(){ return Q; }};
 
 /* ---------- BGM：びょういんは ひかえめ・クイズ中は さらに ちいさく ---------- */
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#hp651') || v === 0) return v; return document.querySelector('#hp651 .qz') ? Math.min(v, .06) : Math.min(v, .12); }; } }catch(e){}
@@ -12134,6 +12244,70 @@ body.hp651on{overflow:hidden}
 
 .om653 img{max-width:52%;object-fit:contain}.om653 p{flex:1;font-size:24px}
 .ec653.tile span{grid-row:1}.eg653 .ec653.tile img{grid-row:2;min-height:0;height:100%;align-self:stretch}
+/* ===== v6.55：ごほうび ===== */
+.rwb654{display:flex;align-items:center;gap:4px;border:3px solid #fff;background:linear-gradient(180deg,#FFF6D6,#FFE7A0);border-radius:999px;padding:2px 10px 2px 3px;box-shadow:0 2px 6px rgba(0,0,0,.15);color:#8A5A10;font-weight:900;font-size:13px;white-space:nowrap;flex:none}
+.rwb654 img{width:30px;height:30px;object-fit:contain}
+.rwd{background:linear-gradient(180deg,#FFF7E3,#FFEFF4)}
+.rwd .hd651 .ch651{margin-left:0}.rwd.ph .hd651 .sg651{flex:1}.rwd.ph .hd651 .sg651 b{font-size:18px}
+.h654{margin:12px 2px 6px;font-size:15px;color:#8A5A10}.h654 em,.rc654 h4 em{font-style:normal;background:#F2A33A;color:#fff;border-radius:99px;padding:0 9px;font-size:12px;margin-left:4px}
+.rb654{display:flex;align-items:center;gap:10px;background:#fff;border:4px solid #FFD98A;border-radius:20px;padding:8px 12px;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.rb654>img{flex:none;width:86px;height:86px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.15))}
+.ri654{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.ri654>small{font-size:11px;font-weight:900;color:#B5701C}.ri654>b{font-size:22px;color:#6B3A12;line-height:1.1}
+.ri654 p{margin:2px 0 0;font-size:12.5px;font-weight:800;color:#5A4430}.ri654 p b{color:#E05A2A;font-size:14px}
+.pg654{display:flex;align-items:center;gap:6px}.pg654 span{flex:none;width:118px;display:flex;justify-content:space-between;font-size:11.5px;font-weight:900;color:#5A6A80}.pg654 span em{font-style:normal;color:#2E6FB5}
+.pg654 i{flex:1;height:12px;border-radius:99px;background:#EEE6DA;overflow:hidden}.pg654 i s{display:block;height:100%;background:linear-gradient(90deg,#FFD25A,#F2A33A);border-radius:99px;transition:width .6s}
+.pg654.r i s{background:linear-gradient(90deg,#8FDDF7,#2E8BD6)}
+.rb654.cp{border-width:3px;padding:6px 10px}.rb654.cp>img{width:60px;height:60px}.rb654.cp .ri654>b{font-size:17px}
+.bg654{display:flex;align-items:flex-start;gap:2px;overflow-x:auto;padding-bottom:2px}
+.bg654 span{flex:1;min-width:58px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;filter:grayscale(1) opacity(.45)}
+.bg654 span.on{filter:none}.bg654 img{width:100%;max-width:70px;aspect-ratio:1/1;object-fit:contain}
+.bg654 b{font-size:11px;color:#5A3A1A;line-height:1.2}.bg654 small{font-size:9px;font-weight:800;color:#8A7A65;line-height:1.2}
+.ar654{flex:none;align-self:center;font-style:normal;color:#C9B48F;font-weight:900;margin-top:-20px}
+.cg654{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cd654{position:relative;background:#fff;border:3px solid #CFE0F2;border-radius:14px;padding:4px 4px 6px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;box-shadow:0 3px 0 #D7E6F5;animation:pop651 .3s}
+.cd654 img{width:100%;aspect-ratio:1/1;border-radius:10px;object-fit:cover}
+.cd654>b{font-size:13px;color:#2A3A5A}.cd654>small{font-size:9.5px;font-weight:800;color:#6A7A90;line-height:1.25}
+.cd654 em{position:absolute;left:6px;top:6px;font-style:normal;font-size:9.5px;font-weight:900;background:rgba(255,255,255,.92);color:#2E6FB5;border-radius:99px;padding:0 6px}
+.cs654{display:flex;gap:1px}.cs654 i{font-style:normal;font-size:14px;color:#DCE3EC}.cs654 i.on{color:#F7B500;text-shadow:0 1px 0 #C98A00}
+.cd654.gold{border-color:#F7C35F;background:linear-gradient(180deg,#FFFBEA,#FFF1C2);box-shadow:0 0 0 2px #FFE08A,0 3px 0 #E8B04A}
+.cd654.no{background:#F1F3F6;border-style:dashed;box-shadow:none;justify-content:center;min-height:120px;animation:none}
+.cd654.no span{font-size:34px;font-weight:900;color:#C3CBD6}.cd654.no b{font-size:10.5px;color:#9AA5B5;line-height:1.3}
+.ig654{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.ig654 span{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;background:#fff;border-radius:14px;padding:4px;border:2px solid #F1E2C4}
+.ig654 img{width:100%;aspect-ratio:1/1;object-fit:contain;border-radius:10px}
+.ig654 i{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:26px;font-weight:900;color:#C3CBD6;background:#F1F3F6;border-radius:10px}
+.ig654 small{display:none}.ig654 b{font-size:10.5px;color:#5A3A1A;line-height:1.2}.ig654 small{font-size:8.5px;font-weight:800;color:#9AA5B5;line-height:1.2}
+.sl654{margin-top:10px;width:100%;border:3px solid #fff;background:#FFF4D6;border-radius:16px;padding:6px 10px;display:flex;align-items:center;gap:8px;box-shadow:0 3px 0 #EAD3A0}
+.sl654 span{flex:1;display:flex;gap:2px;min-width:0}.sl654 img,.sl654 i{width:28px;height:28px;border-radius:50%;flex:none}.sl654 i{background:#E9ECF1;color:#B8C0CC;font-style:normal;font-weight:900;font-size:14px;line-height:28px;text-align:center}
+.sl654 b{flex:none;font-size:13px;color:#B5701C}
+.pf654{margin-top:8px;display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:6px 12px;border:3px solid #FFE08A}
+.pf654 img{width:52px;height:52px;object-fit:contain}.pf654 small{display:block;font-size:11px;font-weight:900;color:#B5701C}.pf654 b{font-size:20px;color:#C98A00}
+.rm654{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:12px;padding:0 16px calc(12px + env(safe-area-inset-bottom))}
+.rl654{min-height:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.rr654b{display:grid;grid-template-columns:1.6fr 1fr;gap:8px;align-items:stretch}.rr654b .sl654,.rr654b .pf654{margin-top:0}
+.rc654{min-height:0;overflow-y:auto}.rc654 h4{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.rc654 h4 small{flex:1 1 100%;font-size:11px;color:#7A8AA5}
+.rc654 .cg654{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* けっかの あたらしい カード・ランク */
+.nc654{background:#FFF8E1;border:3px solid #FFE08A;border-radius:16px;padding:6px 8px;display:flex;flex-direction:column;gap:6px}
+.nc654>b{font-size:13px;color:#B5701C}.nc654 .cg654{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rs651c .rb654{text-align:left}
+/* パーフェクト えんしゅつ */
+.pfo654{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:radial-gradient(circle at 50% 45%,rgba(255,246,200,.97),rgba(255,214,110,.95));animation:pfo654 3s ease forwards;pointer-events:none;overflow:hidden}
+@keyframes pfo654{0%{opacity:0}8%{opacity:1}82%{opacity:1}100%{opacity:0;visibility:hidden}}
+.pfo654 .md{width:min(46vw,250px);animation:pfm654 .9s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pfm654{0%{transform:scale(0) rotate(-200deg)}100%{transform:scale(1) rotate(0)}}
+.pfo654 b{font-size:clamp(34px,9vw,60px);font-weight:900;color:#E8414B;letter-spacing:2px;text-shadow:0 3px 0 #fff,0 0 12px rgba(255,255,255,.9);animation:stp652 .5s .5s cubic-bezier(.2,1.6,.4,1) both}
+.pfo654 .hn{position:absolute;right:6%;bottom:4%;width:min(34vw,200px);animation:pfh654 .6s .7s ease-out both}
+@keyframes pfh654{from{transform:translateY(60%);opacity:0}}
+.pfo654 .ry{position:absolute;inset:-50%;background:repeating-conic-gradient(rgba(255,255,255,.35) 0 10deg,transparent 10deg 20deg);animation:spin654 8s linear infinite;z-index:-1}
+@keyframes spin654{to{transform:rotate(360deg)}}
+.pfo654 small{font-size:16px;font-weight:900;color:#8A5A10;animation:stp652 .4s .9s both}
+/* ダイアログ */
+.rk654d{position:relative;display:flex;justify-content:center;height:150px}
+.rk654d .bd{width:150px;height:150px;object-fit:contain;animation:pfm654 .9s cubic-bezier(.2,1.6,.4,1) both}
+.rk654d .hn{position:absolute;right:0;bottom:-6px;width:96px}
+.it654d{display:flex;justify-content:center}.it654d img{width:140px;height:140px;object-fit:contain;border-radius:20px;animation:stp652 .5s cubic-bezier(.2,1.6,.4,1)}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
