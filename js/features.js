@@ -10698,8 +10698,9 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 
 
 
+
 /* =====================================================================
-   まなびタウン v6.56：そうごう びょういん（仕様書 v0.1　STEP1〜STEP7）
+   まなびタウン v6.57：そうごう びょういん（ほね・きんにく・びょうき／むずかしい もんだい）
    ・STEP1：トップ（スマホ たて／iPad よこ＝ロビーの え）
    ・STEP2：びょういんの なか（スマホ＝リスト／iPad＝だんめんずの え を タッチ）、へやの なか（6へや）
    ・STEP3：いりょうクイズ（5もん・3たく・ヒント・ポイント・水晶）／へやの もんだい（3もん）
@@ -10707,7 +10708,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.56.0', IMG = './assets/images/hospital/';
+const VER = '6.57.0', IMG = './assets/images/hospital/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const EI = v => /^@/.test(v || '') ? `<img class="ei655" src="${IMG}${v.slice(1)}.webp" alt="">` : (v || '');
@@ -10918,7 +10919,7 @@ const GENRE = {health:['health','machiai'], body:['body'], job:['job','uketsuke'
 const GW = [['health',30],['body',25],['job',20],['med',15],['equip',10]];
 const THEME = {health:'けんこう・せいかつ', machiai:'まちあいしつ', uketsuke:'うけつけ', shinsatsu:'しんさつしつ', kensa:'けんさしつ', yakkyoku:'やっきょく', shujutsu:'しゅじゅつしつ', nyuin:'にゅういん', body:'からだ', job:'びょういんの しごと', equip:'とくべつな せつび'};
 const TPIC = {health:'rm_shokudo', machiai:'rm_machiai', uketsuke:'rm_uketsuke', shinsatsu:'rm_shinsatsu', kensa:'rm_kensa', yakkyoku:'rm_yakkyoku', shujutsu:'rm_shujutsu', nyuin:'rm_nyuin', body:'rm_body', job:'top_tab', equip:'rm_equip'};
-const QTABS = [['mix','まぜこぜ',null],['shinsatsu','しんさつしつ',['shinsatsu']],['kensa','けんさしつ',['kensa']],['yakkyoku','やっきょく',['yakkyoku']],['nyuin','にゅういん',['nyuin','shujutsu']],['other','そのたの へや',['uketsuke','machiai']]];
+const QTABS = [['mix','まぜこぜ',null],['hard','★3 むずかしい',null],['shinsatsu','しんさつしつ',['shinsatsu']],['kensa','けんさしつ',['kensa']],['yakkyoku','やっきょく',['yakkyoku']],['nyuin','にゅういん',['nyuin','shujutsu']],['other','そのたの へや',['uketsuke','machiai']]];
 /* v6.54：からだ・せつびの もんだい（8ばんめ＝タグ） */
 QS.push(
   ['body',1,'かんがえたり、おぼえたり するのは どこ？','のう','い','ほね','のうは からだの しれいとう','brain'],
@@ -11005,6 +11006,83 @@ QS.push(
   ['equip',3,'ドクターヘリが とばないのは どんな とき？','よるや あらしの とき','はれた ひる','かぜの ない ひ','あんぜんの ため、くらい ときや てんきが わるい ときは とばないよ','heli'],
   ['body',3,'ちの なかで さんそを はこぶ つぶは？','せっけっきゅう','はっけっきゅう','けっしょうばん','あかい ちの つぶが さんそを はこぶよ','heart'],
   ['body',3,'けがを した とき、ちを かためて とめる つぶは？','けっしょうばん','せっけっきゅう','い','ちいさな つぶが あつまって ちを とめるよ','heart']
+);
+/* v6.57：ほね・きんにく・びょうき ＋ むずかしい もんだい */
+QS.push(
+  ['body',1,'ずがいこつが まもって いるのは？','のう','い','はい','かたい ほねで やわらかい のうを まもって いるよ','b_skull'],
+  ['body',3,'あかちゃんの あたまに ある、ほねの すきまの やわらかい ところは？','ひよめき','えくぼ','つむじ','そだつと ほねが のびて とじるよ','b_skull'],
+  ['body',3,'からだで いちばん ちいさな ほねが あるのは？','みみの なか','あしの ゆび','はなの さき','みみの なかの あぶみこつは こめつぶより ちいさいよ','b_skull'],
+  ['body',2,'せぼねは どう なって いる？','ちいさな ほねが たくさん つながって いる','1ぽんの ながい ほね','やわらかい ゴム','ついこつ という ほねが つみかさなって いるよ','b_spine'],
+  ['body',3,'せぼねの なかを とおって いる しんけいの たばは？','せきずい','けっかん','ちょう','のうからの めいれいを からだに つたえる みちだよ','b_spine'],
+  ['body',1,'ろっこつ（あばらぼね）が まもって いるのは？','しんぞうや はい','のう','あしの ほね','とりかごの ように むねの なかを かこんで いるよ','b_ribs'],
+  ['body',3,'ろっこつは かたがわ なんぼん？','12ほん','3ぼん','40ぽん','みぎと ひだりで あわせて 24ほんだよ','b_ribs'],
+  ['body',3,'ほねの なかで ちの つぶを つくって いる ところは？','こつずい','かんせつ','つめ','こつずいで せっけっきゅうなどが つくられるよ','b_ribs'],
+  ['body',2,'ほねと ほねの つなぎめを なんと いう？','かんせつ','けっかん','しんけい','ひじや ひざは かんせつで まがるよ','b_arm'],
+  ['body',3,'ての ほねは かたほうで だいたい いくつ？','27こ くらい','3こ','100こ','ちいさな ほねが たくさん あるから ゆびが こまかく うごくよ','b_arm'],
+  ['body',2,'こつばん（こしの ほね）の はたらきは？','うえの からだを ささえる','たべものを とかす','いきを する','せぼねと あしを つなぐ だいじな ほねだよ','b_pelvis'],
+  ['body',3,'うまれた ばかりの あかちゃんの ほねの かずは？','おとなより おおい（300こ くらい）','おとなより すくない（100こ くらい）','おとなと おなじ','そだつと いくつかの ほねが くっついて へるよ','b_pelvis'],
+  ['body',2,'ひざの まえに ある おさらの ような ほねは？','しつがいこつ','ずがいこつ','ろっこつ','ひざの おさら とも いうよ','b_leg'],
+  ['body',2,'ほねを じょうぶに する えいようは？','カルシウム','さとう','あぶら','ぎゅうにゅう・こざかな・だいずに おおいよ','b_leg'],
+  ['body',1,'わらう ときに うごくのは？','かおの きんにく','かみのけ','つめ','かおの きんにくで いろいろな ひょうじょうが できるよ','m_face'],
+  ['body',3,'かおに ある きんにくの かずは だいたい？','30こ いじょう','1こ','1000こ','ひょうじょうきん という きんにくが たくさん あるよ','m_face'],
+  ['body',2,'うでを まげると もりあがる「ちからこぶ」は？','にのうでの きんにく','ふくらはぎ','おなかの きんにく','じょうわんにとうきん という きんにくだよ','m_arm'],
+  ['body',3,'きんにくと ほねを つなぐ じょうぶな ひもは？','けん','けっかん','しんけい','アキレスけんも その なかまだよ','m_arm'],
+  ['body',3,'きんにくは どう やって ほねを うごかす？','ちぢんで ひっぱる','ふくらんで おす','でんきを だす','きんにくは ちぢむ ことしか できないので、2つで くみに なって うごくよ','m_arm'],
+  ['body',2,'おなかの きんにくの はたらきは？','からだを まえに まげる','ものを みる','ちを つくる','おなかの なかの ぞうきも まもって いるよ','m_abs'],
+  ['body',2,'うんどうの あと、きんにくを そだてる ために だいじなのは？','よく ねる','よるふかし','ごはんを ぬく','ねて いる あいだに きんにくが なおって つよく なるよ','m_abs'],
+  ['body',2,'ふとももの まえの きんにくが はたらくのは？','ひざを のばす とき','ものを たべる とき','ものを みる とき','たつ・あるく・ジャンプで だいかつやく','m_thigh'],
+  ['body',3,'きんにくを つくる もとに なる えいようは？','たんぱくしつ','さとう だけ','みず だけ','にく・さかな・たまご・まめに おおいよ','m_thigh'],
+  ['body',1,'つまさきで たつ ときに はたらくのは？','ふくらはぎの きんにく','おなかの きんにく','かおの きんにく','ふくらはぎが かかとを ひっぱりあげるよ','m_calf'],
+  ['body',3,'かかとに ある、からだで いちばん じょうぶな けんは？','アキレスけん','せきずい','ろっこつ','ふくらはぎの きんにくと かかとの ほねを つなぐよ','m_calf'],
+  ['body',2,'しんぞうは なにで できて いる？','きんにく','ほね','あぶら','しんきん という つかれにくい きんにくだよ','m_heart'],
+  ['body',3,'じぶんで うごかそうと しなくても かってに うごく きんにくは？','しんぞうの きんにく','うでの きんにく','ふとももの きんにく','しんぞうや い の きんにくは いしで うごかせないよ','m_heart'],
+  ['body',1,'かぜを ひいたら どう する？','あたたかく して ゆっくり やすむ','つめたい みずを あびる','よるふかし','ねむって からだの ちからで なおすよ','s_cold'],
+  ['body',3,'かぜの げんいんで いちばん おおいのは？','ウイルス','かふん','ほねの けが','いろいろな ウイルスが はなや のどに つくよ','s_cold'],
+  ['body',2,'インフルエンザで でやすいのは？','きゅうに たかい ねつ','ほねが おれる','はが ぬける','からだが だるく、ふしぶしが いたく なる ことも','s_flu'],
+  ['body',3,'インフルエンザを ふせぐ ために うつ ちゅうしゃは？','よぼうせっしゅ（ワクチン）','ますい','てんてき','からだに そなえを させて おくよ','s_flu'],
+  ['body',3,'かぜぐすりの こうせいぶっしつが きかないのは？','ウイルス','ばいきん（さいきん）','どちらにも よく きく','こうせいぶっしつは さいきんには きくけど ウイルスには きかないよ','s_flu'],
+  ['body',1,'むしばを ふせぐ ために だいじなのは？','はみがき','あめを たくさん','ねる まえに ジュース','とくに ねる まえの はみがきが だいじ','s_cavity'],
+  ['body',3,'むしばきんが つくって はを とかすのは？','さん','あぶら','でんき','あまい ものを えさに さんを つくるよ','s_cavity'],
+  ['body',3,'はを つよく する ために、はみがきこに はいって いる ことが あるのは？','フッソ','さとう','しお','フッソは はの まわりを つよく するよ','s_cavity'],
+  ['body',2,'ねっちゅうしょうを ふせぐには？','こまめな すいぶんと やすみ','あつい へやで がまん','のみものを がまん','のどが かわく まえに のもう','s_heat'],
+  ['body',3,'あせを たくさん かいた ときに みずと いっしょに とると よいのは？','しお（えんぶん）','さとう だけ','あぶら','あせで からだの しおも でて いくよ','s_heat'],
+  ['body',2,'ほねが おれる ことを なんと いう？','こっせつ','ねんざ','すりきず','はれて とても いたく なるよ','s_fracture'],
+  ['body',3,'おれた ほねを うごかない ように かためる ものは？','ギプス','マスク','めがね','ほねが くっつくまで まもるよ','s_fracture'],
+  ['body',2,'かふんしょうの げんいんは？','しょくぶつの かふん','ほねの けが','たべすぎ','スギや ヒノキの かふんが おおいよ','s_pollen'],
+  ['body',3,'からだに わるく ない ものにも つよく はんのう して しまう ことを？','アレルギー','こっせつ','ねっちゅうしょう','かふんや たべものなどで おこる ことが あるよ','s_pollen'],
+  ['body',1,'すりきずが できたら まず？','ながれる みずで あらう','どろを つける','そのまま あそぶ','よごれと ばいきんを あらい ながそう','s_scrape'],
+  ['body',3,'きずの ちが とまって できる かたい ふたは？','かさぶた','ほくろ','たこ','かさぶたの したで あたらしい ひふが できて いるよ','s_scrape'],
+  ['body',2,'しょくちゅうどくを ふせぐには？','てを あらい、よく ひを とおす','なまの にくを そのまま たべる','そとに おきっぱなしの ものを たべる','つけない・ふやさない・やっつける が だいじ','s_tummy'],
+  ['body',3,'げりの とき、からだから へるので こまめに とると よいのは？','すいぶん','すな','あぶら','すこしずつ のむのが こつだよ','s_tummy'],
+  ['body',2,'とおくが ぼやけて みえる ことを？','きんし','こっせつ','ねっちゅうしょう','めがねで はっきり みえる ように なるよ','s_eyes'],
+  ['body',3,'めの ために よい しゅうかんは？','30ぷんに 1かい とおくを みる','くらい ところで ゲーム','がめんに かおを ちかづける','そとで あそぶのも めに よいよ','s_eyes'],
+  ['body',3,'のうから からだへ めいれいを つたえる でんせんの ような ものは？','しんけい','けっかん','ほね','しんけいは からだじゅうに はりめぐらされて いるよ','brain'],
+  ['body',3,'はいの なかで さんそを とりこむ ちいさな ふくろは？','はいほう','いぶくろ','ぼうこう','ぶどうの ふさの ような かたちだよ','lungs'],
+  ['body',3,'しんぞうの なかの へやは いくつ？','4つ','1つ','10こ','うしんぼう・うしんしつ・さしんぼう・さしんしつ の 4つ','heart'],
+  ['body',3,'たべものの あぶらを こなす「たんじゅう」を つくる ぞうきは？','かんぞう','はい','しんぞう','かんぞうは からだの こうじょう とも いわれるよ','intestine'],
+  ['health',3,'にんげんの からだの はんぶん いじょうを しめるのは？','みず','ほね','あぶら','こどもは からだの 6〜7わりが みずだよ'],
+  ['health',3,'ねて いる あいだに たくさん でて、からだを そだてるのは？','せいちょうホルモン','いえき','なみだ','はやね・はやおきで せが のびる ちからに なるよ'],
+  ['health',3,'ごはんの「しゅさい」に あたるのは？','さかなや にく の おかず','ごはん','サラダ','しゅさいは からだを つくる おかずだよ'],
+  ['health',3,'てあらいで ばいきんを へらす めやすの じかんは？','30びょう くらい','1びょう','10ぷん','うたを 1きょく うたう くらいの じかんだよ'],
+  ['machiai',3,'せきエチケットで マスクが ない ときは？','ティッシュや そでで くちを おおう','てで おさえて その てで さわる','そのまま せきを する','てに ついた しぶきから うつる ことも あるよ'],
+  ['uketsuke',3,'マイナンバーカードを ほけんしょうと して つかう ものを？','マイナほけんしょう','としょかんカード','がくせいしょう','うけつけの きかいに かざして つかうよ'],
+  ['shinsatsu',3,'こどもの みゃく（1ぷんに しんぞうが うつ かず）は おとなと くらべて？','はやい','おそい','おなじ','こどもは しんぞうが ちいさいので はやく うつよ'],
+  ['shinsatsu',3,'のどを みる ときに したを おさえる へらの ような どうぐは？','ぜつあつし','ちょうしんき','ハンマー','「あー」と いうと のどの おくが みえるよ'],
+  ['kensa',3,'レントゲンで ほねが しろく うつる りゆうは？','ほねは エックスせんを とおしにくい','ほねが ひかって いる','ほねに いろが ぬって ある','とおりにくい ところが しろく うつるよ'],
+  ['kensa',3,'ちの なかで ばいきんと たたかう つぶは？','はっけっきゅう','せっけっきゅう','けっしょうばん','からだを まもる へいたいさんだよ'],
+  ['yakkyoku',3,'さいきん（ばいきん）を やっつける くすりは？','こうせいぶっしつ','めぐすり','しっぷ','ウイルスには きかないよ'],
+  ['yakkyoku',3,'いっしょに のむと よくない くすりが ないか しらべるのに つかうのは？','おくすりてちょう','れんらくちょう','えにっき','やくざいしさんに みせると しらべて くれるよ'],
+  ['shujutsu',3,'おなかに ちいさな あなを あけ、カメラで みながら する しゅじゅつは？','ふくくうきょう しゅじゅつ','レントゲン','たいおんそくてい','きずが ちいさく、はやく なおりやすいよ'],
+  ['shujutsu',3,'しゅじゅつの どうぐを ばいきんが いない じょうたいに する ことを？','めっきん','せんたく','かんそう','たかい おんどの じょうきなどで めっきん するよ'],
+  ['nyuin',3,'たいおん・みゃく・けつあつ・こきゅう など、いのちの ようすを しめす ものを？','バイタルサイン','ラジオたいそう','ナースコール','かんごしさんが まいにち はかって いるよ'],
+  ['nyuin',3,'のみこむ ちからが よわい ひと むけの ごはんは？','やわらかく した ごはん','かたい せんべい','おおきな にく','きざんだり ペーストに したり して たべやすく するよ'],
+  ['job',3,'きゅうきゅうしゃで、とくべつな てあてが できる しかくを もつ ひとは？','きゅうきゅうきゅうめいし','やくざいし','えいようし','いのちを まもる てあての プロだよ'],
+  ['job',3,'みみ・はな・のどの びょうきを みる かは？','じびいんこうか','がんか','しょうにか','じび＝みみと はな、いんこう＝のど'],
+  ['job',3,'からだを うごかす れんしゅうを てつだう せんもんかは？','りがくりょうほうし','けんさぎし','うけつけ','リハビリの せんせい だよ'],
+  ['equip',3,'サイレンが ちかづくと たかく、とおざかると ひくく きこえる ことを？','ドップラーこうか','はんしゃ','こだま','おとの なみが ちぢんだり のびたり するよ','ambulance'],
+  ['equip',3,'CTで つかう、めに みえない ものは？','エックスせん','おと','におい','いろいろな むきから あてて しゃしんに するよ','ct'],
+  ['equip',2,'ドクターヘリの なかで できる ことは？','とんで いる あいだも ちりょう','りょうり','せんたく','くすりや きかいを のせて いるよ','heli'],
+  ['equip',3,'しゅじゅつロボットを、おいしゃさんは どこから うごかす？','そうさせきに すわって','ロボットの うえに のって','でんわで','がめんを みながら てもとで そうさ するよ','robot']
 );
 const maxStar = () => { const g = Number(save.menu && save.menu.grade) || 0; return !g ? 3 : g <= 2 ? 1 : g <= 4 ? 2 : 3; };
 
@@ -11250,36 +11328,91 @@ const ORGANS = [
    size:'おとなで 200こ くらい', work:'からだを ささえ、のうや しんぞうを まもる', tip:'いちばん ながい ほねは、ふとももの ほね だよ', doc:'ぎゅうにゅうや こざかなで ほねが じょうぶに なるよ'}
 ];
 const OG = id => ORGANS.find(o => o.id === id);
-const BTABS = [['organ','ぞうき','🫀',1],['bones','ほね','🦴',0],['muscle','きんにく','💪',0],['sick','びょうき','🩺',0]];
+const BONES = [
+  {id:'b_skull', n:'ずがいこつ', c:'#E0A21A', img:'bn_skull', p:[50,8], lb:'r', head:'かたい ヘルメットで のうを まもるよ',
+   a:'あたまの ほね。いくつかの ほねが くっついて できて いる', w:'やわらかい のうを まもる', tip:'あかちゃんの あたまには、ほねの すきま（ひよめき）が あるよ', doc:'あたまを ぶつけない ように きを つけようね'},
+  {id:'b_spine', n:'せぼね', c:'#3BAF6A', img:'bn_spine', p:[50,31], lb:'r', head:'からだの まんなかの はしら！',
+   a:'ちいさな ほね（ついこつ）が 30こ くらい つみかさなって いる', w:'からだを ささえ、まげたり ねじったり できる', tip:'なかを しんけいの たば（せきずい）が とおって いるよ', doc:'せすじを のばすと せぼねが よろこぶよ'},
+  {id:'b_ribs', n:'ろっこつ', c:'#E86AA0', img:'bn_ribs', p:[60,40], lb:'r', head:'しんぞうと はいを まもる かご！',
+   a:'かたがわ 12ほん、あわせて 24ほん', w:'しんぞうや はいを まもる。いきを すうと ひろがる', tip:'あばらぼね とも いうよ', doc:'しんこきゅう すると ろっこつが うごくよ'},
+  {id:'b_arm', n:'うでの ほね', c:'#F2A33A', img:'bn_arm', p:[29,47], lb:'l', head:'ひじで まがる から ものが もてるよ',
+   a:'かたから ひじ、ひじから てくび、そして ての ほね', w:'ものを もったり、なげたり できる', tip:'ての ほねは かたほうで 27こ くらい。だから ゆびが こまかく うごくよ', doc:'ほねと ほねの つなぎめを かんせつ と いうよ'},
+  {id:'b_pelvis', n:'こつばん', c:'#8E6BD8', img:'bn_pelvis', p:[50,62], lb:'r', head:'うえの からだを ささえる こしの ほね',
+   a:'こしの ところに ある、ボウルの ような かたちの ほね', w:'せぼねと あしを つなぎ、からだを ささえる', tip:'あかちゃんの ときは べつべつの ほねが、そだつと くっつくよ', doc:'すわる ときも こつばんが ささえて いるよ'},
+  {id:'b_leg', n:'あしの ほね', c:'#1FA3A3', img:'bn_leg', p:[43,74], lb:'l', head:'いちばん ながい ほねが あるよ！',
+   a:'ふとももの ほね（だいたいこつ）、ひざの おさら、すねの ほね', w:'からだを ささえて、あるく・はしる・ジャンプ', tip:'ふとももの ほねは からだで いちばん ながい ほね', doc:'カルシウムで ほねを じょうぶに しよう'}
+];
+const MUSCLES = [
+  {id:'m_face', n:'かおの きんにく', c:'#E86AA0', img:'ms_face', p:[58,23], lb:'r', head:'わらったり おこったり できるのは きんにくの おかげ',
+   a:'め・くち・ほっぺの まわり', w:'いろいろな かおを つくる（ひょうじょう）', tip:'かおには 30こ いじょうの きんにくが あるよ', doc:'にっこり わらうと かおの きんにくが はたらくよ'},
+  {id:'m_arm', n:'うでの きんにく', c:'#E8414B', img:'ms_arm', p:[71,46], lb:'l', head:'ちからこぶの ひみつ！',
+   a:'にのうで（かたから ひじ）', w:'ちぢんで うでを まげる。ものを もちあげる', tip:'きんにくは「ちぢむ」ことで ほねを ひっぱって うごかすよ', doc:'うでを まげると ちからこぶが できるね'},
+  {id:'m_abs', n:'おなかの きんにく', c:'#3BAF6A', img:'ms_abs', p:[47,53], lb:'l', head:'からだの まんなかを ささえるよ',
+   a:'おなかの まえと よこ', w:'からだを まえに まげる・おなかの なかを まもる', tip:'しせいを よく する ためにも だいじな きんにく', doc:'おなかに ちからを いれて みよう'},
+  {id:'m_thigh', n:'ふとももの きんにく', c:'#F2A33A', img:'ms_thigh', p:[57,70], lb:'r', head:'からだで いちばん おおきな きんにく！',
+   a:'ふとももの まえと うしろ', w:'ひざを のばす。たつ・あるく・はしる', tip:'ふとももの まえの きんにくは からだで いちばん おおきい なかま', doc:'スクワットで ふとももが つよく なるよ'},
+  {id:'m_calf', n:'ふくらはぎ', c:'#8E6BD8', img:'ms_calf', p:[56,84], lb:'r', head:'だい２の しんぞう とも いわれるよ',
+   a:'ひざの したの うしろがわ', w:'つまさきで たつ。あしの ちを しんぞうへ おしもどす', tip:'かかとに つながる アキレスけんは からだで いちばん じょうぶな けん', doc:'つまさきだちで ふくらはぎが はたらくよ'},
+  {id:'m_heart', n:'しんぞうの きんにく', c:'#C2185B', img:'ms_heart', p:[51,37], lb:'r', head:'やすまず うごく とくべつな きんにく',
+   a:'むねの まんなか すこし ひだり', w:'ちぢんで ちを からだじゅうに おくる', tip:'じぶんで うごかそうと しなくても かってに うごくよ（しんきん）', doc:'はしると ドキドキ はやく なるね'}
+];
+const SICKS = [
+  {id:'s_cold', n:'かぜ', c:'#2E8BD6', img:'sk_cold', head:'はなみず・せき・のどの いたみ', a:'ウイルスが はなや のどに ついて おこる', w:'あたたかく して よく ねる・てあらい うがい', tip:'かぜの ウイルスは 200しゅるい いじょう あるよ', doc:'てあらいと うがいで かぜを ふせごう'},
+  {id:'s_flu', n:'インフルエンザ', c:'#8E6BD8', img:'sk_flu', head:'きゅうに たかい ねつが でる', a:'インフルエンザ ウイルスで おこる。からだが だるい', w:'よぼうせっしゅ・てあらい・マスク。かかったら やすむ', tip:'ふゆに はやりやすいよ', doc:'ねつが さがっても すこし やすもうね'},
+  {id:'s_cavity', n:'むしば', c:'#F2A33A', img:'sk_cavity', head:'はに あなが あいて いたい', a:'むしばきんが あまい ものから さんを つくって はを とかす', w:'はみがき・あまい ものを だらだら たべない', tip:'しあげみがきや フッソで はを つよく できるよ', doc:'ねる まえの はみがきが いちばん だいじ'},
+  {id:'s_heat', n:'ねっちゅうしょう', c:'#E8503A', img:'sk_heat', head:'あつさで からだが ぐったり', a:'からだに ねつが こもって、ふらふら・あたまいた', w:'こまめに みずと しお・ぼうし・すずしい ところで やすむ', tip:'へやの なかでも なる ことが あるよ', doc:'のどが かわく まえに のもうね'},
+  {id:'s_fracture', n:'こっせつ', c:'#1FA3A3', img:'sk_fracture', head:'ほねが おれたり ひびが はいる', a:'ころんだり ぶつけたり して おこる。はれて いたい', w:'うごかさない ように ギプスで かためる', tip:'こどもの ほねは なおるのが はやいよ', doc:'いたい ところは うごかさず おとなに しらせて'},
+  {id:'s_pollen', n:'かふんしょう', c:'#E0A21A', img:'sk_pollen', head:'くしゃみ・はなみず・めの かゆみ', a:'スギなどの かふんに からだが つよく はんのう する（アレルギー）', w:'マスク・めがね。かえったら かおを あらう', tip:'はるに おおいけれど、あきに おこる ことも あるよ', doc:'めを こすらない ようにね'},
+  {id:'s_scrape', n:'すりきず', c:'#E86AA0', img:'sk_scrape', head:'ころんで ひざを すりむいた', a:'ひふの そとがわが けずれて ちが でる', w:'みずで きれいに あらって、ばんそうこう', tip:'ばいきんが はいると あかく はれる ことも', doc:'まずは ながれる みずで あらおう'},
+  {id:'s_tummy', n:'おなかの びょうき', c:'#3BAF6A', img:'sk_tummy', head:'おなかが いたい・げり', a:'ばいきんや ウイルス、たべすぎ などで おこる', w:'すいぶんを とって やすむ。てあらい・よく ひを とおす', tip:'げりの ときは からだの みずが へるので こまめに のもう', doc:'てを あらってから たべようね'},
+  {id:'s_eyes', n:'きんし', c:'#5A6FD6', img:'sk_eyes', head:'とおくが ぼやけて みえる', a:'ちかくばかり みると なりやすい', w:'30ぷんに 1かい とおくを みる・そとで あそぶ', tip:'めがねで はっきり みえる ように なるよ', doc:'がめんから めを はなそうね'}
+];
+ORGANS.forEach(o => { o.img = 'org_' + o.id; o.a = o.size; o.w = o.work; });
+const BSETS = {
+  organ: {n:'ぞうき', ic:'@org_heart', L:ORGANS, labs:['おおきさ','はたらき','💡 まめちしき'], hint:'ぞうきを えらんでね', unit:'ぞうき'},
+  bones: {n:'ほね', ic:'@bn_skull', L:BONES, labs:['どこに ある？','はたらき','💡 まめちしき'], hint:'ほねを えらんでね', unit:'ほね'},
+  muscle:{n:'きんにく', ic:'@ms_arm', L:MUSCLES, labs:['どこに ある？','はたらき','💡 まめちしき'], hint:'きんにくを えらんでね', unit:'きんにく'},
+  sick:  {n:'びょうき', ic:'@sk_cold', L:SICKS, labs:['どうして なる？','ふせぐ・なおす','💡 まめちしき'], hint:'びょうきを えらんでね', unit:'びょうき', grid:1}
+};
+const BI = id => { for(const k in BSETS){ const x = BSETS[k].L.find(o => o.id === id); if(x) return x; } return null; };
+const topicName = tg => !tg ? '' : /^T:/.test(tg) ? (BSETS[tg.slice(2)] || {}).n || '' : ((BI(tg) || EQ(tg) || {}).n || '');
+const topicImg = tg => { const b = BI(tg); if(b) return b.img; return tg ? 'eq_' + tg : ''; };
+const tagIn = (q7, tg) => /^T:/.test(tg) ? !!q7 && (BSETS[tg.slice(2)] || {L:[]}).L.some(o => o.id === q7) : q7 === tg;
 function bodyPoints(){
-  return ORGANS.map(o => `<button type="button" class="op653 ${o.lb} ${V.organ === o.id ? 'on' : ''} ${HS().seen.body[o.id] ? 'seen' : ''}" data-h="organ" data-o="${o.id}" style="left:${LAY === 'tab' ? ((426 + o.p[0] * 6.83) / 15.36).toFixed(2) : o.p[0]}%;top:${o.p[1]}%;--c:${o.c}"><i></i><b>${o.n}</b></button>`).join('');
+  const S = BSETS[V.btab || 'organ']; if(S.grid) return '';
+  return S.L.map(o => `<button type="button" class="op653 ${o.lb} ${V.organ === o.id ? 'on' : ''} ${HS().seen.body[o.id] ? 'seen' : ''}" data-h="organ" data-o="${o.id}" style="left:${LAY === 'tab' ? ((426 + o.p[0] * 6.83) / 15.36).toFixed(2) : o.p[0]}%;top:${o.p[1]}%;--c:${o.c}"><i></i><b>${o.n}</b></button>`).join('');
 }
 function organCard(o, big){
-  if(!big) return `<div class="oc653 ph" style="--c:${o.c}"><img src="${IMG}org_${o.id}.webp" alt=""><div><h3>${o.n}</h3><p>${X(o.size)}。${X(o.work)}。</p><p class="tp653">💡 ${X(o.tip)}</p></div></div>`;
+  const S = BSETS[V.btab || 'organ'];
+  if(!big) return `<div class="oc653 ph" style="--c:${o.c}"><img src="${IMG}${o.img}.webp" alt=""><div><h3>${o.n}</h3><p>${X(o.a)}。${X(o.w)}。</p><p class="tp653">💡 ${X(o.tip)}</p></div></div>`;
   return `<div class="oc653 tb" style="--c:${o.c}">
-    <h3><img src="${IMG}org_${o.id}.webp" alt="">${o.n}</h3>
-    <div class="om653"><img src="${IMG}org_${o.id}.webp" alt=""><p>${X(o.head)}</p></div>
-    <div class="of653"><span><small>おおきさ</small>${X(o.size)}</span><span><small>はたらき</small>${X(o.work)}</span><span class="mm"><small>💡 まめちしき</small>${X(o.tip)}</span></div>
+    <h3><img src="${IMG}${o.img}.webp" alt="">${o.n}</h3>
+    <div class="om653 ${S.grid ? 'wd' : ''}"><img src="${IMG}${o.img}.webp" alt=""><p>${X(o.head)}</p></div>
+    <div class="of653"><span><small>${S.labs[0]}</small>${X(o.a)}</span><span><small>${S.labs[1]}</small>${X(o.w)}</span><span class="mm"><small>${S.labs[2]}</small>${X(o.tip)}</span></div>
   </div>`;
 }
+const btabs = () => `<nav class="bt653 ${LAY}">${Object.keys(BSETS).map(k => `<button type="button" class="${(V.btab || 'organ') === k ? 'on' : ''}" data-h="btab" data-t="${k}"><i>${EI(BSETS[k].ic)}</i>${BSETS[k].n}</button>`).join('')}</nav>`;
+const sickGrid = () => `<div class="sg655">${SICKS.map(o => `<button type="button" class="${V.organ === o.id ? 'on' : ''}" data-h="organ" data-o="${o.id}" style="--c:${o.c}"><img src="${IMG}${o.img}.webp" alt=""><b>${o.n}</b>${HS().seen.body[o.id] ? '<i>✔</i>' : ''}</button>`).join('')}</div>`;
 function body(){
-  const o = OG(V.organ), seen = Object.keys(HS().seen.body).length;
-  const qbtn = `<button type="button" class="qz651 ${o ? 'glow' : ''}" data-h="bquiz"><span>${SV.book}</span><b>${o ? `${o.n}の もんだいに<br>ちょうせん！` : 'からだの もんだいに<br>ちょうせん！'}</b>${SV.arrow}</button>`;
-  if(LAY === 'ph') return `<div class="w651 bd ph">
+  const tab = V.btab || 'organ', S = BSETS[tab], o = S.L.find(x => x.id === V.organ), seen = S.L.filter(x => HS().seen.body[x.id]).length;
+  const qbtn = `<button type="button" class="qz651 ${o ? 'glow' : ''}" data-h="bquiz"><span>${SV.book}</span><b>${o ? `${o.n}の もんだいに<br>ちょうせん！` : `${S.n}の もんだいに<br>ちょうせん！`}</b>${SV.arrow}</button>`;
+  const say = o ? X(o.doc) : tab === 'sick' ? 'びょうきの ことを しって、ふせぎかたを おぼえよう！' : 'タッチして からだの ひみつを しらべよう！';
+  if(LAY === 'ph') return `<div class="w651 bd ph t-${tab}">
     <header class="hd651 sm">${backBtn('top', 'もどる')}${sign('からだを しらべる')}${chips()}</header>
-    <div class="bs653"><div class="ib651 body"><img src="${IMG}body_ph.webp" alt="">${bodyPoints()}</div>
-      <span class="bq651 bh653">${face('deer', 'sm')}${o ? X(o.doc) : 'タッチして からだの ひみつを しらべよう！'}</span></div>
-    <div class="bp653">${o ? organCard(o, false) : `<p class="hn651">しらべた ぞうき ${seen}/${ORGANS.length}</p>`}${qbtn}</div>
+    ${btabs()}
+    <div class="bs653">${S.grid ? sickGrid() : `<div class="ib651 body"><img src="${IMG}body_ph.webp" alt="">${bodyPoints()}</div>`}
+      <span class="bq651 bh653">${face('deer', 'sm')}${say}</span></div>
+    <div class="bp653">${o ? organCard(o, false) : `<p class="hn651">しらべた ${S.unit} ${seen}/${S.L.length}</p>`}${qbtn}</div>
   </div>`;
-  return `<div class="w651 bd tab">
-    <div class="bl653"><div class="ib651 bodyw"><img src="${IMG}body_tab.webp" alt="">${bodyPoints()}</div>
-      <div class="bk653">${face('deer')}<span class="bq651">${o ? X(o.doc) : 'タッチして くわしく みて みよう！'}</span></div></div>
+  return `<div class="w651 bd tab t-${tab}">
+    <div class="bl653">${S.grid ? `<div class="sgw655">${sickGrid()}</div>` : `<div class="ib651 bodyw"><img src="${IMG}body_tab.webp" alt="">${bodyPoints()}</div>`}
+      <div class="bk653">${face('deer')}<span class="bq651">${say}</span></div></div>
     <div class="br653">
       <header class="hd651">${backBtn('top', 'もどる')}${sign('からだを しらべる')}<span class="sp651"></span>${chips()}${townBtn()}</header>
-      <nav class="bt653">${BTABS.map(t => `<button type="button" class="${t[0] === 'organ' ? 'on' : ''} ${t[3] ? '' : 'lk'}" data-h="btab" data-t="${t[0]}"><i>${t[2]}</i>${t[1]}${t[3] ? '' : '<em>じゅんび中</em>'}</button>`).join('')}</nav>
-      <div class="bpn653">${o ? organCard(o, true) : `<div class="oc653 tb em"><h3>ぞうきを えらんでね</h3><p>ひだりの え の ●を タッチすると、その ぞうきの ひみつが わかるよ。</p>
-        <div class="og653">${ORGANS.map(x => `<button type="button" data-h="organ" data-o="${x.id}" style="--c:${x.c}"><img src="${IMG}org_${x.id}.webp" alt=""><b>${x.n}</b>${HS().seen.body[x.id] ? '<i>✔</i>' : ''}</button>`).join('')}</div>
-        <p class="hn651">しらべた ぞうき ${seen}/${ORGANS.length}</p></div>`}
+      ${btabs()}
+      <div class="bpn653">${o ? organCard(o, true) : `<div class="oc653 tb em"><h3>${S.hint}</h3><p>${S.grid ? 'ひだりの え を タッチすると、その びょうきの ことが わかるよ。' : 'ひだりの え の ●を タッチすると、ひみつが わかるよ。'}</p>
+        <div class="og653">${S.L.map(x => `<button type="button" data-h="organ" data-o="${x.id}" style="--c:${x.c}"><img src="${IMG}${x.img}.webp" alt=""><b>${x.n}</b>${HS().seen.body[x.id] ? '<i>✔</i>' : ''}</button>`).join('')}</div>
+        <p class="hn651">しらべた ${S.unit} ${seen}/${S.L.length}</p></div>`}
         ${qbtn}</div>
     </div>
   </div>`;
@@ -11481,6 +11614,7 @@ function top(){
       <div class="ts651">${sign('総合病院', 'まなびタウン')}${clinic}</div>
     </div>
     <div class="bt651">${MAINBTN.slice(0, 3).map(mbtn).join('')}</div>
+    <button type="button" class="hq655" data-h="hardq"><b>★★★</b> むずかしい クイズに ちょうせん！</button>
     <p class="ft651">${todayLine()}</p>
   </div>`;
   /* iPad よこ：ロビーの え（3:2）を がめんいっぱいに。あおい かんばんに「ごあんない」を かさねる */
@@ -11494,6 +11628,7 @@ function top(){
       <span class="bb651 hidden"></span></div></div>
     <header class="hd651">${sign('総合病院', 'まなびタウン')}${clinic}<span class="sp651"></span>${rwBtn()}${chips()}${townBtn()}</header>
     <div class="bt651">${MAINBTN.map(mbtn).join('')}</div>
+    <button type="button" class="hq655 tb" data-h="hardq"><b>★★★</b> むずかしい クイズ</button>
     <p class="ft651 tb">${todayLine()}</p>
   </div>`;
 }
@@ -11565,7 +11700,9 @@ function pool(themes, used){
 }
 function makeSet(tab, roomId, topic){
   const used = new Set(), out = [];
-  const take = (th, tg) => { let L = pool(th, used); if(tg){ const T = L.filter(o => o.q[7] === tg); if(T.length) L = T; else { const A = QS.map((q, i) => ({q, i})).filter(o => o.q[7] === tg && !used.has(o.i)); if(A.length) L = A; } } if(!L.length) return; const o = pick(L); used.add(o.i); out.push(o.i); };
+  const take = (th, tg) => { let L = pool(th, used); if(tg){ const T = L.filter(o => tagIn(o.q[7], tg)); if(T.length) L = T; else { const A = QS.map((q, i) => ({q, i})).filter(o => tagIn(o.q[7], tg) && !used.has(o.i)); if(A.length) L = A; } } if(!L.length) return; const o = pick(L); used.add(o.i); out.push(o.i); };
+  if(tab === 'hard' && !roomId){ const seen = HS().seen.q, A = QS.map((q, i) => ({q, i})).filter(o => o.q[1] === 3), F = shuf(A.filter(o => !seen[o.i])), R = shuf(A.filter(o => seen[o.i]));
+    return F.concat(R).slice(0, CFG.set).map(o => o.i); }
   if(roomId){ for(let n = 0; n < CFG.room; n++) take([roomId], topic); }
   else{ const t = QTABS.find(x => x[0] === tab);
     if(t && t[2]){ for(let n = 0; n < CFG.set; n++) take(t[2]); }
@@ -11592,8 +11729,8 @@ function quiz(){
       <p class="ex651">${face(right ? 'deer' : 'rabbit', 'sm')}${X(q[6])}</p>
       <button type="button" class="nx651" data-h="next">${right ? (Q.n + 1 < tot ? 'つぎへ' : 'けっかを みる') : 'わかった！'} ›</button></div>` : '';
   const hintBtn = `<button type="button" class="hb651 ${Q.hint || done ? 'used' : ''}" data-h="hint" ${Q.hint || done ? 'disabled' : ''}>${face('rabbit', 'sm')}<b>${Q.hint ? 'ヒントを つかったよ' : 'ヒント'}</b><small>${Q.hint ? 'ポイント はんぶん' : '2たくに なる（ポイント はんぶん）'}</small></button>`;
-  const title = Q.room ? `${Q.topic ? (OG(Q.topic) || EQ(Q.topic) || {}).n || '' : (RM(Q.room) || {n:Q.room === 'body' ? 'からだ' : 'せつび'}).n}の もんだい` : 'いりょうクイズ';
-  const pic = `<div class="qp651"><img src="${IMG}${q[7] ? (OG(q[7]) ? 'org_' : 'eq_') + q[7] : (TPIC[q[0]] || 'top_tab')}.webp" class="${q[7] && OG(q[7]) ? 'ct' : ''}" alt="" onerror="this.remove()"><span class="qtg651">${THEME[q[0]]}</span></div>`;
+  const title = Q.tab === 'hard' ? '★3 むずかしい クイズ' : Q.room ? `${Q.topic ? topicName(Q.topic) : (RM(Q.room) || {n:Q.room === 'body' ? 'からだ' : 'せつび'}).n}の もんだい` : 'いりょうクイズ';
+  const pic = `<div class="qp651"><img src="${IMG}${q[7] ? topicImg(q[7]) : (TPIC[q[0]] || 'top_tab')}.webp" class="${q[7] && BI(q[7]) && !/^sk_/.test(topicImg(q[7])) ? 'ct' : ''}" alt="" onerror="this.remove()"><span class="qtg651">${THEME[q[0]]}</span></div>`;
   const head = `<div class="qh651"><span class="qn651">${Q.n + 1}<small>/${tot}</small></span><span class="dt651">${dots}</span><span class="sr651">${'★'.repeat(q[1])}</span></div>`;
   if(LAY === 'ph') return `<div class="w651 qz ph">
     <header class="hd651 sm">${backBtn('qback', 'やめる')}${sign(title)}${chips()}</header>
@@ -11644,6 +11781,7 @@ function finish(){
   const h = HS(), tot = Q.ids.length, perfect = Q.ok === tot && tot >= CFG.set;
   h.daily.quiz++; let cry = false, cryFull = h.daily.cry >= CFG.cryDay;
   if(Q.ok >= CFG.cryNeed && !cryFull){ h.daily.cry++; save.crystal = (save.crystal || 0) + 1; cry = true; }
+  if(perfect && Q.tab === 'hard'){ try{ addPoints(CFG.perfect, 'むずかしい クイズ パーフェクト', true); }catch(e){} Q.pts += CFG.perfect; }
   if(perfect){ try{ addPoints(CFG.perfect, 'びょういん クイズ パーフェクト', true); }catch(e){} h.best.perfect = (h.best.perfect || 0) + 1; }
   Q.res = {perfect, cry, cryFull}; persist();
   Q.got = grantAfterQuiz(perfect); Q.pfShow = perfect;
@@ -11695,6 +11833,7 @@ document.addEventListener('click', async e => {
   if(a === 'shut'){ if(e.target.closest('.dc651')) return; return go('room', {tool:null}); }
   if(a === 'rquiz') return startQuiz('mix', V.room);
   if(a === 'quiz') return startQuiz('mix');
+  if(a === 'hardq') return startQuiz('hard');
   if(a === 'ans') return answer(t.dataset.o);
   if(a === 'hint'){ if(!Q || Q.hint || Q.ans !== null) return; const q = QS[Q.ids[Q.n]]; Q.hint = true; Q.cut = pick([q[4], q[5]]); snd('tap'); return render(); }
   if(a === 'next'){ if(!Q) return; if(Q.n + 1 < Q.ids.length){ Q.n++; newOrder(); snd('tap'); return render(); } return finish(); }
@@ -11714,10 +11853,10 @@ document.addEventListener('click', async e => {
   if(a === 'gdrop'){ if(G){ G.sel = G.sel.filter(k => k !== t.dataset.v); snd('tap'); render(); } return; }
   if(a === 'gmeal') return checkMeal();
   if(a === 'gshow') return showSeq();
-  if(a === 'body') return go('body', {organ:null});
+  if(a === 'body') return go('body', {organ:null, btab:V.btab || 'organ'});
   if(a === 'organ'){ const h = HS(); h.seen.body[t.dataset.o] = (h.seen.body[t.dataset.o] || 0) + 1; persist(); return go('body', {organ:t.dataset.o}); }
-  if(a === 'btab'){ if(t.dataset.t !== 'organ'){ snd('tap'); toast('「' + t.textContent.replace('じゅんび中', '').trim() + '」は つぎの アップデートで しらべられるよ！'); } return; }
-  if(a === 'bquiz') return startQuiz('mix', 'body', V.organ || null);
+  if(a === 'btab') return go('body', {btab:t.dataset.t, organ:null});
+  if(a === 'bquiz') return startQuiz('mix', 'body', V.organ || ((V.btab || 'organ') === 'organ' ? null : 'T:' + V.btab));
   if(a === 'equip') return go('equip', {eq:LAY === 'tab' ? (V.eq || null) : null, ept:null, epic:null});
   if(a === 'eq'){ const h = HS(); h.seen.equip[t.dataset.e] = (h.seen.equip[t.dataset.e] || 0) + 1; persist(); return go('equip', {eq:t.dataset.e, ept:null, epic:null}); }
   if(a === 'eqback') return go('equip', {eq:null, ept:null, epic:null});
@@ -11743,7 +11882,7 @@ window.addEventListener('click', e => {
   e.stopImmediatePropagation(); e.preventDefault(); open(s.k);
 }, true);
 try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
-window.__hp651 = {open, close, HS, ROOMS, TOOLS, STAFF, QS, JOBS, ORGANS, EQUIPS, RANKS, CARDS, grantAfterQuiz, render, startQuiz, newGame, get G(){ return G; }, get V(){ return V; }, get Q(){ return Q; }};
+window.__hp651 = {open, close, HS, ROOMS, TOOLS, STAFF, QS, JOBS, ORGANS, BONES, MUSCLES, SICKS, EQUIPS, RANKS, CARDS, grantAfterQuiz, render, startQuiz, newGame, get G(){ return G; }, get V(){ return V; }, get Q(){ return Q; }};
 
 /* ---------- BGM：びょういんは ひかえめ・クイズ中は さらに ちいさく ---------- */
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#hp651') || v === 0) return v; return document.querySelector('#hp651 .qz') ? Math.min(v, .06) : Math.min(v, .12); }; } }catch(e){}
@@ -12372,6 +12511,34 @@ body.hp651on{overflow:hidden}
 .bt652{max-width:100%;box-sizing:border-box;padding:3px}
 .ch652 .bt652 i .ei655{width:clamp(18px,6.6vw,34px);height:clamp(18px,6.6vw,34px)}
 .ch652 button b{word-break:keep-all;overflow-wrap:anywhere}
+
+/* ===== v6.57：ほね・きんにく・びょうき／むずかしい クイズ ===== */
+nav.bt653.ph{position:static;max-width:none;display:flex;gap:4px;padding:0 10px 4px;font-size:inherit}
+.bt653.ph button{flex:1;border:3px solid #fff;border-radius:14px;background:#EEE6DA;color:#7A6A55;font-size:13px;font-weight:900;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;box-shadow:0 2px 0 #E0D2BC}
+.bt653.ph button.on{background:#fff;color:#E05A82;box-shadow:0 2px 0 #F5B5C6}
+.bt653 i .ei655{width:22px;height:22px;border-radius:6px}
+.br653 nav.bt653 button i .ei655{width:26px;height:26px}
+.sg655{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:48px 10px 8px;align-content:center;width:100%;box-sizing:border-box;overflow-y:auto}
+.sg655 button{position:relative;border:3px solid #fff;border-radius:16px;background:#fff;padding:0;overflow:hidden;box-shadow:0 3px 0 color-mix(in srgb,var(--c) 45%,#fff),0 3px 8px rgba(0,0,0,.08);display:flex;flex-direction:column}
+.sg655 button img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+.sg655 button b{font-size:13px;color:#fff;background:var(--c);padding:3px 2px}
+.sg655 button.on{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 45%,transparent)}
+.sg655 button i{position:absolute;right:4px;top:4px;font-style:normal;width:22px;height:22px;border-radius:50%;background:#3BAF6A;color:#fff;font-size:12px;line-height:22px;text-align:center;border:2px solid #fff}
+.bd.ph.t-sick .bs653{background:linear-gradient(180deg,#FFF6EC,#FDEBDD)}
+.bd.ph.t-sick .bh653{top:6px;bottom:auto}
+.sgw655{position:absolute;inset:0;display:flex;align-items:center;padding:16px 16px 90px}
+.sgw655 .sg655{padding:0;gap:12px;max-height:100%}
+.bd.tab.t-sick .bl653{background:linear-gradient(180deg,#FFF6EC,#FCE6D6)}
+.om653.wd img{aspect-ratio:3/2;max-width:60%;border-radius:16px}
+.oc653.ph>img{object-fit:cover}
+.og653 img{object-fit:cover}
+.bd.tab.t-sick .og653{grid-template-columns:repeat(5,1fr)}
+.hq655{display:block;margin:0 auto 4px;border:3px solid #fff;border-radius:999px;background:linear-gradient(180deg,#8A6BE8,#5A3FC4);color:#fff;font-size:14px;font-weight:900;padding:6px 18px;box-shadow:0 3px 0 #3F2A96,0 4px 10px rgba(0,0,0,.18);text-shadow:0 1px 0 rgba(0,0,0,.25)}
+.hq655 b{color:#FFD24A;letter-spacing:-1px;margin-right:4px}
+.hq655:active{transform:translateY(2px)}
+.hq655.tb{position:absolute;left:16px;bottom:calc(112px + env(safe-area-inset-bottom));margin:0;z-index:3}
+.qtb651 button[data-t="hard"]{background:#EEE8FF;color:#5A3FC4}
+.qtb651 button[data-t="hard"].on{background:#5A3FC4;color:#fff;box-shadow:0 3px 0 #3F2A96}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
