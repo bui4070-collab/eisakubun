@@ -12862,7 +12862,7 @@ document.head.appendChild(css);
 
 
 /* =====================================================================
-   まなびタウン v6.59：ゆうえんち（仕様書 v0.1　STEP1〜STEP7）
+   まなびタウン v6.60：ゆうえんち（仕様書 v0.1　STEP1〜STEP7 ＋ のりものの 絵・パレード・フェネックの たんけん）
    ・町の「ゆうえんち」を タッチ → 専用画面（スマホ縦／iPad横）
    ・6つの アトラクション＋ひみつの のりもの、ゆうえんちクイズ・毎日チャレンジ
    ・スタンプ（ふつう／金／にじ）・チケット・水晶・ランク・ショップ・ふくびき・パレード
@@ -12871,7 +12871,7 @@ document.head.appendChild(css);
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.59.0', IMG = './assets/images/yuenchi/';
+const VER = '6.60.0', IMG = './assets/images/yuenchi/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -12972,7 +12972,7 @@ function go(s, o = {}){ V = Object.assign({}, V, o, {s}); snd('tap'); render(); 
 function render(){
   if(!ROOT) return; LAY = isTab() ? 'tab' : 'ph';
   ROOT.className = `show ${LAY} ${innerWidth >= 600 && LAY === 'ph' ? 'wide' : ''}`;
-  const f = {top, select, board, ride:quiz, quiz, result, pqsel, rally, shop, map}[V.s] || top;
+  const f = {top, select, board, ride:quiz, quiz, result, pqsel, rally, shop, map, tanken}[V.s] || top;
   ROOT.innerHTML = `<div class="yw">${f()}</div>`; after();
 }
 let rt = 0; addEventListener('resize', () => { if(!ROOT) return; clearTimeout(rt); rt = setTimeout(() => { if(ROOT && (isTab() ? 'tab' : 'ph') !== LAY) render(); }, 150); });
@@ -13018,7 +13018,7 @@ function top(){
     <div class="ybt">
       <div class="yrec" data-y="board" data-r="${r.id}">★ 今日は ${R(r.rb, 1)}！<small>コイン 1.5倍</small></div>${sec}
       <div class="ymn3">${MENU.slice(0, 3).map(m => `<button type="button" class="ymb ${m.c}" data-y="${m.a}"><i>${m.ic}</i><b>${m.n}</b></button>`).join('')}</div>
-      <div class="ysub"><button type="button" data-y="shop">🎁 ショップ</button><button type="button" data-y="map">🗺️ マップ</button>${rubyBtn()}</div>
+      <div class="ysub"><button type="button" data-y="shop">🎁 ショップ</button><button type="button" data-y="map">🗺️ マップ</button><button type="button" class="${tankenTodo() ? 'nw' : ''}" data-y="tanken">🔍 たんけん</button>${rubyBtn()}</div>
       ${rankBar()}
     </div>
   </div>`;
@@ -13032,6 +13032,7 @@ function top(){
       <header class="yhd tb">${chips()}${homeBtn()}</header>
       <div class="ybx rec" data-y="board" data-r="${r.id}"><h4>今日の おすすめ</h4><div class="rr"><img src="${IMG}ride_${r.id}.webp" alt=""><p><b>${R(r.rb, 1)}</b>${R(r.sub, 1)}<small>コイン 1.5倍！</small></p></div></div>
       ${sec}
+      ${tankenTodo() ? `<div class="ybx tkx" data-y="tanken"><img src="${IMG}ch_fennec.webp" alt=""><p><b>🔍 今週の なぞ</b>フェネックの たんけんに 出発！</p></div>` : ''}
       <div class="ybx" data-y="rally"><h4>あつめた スタンプ</h4><div class="ss">${RIDES.map(x => { const b = bestStamp(x.id); return b ? `<img src="${stampImg(x.id, b)}" alt="">` : '<i>？</i>'; }).join('')}</div></div>
       ${rankBar()}
       <div class="ytt"><img src="${IMG}ch_turtle.webp" alt=""><span class="ybq" data-say="turtle">まだまだ 楽しい アトラクションが まってるよ！</span></div>
@@ -13072,7 +13073,7 @@ function map(){
 /* ---------- 乗り場 ---------- */
 function board(){
   const r = RD(V.ride), c = CH[r.st], t = tickets(), sec = r.id === 'secret';
-  const art = `<div class="ygate ${V.gate ? 'open' : ''}"><img src="${IMG}ride_${r.id}.webp" alt=""><i class="dl"></i><i class="dr"></i></div>`;
+  const art = `<div class="ygate ${V.gate ? 'open' : ''}"><img src="${IMG}scene_${r.id}.webp" alt=""><i class="dl"></i><i class="dr"></i></div>`;
   const btns = t > 0 ? (sec ? `<button type="button" class="ygo gold" data-y="start" data-seat="s">✨ 乗る（チケット 1枚）<small>★5・ポイント 3倍</small></button>`
       : `<button type="button" class="ygo" data-y="start" data-seat="n">ふつうの 席<small>チケット 1枚</small></button>
          <button type="button" class="ygo ch" data-y="start" data-seat="c">🔥 チャレンジ席<small>★4・5だけ／ポイント 2倍</small></button>`)
@@ -13138,7 +13139,7 @@ function quiz(){
   const hint = `<button type="button" class="yhn ${Q.hint || done ? 'used' : ''}" data-y="hint" ${Q.hint || done ? 'disabled' : ''}><img src="${IMG}ch_bird.webp" alt=""><span><b>${Q.hint ? 'ヒントを 使ったよ' : 'ヒント'}</b><small>${Q.hint ? 'ポイント 半分' : '2たくに なる（ポイント 半分）'}</small></span></button>`;
   const prog = `<div class="ypg"><span class="bar"><i style="width:${(Q.n + (done ? 1 : 0)) / tot * 100}%"></i></span><b>${Q.n + 1}<small>/${tot}</small></b></div>`;
   const badges = `${Q.seat === 'c' ? '<em class="bd ch">🔥チャレンジ席 ×2</em>' : ''}${Q.ride === 'secret' ? '<em class="bd gd">✨ひみつ ×3</em>' : ''}${Q.rec ? '<em class="bd rc">おすすめ ×1.5</em>' : ''}${Q.fever ? '<em class="bd fv">フィーバー ×1.5</em>' : ''}`;
-  const scene = `<div class="ysn ${Q.fever ? 'fever' : ''} lv${r ? (YS().level[r.id] || 1) : 1} s-${sceneId}"><img src="${IMG}ride_${sceneId}.webp" alt="" style="--z:${1 + Q.ok * .04}">${rideFx(sceneId, Q.ok, false)}<div class="bds">${badges}</div>${Q.burst ? '<i class="burst"></i>' : ''}</div>`;
+  const scene = `<div class="ysn ${Q.fever ? 'fever' : ''} lv${r ? (YS().level[r.id] || 1) : 1} s-${sceneId}"><img src="${IMG}scene_${sceneId}.webp" alt="" style="--z:${1 + Q.ok * .04}">${rideFx(sceneId, Q.ok, false)}<div class="bds">${badges}</div>${Q.burst ? '<i class="burst"></i>' : ''}</div>`;
   const qbox = `<div class="yqb"><div class="qh"><span class="qn">問題</span>${stars(st)}<small>${mult > 1 ? `ポイント ×${mult}` : ''}</small></div><p class="qt">${R(q[2], st)}</p></div>`;
   if(LAY === 'ph') return `<div class="yqz ph">
     <header class="yhd">${back('quit', 'やめる')}<h2>${title}</h2>${prog}</header>
@@ -13187,6 +13188,7 @@ function finish(){
   if(clear && y.daily.cry < 1){ y.daily.cry = 1; save.crystal = (save.crystal || 0) + 1; R0.cry = true; }
   if(perfect){ try{ addPoints(10, 'ゆうえんち パーフェクト', true); }catch(e){} Q.pts += 10; }
   /* スタンプ コンプリート */
+  TK();
   const allN = RIDES.every(r => (y.stamps[r.id] || {}).n), allG = RIDES.every(r => (y.stamps[r.id] || {}).g), allR = RIDES.every(r => (y.stamps[r.id] || {}).r);
   [[allN, 'スタンプマスター', 'flowerwheel'], [allG, 'きんの スタンプ王', null], [allR, 'にじいろ はかせ', null]].forEach(([ok, t, d]) => { if(ok && !y.titles.includes(t)){ y.titles.push(t); R0.newT.push(t); if(d) y.items[d] = 1; } });
   Q.res = R0; persist();
@@ -13207,7 +13209,7 @@ async function afterResult(){
 function result(){
   const R0 = Q.res, r = Q.mode === 'ride' ? RD(Q.ride) : null, y = YS();
   const st = R0.stamp;
-  const big = st && st.t !== 'secret' ? `<div class="ysp ${st.t}"><img src="${stampImg(r.id, st.t)}" alt=""></div>` : st ? `<div class="ysp gold"><img src="${IMG}ride_secret.webp" alt=""></div>` : R0.special ? `<div class="ysp sp"><img src="${IMG}ch_star.webp" alt=""></div>` : `<div class="ysp none"><img src="${IMG}${r ? 'ride_' + r.id : 'ride_plaza'}.webp" alt=""></div>`;
+  const big = st && st.t !== 'secret' ? `<div class="ysp ${st.t}"><img src="${stampImg(r.id, st.t)}" alt=""></div>` : st ? `<div class="ysp gold"><img src="${IMG}scene_secret.webp" alt=""></div>` : R0.special ? `<div class="ysp sp"><img src="${IMG}ch_star.webp" alt=""></div>` : `<div class="ysp none"><img src="${IMG}${r ? 'scene_' + r.id : 'scene_plaza'}.webp" alt=""></div>`;
   const head1 = R0.perfect ? 'パーフェクト！' : R0.clear ? 'やったね！' : 'おつかれさま！';
   const sub = st ? (st.t === 'r' ? 'にじの スタンプを ゲット！' : st.t === 'g' ? '金の スタンプを ゲット！' : st.t === 'secret' ? 'ひみつの のりもの クリア！' : 'スタンプを ゲット！') : R0.special ? '特別な スタンプを ゲット！' : Q.mode === 'ride' ? '3問 正解で スタンプが もらえるよ' : `${Q.ok}問 正解！`;
   const rows = [
@@ -13233,7 +13235,7 @@ function pqsel(){
   const y = YS(), dd = y.daily.chal;
   const L = [['n','ふつう','★2〜3','🎫×1'],['h','むずかしい','★3〜4','🎫×1.5'],['s','ちょうむずかしい','★4〜5','🎫×2']];
   return `<div class="ypq ${LAY}">${head('ゆうえんちクイズ')}
-    <div class="ypw"><div class="yib plz"><img src="${IMG}ride_plaza.webp" alt=""><span class="ybq">どんどん 解こう！ チケットは いらないよ</span></div>
+    <div class="ypw"><div class="yib plz"><img src="${IMG}scene_plaza.webp" alt=""><span class="ybq">どんどん 解こう！ チケットは いらないよ</span></div>
       <div class="ypc"><h4>10問 チャレンジ</h4>${L.map(l => `<button type="button" class="ydf ${l[0]}" data-y="pq" data-d="${l[0]}"><b>${l[1]}</b><small>${l[2]}・${l[3]}</small></button>`).join('')}
         <button type="button" class="ydf daily ${dd ? 'done' : ''}" data-y="daily" ${dd ? 'disabled' : ''}><b>🌟 毎日チャレンジ（5問）</b><small>${dd ? 'きょうは もう 挑戦したよ' : 'ぜんぶ 正解で 水晶＋特別な スタンプ'}</small></button>
         ${rubyBtn()}</div></div></div>`;
@@ -13245,11 +13247,12 @@ function rally(){
   const cell = (r, t) => { const s = y.stamps[r.id] || {}, has = s[t]; return `<span class="cl ${t} ${has ? 'on' : ''}">${has ? `<img src="${stampImg(r.id, t)}" alt="">` : '<i>？</i>'}<small>${{n:'ふつう', g:'金', r:'にじ'}[t]}</small></span>`; };
   return `<div class="yrl ${LAY}">${head('スタンプラリー')}
     <div class="yrw"><div class="ybook">${RIDES.map(r => `<div class="rw ${unlocked(r) ? '' : 'lk'}"><b>${R(r.rb, 1)}</b>${['n','g','r'].map(t => cell(r, t)).join('')}</div>`).join('')}
-      <div class="rw sp"><b>特別</b><span class="cl ${y.special ? 'on' : ''}">${y.special ? `<img src="${IMG}ch_star.webp" alt="">` : '<i>？</i>'}<small>毎日 ×${y.special}</small></span><span class="cl hid"><i>？</i><small>かくれ</small></span></div></div>
+      <div class="rw sp"><b>特別</b><span class="cl ${y.special ? 'on' : ''}">${y.special ? `<img src="${IMG}ch_star.webp" alt="">` : '<i>？</i>'}<small>毎日 ×${y.special}</small></span></div>
+      <div class="rw hd"><b>かくれ</b><div class="hg">${HIDS.map(h => (y.hidden || {})[h[0]] ? `<span class="cl on"><img src="${IMG}hid_${h[0]}.webp" alt=""><small>${h[1]}</small></span>` : `<span class="cl"><i>？</i><small>？？？</small></span>`).join('')}</div></div></div>
       <aside><div class="fn"><img src="${IMG}ch_fennec.webp" alt=""><span class="ybq">${cnt >= 6 ? 'すごい！ ぜんぶ そろったね！' : `あと ${6 - cnt}こで コンプリート！`}</span></div>
         <p class="hl">🌈 にじ ＝ チャレンジ席で ぜんぶ 正解<br>🥇 金 ＝ パーフェクト<br>🎁 6つ そろうと 称号と 花の 観覧車</p>
         <div class="tt">${y.titles.length ? y.titles.map(t => `<em>🏅${X(t)}</em>`).join('') : '<small>称号は まだ ないよ</small>'}</div>
-        <p class="hl sm">🔍 フェネックの たんけん（かくれスタンプ）は 次の アップデートで！</p></aside></div></div>`;
+        <button type="button" class="ygo tkb ${tankenTodo() ? 'new' : ''}" data-y="tanken">🔍 フェネックの たんけん<small>${tankenTodo() ? '今週の なぞが まってるよ！' : '今週は クリア！ また来週'}</small></button></aside></div></div>`;
 }
 
 /* ---------- STEP6：ショップ・ふくびき ---------- */
@@ -13274,15 +13277,49 @@ async function fuku(){
 }
 
 /* ---------- パレード ---------- */
-const PARADE = ['res_bear','res_rabbit','res_panda','res_cat','res_dog','res_fox','res_penguin','res_sheep','res_koala','res_owl','res_pig','res_otter'];
 function parade(rare){
   if(!ROOT) return; const el = document.createElement('div'); el.className = `ypd ${rare ? 'rare' : ''}`;
-  const L = PARADE.map(k => artSrc(k)).filter(Boolean);
   el.innerHTML = `<div class="pt">${rare ? '🌟 レア パレード！ 🌟' : '🎉 ミニパレード！'}<small>今日の 正解が ${CFG.paradeAt}問を こえたよ</small></div>
-    <div class="ln">${(L.length ? L : [IMG + 'ch_sheep.webp', IMG + 'ch_turtle.webp', IMG + 'ch_fennec.webp', IMG + 'ch_bird.webp']).map((s, i) => `<img src="${X(s)}" alt="" style="animation-delay:${(i % 2) * .2}s">`).join('')}<img src="${IMG}ch_sheep.webp" alt=""><img src="${IMG}ch_fennec.webp" alt="">${rare ? `<img src="${IMG}ch_star.webp" alt="">` : ''}</div>
+    <div class="st"><img class="bg" src="${IMG}scene_plaza.webp" alt=""><div class="ln"><img src="${IMG}parade.webp" alt="">${rare ? `<img class="sp" src="${IMG}ch_star.webp" alt=""><img class="sp" src="${IMG}ch_fennec.webp" alt=""><img class="sp" src="${IMG}ch_sheep.webp" alt="">` : ''}</div></div>
     <button type="button" class="cl">とじる</button>`;
   ROOT.appendChild(el); V.parade = 1; snd('fan'); try{ confetti(rare ? 3000 : 1500); }catch(e){}
-  const end = () => { el.remove(); V.parade = 0; }; el.querySelector('.cl').onclick = end; FX.push(setTimeout(end, 9000));
+  const end = () => { el.remove(); V.parade = 0; }; el.querySelector('.cl').onclick = end; FX.push(setTimeout(end, 11000));
+}
+
+/* ---------- フェネックの たんけん（週に1回・かくれスタンプ） ---------- */
+const NAZO = [["たぬきの {暗号|あんごう}『たいたちたご』から「た」を ぬくと {何|なに}？", "いちご", "たいちご", "いちたご", "「た」を ぬく ＝ 「た」を {消|け}して {読|よ}むよ"], ["たぬきの {暗号|あんごう}『ゆたうえたんたち』から「た」を ぬくと？", "ゆうえんち", "ゆうえち", "うえんち", "ここの ことだね！"], ["『しんぶんし』を {逆|ぎゃく}から {読|よ}むと？", "しんぶんし", "しんぶん", "ぶんしん", "{前|まえ}から {読|よ}んでも {後|うし}ろから {読|よ}んでも {同|おな}じ。こういう {言葉|ことば}を {回文|かいぶん}と いう"], ["{逆|ぎゃく}から {読|よ}んでも {同|おな}じに なる {言葉|ことば}は？", "トマト", "キャベツ", "ナスビ", "ト・マ・ト → ト・マ・ト。{回文|かいぶん}だね"], ["1から10までの {数|かず}を {全部|ぜんぶ} たすと？", "55", "50", "45", "1＋10、2＋9…と {組|くみ}にすると 11が 5{組|くみ}で 55"], ["{時計|とけい}が 3{時|じ}ちょうどの とき、{長|なが}い{針|はり}と {短|みじか}い{針|はり}の {間|あいだ}の {角|かど}{度|ど}は？", "90{度|ど}", "45{度|ど}", "180{度|ど}", "1{時間|じかん}{分|ぶん}は 30{度|ど}。3{時間|じかん}{分|ふん}で 90{度|ど}"], ["{切|き}っても {切|き}っても {切|き}れない ものは？", "{水|みず}", "{紙|かみ}", "ひも", "{水|みず}は {切|き}ろうとしても すぐ つながるよ"], ["{朝|あさ}は 4{本|ほん}{足|あし}、{昼|ひる}は 2{本|ほん}{足|あし}、{夜|よる}は 3{本|ほん}{足|あし}。これは {何|なに}？", "{人|ひと}{間|あいだ}", "イヌ", "イス", "{赤|あか}ちゃんは はいはい、{大|おお}{人|ひと}は 2{本|ほん}{足|あし}、{年|ねん}をとると つえで 3{本|ほん}。スフィンクスの なぞ"], ["50{音|おと}で 1つ {後|うし}ろに ずらした {暗号|あんごう}『のさ』。{元|もと}の {言葉|ことば}は？", "ねこ", "いぬ", "きつね", "の → ね、さ → こ と 1つ もどすと「ねこ」"], ["『いぬ』を 50{音|おと}で 1つ {後|うし}ろに ずらすと？", "うね", "あに", "えの", "い → う、ぬ → ね"], ["{足|あし}が あるのに {歩|ある}かない ものは？", "つくえ", "ねこ", "ペンギン", "つくえの {足|あし}は {歩|ある}かないね"], ["{目|め}が 3つ、{足|あし}が 1{本|ほん}。これ なーんだ？", "{信号機|しんごうき}", "てんとう{虫|むし}", "ポスト", "{赤|あか}・{黄|き}・{青|あお}の 3つの {目|め}"], ["12{時|じ}ちょうどの {次|つぎ}に、{長|なが}い{針|はり}と {短|みじか}い{針|はり}が {重|かさ}なるのは {何時|なんじ}ごろ？", "1{時|じ}5{分|ふん}ごろ", "1{時|じ}ちょうど", "2{時|じ}10{分|ふん}ごろ", "{長|なが}い{針|はり}が 1{周|しゅう}する {間|あいだ}に {短|みじか}い{針|はり}も {少|すこ}し {進|すす}むので、1{時|じ}5{分|ふん} すぎに {重|かさ}なる"], ["{大|おお}きく なるほど {軽|かる}く なる ものは？", "{穴|あな}", "{石|いし}", "{雪|ゆき}だるま", "ほるほど {中身|なかみ}が {減|へ}って {軽|かる}く なる"], ["1, 1, 2, 3, 5, 8, □ に {入|はい}る {数|かず}は？", "13", "11", "16", "{前|まえ}の 2つを たすと {次|つぎ}の {数|かず}（フィボナッチ{数|かず}{列|れつ}）"], ["2, 4, 8, 16, □ に {入|はい}る {数|かず}は？", "32", "24", "20", "{前|まえ}の {数|かず}を 2{倍|ばい}に して いく"], ["{今日|きょう}が {火曜日|かようび}なら、7{日後|にちご}は {何曜日|なんようび}？", "{火曜日|かようび}", "{水曜日|すいようび}", "{月曜日|げつようび}", "7{日|にち}で 1{週間|しゅうかん} まわって {同|おな}じ {曜日|ようび}に もどる"], ["{今日|きょう}が {月曜日|げつようび}なら、100{日後|にちご}は {何曜日|なんようび}？", "{水曜日|すいようび}", "{火曜日|かようび}", "{木曜日|もくようび}", "100 ÷ 7 ＝ 14 あまり 2。{月曜日|げつようび}から 2つ {進|すす}む"], ["{漢字|かんじ}の なぞ：「木」が 3つで できる {字|じ}は？", "森", "林", "村", "{木|き}が 2つで {林|はやし}、3つで {森|もり}"], ["{漢字|かんじ}の なぞ：「日」と「月」を {合|あ}わせると？", "明", "朝", "暗", "{日|ひ}と {月|つき}が そろうと「{明|あか}るい」"], ["{漢字|かんじ}の なぞ：「田」と「力」を {合|あ}わせると？", "男", "町", "畑", "{田|た}んぼで {力|ちから}を {出|だ}して はたらく {人|ひと}"], ["{漢字|かんじ}の なぞ：「口」の {中|なか}に「木」が {入|はい}ると？", "困", "国", "回", "{木|き}が かこまれて こまって いる {字|じ}"], ["{北|きた}を {向|む}いて、{右|みぎ}に 2{回|かい} まわると どっちを {向|む}く？", "{南|みなみ}", "{東|ひがし}", "{西|にし}", "{右|みぎ}に 1{回|かい}で {東|ひがし}、2{回|かい}で {南|みなみ}"], ["{北|きた}を {向|む}いて、{右|みぎ}に 1{回|かい}、{左|ひだり}に 3{回|かい} まわると？", "{南|みなみ}", "{西|にし}", "{北|きた}", "{右|みぎ}で {東|ひがし} → {左|ひだり}で {北|きた}・{西|にし}・{南|みなみ}"]];
+const HIDS = [['compass','コンパス'],['chest','たからばこ'],['paw','あしあと'],['key','ふしぎな かぎ'],['tmap','たからの 地図'],['lantern','ランタン'],['stars','星ぞら'],['fennec','フェネック']];
+const weekNo = () => Math.floor((dayNo() + 3) / 7);
+function TK(){ const y = YS(); y.hidden = y.hidden || {}; const w = weekNo();
+  if(!y.tanken || y.tanken.w !== w){ const h = hash('tk' + w), ids = []; let k = 0; while(ids.length < 3 && k < 50){ const i = (h + k * 7919) % NAZO.length; if(!ids.includes(i)) ids.push(i); k++; }
+    y.tanken = {w, ids, n:0, done:0, miss:0}; }
+  return y.tanken; }
+const hidOfWeek = () => HIDS[weekNo() % HIDS.length];
+const tankenTodo = () => !TK().done;
+let TKO = null;
+function tanken(){
+  const t = TK(), y = YS(), H = hidOfWeek(), got = y.hidden[H[0]];
+  const pic = `<div class="yib tk"><img src="${IMG}tanken.webp" alt=""><span class="ybq">${t.done ? 'たんけん 成功！ また来週 新しい なぞを 用意するね' : 'きょうの なぞを 3つ 解くと、かくれスタンプが 見つかるよ！'}</span></div>`;
+  let body;
+  if(t.done) body = `<div class="ytd"><h4>今週の かくれスタンプ</h4><img class="hs" src="${IMG}hid_${H[0]}.webp" alt=""><b>${H[1]}</b><p>集めた かくれスタンプ ${Object.keys(y.hidden).length}/${HIDS.length}</p><button type="button" class="ygo sub" data-y="rally">スタンプラリーを 見る</button></div>`;
+  else { const q = NAZO[t.ids[t.n]]; if(!TKO || TKO.i !== t.n) TKO = {i:t.n, ord:shuf([q[1], q[2], q[3]]), sel:[], ok:false};
+    body = `<div class="ytd"><div class="tp"><span class="pb">なぞ ${t.n + 1}/3</span><span class="dt">${[0,1,2].map(i => `<i class="${i < t.n ? 'o' : i === t.n ? 'c' : ''}"></i>`).join('')}</span></div>
+      <p class="qt">${R(q[0], 3)}</p>
+      <div class="yops">${TKO.ord.map((o, i) => `<button type="button" class="yop ${TKO.ok && o === q[1] ? 'ok' : TKO.sel.includes(o) ? 'cut' : ''}" data-y="tka" data-o="${X(o)}" ${TKO.ok || TKO.sel.includes(o) ? 'disabled' : ''}><i>${'ABC'[i]}</i><span>${R(o, 3)}</span></button>`).join('')}</div>
+      ${TKO.ok ? `<div class="yfb ok in"><img class="hn" src="${IMG}ch_fennec.webp" alt=""><div><b class="hd">なぞが 解けた！</b><p class="ex">${R(q[4], 3)}</p></div><button type="button" class="ynx" data-y="tkn">${t.n < 2 ? 'つぎの なぞへ' : 'たからばこを あける！'} ›</button></div>`
+        : TKO.sel.length ? `<p class="hl">🔍 フェネック「うーん、ちがうみたい。もう一度 考えて みよう！」</p>` : ''}
+      <p class="hl sm">今週の かくれスタンプ：？？？　（何回 まちがえても 大丈夫）</p></div>`; }
+  return `<div class="ytk ${LAY}">${head('フェネックの たんけん', 'rally', 'スタンプラリー')}<div class="ytw">${pic}${body}</div></div>`;
+}
+async function tankenClear(){
+  const y = YS(), t = TK(), H = hidOfWeek(), isNew = !y.hidden[H[0]];
+  t.done = 1; y.hidden[H[0]] = today(); y.tickets.n += 3; try{ addPoints(50, 'フェネックの たんけん', true); }catch(e){}
+  let title = '';
+  if(HIDS.every(h => y.hidden[h[0]]) && !y.titles.includes('でんせつの たんけん家')){ y.titles.push('でんせつの たんけん家'); y.items.arch = 1; title = 'でんせつの たんけん家'; }
+  persist(); TKO = null; snd('fan'); try{ confetti(2400); }catch(e){} render(); refreshChips();
+  await dialog(`<div class="ytc"><img class="ch" src="${IMG}hid_${H[0]}.webp" alt=""><img class="fx" src="${IMG}ch_fennec.webp" alt=""></div><h2 class="dlgT">かくれスタンプ 発見！</h2>
+    <p class="dlgP"><b>「${H[1]}」</b>${isNew ? '' : '（もう 持って いるよ）'}<br>コイン +50・チケット +3${title ? `<br>🏅 称号「${title}」と 花の アーチを ゲット！` : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+  if(ROOT) render();
 }
 
 /* ---------- タッチ ---------- */
@@ -13305,6 +13342,7 @@ async function leaveQuiz(){
     if(!v) return false; }
   return true;
 }
+const t2o = e => (e.target.closest('[data-o]') || {}).dataset.o;
 document.addEventListener('click', async e => {
   if(!ROOT || !ROOT.contains(e.target)) return;
   const sy = e.target.closest('[data-say]');
@@ -13312,7 +13350,9 @@ document.addEventListener('click', async e => {
     if(sy.classList.contains('ybq')){ sy.textContent = pick(L); sy.classList.remove('pop'); void sy.offsetWidth; sy.classList.add('pop'); } else bubble(sy, pick(L)); return; }
   const t = e.target.closest('[data-y]'); if(!t || t.disabled) return; const a = t.dataset.y;
   if(a === 'town'){ if(!(await leaveQuiz())) return; return close(); }
-  if(a === 'top' || a === 'select' || a === 'map' || a === 'rally' || a === 'shop' || a === 'pqsel'){ Q = null; return go(a); }
+  if(a === 'top' || a === 'select' || a === 'map' || a === 'rally' || a === 'shop' || a === 'pqsel' || a === 'tanken'){ Q = null; TKO = null; return go(a); }
+  if(a === 'tka'){ const t = TK(); if(t.done || !TKO || TKO.ok) return; const q = NAZO[t.ids[t.n]], o = t2o(e); if(o === q[1]){ TKO.ok = true; snd('ok'); } else { TKO.sel.push(o); t.miss++; snd('ng'); } persist(); return render(); }
+  if(a === 'tkn'){ const t = TK(); if(!TKO || !TKO.ok) return; if(t.n < 2){ t.n++; TKO = null; persist(); snd('tap'); return render(); } return tankenClear(); }
   if(a === 'locked'){ const r = RD(t.dataset.r); snd('ng'); return toast(`🔒 ${plain(r.rb)}は ランク${r.rank}「${RANKS[r.rank - 1].n}」で 乗れるよ`); }
   if(a === 'board'){ const r = RD(t.dataset.r); if(!r || (r.id !== 'secret' && !unlocked(r))) return; if(r.id === 'secret' && YS().daily.secret !== 'on') return; return go('board', {ride:r.id, gate:0}); }
   if(a === 'start'){ const y = YS(); if(y.tickets.n < 1) return; y.tickets.n--; persist(); newQuiz('ride', V.ride, t.dataset.seat); snd('ok'); V.gate = 1; render(); refreshChips(); return; }
@@ -13348,7 +13388,7 @@ window.addEventListener('click', e => {
   e.stopImmediatePropagation(); e.preventDefault(); open(s.k);
 }, true);
 try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
-window.__yu659 = {open, close, YS, QS, RIDES, render, newQuiz, finish, parade, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }};
+window.__yu659 = {open, close, YS, QS, RIDES, NAZO, TK, render, newQuiz, finish, parade, tankenClear, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }};
 
 /* ---------- BGM：アトラクション中は 小さめ・考える ときは さらに 小さく・パレードは 少し 大きく ---------- */
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#yu659') || v === 0) return v;
@@ -13609,11 +13649,34 @@ body.yu659on{overflow:hidden}
 .ypd{position:absolute;inset:0;z-index:30;background:rgba(255,248,230,.94);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;overflow:hidden}
 .ypd.rare{background:radial-gradient(circle,#FFF6CC,#FFD24A)}
 .ypd .pt{font-size:26px;font-weight:900;color:#E8608A;text-align:center;display:flex;flex-direction:column}.ypd .pt small{font-size:13px;color:#7A6A55}
-.ypd .ln{display:flex;gap:10px;animation:ypar 8s linear forwards;white-space:nowrap;width:max-content}
-.ypd .ln img{height:110px;width:auto;animation:ybob .4s ease-in-out infinite alternate}
+.ypd .st{position:relative;width:100%;height:min(46vh,340px);overflow:hidden}
+.ypd .st .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.ypd .ln{position:absolute;left:0;bottom:4%;height:78%;display:flex;align-items:flex-end;gap:6px;animation:ypar 10s linear forwards;width:max-content}
+.ypd .ln img{height:100%;width:auto;animation:ybob .35s ease-in-out infinite alternate}.ypd .ln img.sp{height:55%}
 @keyframes ypar{from{transform:translateX(100vw)}to{transform:translateX(-110%)}}
 .ypd .cl{border:3px solid #fff;background:#fff;border-radius:99px;padding:6px 20px;font-weight:900;color:#5A4430}
 .yrkd{display:flex;justify-content:center;gap:10px}.yrkd img{height:120px}
+
+/* v6.60：たんけん */
+.ysub button.nw{background:#FFF1C2;border-color:#FFD24A;animation:ygl 1s infinite alternate}
+.ybx.tkx{display:flex;align-items:center;gap:8px;border-color:#9ED8B0;animation:ygl 1.2s infinite alternate}.ybx.tkx img{width:60px}.ybx.tkx p{margin:0;font-size:12.5px;font-weight:800;display:flex;flex-direction:column}.ybx.tkx b{font-size:15px;color:#2E8B57}
+.ytk{background:linear-gradient(180deg,#EAF7E6,#FFF6E0)}
+.ytw{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:0 12px calc(12px + env(safe-area-inset-bottom))}
+.ytk.tab .ytw{flex-direction:row;align-items:stretch}
+.yib.tk{flex:none;border-radius:20px;overflow:hidden;border:4px solid #fff;aspect-ratio:2/3;max-height:42vh;align-self:center;box-shadow:0 6px 16px rgba(0,0,0,.15)}
+.ytk.tab .yib.tk{max-height:none;height:100%}
+.yib.tk .ybq{position:absolute;left:8px;right:8px;top:8px;font-size:13px}
+.ytd{flex:1;display:flex;flex-direction:column;gap:8px;background:#fff;border:4px solid #9ED8B0;border-radius:22px;padding:10px 12px;position:relative}
+.ytd .tp{display:flex;align-items:center;gap:8px}.ytd .pb{background:#2E8B57;color:#fff;border-radius:99px;padding:1px 12px;font-weight:900;font-size:13px}
+.ytd .dt{display:flex;gap:5px}.ytd .dt i{width:14px;height:14px;border-radius:50%;background:#DCE6F0}.ytd .dt i.c{background:#FFD24A}.ytd .dt i.o{background:#3BAF6A}
+.ytd .qt{margin:0}.ytk.tab .ytd .qt{font-size:22px}.ytk.tab .ytd .yop{min-height:62px;font-size:18px}
+.ytd .yfb.in{position:relative;border-radius:18px;border:4px solid #3BAF6A;animation:ypop .3s}
+.ytd h4{margin:0;text-align:center;color:#2E8B57;font-size:18px}.ytd .hs{width:min(60%,220px);align-self:center;animation:ystp .6s}
+.ytd>b{text-align:center;font-size:20px;color:#C23E68}.ytd>p{margin:0;text-align:center;font-weight:900;color:#5A4430}
+.ygo.tkb{background:linear-gradient(180deg,#6FD07A,#2E8B57);box-shadow:0 5px 0 #1F6B40}.ygo.tkb.new{animation:ygl 1s infinite alternate}
+.ybook .rw.hd{grid-template-columns:minmax(0,1.4fr) minmax(0,3fr)}
+.ybook .hg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.ybook .hg .cl img,.ybook .hg .cl i{width:min(100%,52px)}
+.ytc{position:relative;display:flex;justify-content:center;height:170px}.ytc .ch{height:160px;animation:ystp .7s cubic-bezier(.2,1.6,.4,1) both}.ytc .fx{position:absolute;right:0;bottom:-6px;height:110px}
 `;
 document.head.appendChild(css);
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
