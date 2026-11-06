@@ -8310,9 +8310,44 @@ async function doFuku(){
 }
 async function notesView(){
   const s = SV(); const by = SK.map(k => [k, s.notes.filter(n => n.subj===k)]);
-  await dialog(`<h2 class="dlgT">${ic('nigate','h')} にがてノート</h2><p class="dlgP">いま <b>${s.notes.length}こ</b>　そつぎょう <b>${s.grad||0}こ</b></p>
-    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${subjImg(k)} ${SUBJ[k]}</b><span>${L.length}こ</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
-    <p class="dlgP facNote">「ふつう」の じゅぎょうで リベンジ（+${CFG.revenge}）。べつべつの 日に 3かい せいかいで そつぎょう！</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+  const v = await dialog(`<h2 class="dlgT">${ic('nigate','h')} にがてノート</h2><p class="dlgP">いま <b>${s.notes.length}こ</b>　そつぎょう <b>${s.grad||0}こ</b></p>
+    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${subjImg(k)} ${SUBJ[k]}</b><span>${L.length}こ</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.n || MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
+    <p class="dlgP facNote">「にがてに チャレンジ」や「ふつう」の じゅぎょうで リベンジ（+${CFG.revenge}）。べつべつの 日に 3かい せいかいで そつぎょう！</p>`,
+    s.notes.length ? [{label:`🔥 にがてに チャレンジ（${Math.min(5, s.notes.length)}もん）`, cls:'gold', v:'all'}].concat(by.filter(([k, L]) => L.length).map(([k, L]) => ({label:`${subjImg(k)} ${SUBJ[k]}の にがて（${Math.min(5, L.length)}もん）`, cls:'white', v:k}))).concat([{label:'とじる', cls:'', v:0}])
+      : [{label:'とじる', cls:'gold', v:0}], 'wide');
+  if(v) await runNotes(v === 'all' ? null : v);
+}
+async function runNotes(subj){
+  const s = SV(), d = D4();
+  let L = s.notes.filter(n => !subj || n.subj === subj);
+  if(!L.length) return;
+  L = L.slice().sort((a, b) => ((b.add !== d && !b.ok.includes(d)) - (a.add !== d && !a.ok.includes(d))) || (b.mark === 'k') - (a.mark === 'k') || a.ok.length - b.ok.length).slice(0, 5);
+  QUITOK = true; QUITMSG = 'とちゅうで やめても、ここまでの せいかいは のこるよ';
+  let ok = 0, coin = 0; const grads = [], n = L.length;
+  for(let i = 0; i < n; i++){
+    const note = L[i], m = noteQ(note); if(!m) continue; m.rev = 1;
+    const head = `<div class="qh631" style="--c:${SUBJ_C[note.subj]}"><span>${subjImg(note.subj)} にがてに チャレンジ</span>
+      <span class="dots631">${Array.from({length:n}, (_, k) => `<i class="${k < i ? 'd' : k===i ? 'c' : ''}"></i>`).join('')}</span></div>
+      <div class="revt631">🔥 にがて リベンジ！ ${'●'.repeat(note.ok.length)}${'○'.repeat(3 - note.ok.length)}</div>`;
+    const r = await askQ(m, head, 'school');
+    if(r.quit) break;
+    if(r.ok && r.tries === 1){
+      ok++; const can = note.add !== d && !note.ok.includes(d);
+      if(can){ coin += CFG.revenge; const g2 = noteOK(note); if(g2.grad) grads.push(g2); }
+      await pop('💮', can ? 'リベンジ せいこう！' : 'せいかい！（きょう のせた もんだいは あした また ちょうせん）');
+    } else {
+      const v = await explainStep(m, r.v, head, [{label:'✅ わかった！（うっかり）', cls:'gold', v:'u'}, {label:'✅ わかった！（わからなかった）', cls:'gold', v:'k'}]);
+      if(v === '__quit') break;
+      addNote(m, v); await pop('📒', 'だいじょうぶ！ また ちょうせん しよう');
+    }
+  }
+  QUITOK = false; QUITFN = null;
+  grads.forEach(g2 => { if(g2.mile) coin += g2.mile.pt; });
+  if(coin) pts(coin, 'がっこう にがてに チャレンジ');
+  persist();
+  await dialog(`<h2 class="dlgT">🔥 にがてに チャレンジ おしまい！</h2><p class="dlgP">せいかい <b>${ok}/${n}</b>${coin ? `<br>🪙 +${coin}` : ''}${grads.length ? `<br>🎓 にがて そつぎょう ${grads.length}こ！` : ''}</p><p class="dlgP facNote">べつべつの 日に 3かい せいかいで そつぎょう。のこり ${SV().notes.length}こ</p>`, [{label:'OK', cls:'gold', v:1}]);
+  if(grads.length || ok >= 3){ try{ confetti(1200); }catch(e){} }
+  schoolMain();
 }
 async function goalView(){
   const s = SV(), G = s.goal;
@@ -9731,8 +9766,10 @@ const on = () => save.settings && save.settings.bgm !== false;
 
 function init(){
   if(B.el || B.err) return;
-  const a = new Audio(); a.src = SRC; a.loop = true; a.preload = 'auto'; a.setAttribute('playsinline', '');
-  a.addEventListener('error', () => { B.err = true; console.warn('BGM: ' + SRC + ' が よみこめません'); });
+  const a = new Audio(); a.src = SRC; B.src = SRC; a.loop = true; a.preload = 'auto'; a.setAttribute('playsinline', '');
+  a.addEventListener('error', () => {
+    if(B.src && B.src !== SRC){ (B.bad = B.bad || {})[B.src] = 1; console.warn('BGM: ' + B.src + ' が よみこめません'); B.src = SRC; a.src = SRC; try{ a.load(); if(B.ok && B.cur > 0) a.play().catch(() => {}); }catch(e){} return; }
+    B.err = true; console.warn('BGM: ' + SRC + ' が よみこめません'); });
   B.el = a;
   try{
     B.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -9759,7 +9796,10 @@ function target(){
 function apply(force){
   if(!B.el){ if(!on()) return paint(); init(); }
   if(B.err) return paint();
-  const v = target();
+  const W = window.__bgm643 || {};
+  const want = (W.src && W.src()) || SRC;
+  if(want !== B.src && !(B.bad && B.bad[want])){ B.src = want; const was = !B.el.paused; B.el.src = want; try{ B.el.load(); }catch(e){} if(was || B.ok) B.el.play().catch(() => {}); }
+  const v = (W.target || target)();
   if(v > 0){
     if(B.ctx && B.ctx.state === 'suspended') B.ctx.resume().catch(() => {});
     if(B.el.paused && B.ok) B.el.play().catch(() => {});
@@ -12956,8 +12996,13 @@ function YS(){
   y.items = y.items || {}; y.settings = y.settings || {ruby:'hard'}; y.seen = y.seen || {}; y.miss = y.miss || {};
   y.special = y.special || 0; y.plays = y.plays || 0;
   if(y.daily.secret === null){ y.daily.secret = (y.rank >= 4 && Math.random() < CFG.secretP) ? 'on' : 'off'; }
+  try{ y.homeGot = y.homeGot || {}; const nw = Object.keys(y.items).filter(k => y.items[k] && !y.homeGot[k] && FUR('yu_' + k));
+    if(nw.length){ const H = ensureHome(); nw.forEach(k => { H.inv['yu_' + k] = (H.inv['yu_' + k] || 0) + 1; y.homeGot[k] = 1; }); } }catch(e){}
   return y;
 }
+/* ショップの 飾りを「わたしの家」の 家具に する */
+try{ DECOS.forEach(d => { const id = 'yu_' + d.id; DEFAULT_ART[id] = IMG + 'dc_' + d.id + '.webp';
+  if(!FURNITURE.some(f => f.id === id)) FURNITURE.push({id, name:'ゆうえんちの ' + d.n, art:id, type:'fur', price:0, lv:1, sty:4, special:true, ev:'yuenchi'}); }); }catch(e){ console.warn('yuenchi fur', e); }
 const unlocked = r => YS().rank >= (r.rank || 1);
 const recId = () => { const L = RIDES.filter(unlocked); return L[hash(today()) % L.length].id; };
 const tickets = () => YS().tickets.n;
@@ -12986,7 +13031,7 @@ const homeBtn = () => `<button type="button" class="yhm" data-y="town"><svg view
 const back = (to, l = 'もどる') => `<button type="button" class="ybk" data-y="${to}"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>${l}</b></button>`;
 const head = (title, to = 'top', l) => `<header class="yhd">${back(to, l)}<h2>${title}</h2>${chips()}${LAY === 'tab' ? homeBtn() : ''}</header>`;
 const stars = n => `<span class="yst">${'★'.repeat(n)}<i>${'★'.repeat(Math.max(0, 5 - n))}</i></span>`;
-const rubyBtn = () => { const m = YS().settings.ruby; return `<button type="button" class="yrb" data-y="ruby">ふりがな：<b>${m === 'all' ? 'ぜんぶ' : m === 'none' ? 'なし' : 'むずかしい字'}</b></button>`; };
+const rubyBtn = () => { const m = YS().settings.ruby; return `<button type="button" class="yrb" data-y="ruby"><span>ふりがな</span><b>${m === 'all' ? 'ぜんぶ' : m === 'none' ? 'なし' : 'むずかしい字'}</b></button>`; };
 const rankInfo = () => { const y = YS(), k = y.rank, N = RANKS[k]; const P = RANKS[k - 1];
   if(!N) return {name:P.n, done:true, pd:1, pr:1, txt:'さいこうの ランク！'};
   const pd = Math.min(1, y.days.length / N.d), pr = Math.min(1, y.right.total / N.r);
@@ -13010,10 +13055,10 @@ function top(){
   const sec = y.daily.secret === 'on' ? `<button type="button" class="ysec" data-y="board" data-r="secret">✨ ひみつの のりもの 出現中！</button>` : '';
   if(LAY === 'ph') return `<div class="ytp ph">
     <div class="ysk"><div class="yib top"><img src="${IMG}top_ph.webp" alt="">${decoLayer('top')}
-      <div class="ysg"><small>まなびタウン</small><b>ゆうえんち</b></div>
       ${hz('hana',1,48,30,48)}${hz('bird',28,63,28,23)}${hz('turtle',49,76,23,21)}${hz('sheep',62,58,33,34)}
       <span class="ybb hidden"></span></div>
       <header class="yhd tp">${homeBtn()}${chips()}</header>
+      <div class="ysg ph"><small>まなびタウン</small><b>ゆうえんち</b></div>
     </div>
     <div class="ybt">
       <div class="yrec" data-y="board" data-r="${r.id}">★ 今日は ${R(r.rb, 1)}！<small>コイン 1.5倍</small></div>${sec}
@@ -13263,7 +13308,7 @@ function shop(){
       <button type="button" class="ygo" data-y="fuku" ${tickets() >= 5 ? '' : 'disabled'}>まわす（🎫5）</button></div></div>
       <div class="ygr">${DECOS.map(d => { const has = y.items[d.id], can = d.cur === 'p' ? bal >= d.cost : tickets() >= d.cost;
         return `<button type="button" class="yit ${has ? 'own' : ''}" data-y="buy" data-d="${d.id}" ${has || !can ? 'disabled' : ''}><img src="${IMG}dc_${d.id}.webp" alt=""><b>${d.n}</b><small>${has ? '✔ かざったよ' : d.cur === 'p' ? `${coin()}${d.cost}` : `🎫${d.cost}`}</small></button>`; }).join('')}</div>
-      <p class="hl">買った 飾りは トップと マップに かざられるよ</p></div></div>`;
+      <p class="hl">買った 飾りは ゆうえんちの トップと マップに かざられるよ。<br>🏠「わたしの家」の もようがえ でも かざれるよ（家具の トレイに 入るよ）</p></div></div>`;
 }
 async function fuku(){
   const y = YS(); if(y.tickets.n < 5) return; y.tickets.n -= 5; persist(); V.spin = 1; render(); snd('tap');
@@ -13332,7 +13377,7 @@ function bubble(el, txt){
 }
 function after(){
   if(!ROOT) return;
-  if(V.s === 'top') FX.push(setTimeout(() => { const z = ROOT && ROOT.querySelector(`.yhz[data-say="${LAY === 'ph' ? 'hana' : 'hana'}"]`); if(z && V.s === 'top') bubble(z, LAY === 'ph' ? 'たのしく まなぼう！' : 'どこに いってみよう？'); }, 350));
+  if(V.s === 'top' && LAY === 'tab') FX.push(setTimeout(() => { const z = ROOT && ROOT.querySelector(`.yhz[data-say="hana"]`); if(z && V.s === 'top') bubble(z, LAY === 'ph' ? 'たのしく まなぼう！' : 'どこに いってみよう？'); }, 350));
   if(V.s === 'board' && V.gate){ FX.push(setTimeout(() => { if(!ROOT || V.s !== 'board') return; V.gate = 0; V.s = 'ride'; render(); }, 1100)); }
   const sn = ROOT.querySelector('.ysn .burst'); if(sn) FX.push(setTimeout(() => sn.remove(), 900));
 }
@@ -13368,7 +13413,7 @@ document.addEventListener('click', async e => {
   if(a === 'buy'){ const d = DC(t.dataset.d), y = YS(); if(!d || y.items[d.id]) return;
     if(d.cur === 'p'){ if(((save.points && save.points.bal) || 0) < d.cost) return; try{ addPoints(-d.cost, `ゆうえんち ショップ：${d.n}`, true); }catch(e){} }
     else { if(y.tickets.n < d.cost) return; y.tickets.n -= d.cost; }
-    y.items[d.id] = 1; persist(); snd('fan'); try{ confetti(900); }catch(e){} toast(`「${d.n}」を かざったよ！`); render(); refreshChips(); return; }
+    y.items[d.id] = 1; YS(); persist(); snd('fan'); try{ confetti(900); }catch(e){} toast(`「${d.n}」を かざったよ！ わたしの家にも かざれるよ`); render(); refreshChips(); return; }
   if(a === 'fuku') return fuku();
 }, true);
 
@@ -13677,7 +13722,51 @@ body.yu659on{overflow:hidden}
 .ybook .rw.hd{grid-template-columns:minmax(0,1.4fr) minmax(0,3fr)}
 .ybook .hg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.ybook .hg .cl img,.ybook .hg .cl i{width:min(100%,52px)}
 .ytc{position:relative;display:flex;justify-content:center;height:170px}.ytc .ch{height:160px;animation:ystp .7s cubic-bezier(.2,1.6,.4,1) both}.ytc .fx{position:absolute;right:0;bottom:-6px;height:110px}
+
+/* v6.61 */
+.ytp.ph .ysg.ph{position:absolute;left:50%;top:calc(54px + env(safe-area-inset-top));transform:translateX(-50%);width:auto;height:auto;padding:3px 26px 7px;background:linear-gradient(180deg,#FFFBEF,#F6E2B8);border:4px solid #C99A63;border-radius:18px;box-shadow:0 4px 0 #A97A43,0 6px 12px rgba(0,0,0,.18);z-index:4;white-space:nowrap}
+.ytp.ph .ysg.ph b{font-size:clamp(24px,8vw,36px);text-shadow:none;letter-spacing:4px}
+.ytp.ph .ysg.ph small{font-size:clamp(10px,2.8vw,13px)}
+.ytp.ph .yhd.tp .ych{max-width:60%;flex-wrap:nowrap}
+.ysub{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.ysub button,.ysub .yrb{min-width:0;padding:4px 2px;font-size:clamp(10px,3vw,12.5px);white-space:normal;line-height:1.2;overflow:hidden;text-align:center}
+.yrb span::after{content:"：";}
+.ysub .yrb{display:flex;flex-direction:column;align-items:center;justify-content:center}.ysub .yrb span::after{content:""}.ysub .yrb b{font-size:.9em}
+.ysc>*{flex:none}
+.ycd .tx{padding:2px 0}
+.ypd .ln{height:auto;bottom:4%}
+.ypd .ln img{height:min(34vh,250px)!important;width:auto!important;max-width:none!important;max-height:none!important;aspect-ratio:1029/928;object-fit:contain}
+.ypd .ln img.sp{height:min(18vh,130px)!important;aspect-ratio:auto}
 `;
 document.head.appendChild(css);
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+/* =====================================================================
+   まなびタウン v6.61
+   ・BGM：しせつ（がっこう・だいがく・どうぶつえん・すいぞくかん・えき・びょういん）は 小さめ
+          ゆうえんちは ./assets/audio/BGM_yuenchi.mp3（ない ときは いつもの BGM）
+   ・まちの もようがえ：がめんが 上に もどらない
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.61.0';
+try{ const W = window.__bgm643; if(W){
+  const t0 = W.target; W.target = () => { const v = t0(); if(v === 0) return v;
+    if(document.querySelector('#sc631,#zq644,#stn636,#hp651')) return Math.min(v, .1); return v; };
+  const s0 = W.src; W.src = () => document.querySelector('#yu659') ? './assets/audio/BGM_yuenchi.mp3' : (s0 ? s0() : null);
+} }catch(e){}
+/* まちの もようがえ：スクロール位置を たもつ */
+function keep(fn){ return function(){
+  if(typeof curScreen === 'undefined' || curScreen !== 'town' || typeof townEdit === 'undefined' || !townEdit) return fn.apply(this, arguments);
+  const x = window.scrollX, y = window.scrollY, z = save.town && save.town.zoom, sc = document.querySelector('#scr-town'), h = sc ? sc.offsetHeight : 0;
+  const w0 = document.querySelector('#townMapWrap'), wl = w0 ? w0.scrollLeft : null, wt = w0 ? w0.scrollTop : null, sw = w0 ? w0.scrollWidth : 0;
+  if(sc && h) sc.style.minHeight = h + 'px';
+  const o = fn.apply(this, arguments);
+  const fix = () => { if(Math.abs(window.scrollY - y) > 1) window.scrollTo(x, y);
+    const w = document.querySelector('#townMapWrap'); if(w && wl != null && save.town && save.town.zoom === z && Math.abs(w.scrollWidth - sw) < 4){ if(Math.abs(w.scrollTop - wt) > 1) w.scrollTop = wt; if(Math.abs(w.scrollLeft - wl) > 1) w.scrollLeft = wl; } };
+  fix(); requestAnimationFrame(() => { fix(); if(sc) sc.style.minHeight = ''; }); setTimeout(fix, 60);
+  return o; }; }
+try{ renderTown = keep(renderTown); renderMap = keep(renderMap); if(typeof renderTray === 'function') renderTray = keep(renderTray); }catch(e){ console.warn('v6.61 keep', e); }
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 })();
