@@ -7710,18 +7710,18 @@ try{ if(typeof curScreen!=='undefined' && curScreen==='town') renderTown(); }cat
 })();
 
 /* =====================================================================
-   まなびタウン v6.31：がっこう・だいがく（仕様書 v0.2 の STEP1〜3）
-   ・がっこう：1じゅぎょう5問（かんたん／ふつう／むずかしい）、ヒントで さいちょうせん、
-              「わかった！」、★、ほうしゅうの 上限、ミッション、スタンプ・かいきん賞・ふくびき、
-              しゅっせき・お休みチケット、つうしんぼ、にがてノート、バッジ、きずな・おねがい、こんしゅうの 目標
-   ・だいがく：体験入学、入学試験、9テーマ（いまの 問題を つかう）、3ステージの 研究、
+   学びタウンv6.31：学校・大学（仕様書v0.2のSTEP1〜3）
+   ・学校：1授業5問（簡単／普通／難しい）、ヒントで再挑戦、
+              「わかった！」、★、報酬の上限、ミッション、スタンプ・皆勤賞・福引き、
+              出席・お休みチケット、通信簿、苦手ノート、バッジ、絆・お願い、今週の目標
+   ・大学：体験入学、入学試験、9テーマ（今の問題を使う）、3ステージの研究、
               ひらめきライフ、レベル（ベーシック／アドバンス／マスター）、学位、チェイン、おすすめテーマ
-   ※ 研究ノート（カード）・レシピ・ひみつ報酬・がっかい・新しい問題は STEP4〜5 で ついか
+   ※ 研究ノート（カード）・レシピ・秘密報酬・学会・新しい問題はSTEP4〜5で追加
    ===================================================================== */
 (function(){
 'use strict';
 const resBy = id => (save.town?.res || []).find(r => r.id===id);
-const VER = '6.36.0', IMG = './assets/images/v631/';
+const VER = '6.36.0', IMG = './assets/images/school/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt = n => (typeof nf==='function' ? nf(n) : String(n));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -7730,18 +7730,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const CFG = {
   dayHour:4, cryDay:3,
   coin:{easy:5, normal:10, hard:15}, mul:{easy:.5, normal:1, hard:1.5},
-  fullClass:3, overMul:.2, hintMul:.5, wakatta:2, revenge:20,
+  fullClass:3, overMul:.2, hintMul:.5, wakatta:2, revenge:20, noteGrad:3,
   kaikin:50, mission:10, chest:40, ticketMax:2,
-  badge:[{n:'ブロンズ', ic:'🥉'}, {n:'シルバー', ic:'🥈', st:60, d:7, rew:300}, {n:'ゴールド', ic:'🥇', st:250, d:30, each:20, rew:1000}, {n:'にじいろ', ic:'🌈', st:800, d:100, each:100, rew:0}],
-  attendRew:{3:{pt:30}, 7:{pt:100, cry:1, b:'いっしゅうかん'}, 14:{pt:150, fuku:1}, 30:{pt:500, deco:1, b:'ひとつき'}, 50:{pt:800, fuku:3}, 100:{deco:1, t:'かいきん', b:'ひゃくにち'}},
+  badge:[{n:'ブロンズ', ic:'🥉'}, {n:'シルバー', ic:'🥈', st:60, d:7, rew:300}, {n:'ゴールド', ic:'🥇', st:250, d:30, each:20, rew:1000}, {n:'虹色', ic:'🌈', st:800, d:100, each:100, rew:0}],
+  attendRew:{3:{pt:30}, 7:{pt:100, cry:1, b:'一週間'}, 14:{pt:150, fuku:1}, 30:{pt:500, deco:1, b:'ひと月'}, 50:{pt:800, fuku:3}, 100:{deco:1, t:'皆勤', b:'百日'}},
   bondLv:[0,10,30,60,100],
   fullRes:3, life:3, degPt:[10,20,40], resCoin:[30,60,120], resCry:[.1,.3,1], noMiss:1.5, daiP:.05, chain:[1,1.1,1.2], recoMul:1.3,
   adv:{n:5, days:3, wait:7}, mas:{n:10, days:10, wait:30},
-  degree:[{n:'がくせい'}, {n:'学士', pt:150, d:7, rew:500}, {n:'修士', pt:800, d:30, adv:1, rew:2000}, {n:'博士', pt:3000, d:100, mas:3, rew:0}],
-  stageSec:[60,50,40]
+  degree:[{n:'学生'}, {n:'学士', pt:150, d:7, rew:500}, {n:'修士', pt:800, d:30, adv:1, rew:2000}, {n:'博士', pt:3000, d:100, mas:3, rew:0}],
+  stageSec:[90,75,60]
 };
 
-/* ---------- 日づけ（午前4時で きりかえ） ---------- */
+/* ---------- 日付（午前4時できりかえ） ---------- */
 const D4 = () => dayKey(new Date(Date.now() - CFG.dayHour*3600e3));
 const dnum = d => Math.round(new Date(d + 'T12:00:00').getTime() / 864e5);
 const addDay = (d, n) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() + n); return dayKey(t); };
@@ -7766,21 +7766,21 @@ function DL(){
   if(!L || L.d !== d){ L = save.dl631 = {d, cry:0, cnt:{}, best:{}, bond:{}, res:0, chain:[], trial:0, exam:0, mis:null, kaikin:0, friend:0, combo3:0, rev:0, wak:0}; }
   return L;
 }
-/* 日づけを もどしても 二重に もらえない */
+/* 日付をもどしても二重にもらえない */
 function dayOK(){ const s = SV(), d = D4(); if(s.maxDay && d < s.maxDay) return false; s.maxDay = d; return true; }
 function giveCry(){ const L = DL(); if(L.cry >= CFG.cryDay) return false; L.cry++; save.crystal = (save.crystal||0) + 1; return true; }
 const pts = (p, why) => p > 0 ? givePts(Math.round(p), why) : 0;
 
 /* ---------- 教科 ---------- */
-const SUBJ = {jp:'こくご', math:'さんすう', sci:'りか', soc:'しゃかい', en:'えいご'};
+const SUBJ = {jp:'国語', math:'算数', sci:'理科', soc:'社会', en:'英語'};
 const SUBJ_IC = {jp:'📖', math:'🔢', sci:'🔬', soc:'🗾', en:'🔤'};
-const IMG633 = './assets/images/v633/';
+const IMG633 = './assets/images/school/';
 const SUBJ_ART = {jp:'icon_kokugo', math:'icon_sansu', sci:'icon_rika', soc:'icon_shakai', en:'icon_write'};
 const subjImg = k => `<img class="sic633" src="${X(artSrc(SUBJ_ART[k]) || '')}" alt="">`;
 const chestImg = () => `<img class="chi633" src="${X(artSrc('ui_chest') || '')}" alt="">`;
 const IC635 = {streak:'ic_streak', ticket:'ic_ticket', fuku:'ic_fuku', nigate:'ic_nigate', goal:'ic_goal', grad:'ic_grad', pals:'ic_pals', frag:'ic_frag', rnote:'ic_rnote', mission:'ic_mission'};
 const ART635 = {letter:'ui_letter', building:'ui_building', school:'bld_school', write:'icon_write', study:'ui_study', chest:'ui_chest'};
-const ic = (k, cls='') => `<img class="ii635 ${cls}" src="${X(IC635[k] ? './assets/images/v635/' + IC635[k] + '.webp' : (artSrc(ART635[k]) || ''))}" alt="">`;
+const ic = (k, cls='') => `<img class="ii635 ${cls}" src="${X(IC635[k] ? './assets/images/school/' + IC635[k] + '.webp' : (artSrc(ART635[k]) || ''))}" alt="">`;
 const MEDAL_F = ['', 'sepia(1) saturate(1.6) hue-rotate(-15deg) brightness(.85)', 'grayscale(1) brightness(1.25)', 'saturate(1.3)', 'hue-rotate(260deg) saturate(1.6) drop-shadow(0 0 3px #FFD24A)'];
 const medal = (i, cls='') => i ? `<img class="md636 ${cls}" src="${X(artSrc('mi_medal')||'')}" style="filter:${MEDAL_F[i]}" alt="">` : `<span class="md636 none ${cls}"></span>`;
 let QUITFN = null, QUITOK = false, QUITMSG = '';
@@ -7822,11 +7822,11 @@ function subjQ(subj, T, used, hard){
 }
 function expl(m, v){
   if(m.ex632){ const E = m.ex632;
-    return `<div class="ex56 s-sci"><div class="ex56Hd"><img src="${X(artSrc('bird_think')||'')}" alt=""><b>📖 シマくんの かいせつ</b><small>だいがく</small></div>
-      <div class="ex56Ans"><span class="ok">⭕ 正しい こたえ <b>${X(E.a)}</b></span>${v ? `<span class="ng">❌ きみの こたえ <b>${X(v)}</b></span>` : ''}</div>
+    return `<div class="ex56 s-sci bk66"><div class="ex56Hd"><img src="${X(artSrc('bird_think')||'')}" alt=""><b>📖 シマくんの解説</b><small>大学</small></div>
+      <div class="ex56Ans"><span class="ok">⭕ 正しい答え <b>${X(E.a)}</b></span>${v ? `<span class="ng">❌ 君の答え <b>${X(v)}</b></span>` : ''}</div>
       ${E.fig && FIG632[E.fig] ? `<div class="ex56Fig">${FIG632[E.fig]}</div>` : ''}<div class="ex56Why">🔍 ${X(E.ex)}</div></div>`; }
   try{ if(m.kq) return window.__explain56({}, '', {kq:m.kq, kind:'read'}); if(m.p56) return window.__explain56(m.p56, v, {}); }catch(e){}
-  return `<p class="dlgP">こたえは <b>${X(m.ansF || m.ans)}</b></p>`;
+  return `<p class="dlgP">答えは <b>${X(m.ansF || m.ans)}</b></p>`;
 }
 function noteRecent(m){ const s = SV(); if(m.key) s.recent[m.key] = D4();
   const lim = dnum(D4()) - 4; Object.keys(s.recent).forEach(k => { if(dnum(s.recent[k]) < lim) delete s.recent[k]; }); }
@@ -7862,21 +7862,21 @@ function teacherFor(subj){
   return choice(p.length ? p : f.length ? f : all);
 }
 const LINES = {
-  1:['きょうも がんばろうね！','いっしょに まなぼう','どの きょうかから やる？'],
-  2:['きみと いっしょだと たのしいな','この まえの もんだい むずかしかったね','ノート みせっこ しよう！'],
-  3:['きみの おかげで わかるように なったよ','せきがえで となりに なれたね！','あしたも いっしょに こようね'],
-  4:['せんせいやく、まかせて！','きみの ★の かず、すごいね','わからない ところ おしえてあげる'],
-  5:['ずっと ともだちだよ！','まちで おれいを わたすね','きみと まなぶのが いちばん たのしい！']
+  1:['今日も頑張ろうね！','一緒に学ぼう','どの教科からやる？'],
+  2:['君と一緒だと楽しいな','この前の問題難しかったね','ノート見せっこしよう！'],
+  3:['君のおかげでわかるようになったよ','席替えで隣になれたね！','明日も一緒にこようね'],
+  4:['先生役、任せて！','君の ★の数、すごいね','わからないところ教えてあげる'],
+  5:['ずっと友だちだよ！','町でお礼を渡すね','君と学ぶのが一番楽しい！']
 };
 const sayOf = r => speak(r, choice(LINES[bondLv(r.id)] || LINES[1]));
 
-/* ---------- がっこう：毎日の しかけ ---------- */
+/* ---------- 学校：毎日のしかけ ---------- */
 function special(d){ const w = wday(d); if(w>=1 && w<=5) return ['jp','math','sci','soc','en'][w-1];
   const s = SV(), pw = s.wk[addDay(wkOf(d), -7)] || {}; return SK.slice().sort((a,b) => (pw[a]||0) - (pw[b]||0))[0]; }
 function missions(){
   const L = DL(); if(L.mis) return L.mis;
   const sp = special(L.d), hasN = SV().notes.length > 0;
-  L.mis = {list:[{id:'sp', t:`${SUBJ[sp]}で ★2を とろう`}, hasN ? {id:'rev', t:'にがてリベンジを 1もん せいかい'} : {id:'c3', t:'れんぞくで 3もん せいかい'}, {id:'two', t:'2つの きょうかで じゅぎょう'}], done:[0,0,0], chest:0};
+  L.mis = {list:[{id:'sp', t:`${SUBJ[sp]}で ★2を取ろう`}, hasN ? {id:'rev', t:'苦手リベンジを1問正解'} : {id:'c3', t:'連続で3問正解'}, {id:'two', t:'2つの教科で授業'}], done:[0,0,0], chest:0};
   return L.mis;
 }
 function checkMissions(){
@@ -7895,9 +7895,9 @@ function weekTick(){
 const wkStars = (w) => SK.reduce((a,k) => a + ((SV().wk[w]||{})[k]||0), 0);
 function goalProg(){
   const s = SV(), G = s.goal; if(!G || !G.g) return null; const w = G.wk;
-  if(G.g==='days') return [Object.keys(s.wkDays).filter(d => wkOf(d)===w).length, 5, 'きょうしつに くる', 'にち'];
-  if(G.g==='stars') return [wkStars(w), 15, '★を あつめる', 'こ'];
-  return [(s.gradWk[w]||0), 3, 'にがてを そつぎょう', 'こ'];
+  if(G.g==='days') return [Object.keys(s.wkDays).filter(d => wkOf(d)===w).length, 5, '教室に来る', 'にち'];
+  if(G.g==='stars') return [wkStars(w), 15, '★を集める', 'こ'];
+  return [(s.gradWk[w]||0), 3, '苦手を卒業', 'こ'];
 }
 function checkGoal(){ const s = SV(), G = s.goal, p = goalProg(); if(!G || G.done || !p || p[0] < p[1]) return false; G.done = 1; return true; }
 function attend(){
@@ -7905,7 +7905,7 @@ function attend(){
   let msg = '';
   if(s.last){ const gap = dnum(d) - dnum(s.last) - 1;
     if(gap <= 0) s.streak++;
-    else if(gap <= (s.tickets||0)){ s.tickets -= gap; s.streak++; msg = 'おかえり！ チケットで れんぞくを まもったよ'; }
+    else if(gap <= (s.tickets||0)){ s.tickets -= gap; s.streak++; msg = 'お帰り！チケットで連続を守ったよ'; }
     else s.streak = 1;
   } else s.streak = 1;
   s.last = d; s.attend++; s.wkDays[d] = 1;
@@ -7926,15 +7926,15 @@ function badgeNext(){
 }
 function fukubiki(){
   const r = Math.random(); let out;
-  if(r < .5) out = {t:'コイン 100', pt:100};
-  else if(r < .8) out = {t:'コイン 200', pt:200};
-  else if(r < .95){ const it = decoItem(false); out = it ? {t:`まちの かざり「${it.name}」`, it} : {t:'コイン 200', pt:200}; }
-  else out = giveCry() ? {t:'すいしょう 1こ', cry:1} : {t:'コイン 200', pt:200};
-  if(out.pt) pts(out.pt, 'がっこうの ふくびき');
+  if(r < .5) out = {t:'コイン100', pt:100};
+  else if(r < .8) out = {t:'コイン200', pt:200};
+  else if(r < .95){ const it = decoItem(false); out = it ? {t:`町の飾り「${it.name}」`, it} : {t:'コイン200', pt:200}; }
+  else out = giveCry() ? {t:'水晶1個', cry:1} : {t:'コイン200', pt:200};
+  if(out.pt) pts(out.pt, '学校の福引き');
   return out;
 }
 
-/* ---------- にがてノート ---------- */
+/* ---------- 苦手ノート ---------- */
 function addNote(m, mark){
   const s = SV(), k = m.u==='kanji' ? 'k:' + m.kid : 'u:' + m.u;
   let n = s.notes.find(x => x.key===k);
@@ -7944,14 +7944,14 @@ function addNote(m, mark){
 }
 function pickNote(subj){
   const s = SV(), d = D4();
-  const L = s.notes.filter(n => n.subj===subj && n.add !== d && !n.ok.includes(d));
+  const L = s.notes.filter(n => n.subj===subj);
   if(!L.length) return null;
   return L.sort((a,b) => (b.mark==='k') - (a.mark==='k') || a.ok.length - b.ok.length)[0];
 }
 function noteQ(n){ if(n.u==='kanji'){ const q = BUILTIN.find(x => x.id===n.kid); return q ? genK(q) : null; } return MATH_UNITS[n.u] ? genU(n.u) : null; }
 function noteOK(n){
-  const s = SV(), d = D4(); if(!n.ok.includes(d)) n.ok.push(d);
-  if(n.ok.length >= 3){ s.notes = s.notes.filter(x => x !== n); s.grad = (s.grad||0) + 1; const w = wkOf(d); s.gradWk[w] = (s.gradWk[w]||0) + 1;
+  const s = SV(), d = D4(); n.ok.push(d);
+  if(n.ok.length >= CFG.noteGrad){ s.notes = s.notes.filter(x => x !== n); s.grad = (s.grad||0) + 1; const w = wkOf(d); s.gradWk[w] = (s.gradWk[w]||0) + 1;
     const M = {10:100, 50:500, 100:1000}[s.grad]; return {grad:true, mile:M ? {n:s.grad, pt:M} : null}; }
   return {grad:false};
 }
@@ -7968,14 +7968,14 @@ function root(){
 }
 function close(){ QUITOK = false; QUITFN = null; if(ROOT){ ROOT.classList.remove('show'); setTimeout(() => { if(ROOT && !ROOT.classList.contains('show')){ ROOT.remove(); ROOT = null; } }, 250); } CUR = null; document.body.classList.remove('sc631on'); try{ persist(); }catch(e){} }
 const GUIDE = {
-  school:[['bird_wave','ようこそ「がっこう」へ！','ここでは まちの なかまと いっしょに<br><b>こくご・さんすう・りか・しゃかい・えいご</b>の じゅぎょうが うけられるよ。'],
-    ['bird_think','じゅぎょうの うけかた','① きょうかを えらぶ<br>② かんたん／ふつう／むずかしい を えらぶ<br>③ 5もん とくと、はなまるの かずで <b>★</b>が もらえるよ。<br>まちがえても <b>ヒント</b>で もういちど ちょうせん できるよ！'],
-    ['bird_thumb','まいにちの おたのしみ','<b>きょうの ミッション</b>を 3つ クリアすると たからばこ。<br>5きょうか ぜんぶで <b>かいきん賞</b>と ふくびき券！<br>まいにち くると <b>れんぞく しゅっせき</b>が のびるよ。'],
-    ['bird_cheer','めざせ だいがく！','★を あつめて バッジを <b>ゴールド</b>に すると、<br>「だいがく」の 入学試験に ちょうせん できるよ。<br>さあ、はじめよう！']],
-  uni:[['bird_wave','ここは「だいがく」！','がっこうより <b>むずかしい</b> けど、<br>ごほうびも ずっと 大きいよ。'],
-    ['bird_think','入学するには？','がっこうで <b>ゴールドバッジ</b>に なると 入学試験（10もん中 7もん）に ちょうせん できるよ。<br>それまでは <b>体験入学</b>で 1日1もん ためせるよ。'],
-    ['bird_think','けんきゅうの しかた','テーマと レベルを えらんで けんきゅう スタート！<br><b>しらべる → かんがえる → はっぴょう</b>。<br>♥が 3つ なくなると しっぱいだよ。'],
-    ['bird_thumb','あつめて たのしい','せいこうすると <b>はっけんカード</b>が もらえるよ。研究ノートを うめよう！<br>テーマを マスターすると カフェの <b>とくべつ レシピ</b>。<br>ぜんぶ マスターすると…<b>ひみつ</b>が わかるかも？']]
+  school:[['bird_wave','ようこそ「学校」へ！','ここでは町の仲間と一緒に<br><b>国語・算数・理科・社会・英語</b>の授業が受けられるよ。'],
+    ['bird_think','授業の受け方','① 教科を選ぶ<br>② 簡単／普通／難しいを選ぶ<br>③ 5問解くと、花丸の数で <b>★</b>がもらえるよ。<br>間違えても <b>ヒント</b>でもう一度挑戦できるよ！'],
+    ['bird_thumb','毎日のお楽しみ','<b>今日のミッション</b>を3つクリアすると宝箱。<br>5教科全部で <b>皆勤賞</b>と福引き券！<br>毎日来ると <b>連続出席</b>が伸びるよ。'],
+    ['bird_cheer','目指せ大学！','★を集めてバッジを <b>ゴールド</b>にすると、<br>「大学」の入学試験に挑戦できるよ。<br>さあ、始めよう！']],
+  uni:[['bird_wave','ここは「大学」！','学校より <b>難しい</b> けど、<br>ご褒美もずっと大きいよ。'],
+    ['bird_think','入学するには？','学校で <b>ゴールドバッジ</b>になると入学試験（10問中7問）に挑戦できるよ。<br>それまでは <b>体験入学</b>で1日1問試せるよ。'],
+    ['bird_think','研究の仕方','テーマとレベルを選んで研究スタート！<br><b>調べる → 考える → 発表</b>。<br>♥が3つなくなると失敗だよ。'],
+    ['bird_thumb','集めて楽しい','成功すると <b>発見カード</b>がもらえるよ。研究ノートを埋めよう！<br>テーマをマスターするとカフェの <b>特別レシピ</b>。<br>全部マスターすると…<b>秘密</b>がわかるかも？']]
 };
 async function guide(kind, force){
   const g = save.guide635 || (save.guide635 = {}); if(g[kind] && !force) return false;
@@ -7985,7 +7985,7 @@ async function guide(kind, force){
     const [art, t, body] = P[i], last = i === P.length - 1;
     const v = await dialog(`<div class="gd635"><div class="gdb635"><img src="${X(artSrc(art)||'')}" alt=""></div><div class="gdt635"><b>シマくん</b><h3>${t}</h3><p>${body}</p></div></div>
       <div class="gdd635">${P.map((_, k) => `<i class="${k===i ? 'on' : ''}"></i>`).join('')}</div>`,
-      last ? [{label:'わかった！', cls:'gold', v:1}] : [{label:'つぎへ ▶', cls:'gold', v:1}, {label:'スキップ', cls:'white', v:0}], 'wide gdw635');
+      last ? [{label:'わかった！', cls:'gold', v:1}] : [{label:'次へ ▶', cls:'gold', v:1}, {label:'スキップ', cls:'white', v:0}], 'wide gdw635');
     if(!v) break;
   }
   return true;
@@ -8013,10 +8013,10 @@ let ST = {subj:null, diff:null};
 async function onClick(e){
   const t = e.target.closest('[data-a],[data-who],[data-subj],[data-diff],[data-th],[data-lv],[data-pal]'); if(!t || busy) return;
   if(e.target.closest('[data-pal]') && CUR==='school'){ const k = e.target.closest('[data-pal]').dataset.pal, b = ROOT.querySelector(`.pb639[data-pal="${k}"]`);
-    const OW = ['いっしょに 学ぼう！','どの きょうかに する？','★を あつめよう！','わからなくても だいじょうぶ！','きょうも えらいね！'], SE = ['きっと できるよ！','ミッション がんばろ！','れんぞくで せいかい めざそう！','たからばこ あけたいな〜','ぼくも おうえん してるよ！'];
+    const OW = ['一緒に学ぼう！','どの教科にする？','★を集めよう！','わからなくても大丈夫！','今日も偉いね！'], SE = ['きっとできるよ！','ミッション頑張ろ！','連続で正解目指そう！','宝箱開けたいな〜','ぼくも応援してるよ！'];
     if(b){ const L2 = k==='0' ? OW : SE; let v; do{ v = choice(L2); }while(v===b.textContent && L2.length > 1); b.textContent = v; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); sound('tap'); } return; }
   if(t.dataset.who && t.classList.contains('pl639')){ const r = resBy(t.dataset.who), b = t.querySelector('.bb639'); if(r && b){ b.textContent = sayOf(r); b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; sound('tap'); } return; }
-  if(t.dataset.who){ const r = resBy(t.dataset.who); if(r) bubble(t, CUR==='uni' ? speak(r, choice(['この データ、おもしろい！','つぎの はっけんは なにかな','いっしょに けんきゅう しよう！','ひらめいた かも…！'])) : sayOf(r)); return; }
+  if(t.dataset.who){ const r = resBy(t.dataset.who); if(r) bubble(t, CUR==='uni' ? speak(r, choice(['このデータ、面白い！','次の発見は何かな','一緒に研究しよう！','ひらめいたかも…！'])) : sayOf(r)); return; }
   if(t.dataset.subj){ ST.subj = t.dataset.subj; sound('ok'); schoolMain(); return; }
   if(t.dataset.diff){ ST.diff = t.dataset.diff; SV().lastDiff = ST.diff; sound('ok'); schoolMain(); return; }
   if(t.dataset.th){ UT.th = t.dataset.th; sound('ok'); uniMain(); return; }
@@ -8028,8 +8028,8 @@ async function onClick(e){
     else if(a==='start') await runClass(ST.subj, ST.diff);
     else if(a==='pick') await pickDiff(t.dataset.k);
     else if(a==='pickth') await pickTheme(t.dataset.k);
-    else if(a==='thlock') await dialog('<h2 class="dlgT">まだ ひらいて いないよ</h2><p class="dlgP">けんきゅうの かいすうが ふえると あたらしい こうざが ひらくよ。</p>', [{label:'わかった', cls:'gold', v:1}]);
-    else if(a==='uchest'){ const L = DL(); L.umis = L.umis || {chest:0}; if(L.umis.chest) toast('きょうの ごほうびは もらったよ'); else if(!UMIS.every(m => m.ok(L))) toast('ミッションを ぜんぶ クリアしてね'); else if(dayOK()){ L.umis.chest = 1; const u = UV(); pts(80, 'だいがく ミッション'); u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; } persist(); sound('fan'); confetti(1500); await dialog(`<div class="dlgArt"><img src="${IMG634}th_space.webp" alt="" style="height:90px"></div><h2 class="dlgT">すてきな ごほうび！</h2><p class="dlgP">コイン +80<br>${ic('frag')} ひらめきの かけら +1</p>`, [{label:'やったー！', cls:'gold', v:1}]); uniMain(); } }
+    else if(a==='thlock') await dialog('<h2 class="dlgT">まだ開いていないよ</h2><p class="dlgP">研究の回数が増えると新しい講座が開くよ。</p>', [{label:'わかった', cls:'gold', v:1}]);
+    else if(a==='uchest'){ const L = DL(); L.umis = L.umis || {chest:0}; if(L.umis.chest) toast('今日のご褒美はもらったよ'); else if(!UMIS.every(m => m.ok(L))) toast('ミッションを全部クリアしてね'); else if(dayOK()){ L.umis.chest = 1; const u = UV(); pts(80, '大学ミッション'); u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; } persist(); sound('fan'); confetti(1500); await dialog(`<div class="dlgArt"><img src="${IMG634}th_space.webp" alt="" style="height:90px"></div><h2 class="dlgT">素敵なご褒美！</h2><p class="dlgP">コイン +80<br>${ic('frag')} ひらめきのかけら +1</p>`, [{label:'やったー！', cls:'gold', v:1}]); uniMain(); } }
     else if(a==='cal') await calendar();
     else if(a==='mis') await misInfo();
     else if(a==='chest') await openChest();
@@ -8039,7 +8039,7 @@ async function onClick(e){
     else if(a==='req') await reqView();
     else if(a==='badge') await badgeView();
     else if(a==='grade'){ const k = KEY; close(); setTimeout(() => openBuilding(k), 300); }
-    else if(a==='touni'){ const k = (save.town && Object.keys(save.town.cells).find(k => save.town.cells[k]==='bg_university')); if(k){ KEY = k; CUR = 'uni'; uniMain(); } else await dialog(`<h2 class="dlgT">🎓 だいがく</h2><p class="dlgP">まちに「だいがく」を たてると かよえるよ。<br>（ショップ → たてもの、まちレベル12から）</p>`, [{label:'わかった', cls:'gold', v:1}]); }
+    else if(a==='touni'){ const k = (save.town && Object.keys(save.town.cells).find(k => save.town.cells[k]==='bg_university')); if(k){ KEY = k; CUR = 'uni'; uniMain(); } else await dialog(`<h2 class="dlgT">🎓 大学</h2><p class="dlgP">町に「大学」を建てると通えるよ。<br>（ショップ → 建物、町レベル12から）</p>`, [{label:'わかった', cls:'gold', v:1}]); }
     else if(a==='toschool'){ CUR = 'school'; schoolMain(); }
     else if(a==='trial') await trial();
     else if(a==='exam') await exam();
@@ -8052,7 +8052,7 @@ async function onClick(e){
   } finally { busy = false; }
 }
 
-/* ---------- がっこう：メイン ---------- */
+/* ---------- 学校：メイン ---------- */
 function schoolMain(){
   if(!ROOT) return; ROOT.classList.add('bgS633'); ROOT.classList.remove('bgU634'); const s = SV(), L = DL(); weekTick(); missions(); checkMissions();
   const sp = special(L.d), M = missions(), bn = badgeNext();
@@ -8061,12 +8061,12 @@ function schoolMain(){
   const rec = {easy:'normal', normal:'hard'};
   const recoDiff = ST.subj && (L.best[ST.subj]||0) >= 3 && rec[s.lastDiff] ? rec[s.lastDiff] : null;
   const ml = mates();
-  /* 友だち（きずなLv5）の おれい */
-  if(!L.friend){ const fr = RES().filter(r => bondLv(r.id) >= 5); L.friend = 1; if(fr.length){ pts(20 * fr.length, 'ともだちの おれい'); setTimeout(() => toast(`💗 ともだちから おれい +${20*fr.length}`), 400); } }
+  /* 友だち（絆Lv5）のお礼 */
+  if(!L.friend){ const fr = RES().filter(r => bondLv(r.id) >= 5); L.friend = 1; if(fr.length){ pts(20 * fr.length, '友だちのお礼'); setTimeout(() => toast(`💗 友だちからお礼 +${20*fr.length}`), 400); } }
   const subjBtn = k => { const b = L.best[k]||0, n = L.cnt[k]||0, glow = stamps===4 && b < 1;
     return `<button type="button" class="sb631 ${ST.subj===k ? 'on' : ''} ${glow ? 'glow' : ''}" data-subj="${k}" style="--c:${SUBJ_C[k]}">
-      ${k===sp ? '<em class="rib631">×1.5</em>' : ''}<span class="ic">${subjImg(k)}</span><b>${SUBJ[k]}</b>${stars(b)}<small>${n >= CFG.fullClass ? 'れんしゅう' : `${n}/${CFG.fullClass}`}</small>${b >= 1 ? '<i class="stamp631">✔</i>' : ''}</button>`; };
-  const D = {easy:['かんたん','df_easy'], normal:['ふつう','df_normal'], hard:['むずかしい','df_hard']};
+      ${k===sp ? '<em class="rib631">×1.5</em>' : ''}<span class="ic">${subjImg(k)}</span><b>${SUBJ[k]}</b>${stars(b)}<small>${n >= CFG.fullClass ? '練習' : `${n}/${CFG.fullClass}`}</small>${b >= 1 ? '<i class="stamp631">✔</i>' : ''}</button>`; };
+  const D = {easy:['簡単','df_easy'], normal:['普通','df_normal'], hard:['難しい','df_hard']};
   const base = CFG.coin[ST.diff] || 10, mul = (ST.subj===sp ? 1.5 : 1);
   const pm = ST.subj && (L.cnt[ST.subj]||0) >= CFG.fullClass;
   const tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
@@ -8075,36 +8075,36 @@ function schoolMain(){
   const tile = (a, img, n, badge, extra='') => `<button type="button" class="tl639" data-a="${a}"><span class="ti">${img}</span><b>${n}</b>${badge ? `<i class="bd639 ${badge==='!' ? 'red' : ''}">${badge}</i>` : ''}${extra}</button>`;
   ROOT.innerHTML = `<div class="wrap631 school s639">
     <div class="tp639"><header class="hd639">
-      <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>まちへ</b></button>
-      <img class="lg639" src="./assets/images/v639/logo_school.webp" alt="がっこう">
-      <button type="button" class="st639" data-a="cal"><span>${ic('streak')} れんぞく <em>${s.streak||0}</em> にち</span><span><i class="sx639">★</i> <em class="g">${tot}</em></span></button>
+      <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>町へ</b></button>
+      <img class="lg639" src="./assets/images/school/logo_school.webp" alt="学校">
+      <button type="button" class="st639" data-a="cal"><span>${ic('streak')} 連続 <em>${s.streak||0}</em> にち</span><span><i class="sx639">★</i> <em class="g">${tot}</em></span></button>
     </header>
-    <div class="cp639"><span>＼ ${dayOK() ? `きょうは ${SUBJ[sp]}の とくべつじゅぎょう！` : '日づけが もどっているよ'} ／</span></div>
-    <button type="button" class="pal639 ow" data-pal="0" aria-label="フクロウせんせい"></button><button type="button" class="pal639 se" data-pal="1" aria-label="アザラシくん"></button>
-    <span class="pb639 ow" data-pal="0">いっしょに 学ぼう！</span><span class="pb639 se" data-pal="1">きっと できるよ！</span></div>
-    <section class="pn639 ms639"><div class="ph639">${ic('mission')}<b>きょうの ミッション</b><span class="ct639">${M.done.filter(Boolean).length}/3</span></div>
+    <div class="cp639"><span>＼ ${dayOK() ? `今日は ${SUBJ[sp]}の特別授業！` : '日付が戻っているよ'} ／</span></div>
+    <button type="button" class="pal639 ow" data-pal="0" aria-label="フクロウ先生"></button><button type="button" class="pal639 se" data-pal="1" aria-label="アザラシくん"></button>
+    <span class="pb639 ow" data-pal="0">一緒に学ぼう！</span><span class="pb639 se" data-pal="1">きっとできるよ！</span></div>
+    <section class="pn639 ms639"><div class="ph639">${ic('mission')}<b>今日のミッション</b><span class="ct639">${M.done.filter(Boolean).length}/3</span></div>
       <div class="mw639"><ol data-a="mis">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}" style="--bg:${MCOL[i]}"><i class="ck639">${M.done[i] ? '<svg viewBox="0 0 20 20"><path d="M4 10.5L8.5 15L16 6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</i><span class="mi639">${MIC[m.id]||ic('mission')}</span><span class="mt639">${X(m.t)}</span></li>`).join('')}</ol>
-      <button type="button" class="cs639 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ！' : M.done.every(Boolean) ? 'タッチで あける！' : 'ぜんぶ できたら<br>ごほうびが もらえるよ！'}</small></button></div></section>
-    <section class="pn639"><div class="ph639"><img class="pi639" src="${X(artSrc('ui_study')||'')}" alt=""><b>きょうの じゅぎょう</b><span class="hint639">＼ すきな きょうかから はじめよう！ ／</span></div>
+      <button type="button" class="cs639 ${M.done.every(Boolean) && !M.chest ? 'glow' : ''} ${M.chest ? 'got' : ''}" data-a="chest">${chestImg()}<small>${M.chest ? 'もらったよ！' : M.done.every(Boolean) ? 'タッチで開ける！' : '全部できたら<br>ご褒美がもらえるよ！'}</small></button></div></section>
+    <section class="pn639"><div class="ph639"><img class="pi639" src="${X(artSrc('ui_study')||'')}" alt=""><b>今日の授業</b><span class="hint639">＼ 好きな教科から始めよう！／</span></div>
       <div class="sj639">${SK.map(k => { const bb = L.best[k]||0, n = L.cnt[k]||0, glow = stamps===4 && bb < 1;
-        return `<button type="button" class="sb639 ${glow ? 'glow' : ''}" data-a="pick" data-k="${k}" style="--c:${SUBJ_C[k]}">${k===sp ? '<em class="x15">×1.5</em>' : ''}${bb >= 1 ? '<i class="sp639">✔</i>' : ''}<span class="si">${subjImg(k)}</span><b>${SUBJ[k]}</b>${stars(bb)}<small>${n >= CFG.fullClass ? 'れんしゅう' : `きょう ${n}/${CFG.fullClass}`}</small></button>`; }).join('')}</div>
-      <div class="stp639">スタンプ ${stamps}/5 ${'<i class="on"></i>'.repeat(stamps)}${'<i></i>'.repeat(5-stamps)} ${stamps===4 ? '<b>あと1つで かいきん賞！</b>' : stamps===5 ? '<b>かいきん賞！</b>' : ''}</div></section>
-    <section class="pn639"><div class="ph639"><svg class="pi639" viewBox="0 0 32 32"><path d="M4 24L6 10L12 16L16 6L20 16L26 10L28 24Z" fill="#FFD24A" stroke="#B5701C" stroke-width="2" stroke-linejoin="round"/><rect x="4" y="24" width="24" height="4" rx="1.5" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/></svg><b>これまでの きろく</b><span class="dl639"></span></div>
+        return `<button type="button" class="sb639 ${glow ? 'glow' : ''}" data-a="pick" data-k="${k}" style="--c:${SUBJ_C[k]}">${k===sp ? '<em class="x15">×1.5</em>' : ''}${bb >= 1 ? '<i class="sp639">✔</i>' : ''}<span class="si">${subjImg(k)}</span><b>${SUBJ[k]}</b>${stars(bb)}<small>${n >= CFG.fullClass ? '練習' : `今日 ${n}/${CFG.fullClass}`}</small></button>`; }).join('')}</div>
+      <div class="stp639">スタンプ ${stamps}/5 ${'<i class="on"></i>'.repeat(stamps)}${'<i></i>'.repeat(5-stamps)} ${stamps===4 ? '<b>あと1つで皆勤賞！</b>' : stamps===5 ? '<b>皆勤賞！</b>' : ''}</div></section>
+    <section class="pn639"><div class="ph639"><svg class="pi639" viewBox="0 0 32 32"><path d="M4 24L6 10L12 16L16 6L20 16L26 10L28 24Z" fill="#FFD24A" stroke="#B5701C" stroke-width="2" stroke-linejoin="round"/><rect x="4" y="24" width="24" height="4" rx="1.5" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/></svg><b>これまでの記録</b><span class="dl639"></span></div>
       <div class="tls639">
         ${tile('badge', medal(s.badge+1), 'バッジ', '', bn ? `<span class="mb639"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span>` : '')}
-        ${tile('fuku', ic('fuku'), 'ふくびき', s.fuku ? s.fuku : '')}
-        ${tile('notes', ic('nigate'), 'にがて', s.notes.length ? s.notes.length : '')}
-        ${tile('goal', ic('goal'), 'しゅうの<br>目標', s.goal?.done ? '✓' : !s.goal?.g ? '!' : '')}
+        ${tile('fuku', ic('fuku'), '福引き', s.fuku ? s.fuku : '')}
+        ${tile('notes', ic('nigate'), '苦手', s.notes.length ? s.notes.length : '')}
+        ${tile('goal', ic('goal'), '週の<br>目標', s.goal?.done ? '✓' : !s.goal?.g ? '!' : '')}
       </div>
       <div class="sub639">
-        <button type="button" data-a="req">${ic('letter')} おねがい${s.req && !s.req.done ? '<i class="bd639 red">!</i>' : ''}</button>
-        <button type="button" data-a="touni">${ic('grad')} だいがく</button>
-        <button type="button" data-a="grade">${ic('building')} たてもの</button>
-        <button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
+        <button type="button" data-a="req">${ic('letter')} お願い${s.req && !s.req.done ? '<i class="bd639 red">!</i>' : ''}</button>
+        <button type="button" data-a="touni">${ic('grad')} 大学</button>
+        <button type="button" data-a="grade">${ic('building')} 建物</button>
+        <button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> 説明</button>
       </div></section>
   </div>`;
   persist();
-  /* 週の はじめ：つうしんぼ・目標 */
+  /* 週のはじめ：通信簿・目標 */
   if(!busy) setTimeout(weekStart, 350);
 }
 async function weekStart(){
@@ -8116,33 +8116,33 @@ async function weekStart(){
 }
 async function report(pw){
   const s = SV(), cur = s.wk[pw] || {}, prev = s.wk[addDay(pw, -7)] || {};
-  const lab = n => n >= 9 ? 'たいへん よくできました' : n >= 4 ? 'よくできました' : 'がんばろう';
+  const lab = n => n >= 9 ? '大変よくできました' : n >= 4 ? 'よくできました' : '頑張ろう';
   const acc = k => { const a = (s.acc[pw]||{})[k], b4 = [14,21,28].map(n => (s.acc[addDay(pw, -n)]||{})[k]).find(Boolean); return a && a[1] && b4 && b4[1] ? `${Math.round(b4[0]/b4[1]*100)}% → ${Math.round(a[0]/a[1]*100)}%` : ''; };
   const t = teacherFor(SK.slice().sort((a,b) => ((cur[b]||0)-(prev[b]||0)) - ((cur[a]||0)-(prev[a]||0)))[0]);
   const rows = SK.map(k => { const n = cur[k]||0, up = n - (prev[k]||0);
-    return `<tr><th>${subjImg(k)} ${SUBJ[k]}</th><td>★${n}</td><td>${lab(n)}${up > 0 ? `<b class="up631">+${up} ふえたよ！</b>` : ''}${acc(k) ? `<small>${acc(k)}</small>` : ''}</td></tr>`; }).join('');
-  await dialog(`<h2 class="dlgT">📗 つうしんぼ</h2><table class="rep631">${rows}</table>
-    ${t ? `<div class="talkBubble"><b>${X(t.name)}せんせい</b>${X(speak(t, 'こんしゅうも いっしょに がんばろうね！'))}</div>` : ''}`, [{label:'こんしゅうも がんばる！', cls:'gold', v:1}], 'wide');
+    return `<tr><th>${subjImg(k)} ${SUBJ[k]}</th><td>★${n}</td><td>${lab(n)}${up > 0 ? `<b class="up631">+${up} 増えたよ！</b>` : ''}${acc(k) ? `<small>${acc(k)}</small>` : ''}</td></tr>`; }).join('');
+  await dialog(`<h2 class="dlgT">📗 通信簿</h2><table class="rep631">${rows}</table>
+    ${t ? `<div class="talkBubble"><b>${X(t.name)}先生</b>${X(speak(t, '今週も一緒に頑張ろうね！'))}</div>` : ''}`, [{label:'今週も頑張る！', cls:'gold', v:1}], 'wide');
 }
 
-/* ---------- じゅぎょう ---------- */
+/* ---------- 授業 ---------- */
 function qPanel(head, body){
   const p = ROOT.querySelector('.qz631') || (() => { ROOT.innerHTML = `<div class="wrap631 quiz ${ROOT.classList.contains('bgS633') || ROOT.classList.contains('bgU634') ? 'card633' : ''}"><div class="qz631"></div></div>`; return ROOT.querySelector('.qz631'); })();
   p.innerHTML = (QUITOK ? '<button type="button" class="quit633">✕ やめる</button>' : '') + head + body; ROOT.scrollTop = 0;
   const q = p.querySelector('.quit633'); if(q) q.onclick = async e => { e.stopPropagation(); const fn = QUITFN; if(!fn) return;
-    const v = await dialog(`<h2 class="dlgT">${CUR==='uni' ? 'やめる？' : 'じゅぎょうを やめる？'}</h2><p class="dlgP">${QUITMSG || 'とちゅうで やめると この じゅぎょうの ★と ごほうびは もらえないよ。<br>（にがてノートに のせた もんだいは のこるよ）'}</p>`, [{label:'つづける', cls:'gold', v:0}, {label:'やめる', cls:'white', v:1}]);
+    const v = await dialog(`<h2 class="dlgT">${CUR==='uni' ? 'やめる？' : '授業をやめる？'}</h2><p class="dlgP">${QUITMSG || '途中でやめるとこの授業の ★とご褒美はもらえないよ。<br>（苦手ノートに載せた問題は残るよ）'}</p>`, [{label:'続ける', cls:'gold', v:0}, {label:'やめる', cls:'white', v:1}]);
     if(v && QUITFN===fn) fn(); };
   return p;
 }
-/* 1もん：mode 'school'（ヒントで もういちど）／'one'（1かいだけ） */
+/* 1問：mode 'school'（ヒントでもう一度）／'one'（1回だけ） */
 function askQ(m, head, mode, opt={}){
   return new Promise(res => {
     const ans = m.ansF || m.ans; let tries = 0, removed = new Set(opt.removed || []), timer = null, left = opt.sec || 0;
     const draw = (hint) => {
       const p = qPanel(head, `<div class="qq631">${m.html}</div>${m.say && typeof sayBtn==='function' ? sayBtn(m.say) : ''}
         ${hint ? `<div class="hint631">💡 ${hint}</div>` : ''}
-        ${opt.sec ? `<div class="tm631"><i style="width:${left/opt.sec*100}%"></i><b>⏱ ${left}びょう</b></div>` : ''}
-        <div class="ops631">${m.opts.map(o => `<button type="button" class="op631" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
+        ${opt.sec ? `<div class="tm631"><i style="width:${left/opt.sec*100}%"></i><b>⏱ ${left}秒</b></div>` : ''}
+        <div class="ops631${m.u === 'bank66' ? ' bk66' : ''}">${m.opts.map(o => `<button type="button" class="op631" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
         ${opt.tool ? `<div class="qt631">${opt.tool()}</div>` : ''}`);
       p.querySelectorAll('.op631').forEach(b => b.onclick = () => pick(b.dataset.o, b));
       p.querySelectorAll('[data-qt]').forEach(b => b.onclick = () => { const r = opt.onTool && opt.onTool(b.dataset.qt, m); if(r){ r.forEach(o => removed.add(o)); draw(hint); } });
@@ -8158,12 +8158,12 @@ function askQ(m, head, mode, opt={}){
       if(ok){ sound('ok'); btn && btn.classList.add('ok'); setTimeout(() => finish({ok:true, tries:tr, v}), 450); clearInterval(timer); return; }
       sound('ng'); btn && btn.classList.add('ng');
       if(mode==='school' && tries===1){ removed.add(v);
-        const h = m.hint || 'もんだいを もういちど ゆっくり よんでみよう。こたえの こうほが 1つ へったよ';
-        setTimeout(() => { lock = false; draw(`おしい！ ヒントを みて もういちど かんがえてみよう<br><small>${X(h)}</small>`)}, 500); return; }
+        const h = m.hint || '問題をもう一度ゆっくり読んでみよう。答えの候補が1つ減ったよ';
+        setTimeout(() => { lock = false; draw(`惜しい！ヒントを見てもう一度考えてみよう<br><small>${X(h)}</small>`)}, 500); return; }
       clearInterval(timer); setTimeout(() => finish({ok:false, tries:tr, v}), 450);
     };
     draw('');
-    if(opt.sec){ timer = setInterval(() => { left--; const tm = ROOT && ROOT.querySelector('.tm631'); if(tm){ tm.querySelector('i').style.width = (left/opt.sec*100) + '%'; tm.querySelector('b').textContent = `⏱ ${Math.max(0,left)}びょう`; } if(left <= 0) pick(null); }, 1000); }
+    if(opt.sec){ timer = setInterval(() => { left--; const tm = ROOT && ROOT.querySelector('.tm631'); if(tm){ tm.querySelector('i').style.width = (left/opt.sec*100) + '%'; tm.querySelector('b').textContent = `⏱ ${Math.max(0,left)}秒`; } if(left <= 0) pick(null); }, 1000); }
   });
 }
 function explainStep(m, v, head, btns){
@@ -8180,18 +8180,18 @@ async function runClass(subj, diff){
   const used = new Set(); let combo = 0, maxCombo = 0, coin = 0, hana = 0, wak = 0, revOK = 0, grads = [], first = 0, n = 5;
   const revSlot = diff==='normal' ? ri(1, 4) : -1;
   const T = diff==='easy' ? Math.max(1, g - (Math.random() < .5 ? 1 : 2)) : g;
-  if(teacher) await dialog(`<div class="dlgArt"><img src="${X(rsrc(teacher))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(teacher.name)}せんせい</b>${X(speak(teacher, sp===subj ? `きょうは ${SUBJ[subj]}の とくべつじゅぎょう！ コインが 1.5ばいだよ` : `${SUBJ[subj]}の じゅぎょうを はじめるよ！ おちついて かんがえてね`))}</div>${practice ? '<p class="dlgP facNote">きょうの まんがくは おわったので「れんしゅうモード」（コイン ×0.2）だよ</p>' : ''}`, [{label:'はーい！', cls:'gold', v:1}], 'wide');
+  if(teacher) await dialog(`<div class="dlgArt"><img src="${X(rsrc(teacher))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(teacher.name)}先生</b>${X(speak(teacher, sp===subj ? `今日は ${SUBJ[subj]}の特別授業！コインが1.5倍だよ` : `${SUBJ[subj]}の授業を始めるよ！落ち着いて考えてね`))}</div>${practice ? '<p class="dlgP facNote">今日の満額は終わったので「練習モード」（コイン ×0.2）だよ</p>' : ''}`, [{label:'はーい！', cls:'gold', v:1}], 'wide');
   QUITOK = true; QUITMSG = '';
-  const quitOut = () => { QUITOK = false; QUITFN = null; toast('じゅぎょうを やめたよ'); schoolMain(); };
+  const quitOut = () => { QUITOK = false; QUITFN = null; toast('授業をやめたよ'); schoolMain(); };
   for(let i=0; i<n; i++){
     let m = null, note = null;
     if(i===revSlot){ note = pickNote(subj); if(note) m = noteQ(note); if(m) m.rev = 1; }
     if(!m) m = subjQ(subj, T, used, diff==='hard');
     used.add(m.key); noteRecent(m);
-    const head = `<div class="qh631" style="--c:${SUBJ_C[subj]}"><span>${subjImg(subj)} ${SUBJ[subj]}・${{easy:'かんたん',normal:'ふつう',hard:'むずかしい'}[diff]}</span>
+    const head = `<div class="qh631" style="--c:${SUBJ_C[subj]}"><span>${subjImg(subj)} ${SUBJ[subj]}・${{easy:'簡単',normal:'普通',hard:'難しい'}[diff]}</span>
       <span class="dots631">${Array.from({length:n}, (_, k) => `<i class="${k < i ? 'd' : k===i ? 'c' : ''}"></i>`).join('')}</span>
-      ${combo >= 2 ? `<b class="cb631">れんぞく！ ${combo}もん</b>` : ''}${teacher ? `<img class="tc631" src="${X(rsrc(teacher))}" alt="">` : ''}</div>
-      ${m.rev ? '<div class="revt631">🔥 にがて リベンジ！</div>' : ''}${i===n-1 && hana===2 && diff!=='easy' ? '' : ''}${diff!=='easy' && hana + (n - i) >= 3 && hana >= 2 && i===n-1 && hana===4 ? '<div class="near631">あと1もんで ★3！</div>' : ''}`;
+      ${combo >= 2 ? `<b class="cb631">連続！ ${combo}問</b>` : ''}${teacher ? `<img class="tc631" src="${X(rsrc(teacher))}" alt="">` : ''}</div>
+      ${m.rev ? '<div class="revt631">🔥 苦手リベンジ！</div>' : ''}${i===n-1 && hana===2 && diff!=='easy' ? '' : ''}${diff!=='easy' && hana + (n - i) >= 3 && hana >= 2 && i===n-1 && hana===4 ? '<div class="near631">あと1問で ★3！</div>' : ''}`;
     const r = await askQ(m, head, 'school');
     if(r.quit) return quitOut();
     if(r.ok && r.tries===1){
@@ -8199,16 +8199,17 @@ async function runClass(subj, diff){
       coin += CFG.coin[diff] + (combo >= 2 ? combo - 1 : 0);
       if(combo >= 3) L.combo3 = 1;
       if(m.rev && note){ revOK++; L.rev++; const g2 = noteOK(note); if(g2.grad) grads.push(g2); }
-      await pop('💮', combo >= 2 ? `れんぞく！ ${combo}もん` : 'はなまる！');
+      await pop('💮', combo >= 2 ? `連続！ ${combo}問` : '花丸！');
     } else if(r.ok){
       combo = 0; coin += CFG.coin[diff] * CFG.hintMul;
-      await pop('⭕', 'ヒントで せいかい！ つぎは ヒントなしで いけるかな？');
+      if(m.rev && note){ revOK++; L.rev++; const g3 = noteOK(note); if(g3.grad) grads.push(g3); }
+      await pop('⭕', 'ヒントで正解！次はヒントなしで行けるかな？');
     } else {
       combo = 0;
       const v = await explainStep(m, r.v, head, [{label:'✅ わかった！（うっかり）', cls:'gold', v:'u'}, {label:'✅ わかった！（わからなかった）', cls:'gold', v:'k'}]);
       if(v==='__quit') return quitOut();
       addNote(m, v); wak++; L.wak++;
-      await pop('📒', 'えらい！ にがてノートに のせたよ');
+      await pop('📒', '偉い！苦手ノートに載せたよ');
     }
     const a = s.acc[wkOf(L.d)] || (s.acc[wkOf(L.d)] = {}); const aa = a[subj] || (a[subj] = [0,0]); aa[1]++; if(r.ok && r.tries===1) aa[0]++;
   }
@@ -8219,56 +8220,56 @@ async function runClass(subj, diff){
   if(good){
     let c = coin * (sp===subj ? 1.5 : 1) * (s.streak >= 30 ? 1.2 : s.streak >= 7 ? 1.1 : 1);
     if(practice) c *= CFG.overMul;
-    c = Math.round(c); total += c; lines.push(`🪙 じゅぎょう +${c}${sp===subj ? '（とくべつ ×1.5）' : ''}${practice ? '（れんしゅう）' : ''}`);
+    c = Math.round(c); total += c; lines.push(`🪙 授業 +${c}${sp===subj ? '（特別 ×1.5）' : ''}${practice ? '（練習）' : ''}`);
     if(wak){ total += wak * CFG.wakatta; lines.push(`📒 わかった！ +${wak * CFG.wakatta}`); }
-    if(revOK){ total += revOK * CFG.revenge; lines.push(`🔥 リベンジせいこう！ +${revOK * CFG.revenge}`); }
-    if(!practice && star===3 && diff==='hard'){ total += 30; lines.push('🏆 ちょうせん成功 +30'); }
-    if(!practice && star===3 && diff!=='easy' && Math.random() < (diff==='hard' ? .5 : .2)){ if(giveCry()){ cry++; lines.push('💎 すいしょう 1こ！'); } }
-    grads.forEach(g2 => { lines.push('🎓 にがて そつぎょう！'); if(g2.mile){ total += g2.mile.pt; lines.push(`🏅 そつぎょう ${g2.mile.n}もん たっせい +${g2.mile.pt}`); } });
+    if(revOK){ total += revOK * CFG.revenge; lines.push(`🔥 リベンジ成功！ +${revOK * CFG.revenge}`); }
+    if(!practice && star===3 && diff==='hard'){ total += 30; lines.push('🏆 挑戦成功 +30'); }
+    if(!practice && star===3 && diff!=='easy' && Math.random() < (diff==='hard' ? .5 : .2)){ if(giveCry()){ cry++; lines.push('💎 水晶1個！'); } }
+    grads.forEach(g2 => { lines.push('🎓 苦手卒業！'); if(g2.mile){ total += g2.mile.pt; lines.push(`🏅 卒業 ${g2.mile.n}問達成 +${g2.mile.pt}`); } });
   }
   /* ★・スタンプ */
   const oldB = L.best[subj] || 0, wk = wkOf(L.d);
   if(good && star > oldB){ const up = star - oldB; L.best[subj] = star; s.stars[subj] = (s.stars[subj]||0) + up; const W = s.wk[wk] || (s.wk[wk] = {}); W[subj] = (W[subj]||0) + up; }
   const stampNew = good && oldB < 1 && star >= 1;
   L.cnt[subj] = (L.cnt[subj]||0) + 1;
-  /* しゅっせき */
+  /* 出席 */
   const at = good ? attend() : null;
   if(at && at.msg) lines.unshift(`🎫 ${at.msg}`);
-  if(at && at.rew){ const R = at.rew; let t = `🎉 つうさん しゅっせき ${R.n}にち！`;
-    if(R.pt){ total += R.pt; t += ` +${R.pt}`; } if(R.cry && giveCry()){ cry++; t += '・💎1'; } if(R.fuku){ s.fuku += R.fuku; t += `・ふくびき×${R.fuku}`; }
-    if(R.deco){ const it = decoItem(R.n >= 100); if(it) t += `・かざり「${it.name}」`; } if(R.b && !s.badges.includes(R.b)){ s.badges.push(R.b); t += `・「${R.b}」バッジ`; } if(R.t && !s.titles.includes(R.t)){ s.titles.push(R.t); t += `・しょうごう「${R.t}」`; }
+  if(at && at.rew){ const R = at.rew; let t = `🎉 通算出席 ${R.n}日！`;
+    if(R.pt){ total += R.pt; t += ` +${R.pt}`; } if(R.cry && giveCry()){ cry++; t += '・💎1'; } if(R.fuku){ s.fuku += R.fuku; t += `・福引き×${R.fuku}`; }
+    if(R.deco){ const it = decoItem(R.n >= 100); if(it) t += `・飾り「${it.name}」`; } if(R.b && !s.badges.includes(R.b)){ s.badges.push(R.b); t += `・「${R.b}」バッジ`; } if(R.t && !s.titles.includes(R.t)){ s.titles.push(R.t); t += `・称号「${R.t}」`; }
     lines.push(t); }
-  /* かいきん賞 */
-  if(good && !L.kaikin && SK.every(k => (L.best[k]||0) >= 1)){ L.kaikin = 1; total += CFG.kaikin; s.fuku++; lines.push(`🏅 かいきん賞！ +${CFG.kaikin}・ふくびき券 1まい`); }
-  /* きずな */
+  /* 皆勤賞 */
+  if(good && !L.kaikin && SK.every(k => (L.best[k]||0) >= 1)){ L.kaikin = 1; total += CFG.kaikin; s.fuku++; lines.push(`🏅 皆勤賞！ +${CFG.kaikin}・福引き券1枚`); }
+  /* 絆 */
   const bondEv = [];
   if(good){ ml.forEach(r => bondEv.push(...addBond(r.id, 1, true))); }
-  if(good && s.req && !s.req.done && s.req.subj===subj){ s.req.done = 1; const r = resBy(s.req.rid); if(r){ bondEv.push(...addBond(r.id, 3, false)); total += 50; lines.push(`💌 ${r.name}の おねがい たっせい！ +50・きずな+3`); } }
-  bondEv.forEach(ev => { const r = resBy(ev.id); if(!r) return; if(ev.gift){ total += ev.gift; lines.push(`🎁 ${r.name}から おれいの しな +${ev.gift}`); } if(ev.lv) lines.push(`💗 ${r.name}と きずな Lv${ev.lv}！`); });
+  if(good && s.req && !s.req.done && s.req.subj===subj){ s.req.done = 1; const r = resBy(s.req.rid); if(r){ bondEv.push(...addBond(r.id, 3, false)); total += 50; lines.push(`💌 ${r.name}のお願い達成！ +50・絆+3`); } }
+  bondEv.forEach(ev => { const r = resBy(ev.id); if(!r) return; if(ev.gift){ total += ev.gift; lines.push(`🎁 ${r.name}からお礼のしな +${ev.gift}`); } if(ev.lv) lines.push(`💗 ${r.name}と絆Lv${ev.lv}！`); });
   /* ミッション・目標 */
   if(good){ checkMissions().forEach(mi => { total += CFG.mission; lines.push(`✅ ミッション「${mi.t}」 +${CFG.mission}`); });
-    if(checkGoal()){ total += 100; const r = choice(ml); if(r) addBond(r.id, 2, false); lines.push('🎯 こんしゅうの 目標 たっせい！ +100・しゅうかんバッジ'); } }
+    if(checkGoal()){ total += 100; const r = choice(ml); if(r) addBond(r.id, 2, false); lines.push('🎯 今週の目標達成！ +100・週間バッジ'); } }
   /* バッジ */
   let badgeUp = null; const bn = badgeNext();
-  if(good && bn && bn.ok){ s.badge++; badgeUp = bn.b; if(bn.b.rew){ total += bn.b.rew; } if(s.badge===3){ decoItem(true); if(!s.titles.includes('にじいろの がくしゅうしゃ')) s.titles.push('にじいろの がくしゅうしゃ'); }
-    lines.push(`🏅 ${bn.b.n}バッジに しょうかく！${bn.b.rew ? ` +${bn.b.rew}` : ''}${s.badge===2 ? '・だいがく 入学試験に ちょうせん できるよ' : ''}`); }
-  if(total) pts(total, `がっこう ${SUBJ[subj]}の じゅぎょう`);
+  if(good && bn && bn.ok){ s.badge++; badgeUp = bn.b; if(bn.b.rew){ total += bn.b.rew; } if(s.badge===3){ decoItem(true); if(!s.titles.includes('虹色の学習者')) s.titles.push('虹色の学習者'); }
+    lines.push(`🏅 ${bn.b.n}バッジに昇格！${bn.b.rew ? ` +${bn.b.rew}` : ''}${s.badge===2 ? '・大学入学試験に挑戦できるよ' : ''}`); }
+  if(total) pts(total, `学校 ${SUBJ[subj]}の授業`);
   persist();
-  /* けっか がめん */
+  /* けっかがめん */
   const nb = badgeNext(), least = SK.filter(k => k!==subj).sort((a,b) => (L.best[a]||0) - (L.best[b]||0) || (L.cnt[a]||0) - (L.cnt[b]||0))[0];
   const stamps = SK.filter(k => (L.best[k]||0) >= 1).length;
   const limit = SK.every(k => (L.cnt[k]||0) >= CFG.fullClass);
   ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">
     ${stage('bg_school', ml, {bounce: star===3, noLv:true, cls:'mini clear633'})}
-    <h2>じゅぎょう おしまい！</h2><div class="bigst631">${Array.from({length: diff==='easy' ? 1 : 3}, (_, i) => `<i class="${i < star ? 'on' : ''}" style="animation-delay:${.25 + i*.35}s">★</i>`).join('')}</div>
-    <p class="hn631">💮 はなまる ${hana}/5${maxCombo >= 2 ? `　さいだい れんぞく ${maxCombo}` : ''}</p>
-    ${!good ? '<p class="warn631">⚠️ 端末の 日づけが もどっているので ごほうびは ありません</p>' : ''}
+    <h2>授業おしまい！</h2><div class="bigst631">${Array.from({length: diff==='easy' ? 1 : 3}, (_, i) => `<i class="${i < star ? 'on' : ''}" style="animation-delay:${.25 + i*.35}s">★</i>`).join('')}</div>
+    <p class="hn631">💮 花丸 ${hana}/5${maxCombo >= 2 ? `　最大連続 ${maxCombo}` : ''}</p>
+    ${!good ? '<p class="warn631">⚠️ 端末の日付が戻っているのでご褒美はありません</p>' : ''}
     <ul class="ln631">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>
-    ${total ? `<div class="tot631">ごうけい <b>+${fmt(total)}</b> pt${cry ? '　💎×' + cry : ''}</div>` : ''}
-    ${stampNew ? `<div class="stp631">スタンプ ${stamps}/5 ${stamps===4 ? '<b>あと1つで かいきん賞！</b>' : ''}</div>` : ''}
-    ${nb ? `<div class="nx631">つぎの ${nb.b.n}まで：${nb.needSt ? `★あと${nb.needSt}こ` : '★OK'}／${nb.needD ? `あと${nb.needD}にち` : '日数OK'}${bar(nb.tot, nb.b.st)}</div>` : ''}
-    ${limit ? `<p class="tmr631">きょうは いっぱい がんばったね！ あしたは ${SUBJ[special(addDay(L.d,1))]}の とくべつじゅぎょうが まってるよ</p>` : `<p class="tmr631">つぎは <b>${SUBJ[least]}</b>が いいかも？</p>`}
-    <div class="rb631"><button type="button" class="btn gold" data-a="again">✏️ もう1じゅぎょう（${SUBJ[least]}）</button><button type="button" class="btn white" data-a="back">がっこうに もどる</button></div>
+    ${total ? `<div class="tot631">合計 <b>+${fmt(total)}</b> pt${cry ? '　💎×' + cry : ''}</div>` : ''}
+    ${stampNew ? `<div class="stp631">スタンプ ${stamps}/5 ${stamps===4 ? '<b>あと1つで皆勤賞！</b>' : ''}</div>` : ''}
+    ${nb ? `<div class="nx631">次の ${nb.b.n}まで：${nb.needSt ? `★あと${nb.needSt}個` : '★OK'}／${nb.needD ? `あと${nb.needD}日` : '日数OK'}${bar(nb.tot, nb.b.st)}</div>` : ''}
+    ${limit ? `<p class="tmr631">今日はいっぱい頑張ったね！明日は ${SUBJ[special(addDay(L.d,1))]}の特別授業が待ってるよ</p>` : `<p class="tmr631">次は <b>${SUBJ[least]}</b>がいいかも？</p>`}
+    <div class="rb631"><button type="button" class="btn gold" data-a="again">✏️ もう1授業（${SUBJ[least]}）</button><button type="button" class="btn white" data-a="back">学校に戻る</button></div>
   </div></div>`;
   if(star === 3){ confetti(1800); sound('fan'); } else sound(star ? 'ok' : 'ng');
   if(badgeUp) setTimeout(() => confetti(2500), 900);
@@ -8280,122 +8281,126 @@ function pop(ic, txt){
     p.insertAdjacentHTML('beforeend', `<div class="pop631"><span>${ic}</span><b>${X(txt)}</b></div>`); setTimeout(res, 900); });
 }
 
-/* ---------- がっこう：サブ がめん ---------- */
+/* ---------- 学校：サブがめん ---------- */
 async function calendar(){
   const s = SV(), next = Object.keys(CFG.attendRew).map(Number).find(n => n > s.attend);
   const d = D4(), cells = Array.from({length:14}, (_, i) => addDay(d, i - 13));
-  await dialog(`<h2 class="dlgT">${ic('streak','h')} しゅっせき</h2>
+  await dialog(`<h2 class="dlgT">${ic('streak','h')} 出席</h2>
     <div class="cal631">${cells.map(c => `<span class="${s.wkDays[c] ? 'on' : ''} ${c===d ? 'td' : ''}"><small>${+c.slice(8)}</small>${s.wkDays[c] ? '🌸' : ''}</span>`).join('')}</div>
-    <p class="dlgP">つうさん <b>${s.attend}にち</b>／れんぞく <b>${s.streak||0}にち</b><br>🎫 お休みチケット ${s.tickets||0}まい（まいしゅう月曜に 1まい・さいだい2まい）</p>
-    ${next ? `<p class="dlgP facNote">つぎの おめでとうは ${next}にち（あと ${next - s.attend}にち）</p>` : ''}
-    ${s.titles.length ? `<p class="dlgP">しょうごう：${s.titles.map(X).join('・')}</p>` : ''}`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+    <p class="dlgP">通算 <b>${s.attend}日</b>／連続 <b>${s.streak||0}日</b><br>🎫 お休みチケット ${s.tickets||0}枚（毎週月曜に1枚・最大2枚）</p>
+    ${next ? `<p class="dlgP facNote">次のおめでとうは ${next}日（あと ${next - s.attend}日）</p>` : ''}
+    ${s.titles.length ? `<p class="dlgP">称号：${s.titles.map(X).join('・')}</p>` : ''}`, [{label:'閉じる', cls:'gold', v:1}], 'wide');
 }
 async function misInfo(){
-  const M = missions(); await dialog(`<h2 class="dlgT">${ic('mission','h')} きょうの ミッション</h2><ul class="mi631">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}">${M.done[i] ? '✅' : '⬜'} ${X(m.t)} <small>+${CFG.mission}</small></li>`).join('')}</ul>
-    <p class="dlgP facNote">3つ ぜんぶで 🎁たからばこ（コイン+${CFG.chest}・きずな+1）。まいあさ 4じに かわるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+  const M = missions(); await dialog(`<h2 class="dlgT">${ic('mission','h')} 今日のミッション</h2><ul class="mi631">${M.list.map((m,i) => `<li class="${M.done[i] ? 'ok' : ''}">${M.done[i] ? '✅' : '⬜'} ${X(m.t)} <small>+${CFG.mission}</small></li>`).join('')}</ul>
+    <p class="dlgP facNote">3つ全部で 🎁宝箱（コイン+${CFG.chest}・絆+1）。毎朝4時に変わるよ</p>`, [{label:'閉じる', cls:'gold', v:1}], 'wide');
 }
 async function openChest(){
-  const M = missions(); if(M.chest) return toast('きょうの たからばこは あけたよ');
+  const M = missions(); if(M.chest) return toast('今日の宝箱は開けたよ');
   if(!M.done.every(Boolean)) return misInfo();
-  if(!dayOK()) return; M.chest = 1; pts(CFG.chest, 'がっこう ミッション たからばこ'); const r = choice(mates()); if(r) addBond(r.id, 1, false);
+  if(!dayOK()) return; M.chest = 1; pts(CFG.chest, '学校ミッション宝箱'); const r = choice(mates()); if(r) addBond(r.id, 1, false);
   persist(); sound('fan'); confetti(1500);
-  await dialog(`<div class="big631">${ic('chest','xl')}</div><h2 class="dlgT">たからばこ ゲット！</h2><p class="dlgP">コイン +${CFG.chest}${r ? `<br>💗 ${X(r.name)}と きずな +1` : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+  await dialog(`<div class="big631">${ic('chest','xl')}</div><h2 class="dlgT">宝箱ゲット！</h2><p class="dlgP">コイン +${CFG.chest}${r ? `<br>💗 ${X(r.name)}と絆 +1` : ''}</p>`, [{label:'やったー！', cls:'gold', v:1}]);
   schoolMain();
 }
 async function doFuku(){
-  const s = SV(); if(!s.fuku) return dialog(`<h2 class="dlgT">${ic('fuku','h')} ふくびき</h2><p class="dlgP">かいきん賞（5きょうか スタンプ）で ふくびき券が もらえるよ。<br>ハズレなし！</p>`, [{label:'とじる', cls:'gold', v:1}]);
+  const s = SV(); if(!s.fuku) return dialog(`<h2 class="dlgT">${ic('fuku','h')} 福引き</h2><p class="dlgP">皆勤賞（5教科スタンプ）で福引き券がもらえるよ。<br>ハズレなし！</p>`, [{label:'閉じる', cls:'gold', v:1}]);
   s.fuku--; const o = fukubiki(); persist(); sound('fan'); confetti(1200);
-  await dialog(`<div class="big631 spin631">${ic('fuku','xl')}</div><h2 class="dlgT">あたり！</h2><p class="dlgP"><b>${X(o.t)}</b></p><p class="dlgP facNote">のこり ふくびき券 ${s.fuku}まい</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+  await dialog(`<div class="big631 spin631">${ic('fuku','xl')}</div><h2 class="dlgT">あたり！</h2><p class="dlgP"><b>${X(o.t)}</b></p><p class="dlgP facNote">残り福引き券 ${s.fuku}枚</p>`, [{label:'やったー！', cls:'gold', v:1}]);
   schoolMain();
 }
 async function notesView(){
   const s = SV(); const by = SK.map(k => [k, s.notes.filter(n => n.subj===k)]);
-  const v = await dialog(`<h2 class="dlgT">${ic('nigate','h')} にがてノート</h2><p class="dlgP">いま <b>${s.notes.length}こ</b>　そつぎょう <b>${s.grad||0}こ</b></p>
-    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${subjImg(k)} ${SUBJ[k]}</b><span>${L.length}こ</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.n || MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
-    <p class="dlgP facNote">「にがてに チャレンジ」や「ふつう」の じゅぎょうで リベンジ（+${CFG.revenge}）。べつべつの 日に 3かい せいかいで そつぎょう！</p>`,
-    s.notes.length ? [{label:`🔥 にがてに チャレンジ（${Math.min(5, s.notes.length)}もん）`, cls:'gold', v:'all'}].concat(by.filter(([k, L]) => L.length).map(([k, L]) => ({label:`${subjImg(k)} ${SUBJ[k]}の にがて（${Math.min(5, L.length)}もん）`, cls:'white', v:k}))).concat([{label:'とじる', cls:'', v:0}])
-      : [{label:'とじる', cls:'gold', v:0}], 'wide');
+  const v = await dialog(`<h2 class="dlgT">${ic('nigate','h')} 苦手ノート</h2><p class="dlgP">今 <b>${s.notes.length}個</b>　卒業 <b>${s.grad||0}個</b></p>
+    <div class="nt631">${by.map(([k, L]) => `<div><b style="color:${SUBJ_C[k]}">${subjImg(k)} ${SUBJ[k]}</b><span>${L.length}個</span><small>${L.slice(0,4).map(n => (n.u==='kanji' ? (BUILTIN.find(q => q.id===n.kid)?.word || '漢字') : (MATH_UNITS[n.u]?.n || MATH_UNITS[n.u]?.name || n.u)) + ' ' + '●'.repeat(n.ok.length) + '○'.repeat(3 - n.ok.length)).map(X).join('<br>')}</small></div>`).join('')}</div>
+    <p class="dlgP facNote">「苦手にチャレンジ」や「普通」の授業でリベンジ（+${CFG.revenge}）。正解するたびに●が増えるよ。3回正解で卒業！</p>`,
+    s.notes.length ? [{label:`🔥 苦手にチャレンジ（${Math.min(5, s.notes.length)}問）`, cls:'gold', v:'all'}].concat(by.filter(([k, L]) => L.length).map(([k, L]) => ({label:`${subjImg(k)} ${SUBJ[k]}の苦手（${Math.min(5, L.length)}問）`, cls:'white', v:k}))).concat([{label:'閉じる', cls:'', v:0}])
+      : [{label:'閉じる', cls:'gold', v:0}], 'wide');
   if(v) await runNotes(v === 'all' ? null : v);
 }
 async function runNotes(subj){
-  const s = SV(), d = D4();
+  const s = SV(), L0 = DL(), good = dayOK();
   let L = s.notes.filter(n => !subj || n.subj === subj);
   if(!L.length) return;
-  L = L.slice().sort((a, b) => ((b.add !== d && !b.ok.includes(d)) - (a.add !== d && !a.ok.includes(d))) || (b.mark === 'k') - (a.mark === 'k') || a.ok.length - b.ok.length).slice(0, 5);
-  QUITOK = true; QUITMSG = 'とちゅうで やめても、ここまでの せいかいは のこるよ';
-  let ok = 0, coin = 0; const grads = [], n = L.length;
+  L = L.slice().sort((a, b) => (b.mark === 'k') - (a.mark === 'k') || a.ok.length - b.ok.length).slice(0, 5);
+  QUITOK = true; QUITMSG = '途中でやめても、ここまでの正解は残るよ';
+  let ok = 0, coin = 0; const grads = [], lines = [], n = L.length, G = CFG.noteGrad;
   for(let i = 0; i < n; i++){
     const note = L[i], m = noteQ(note); if(!m) continue; m.rev = 1;
-    const head = `<div class="qh631" style="--c:${SUBJ_C[note.subj]}"><span>${subjImg(note.subj)} にがてに チャレンジ</span>
+    const head = `<div class="qh631" style="--c:${SUBJ_C[note.subj]}"><span>${subjImg(note.subj)} 苦手にチャレンジ</span>
       <span class="dots631">${Array.from({length:n}, (_, k) => `<i class="${k < i ? 'd' : k===i ? 'c' : ''}"></i>`).join('')}</span></div>
-      <div class="revt631">🔥 にがて リベンジ！ ${'●'.repeat(note.ok.length)}${'○'.repeat(3 - note.ok.length)}</div>`;
+      <div class="revt631">\uD83D\uDD25苦手リベンジ！ ${'●'.repeat(note.ok.length)}${'○'.repeat(Math.max(0, G - note.ok.length))}</div>`;
     const r = await askQ(m, head, 'school');
     if(r.quit) break;
-    if(r.ok && r.tries === 1){
-      ok++; const can = note.add !== d && !note.ok.includes(d);
-      if(can){ coin += CFG.revenge; const g2 = noteOK(note); if(g2.grad) grads.push(g2); }
-      await pop('💮', can ? 'リベンジ せいこう！' : 'せいかい！（きょう のせた もんだいは あした また ちょうせん）');
+    if(r.ok){
+      ok++; L0.rev++; coin += r.tries === 1 ? CFG.revenge : Math.round(CFG.revenge / 2);
+      const g2 = noteOK(note); if(g2.grad) grads.push(g2);
+      await pop('\uD83D\uDCAE', g2.grad ? '苦手を卒業！' : `リベンジ成功！（あと${Math.max(0, G - note.ok.length)}回で卒業）`);
     } else {
       const v = await explainStep(m, r.v, head, [{label:'✅ わかった！（うっかり）', cls:'gold', v:'u'}, {label:'✅ わかった！（わからなかった）', cls:'gold', v:'k'}]);
       if(v === '__quit') break;
-      addNote(m, v); await pop('📒', 'だいじょうぶ！ また ちょうせん しよう');
+      addNote(m, v); await pop('\uD83D\uDCD2', '大丈夫！また挑戦しよう');
     }
   }
   QUITOK = false; QUITFN = null;
-  grads.forEach(g2 => { if(g2.mile) coin += g2.mile.pt; });
-  if(coin) pts(coin, 'がっこう にがてに チャレンジ');
+  grads.forEach(g2 => { if(g2.mile){ coin += g2.mile.pt; lines.push(`\uD83C\uDF93卒業${g2.mile.n}個の記念 +${g2.mile.pt}`); } });
+  if(good){
+    checkMissions().forEach(mi => { coin += CFG.mission; lines.push(`✅ ミッション「${mi.t}」 +${CFG.mission}`); });
+    if(checkGoal()){ coin += 100; lines.push('\uD83C\uDFAF今週の目標達成！ +100'); }
+  }
+  if(coin) pts(coin, '学校苦手にチャレンジ');
   persist();
-  await dialog(`<h2 class="dlgT">🔥 にがてに チャレンジ おしまい！</h2><p class="dlgP">せいかい <b>${ok}/${n}</b>${coin ? `<br>🪙 +${coin}` : ''}${grads.length ? `<br>🎓 にがて そつぎょう ${grads.length}こ！` : ''}</p><p class="dlgP facNote">べつべつの 日に 3かい せいかいで そつぎょう。のこり ${SV().notes.length}こ</p>`, [{label:'OK', cls:'gold', v:1}]);
+  await dialog(`<h2 class="dlgT">\uD83D\uDD25苦手にチャレンジおしまい！</h2><p class="dlgP">正解 <b>${ok}/${n}</b>${coin ? `<br>\uD83E\uDE99 +${coin}` : ''}${grads.length ? `<br>\uD83C\uDF93苦手を卒業 ${grads.length}個！` : ''}</p>${lines.length ? `<p class="dlgP facNote">${lines.map(X).join('<br>')}</p>` : ''}<p class="dlgP facNote">${G}回正解で卒業。残り ${SV().notes.length}個</p>`, [{label:'OK', cls:'gold', v:1}]);
   if(grads.length || ok >= 3){ try{ confetti(1200); }catch(e){} }
   schoolMain();
 }
 async function goalView(){
   const s = SV(), G = s.goal;
-  if(G && G.g){ const p = goalProg(); return dialog(`<h2 class="dlgT">${ic('goal','h')} こんしゅうの 目標</h2><p class="dlgP"><b>${X(p[2])}</b>：${p[0]} / ${p[1]}${p[3]}</p>${bar(p[0], p[1])}<p class="dlgP facNote">${G.done ? '✅ たっせい！ しゅうかんバッジ ゲット' : 'たっせいで コイン+100・きずな+2'}</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide'); }
-  const v = await dialog(`<h2 class="dlgT">${ic('goal','h')} こんしゅうの 目標を えらぼう</h2><p class="dlgP">じぶんで 1つ えらんでね（たっせいで コイン+100・きずな+2）</p>`,
-    [{label:'📅 5にち きょうしつに くる', cls:'white big', v:'days'}, {label:'⭐ ★を 15こ あつめる', cls:'white big', v:'stars'}, {label:'📒 にがてを 3つ そつぎょう', cls:'white big', v:'grad'}, {label:'あとで', cls:'', v:''}], 'wide');
-  if(v){ G.g = v; persist(); toast('目標を きめたよ！'); schoolMain(); }
+  if(G && G.g){ const p = goalProg(); return dialog(`<h2 class="dlgT">${ic('goal','h')} 今週の目標</h2><p class="dlgP"><b>${X(p[2])}</b>：${p[0]} / ${p[1]}${p[3]}</p>${bar(p[0], p[1])}<p class="dlgP facNote">${G.done ? '✅ 達成！週間バッジゲット' : '達成でコイン+100・絆+2'}</p>`, [{label:'閉じる', cls:'gold', v:1}], 'wide'); }
+  const v = await dialog(`<h2 class="dlgT">${ic('goal','h')} 今週の目標を選ぼう</h2><p class="dlgP">自分で1つ選んでね（達成でコイン+100・絆+2）</p>`,
+    [{label:'📅 5日教室に来る', cls:'white big', v:'days'}, {label:'⭐ ★を15個集める', cls:'white big', v:'stars'}, {label:'📒 苦手を3つ卒業', cls:'white big', v:'grad'}, {label:'後で', cls:'', v:''}], 'wide');
+  if(v){ G.g = v; persist(); toast('目標を決めたよ！'); schoolMain(); }
 }
 async function reqView(){
   const s = SV(), R = s.req, r = R && resBy(R.rid);
-  if(!r) return dialog(`<h2 class="dlgT">💌 おねがい</h2><p class="dlgP">いまは おねがいは ないよ</p>`, [{label:'とじる', cls:'gold', v:1}]);
-  const v = await dialog(`<div class="dlgArt"><img src="${X(rsrc(r))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(r.name)}</b>${X(speak(r, R.done ? 'てつだって くれて ありがとう！' : `${SUBJ[R.subj]}の しゅくだい てつだって！`))}</div>
-    <p class="dlgP facNote">${R.done ? '✅ たっせい ずみ（また らいしゅう）' : `${SUBJ[R.subj]}の じゅぎょうを 1かい うけると たっせい（きずな+3・コイン+50）`}</p>`, R.done ? [{label:'とじる', cls:'gold', v:0}] : [{label:`${subjImg(R.subj)} ${SUBJ[R.subj]}を えらぶ`, cls:'gold', v:1}, {label:'あとで', v:0}], 'wide');
+  if(!r) return dialog(`<h2 class="dlgT">💌 お願い</h2><p class="dlgP">今はお願いはないよ</p>`, [{label:'閉じる', cls:'gold', v:1}]);
+  const v = await dialog(`<div class="dlgArt"><img src="${X(rsrc(r))}" alt="" style="height:90px"></div><div class="talkBubble"><b>${X(r.name)}</b>${X(speak(r, R.done ? '手伝ってくれてありがとう！' : `${SUBJ[R.subj]}の宿題手伝って！`))}</div>
+    <p class="dlgP facNote">${R.done ? '✅ 達成ずみ（また来週）' : `${SUBJ[R.subj]}の授業を1回受けると達成（絆+3・コイン+50）`}</p>`, R.done ? [{label:'閉じる', cls:'gold', v:0}] : [{label:`${subjImg(R.subj)} ${SUBJ[R.subj]}を選ぶ`, cls:'gold', v:1}, {label:'後で', v:0}], 'wide');
   if(v){ ST.subj = R.subj; schoolMain(); }
 }
 async function pickDiff(k){
   const s = SV(), L = DL(), sp = special(L.d), n = L.cnt[k]||0;
   const rec = (L.best[k]||0) >= 3 && {easy:'normal', normal:'hard'}[s.lastDiff];
-  const D = [['easy','かんたん','df_easy','★1まで'],['normal','ふつう','df_normal','★3まで'],['hard','むずかしい','df_hard','★3＋ボーナス']];
+  const D = [['easy','簡単','df_easy','★1まで'],['normal','普通','df_normal','★3まで'],['hard','難しい','df_hard','★3＋ボーナス']];
   sound('ok');
-  const v = await dialog(`<div class="pk639" style="--c:${SUBJ_C[k]}"><span class="pki">${subjImg(k)}</span><div><b>${SUBJ[k]}</b>${k===sp ? '<em>とくべつ ×1.5！</em>' : ''}<small>${n >= CFG.fullClass ? 'きょうは れんしゅうモード（コイン×0.2）' : `きょう ${n}/${CFG.fullClass}かい`}</small></div></div><p class="dlgP">どの もんだいに ちょうせん する？</p>`,
-    D.map(([d, nm, im, sub]) => ({label:`<img src="${IMG633}${im}.webp" alt=""><b>${nm}</b><small>${sub}</small>${rec===d ? '<em>おすすめ</em>' : ''}${(s.lastDiff||'normal')===d ? '<i>まえかい</i>' : ''}`, cls:`white df639 ${d}`, v:d})).concat([{label:'やめる', cls:'white cancel639', v:''}]), 'wide dfw639');
+  const v = await dialog(`<div class="pk639" style="--c:${SUBJ_C[k]}"><span class="pki">${subjImg(k)}</span><div><b>${SUBJ[k]}</b>${k===sp ? '<em>特別 ×1.5！</em>' : ''}<small>${n >= CFG.fullClass ? '今日は練習モード（コイン×0.2）' : `今日 ${n}/${CFG.fullClass}回`}</small></div></div><p class="dlgP">どの問題に挑戦する？</p>`,
+    D.map(([d, nm, im, sub]) => ({label:`<img src="${IMG633}${im}.webp" alt=""><b>${nm}</b><small>${sub}</small>${rec===d ? '<em>おすすめ</em>' : ''}${(s.lastDiff||'normal')===d ? '<i>前回</i>' : ''}`, cls:`white df639 ${d}`, v:d})).concat([{label:'やめる', cls:'white cancel639', v:''}]), 'wide dfw639');
   if(!v) return;
   ST.subj = k; ST.diff = v; s.lastDiff = v; persist();
   await runClass(k, v);
 }
 async function badgeView(){
   const s = SV(), tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
-  await dialog(`<h2 class="dlgT">${medal(s.badge+1,'h')} がっこうバッジ</h2><p class="dlgP">★ ごうけい <b>${tot}</b>　つうさん しゅっせき <b>${s.attend}にち</b></p>
-    <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${medal(i+2)} ${b.n}</th><td>★${b.st}・${b.d}にち${b.each ? `・5きょうか ★${b.each}いじょう` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
+  await dialog(`<h2 class="dlgT">${medal(s.badge+1,'h')} 学校バッジ</h2><p class="dlgP">★ 合計 <b>${tot}</b>　通算出席 <b>${s.attend}日</b></p>
+    <table class="rep631">${CFG.badge.slice(1).map((b, i) => `<tr class="${s.badge >= i+1 ? 'got' : ''}"><th>${medal(i+2)} ${b.n}</th><td>★${b.st}・${b.d}日${b.each ? `・5教科 ★${b.each}以上` : ''}</td><td>${s.badge >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>
     <div class="sbst631">${SK.map(k => `<span>${subjImg(k)} ★${s.stars[k]||0}</span>`).join('')}</div>
-    ${(() => { const bn = badgeNext(); return bn ? `<div class="bdb639"><b>つぎの ${medal(s.badge+2,'s')}${bn.b.n}まで</b><div class="bb636"><small>★ ${bn.tot}/${bn.b.st}</small><span class="bar631"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span></div><div class="bb636"><small>しゅっせき ${s.attend}/${bn.b.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/bn.b.d*100)}%"></i></span></div>${bn.each.length ? `<div class="bb636 e"><small>5きょうか ★${bn.b.each}ずつ：あと ${bn.each.map(k => SUBJ[k]).join('・')}</small></div>` : ''}</div>` : ''; })()}
-    <p class="dlgP facNote">ゴールドで だいがくの 入学試験に ちょうせん できるよ</p>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+    ${(() => { const bn = badgeNext(); return bn ? `<div class="bdb639"><b>次の ${medal(s.badge+2,'s')}${bn.b.n}まで</b><div class="bb636"><small>★ ${bn.tot}/${bn.b.st}</small><span class="bar631"><i style="width:${Math.min(100, bn.tot/bn.b.st*100)}%"></i></span></div><div class="bb636"><small>出席 ${s.attend}/${bn.b.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/bn.b.d*100)}%"></i></span></div>${bn.each.length ? `<div class="bb636 e"><small>5教科 ★${bn.b.each}ずつ：あと ${bn.each.map(k => SUBJ[k]).join('・')}</small></div>` : ''}</div>` : ''; })()}
+    <p class="dlgP facNote">ゴールドで大学の入学試験に挑戦できるよ</p>`, [{label:'閉じる', cls:'gold', v:1}], 'wide');
 }
 
 /* =====================================================================
-   だいがく
+   大学
    ===================================================================== */
 const TH = [
-  {id:'env',  n:'かんきょう',        ic:'🌍', mul:1.5, need:0,  u:['r_bug','r_bugpic','r_plant','r_plantpic','r_water','r_land','r_flower','r_earth','cg_clim','w_cont','s_jp'], prop:'🌱'},
-  {id:'life', n:'いのち・けんこう',  ic:'❤️', mul:1.5, need:0,  u:['r_body','r_hbody','r_life','r_bio'], prop:'🩺'},
-  {id:'soc',  n:'しゃかい・けいざい', ic:'🏛️', mul:1.5, need:0,  u:['cg_world','cg_japan','cg_skill','civ1','civ2','w_geo','j_geo','w_cap'], prop:'📊'},
+  {id:'env',  n:'環境',        ic:'🌍', mul:1.5, need:0,  u:['r_bug','r_bugpic','r_plant','r_plantpic','r_water','r_land','r_flower','r_earth','cg_clim','w_cont','s_jp'], prop:'🌱'},
+  {id:'life', n:'命・健康',  ic:'❤️', mul:1.5, need:0,  u:['r_body','r_hbody','r_life','r_bio'], prop:'🩺'},
+  {id:'soc',  n:'社会・経済', ic:'🏛️', mul:1.5, need:0,  u:['cg_world','cg_japan','cg_skill','civ1','civ2','w_geo','j_geo','w_cap'], prop:'📊'},
   {id:'tech', n:'テクノロジー',      ic:'💻', mul:2,   need:5,  u:['pr_seq','pr_loop','pr_if','pr_word','pr_var','pr_bug','pr_bin','pr_flow','pr_algo'], prop:'💻'},
-  {id:'space',n:'うちゅう',          ic:'🪐', mul:2,   need:5,  u:['r_sky','r_moon','r_earth','r_sun'], prop:'🔭'},
-  {id:'chem', n:'かがく（元素）',    ic:'⚗️', mul:2,   need:15, u:['r_el1','r_el2','r_el3','r_chem','r_sol','r_burn'], prop:'🧪'},
-  {id:'lang', n:'ことばと えいご',   ic:'🔠', mul:2,   need:15, u:['ek_sent2','ek_make','ek_wh','ek_prep','ek_spell','ek_opp','b_tsunagu','kanji'], prop:'📚'},
-  {id:'math', n:'すうがく',          ic:'📐', mul:2.5, need:30, u:['ratio','ave','divisor','fracadd','vol','decmd','r_calc'], prop:'📐'},
-  {id:'logic',n:'ろんり パズル',     ic:'🧩', mul:2.5, need:30, u:['pr_algo','pr_flow','pr_bin','pr_bug','rules','box'], prop:'🧩'}
+  {id:'space',n:'宇宙',          ic:'🪐', mul:2,   need:5,  u:['r_sky','r_moon','r_earth','r_sun'], prop:'🔭'},
+  {id:'chem', n:'化学（元素）',    ic:'⚗️', mul:2,   need:15, u:['r_el1','r_el2','r_el3','r_chem','r_sol','r_burn'], prop:'🧪'},
+  {id:'lang', n:'言葉と英語',   ic:'🔠', mul:2,   need:15, u:['ek_sent2','ek_make','ek_wh','ek_prep','ek_spell','ek_opp','b_tsunagu','kanji'], prop:'📚'},
+  {id:'math', n:'数学',          ic:'📐', mul:2.5, need:30, u:['ratio','ave','divisor','fracadd','vol','decmd','r_calc'], prop:'📐'},
+  {id:'logic',n:'論理パズル',     ic:'🧩', mul:2.5, need:30, u:['pr_algo','pr_flow','pr_bin','pr_bug','rules','box'], prop:'🧩'}
 ];
 const THM = id => TH.find(t => t.id===id);
 const LV = ['ベーシック','アドバンス','マスター'];
@@ -8425,14 +8430,14 @@ function degNext(){
   return {D, needP:Math.max(0, D.pt - u.degPt), needD:Math.max(0, D.d - u.days), needA:D.adv ? Math.max(0, D.adv - advN) : 0, needM:D.mas ? Math.max(0, D.mas - masN) : 0,
     ok:u.degPt >= D.pt && u.days >= D.d && (!D.adv || advN >= D.adv) && (!D.mas || masN >= D.mas)};
 }
-/* ---------- v6.32（STEP4）：だいがくの 挑戦教科の 問題（テーマごと ベーシック／アドバンス／マスター 各10もん） ---------- */
-const BANK632 = {"space": [[["太陽に いちばん 近い わくせいは？", "水星", ["金星", "火星", "地球"], "水星は 太陽に いちばん 近い わくせい。太陽の まわりを 約88日で 1しゅう する。", "planets"], ["地球の まわりを まわっている 天体は？", "月", ["太陽", "火星", "金星"], "月は 地球の ただ1つの 衛星。約27日で 地球の まわりを 1しゅう する。", ""], ["太陽系で いちばん 大きい わくせいは？", "木星", ["土星", "地球", "海王星"], "木星の 直径は 地球の 約11倍。大きな うずの「大赤斑」が ある。", "planets"], ["きれいな 輪（リング）で 有名な わくせいは？", "土星", ["火星", "水星", "金星"], "土星の 輪は 氷や 岩の つぶが あつまって できている。", "planets"], ["「赤い わくせい」と よばれるのは？", "火星", ["木星", "金星", "天王星"], "火星の 地面には さびた 鉄を ふくむ すなが 多く、赤っぽく 見える。", "planets"], ["太陽のように 自分で 光る 天体を なんという？", "恒星", ["わくせい", "衛星", "すい星"], "恒星は 自分で 光と 熱を 出す。わくせいや 月は 太陽の 光を はね返して 光って 見える。", ""], ["夏の 大三角を つくる 星で ないのは？", "シリウス", ["ベガ", "デネブ", "アルタイル"], "夏の 大三角は ベガ・アルタイル・デネブ。シリウスは 冬の 星。", ""], ["北の 空で ほとんど うごかない 星は？", "北極星", ["シリウス", "ベテルギウス", "すばる"], "北極星は 地球の 自転の 軸の 先に あるので、ほとんど 位置が かわらない。方角の 目じるしに なる。", ""], ["地球が 太陽の まわりを 1しゅう する 時間は？", "約1年", ["約1日", "約1か月", "約10年"], "地球の 公転は 約365日。1日は 地球が 自分で 1回転（自転）する 時間。", ""], ["月の 形が 毎日 かわって 見える 理由は？", "太陽に てらされた 部分の 見え方が かわるから", ["月が 毎日 形を かえるから", "雲に かくれるから", "地球の かげが うつるから"], "月は 太陽の 光が あたった 半分だけ 光る。地球からの 見え方が かわるので 満ち欠けする。", ""]], [["わくせいを 太陽に 近い じゅんに ならべた とき 4番目は？", "火星", ["地球", "木星", "金星"], "「すい・きん・ち・か・もく・ど・てん・かい」。水星・金星・地球・火星・木星・土星・天王星・海王星。", "planets"], ["太陽の 光が 地球まで とどく 時間は およそ？", "約8分", ["約8秒", "約8時間", "約8日"], "光は 1秒に 約30万km すすむ。太陽まで 約1億5000万kmなので 約500秒＝約8分。", ""], ["1光年とは 何を あらわす 単位？", "光が 1年で すすむ きょり", ["光が 1年で へる 明るさ", "1年の 長さ", "星の 重さ"], "1光年は 約9兆5000億km。とても 遠い 星までの きょりに つかう。", ""], ["金星が 明け方か 夕方にしか 見えない 理由は？", "地球より 内側を まわっているから", ["自分で 光るから", "夜は ねむっているから", "月に かくれるから"], "金星は 地球より 内側を まわるので、いつも 太陽の 近くに 見える。だから 真夜中には 見えない。", ""], ["太陽の 表面温度は およそ？", "約6000℃", ["約600℃", "約60℃", "約60万℃"], "太陽の 表面は 約6000℃。黒点は まわりより ひくい 約4000℃なので 黒く 見える。", ""], ["月食が おこるのは どんな ならび方の とき？", "太陽・地球・月が 一直線", ["太陽・月・地球が 一直線", "月と 火星が 重なる", "地球と 金星が 重なる"], "月食は 地球の かげに 月が 入る 現象で、満月の ときに おこる。太陽・月・地球の じゅんに ならぶと 日食。", "eclipse"], ["太陽を のぞいて 地球に いちばん 近い 恒星は？", "ケンタウルス座の 星", ["シリウス", "北極星", "ベガ"], "ケンタウルス座の プロキシマ星は 約4.2光年。光でも 4年以上 かかる。", ""], ["岩で できた「地球型わくせい」の 組み合わせは？", "水星・金星・地球・火星", ["木星・土星・天王星・海王星", "地球と 木星だけ", "すべての わくせい"], "内側の 4つは 岩で できた 小さく 重い わくせい。外側の 4つは ガスや 氷が 多い 大きな わくせい。", "planets"], ["オリオン座の 赤い 1等星は？", "ベテルギウス", ["リゲル", "シリウス", "アンタレス"], "ベテルギウスは 赤い 1等星、リゲルは 青白い 1等星。どちらも オリオン座。", ""], ["すい星（ほうき星）に 尾が できる 理由は？", "太陽に 近づくと 氷や ちりが ふき出すから", ["燃えているから", "月の 光を うけるから", "地球の 空気に ふれるから"], "すい星は 氷と ちりの かたまり。太陽に 近づくと ガスや ちりが 出て、太陽と はんたいがわに 尾が のびる。", ""]], [["天王星の とくちょうとして 正しいのは？", "自転の 軸が 横だおしに なっている", ["太陽系で いちばん あつい", "輪が まったく ない", "太陽に いちばん 近い"], "天王星は 自転軸が 約98度 かたむき、横だおしの ような かっこうで まわっている。", "planets"], ["金星が 水星より 遠いのに 表面温度が 高い 理由は？", "二酸化炭素の あつい 大気の 温室効果", ["自分で 光っているから", "火山が ないから", "自転が はやいから"], "金星の 大気は ほとんど 二酸化炭素で 熱が にげにくい。表面は 約460℃にも なる。", ""], ["夏至の 日、太陽の 南中高度は 1年の 中で どうなる？", "いちばん 高い", ["いちばん ひくい", "春分と 同じ", "0度に なる"], "地球の 軸が かたむいているので、夏至は 太陽が いちばん 高く のぼり、昼が いちばん 長い。", ""], ["季節が うまれる いちばんの 理由は？", "地球の 軸が かたむいたまま 公転するから", ["夏は 太陽に 近いから", "月の 引力", "太陽の 明るさが かわるから"], "軸の かたむき（約23.4度）で 太陽の 高さと 昼の 長さが かわり、季節が できる。", ""], ["恒星の 色が 青白いほど 表面温度は？", "高い", ["ひくい", "色と 温度は 関係ない", "0℃"], "恒星は 温度が 高いほど 青白く、ひくいほど 赤く 見える。", ""], ["月が いつも 同じ 面を 地球に むけている 理由は？", "月の 自転と 公転の 周期が 同じだから", ["月は 自転しないから", "地球の かげの せい", "月の うらは 光らないから"], "月は 約27.3日で 1回 自転し、同じ 時間で 地球を 1しゅう する。だから 同じ 面を むけつづける。", ""], ["天の川銀河について 正しいのは？", "1000億こ以上の 恒星が あつまっている", ["太陽が 中心に ある", "恒星は 100こ くらい", "天の川は 雲の 帯"], "太陽は 銀河の 中心から はなれた ところに ある。天の川は 銀河を 内側から 見た すがた。", ""], ["北の 空の 星が 北極星を 中心に まわって 見える 角度は 1時間に およそ？", "15度", ["1度", "30度", "90度"], "地球は 24時間で 360度 自転する。360÷24＝15度。", ""], ["ブラックホールの せつめいで 正しいのは？", "重力が とても 強く 光も ぬけ出せない", ["とても 明るく 光る 星", "中が からっぽの 穴", "太陽系の 中に ある"], "大きな 恒星が 一生を 終えて つぶれると できる ことが ある。光も にげられないので 直接は 見えない。", ""], ["太陽の エネルギーの みなもとは？", "水素が ヘリウムに かわる 核融合", ["石炭が 燃えている", "電気", "地球の 光の 反射"], "太陽の 中心では 約1500万℃で 水素の 原子核が くっつき、ばく大な エネルギーが 出る。", ""]]], "chem": [[["水の 化学式は？", "H₂O", ["CO₂", "O₂", "NaCl"], "水は 水素原子 2こと 酸素原子 1こで できている。", ""], ["二酸化炭素の 化学式は？", "CO₂", ["CO", "H₂O", "O₂"], "炭素（C）1こと 酸素（O）2こ。ものが 燃えたり 生き物が 呼吸すると 出る。", ""], ["食塩（塩化ナトリウム）の 化学式は？", "NaCl", ["KCl", "NaOH", "HCl"], "ナトリウム（Na）と 塩素（Cl）が 1：1で 結びついている。", ""], ["ものが 燃えるのを 助ける 気体は？", "酸素", ["窒素", "二酸化炭素", "水素"], "酸素には ものを 燃やす はたらきが ある。酸素 自体は 燃えない。", ""], ["空気中に いちばん 多く ふくまれる 気体は？", "窒素", ["酸素", "二酸化炭素", "アルゴン"], "空気の 約78%が 窒素、約21%が 酸素。", "air"], ["石灰水を 白く にごらせる 気体は？", "二酸化炭素", ["酸素", "水素", "窒素"], "二酸化炭素を 石灰水に 通すと 炭酸カルシウムが できて 白く にごる。", ""], ["火を 近づけると ポンと 音を 立てて 燃える 気体は？", "水素", ["酸素", "二酸化炭素", "窒素"], "水素は 燃えると 酸素と 結びついて 水に なる。", ""], ["元素記号「Fe」は 何？", "鉄", ["フッ素", "金", "銀"], "Fe は ラテン語の ferrum（鉄）から。フッ素は F。", ""], ["元素記号「Au」は 何？", "金", ["銀", "アルミニウム", "銅"], "Au は ラテン語の aurum（金）から。銀は Ag、銅は Cu、アルミニウムは Al。", ""], ["固体→液体→気体と すがたが かわることを 何という？", "状態変化", ["化学変化", "中和", "ろ過"], "すがたが かわっても 物質そのものは かわらない。これが 状態変化。", ""]], [["酸性の 水よう液に 青い リトマス紙を つけると？", "赤く なる", ["青の まま", "白く なる", "黄色に なる"], "酸性は 青→赤、アルカリ性は 赤→青。中性は どちらも かわらない。", ""], ["BTB液が 黄色に なるのは 何性？", "酸性", ["中性", "アルカリ性", "どれでも ない"], "BTB液は 酸性で 黄色、中性で 緑、アルカリ性で 青。", "btb"], ["塩酸と 水酸化ナトリウム水よう液を まぜると できる 塩は？", "塩化ナトリウム", ["炭酸カルシウム", "硫酸銅", "塩化カリウム"], "酸と アルカリが 打ち消しあう 中和で、水と 塩（ここでは 食塩）が できる。", ""], ["鉄が さびる とき 結びつく 気体は？", "酸素", ["窒素", "水素", "ヘリウム"], "鉄の さびは 鉄が 酸素と 結びついた もの。このような 変化を 酸化という。", ""], ["物質が 酸素と 結びつくことを 何という？", "酸化", ["還元", "中和", "ろ過"], "燃焼は はげしい 酸化。反対に 酸素を うばわれる ことを 還元という。", ""], ["原子の 中心に ある ものは？", "原子核", ["電子", "分子", "イオン"], "原子は 中心の 原子核（陽子と 中性子）と、そのまわりの 電子で できている。", "atom"], ["周期表で いちばん 右の 列（18族）の なかまは？", "貴ガス（希ガス）", ["アルカリ金属", "ハロゲン", "遷移金属"], "ヘリウム・ネオン・アルゴンなど。ほかの 物質と ほとんど 反応しない。", ""], ["水を 電気分解すると −極（陰極）に 出る 気体は？", "水素", ["酸素", "二酸化炭素", "塩素"], "水 → 水素 ＋ 酸素。体積は 水素：酸素＝2：1。水素は −極、酸素は ＋極に 出る。", ""], ["炭酸水素ナトリウムを 加熱すると 出てくる 気体は？", "二酸化炭素", ["酸素", "水素", "アンモニア"], "重そうを 熱すると 炭酸ナトリウム・水・二酸化炭素に 分かれる（分解）。", ""], ["水に よく とけて アルカリ性を しめし、つんとした においの 気体は？", "アンモニア", ["塩化水素", "二酸化炭素", "酸素"], "アンモニアは 水に とても よく とけ、アルカリ性。においが 強い。", ""]], [["質量保存の 法則とは？", "化学変化の 前後で 全体の 質量は かわらない", ["気体には 重さが ない", "水に とかすと 重さが へる", "加熱すると 必ず 重くなる"], "原子の 組み合わせが かわるだけで、原子の 数と 種類は かわらない。だから 全体の 質量は 同じ。", ""], ["銅 4.0g を 完全に 酸化させると 酸化銅 5.0g。結びついた 酸素は？", "1.0g", ["4.0g", "5.0g", "9.0g"], "5.0−4.0＝1.0g。銅と 酸素は 4：1の 質量の わりあいで 結びつく。", ""], ["銅 8.0g が 完全に 酸化すると 酸化銅は 何g？（銅：酸素＝4：1）", "10.0g", ["9.0g", "12.0g", "8.0g"], "酸素は 8.0÷4＝2.0g。酸化銅は 8.0＋2.0＝10.0g。", ""], ["原子の 陽子の 数で 決まるのは？", "元素の 種類（原子番号）", ["原子の 色", "分子の 形", "電子の 重さ"], "原子番号＝陽子の 数。陽子 1こなら 水素、6こなら 炭素、8こなら 酸素。", "atom"], ["原子番号 11 の 元素は？", "ナトリウム", ["マグネシウム", "ネオン", "アルミニウム"], "10 ネオン、11 ナトリウム、12 マグネシウム、13 アルミニウム。", ""], ["イオンについて 正しいのは？", "電子を 失うと 陽イオンに なる", ["電子を 失うと 陰イオンに なる", "陽子が ふえると イオンに なる", "イオンは 電気を おびない"], "電子（−）を 失うと ＋の 陽イオン、電子を うけとると −の 陰イオン。", ""], ["2H₂ ＋ O₂ → 2H₂O で、水素分子 4こと 反応する 酸素分子は？", "2こ", ["1こ", "4こ", "8こ"], "式から 水素分子：酸素分子＝2：1。4こなら 酸素は 2こ。", ""], ["10%の 食塩水 200g に ふくまれる 食塩は？", "20g", ["10g", "2g", "180g"], "200×0.1＝20g。濃度（%）＝とけている ものの 質量 ÷ 水よう液の 質量 ×100。", ""], ["密度 2.7g/cm³ の アルミニウム 10cm³ の 質量は？", "27g", ["2.7g", "270g", "12.7g"], "質量＝密度×体積＝2.7×10＝27g。", ""], ["マグネシウムを 燃やすと できる 物質は？", "酸化マグネシウム", ["炭酸マグネシウム", "水酸化マグネシウム", "塩化マグネシウム"], "2Mg＋O₂→2MgO。強い 光を 出して 燃え、白い 酸化マグネシウムに なる。", ""]]], "lang": [[["「I ___ a student.」の ___ に 入るのは？", "am", ["is", "are", "be"], "I には am、you と 複数には are、he・she・it には is。", ""], ["「He ___ soccer every day.」の ___ は？", "plays", ["play", "playing", "played"], "主語が 3人称単数（He）で 今の ことなので 動詞に s を つける。", ""], ["「さるも 木から 落ちる」の いみは？", "名人でも 失敗する ことが ある", ["さるは 木登りが へた", "高い ところは 危ない", "練習が 大事"], "上手な 人でも ときには 失敗する、という いみ。にた ことわざに「かっぱの 川流れ」。", ""], ["「石の 上にも 三年」の いみは？", "がまんして 続ければ いつか 報われる", ["石は つめたい", "3年で 石が あたたまる", "いそいでは いけない"], "つらくても しんぼうして 続ければ 成果が 出る、という いみ。", ""], ["「一石二鳥」の いみは？", "1つの ことで 2つの 得を する", ["鳥を 2わ つかまえる", "石を 2つ なげる", "一度に 2回 失敗する"], "1つの 石で 2わの 鳥を 落とす ことから。にた ことばに「一挙両得」。", ""], ["「What ___ you like?」の ___ は？", "do", ["does", "are", "is"], "一般動詞（like）の 疑問文。主語が you なので do を つかう。", ""], ["「Thank you.」への 返事として ふさわしいのは？", "You're welcome.", ["I'm sorry.", "Good night.", "See you."], "You're welcome.＝どういたしまして。", ""], ["「It's ___ apple.」の ___ は？", "an", ["a", "the", "two"], "a・i・u・e・o の 音で はじまる 名詞の 前は an。", ""], ["「十人十色」の いみは？", "考えや 好みは 人それぞれ ちがう", ["10人で 色を ぬる", "みんな 同じ 色が 好き", "色は 10色ある"], "人が 10人 いれば 10の 色（個性）が ある、という いみ。", ""], ["「She ___ my sister.」の ___ は？", "is", ["am", "are", "be"], "She（3人称単数）には is。", ""]], [["「I ___ to the park yesterday.」の ___ は？", "went", ["go", "goes", "going"], "yesterday（きのう）なので 過去形。go の 過去形は went。", ""], ["「Are you a teacher?」「No, I ___.」の ___ は？", "'m not", ["am", "don't", "isn't"], "Are you 〜? には Yes, I am. / No, I'm not. で 答える。", ""], ["「I am ___ TV now.」の ___ は？", "watching", ["watch", "watches", "watched"], "be動詞＋〜ing で「〜しているところ」（現在進行形）。", ""], ["「急がば 回れ」の いみは？", "急ぐ ときほど 確実な 方法を えらぶ ほうが よい", ["急いで 遠回りする", "回りながら 走る", "急ぐと 目が 回る"], "危ない 近道より、遠くても 確実な 道の ほうが けっきょく 早い、という 教え。", ""], ["「温故知新」の いみは？", "古い ことを 学んで 新しい 考えを 見つける", ["あたたかい 服を 新しく する", "昔は よかった", "新しい ものだけ 大事"], "「故きを 温ねて 新しきを 知る」（論語）から。", ""], ["「Can you swim?」の いみは？", "あなたは 泳げますか", ["あなたは 泳ぎましたか", "泳ぎに 行きましょう", "泳いでいますか"], "can＝〜できる。疑問文は Can を 前に 出す。", ""], ["「三日坊主」の いみは？", "あきっぽくて 長続きしない", ["3日 おぼうさんに なる", "3日で 終わる 仕事", "3日 休む"], "はじめても すぐ やめてしまう ことの たとえ。", ""], ["「This book is ___ than that one.」の ___ は？", "bigger", ["big", "biggest", "more big"], "2つを くらべる ときは 比較級。big → bigger（g を 重ねる）。", ""], ["「Mt. Fuji is the ___ mountain in Japan.」の ___ は？", "highest", ["higher", "high", "most high"], "3つ以上の 中で いちばん＝最上級。the highest。", ""], ["「花より 団子」の いみは？", "見た目より 実際に 役立つ ものを えらぶ", ["花が きらい", "団子は 花の 形", "花見で 団子を 食べては いけない"], "ながめて 楽しむ ことより、実際の 得を とる こと。", ""]], [["「I have ___ in Kyoto for three years.」の ___ は？", "lived", ["live", "living", "lives"], "have＋過去分詞で「ずっと〜している」（現在完了の 継続）。", ""], ["「This letter was ___ by Ken.」の ___ は？", "written", ["wrote", "write", "writing"], "be動詞＋過去分詞で 受け身「〜された」。write – wrote – written。", ""], ["「I want ___ a doctor.」の ___ は？", "to be", ["be", "being", "to being"], "want to＋動詞の 原形で「〜したい」（不定詞）。", ""], ["「The boy ___ is running is Tom.」の ___ は？", "who", ["which", "what", "where"], "人を 説明する 関係代名詞は who（または that）。", ""], ["「Do you know ___ he lives?」の ___ は？", "where", ["what", "who", "which"], "「彼が どこに 住んでいるか」＝ where he lives。文の 中の 疑問文は 主語＋動詞の じゅん。", ""], ["「He is good at ___ the piano.」の ___ は？", "playing", ["play", "to play", "plays"], "前置詞（at）の あとに 動詞を おく ときは 〜ing（動名詞）。", ""], ["「臥薪嘗胆」の いみは？", "目的の ために 長い あいだ 苦労に たえる", ["まきの 上で ねむる 健康法", "苦い ものを 食べる 習慣", "すぐに 仕返しする"], "中国の 故事から。目的を わすれない ため、わざと つらい 思いを して 心を ふるい立たせた。", ""], ["「漁夫の利」の いみは？", "2人が 争っている すきに 別の 人が 得を する", ["漁師が もうける", "魚が たくさん とれる", "がんばった 人が 得を する"], "シギと ハマグリが 争っている あいだに、漁師が 両方 とってしまった 故事から。", ""], ["「If I ___ a bird, I could fly.」の ___ は？", "were", ["am", "is", "be"], "現実と ちがう ことを 想像する 仮定法過去。be動詞は 主語に 関係なく were が 基本。", ""], ["「She has ___ finished her homework.」の ___ は？", "already", ["yet", "ever", "ago"], "already＝もう〜した（ふつうの 文）。yet は 疑問文・否定文で つかう。", ""]]], "math": [[["(−3)＋(−5) は？", "−8", ["8", "−2", "2"], "同じ 符号どうしの たし算は、数を たして 符号は そのまま。3＋5＝8 で −8。", "numline"], ["(−7)＋4 は？", "−3", ["3", "−11", "11"], "ちがう 符号どうしは 大きい ほうから 小さい ほうを ひく（7−4＝3）。符号は 大きい ほうの −。", "numline"], ["5−(−2) は？", "7", ["3", "−7", "−3"], "−2 を ひく ことは 2 を たす ことと 同じ。5＋2＝7。", "numline"], ["(−4)×(−3) は？", "12", ["−12", "7", "−7"], "−×− ＝ ＋。4×3＝12。", ""], ["(−18)÷6 は？", "−3", ["3", "−12", "−24"], "−÷＋ ＝ −。18÷6＝3 で −3。", ""], ["x＋5＝12 の x は？", "7", ["17", "−7", "60"], "両辺から 5を ひく。x＝12−5＝7。", ""], ["3x＝21 の x は？", "7", ["18", "24", "63"], "両辺を 3で わる。x＝21÷3＝7。", ""], ["x＝4 の とき 2x＋3 の 値は？", "11", ["9", "24", "14"], "2×4＋3＝8＋3＝11。", ""], ["−2 と −5、大きいのは？", "−2", ["−5", "同じ", "くらべられない"], "数直線では 右に あるほど 大きい。−2 の ほうが 右に ある。", "numline"], ["3a＋5a を 計算すると？", "8a", ["15a", "8", "8a²"], "同じ 文字の 項は 数（係数）どうしを たす。3＋5＝8 で 8a。", ""]], [["2x−3＝11 の x は？", "7", ["4", "8", "−7"], "両辺に 3を たして 2x＝14、x＝7。", ""], ["5x＝3x＋8 の x は？", "4", ["8", "1", "−4"], "5x−3x＝8、2x＝8、x＝4。", ""], ["2(x＋3)＝14 の x は？", "4", ["5.5", "8", "7"], "かっこを はずして 2x＋6＝14、2x＝8、x＝4。", ""], ["(−2)³ は？", "−8", ["8", "−6", "6"], "(−2)×(−2)×(−2)＝4×(−2)＝−8。− を 奇数回 かけると −。", ""], ["三角形の 3つの 角を たすと？", "180°", ["360°", "90°", "270°"], "どんな 三角形でも 内角の 和は 180°。", "tri"], ["四角形の 4つの 角を たすと？", "360°", ["180°", "540°", "720°"], "対角線で 三角形 2つに 分けられるので 180°×2＝360°。", ""], ["y は x に 比例し、x＝2 の とき y＝6。式は？", "y＝3x", ["y＝6x", "y＝x＋4", "y＝12/x"], "y＝ax に 代入。6＝2a、a＝3。", ""], ["y は x に 反比例し、x＝3 の とき y＝4。式は？", "y＝12/x", ["y＝4x/3", "y＝x＋1", "y＝3/x"], "y＝a/x に 代入。a＝3×4＝12。", ""], ["2(3a−1)−(a＋4) を 計算すると？", "5a−6", ["5a−2", "7a−6", "5a＋2"], "6a−2−a−4＝5a−6。−( ) を はずすと 中の 符号が すべて かわる。", ""], ["正六角形の 1つの 角の 大きさは？", "120°", ["108°", "135°", "60°"], "六角形の 内角の 和は 180×(6−2)＝720°。720÷6＝120°。", ""]], [["x＋y＝10、x−y＝4 の とき x は？", "7", ["3", "6", "14"], "2つの 式を たすと 2x＝14、x＝7（y＝3）。", ""], ["x＋y＝7、2x＋y＝11 の とき y は？", "3", ["4", "7", "1"], "下の 式から 上の 式を ひくと x＝4。y＝7−4＝3。", ""], ["y＝2x＋1 の グラフの 切片は？", "1", ["2", "−1", "0.5"], "y＝ax＋b の b が 切片（グラフが y軸と 交わる ところ）。", ""], ["y＝−3x＋5 で x が 2 ふえると y は？", "6 へる", ["6 ふえる", "3 へる", "5 ふえる"], "変化の 割合は −3。x が 2 ふえると y は −3×2＝−6。", ""], ["n角形の 内角の 和を あらわす 式は？", "180×(n−2)", ["180×n", "360×n", "180×(n−1)"], "n角形は 1つの 頂点からの 対角線で (n−2)この 三角形に 分けられる。", ""], ["正八角形の 外角 1つの 大きさは？", "45°", ["135°", "60°", "40°"], "多角形の 外角の 和は いつも 360°。360÷8＝45°。", ""], ["2本の 平行線に 直線が 交わる とき、錯角は？", "大きさが 等しい", ["和が 180°", "和が 90°", "いつも 直角"], "平行線なら 錯角も 同位角も 等しい。", ""], ["(x＋3)(x−3) を 展開すると？", "x²−9", ["x²＋9", "x²−6x−9", "x²＋6"], "(a＋b)(a−b)＝a²−b² の 公式。", ""], ["x²＝49 の x は？", "±7", ["7", "−7", "24.5"], "2乗して 49 に なる 数は 7 と −7 の 2つ。", ""], ["2つの さいころを なげて 目の 和が 7に なる 確率は？", "1/6", ["1/12", "7/36", "1/36"], "全部で 6×6＝36通り。和が 7 は 6通り。6/36＝1/6。", ""]]], "logic": [[["2, 4, 6, 8, □ の □は？", "10", ["9", "12", "16"], "2ずつ ふえている。", ""], ["1, 3, 9, 27, □ の □は？", "81", ["36", "54", "30"], "3倍ずつ ふえている。27×3＝81。", ""], ["○△○△○□ の □に 入るのは？", "△", ["○", "□", "☆"], "○ と △ が こうごに くりかえされている。", ""], ["A は B より 背が 高い。B は C より 高い。いちばん 高いのは？", "A", ["B", "C", "わからない"], "A＞B、B＞C なので A＞B＞C。", ""], ["10, 7, 4, □ の □は？", "1", ["0", "2", "3"], "3ずつ へっている。", ""], ["今日が 水曜日なら 10日後は？", "土曜日", ["金曜日", "日曜日", "木曜日"], "7日後は 同じ 水曜日。あと 3日 すすんで 土曜日。", ""], ["1, 1, 2, 3, 5, 8, □ の □は？", "13", ["11", "10", "16"], "前の 2つを たすと つぎの 数（フィボナッチ数列）。5＋8＝13。", ""], ["けんは りんごでも みかんでもない。りんご・みかん・ぶどうの どれ？", "ぶどう", ["りんご", "みかん", "わからない"], "のこりは ぶどうだけ。", ""], ["「すべての ねこは 動物」が 正しい とき、必ず 正しいのは？", "ねこの タマは 動物", ["すべての 動物は ねこ", "動物でない ねこが いる", "犬は ねこ"], "ねこは ぜんぶ 動物の なかま。逆の「動物なら ねこ」は 正しいとは かぎらない。", ""], ["時計の 長い はりが 1周すると 何分？", "60分", ["12分", "30分", "24分"], "長い はりは 1時間＝60分で 1周する。", ""]], [["2, 5, 10, 17, □ の □は？", "26", ["24", "25", "27"], "ふえ方が 3, 5, 7, 9 と 2ずつ 大きくなる。17＋9＝26。", ""], ["3人が 1回ずつ あくしゅすると 全部で 何回？", "3回", ["6回", "9回", "2回"], "AとB・AとC・BとC の 3回。", ""], ["4人が 1回ずつ あくしゅすると 全部で 何回？", "6回", ["4回", "8回", "12回"], "4×3÷2＝6回。同じ ペアを 2回 数えないように 2で わる。", ""], ["1, 4, 9, 16, □ の □は？", "25", ["20", "24", "32"], "1×1, 2×2, 3×3, 4×4…。つぎは 5×5＝25。", ""], ["A・B・C・D の 4人を 1列に ならべる ならべ方は？", "24通り", ["12通り", "16通り", "4通り"], "1番目 4通り×2番目 3通り×3番目 2通り×4番目 1通り＝24通り。", ""], ["いつも うそを つく 人が「わたしは 正直者」と 言った。この 発言は？", "うそ", ["本当", "どちらとも いえない", "意味が ない"], "うそつきは かならず うそを 言うので、この 発言は うそ。", ""], ["立方体（さいころの 形）の 面の 数は？", "6", ["8", "12", "4"], "立方体は 面6・頂点8・辺12。", ""], ["立方体の 辺の 数は？", "12", ["6", "8", "24"], "上の 面に 4本、下の 面に 4本、たてに 4本で 12本。", ""], ["100円玉と 50円玉が あわせて 7まいで 500円。100円玉は？", "3まい", ["2まい", "4まい", "5まい"], "ぜんぶ 50円玉なら 350円。足りない 150円 ÷（100−50）＝3まい。", ""], ["ある数を 2倍して 3を たすと 15。ある数は？", "6", ["9", "7.5", "5"], "逆に たどる。15−3＝12、12÷2＝6。", ""]], [["2, 6, 12, 20, 30, □ の □は？", "42", ["40", "36", "44"], "1×2, 2×3, 3×4, 4×5, 5×6…。つぎは 6×7＝42。", ""], ["5人から 2人の 代表を えらぶ えらび方は？", "10通り", ["20通り", "25通り", "5通り"], "5×4÷2＝10通り（じゅんばんは 関係ない）。", ""], ["つるとかめが あわせて 10ぴき、足は 28本。かめは？", "4ひき", ["6ぴき", "3びき", "5ひき"], "ぜんぶ つるなら 20本。28−20＝8、8÷(4−2)＝4ひき。", ""], ["A「Bは うそつき」B「Cは うそつき」C「AもBも うそつき」。正直者が 1人だけなら だれ？", "B", ["A", "C", "わからない"], "Bが 正直なら、Cは うそつき。Aの「Bは うそつき」も うそ。Cの 発言も うそで、すべて 合う。", ""], ["1から 100までの 整数を ぜんぶ たすと？", "5050", ["5000", "10000", "4950"], "1＋100、2＋99…と 101の 組が 50組。101×50＝5050。", ""], ["3時 ちょうどの 長い はりと 短い はりの 角度は？", "90°", ["60°", "120°", "45°"], "1時間ぶんは 360÷12＝30°。3時間ぶんで 90°。", ""], ["2進数の 1011 を ふつうの 数（10進数）に すると？", "11", ["13", "9", "1011"], "8＋0＋2＋1＝11。", ""], ["6チームで 総当たり戦を すると 試合数は？", "15試合", ["30試合", "12試合", "36試合"], "6×5÷2＝15試合。", ""], ["あたりは 1つ。「Aは あたり」「Bは はずれ」「Aは はずれ」の うち 本当は 1つだけ。あたりは？", "B", ["A", "C", "わからない"], "「Aは あたり」と「Aは はずれ」は どちらかが 必ず 本当。だから「Bは はずれ」は うそ → Bが あたり。", ""], ["正方形の 紙を 半分に 3回 おって ひらくと、いくつの 部分に 分かれる？", "8こ", ["6こ", "9こ", "16こ"], "おる たびに 2倍。2×2×2＝8こ。", ""]]]};
+/* ---------- v6.32（STEP4）：大学の挑戦教科の問題（テーマごとベーシック／アドバンス／マスター各10問） ---------- */
+const BANK632 = {};
 const FIG632 = {
 planets:`<svg viewBox="0 0 340 92" width="320" class="fig632"><rect width="340" height="92" rx="10" fill="#14213D"/><circle cx="-6" cy="46" r="34" fill="#FFC93C"/><text x="6" y="88" fill="#FFE08A" font-size="9">太陽</text>
 ${[[42,4,'#B8B0A6','水星'],[66,6,'#E8C27A','金星'],[92,6.5,'#4C9BE8','地球'],[116,5,'#D9603B','火星'],[154,15,'#D9A066','木星'],[204,12,'#E8CF8E','土星'],[248,9,'#8FD6E0','天王星'],[288,9,'#4E6FD8','海王星']].map(([x,r,c,n])=>`<circle cx="${x}" cy="40" r="${r}" fill="${c}"/>${n==='土星'?`<ellipse cx="${x}" cy="40" rx="${r*1.8}" ry="${r*.45}" fill="none" stroke="#C9B07A" stroke-width="2"/>`:''}<text x="${x}" y="76" fill="#fff" font-size="9.5" text-anchor="middle">${n}</text>`).join('')}</svg>`,
 eclipse:`<svg viewBox="0 0 320 110" width="310" class="fig632"><rect width="320" height="110" rx="10" fill="#14213D"/><circle cx="30" cy="55" r="24" fill="#FFC93C"/><text x="30" y="100" fill="#FFE08A" font-size="10" text-anchor="middle">太陽</text>
-<polygon points="168,40 300,48 300,62 168,70" fill="#000" opacity=".55"/><circle cx="168" cy="55" r="15" fill="#4C9BE8"/><text x="168" y="100" fill="#fff" font-size="10" text-anchor="middle">地球</text><circle cx="270" cy="55" r="7" fill="#9A8F86"/><text x="270" y="100" fill="#fff" font-size="10" text-anchor="middle">月（かげの中）</text><text x="160" y="18" fill="#FFE08A" font-size="11" text-anchor="middle">月食：太陽 → 地球 → 月</text></svg>`,
-air:`<svg viewBox="0 0 220 110" width="220" class="fig632"><circle cx="60" cy="55" r="45" fill="#8EC5FF"/><path d="M60 55 L60 10 A45 45 0 0 1 102 67 Z" fill="#FF9E7A"/><path d="M60 55 L102 67 A45 45 0 0 1 98 79 Z" fill="#ccc"/><text x="120" y="35" font-size="12" fill="#2B6CB0">■ 窒素 約78%</text><text x="120" y="58" font-size="12" fill="#D2601E">■ 酸素 約21%</text><text x="120" y="81" font-size="12" fill="#777">■ その他 約1%</text></svg>`,
+<polygon points="168,40 300,48 300,62 168,70" fill="#000" opacity=".55"/><circle cx="168" cy="55" r="15" fill="#4C9BE8"/><text x="168" y="100" fill="#fff" font-size="10" text-anchor="middle">地球</text><circle cx="270" cy="55" r="7" fill="#9A8F86"/><text x="270" y="100" fill="#fff" font-size="10" text-anchor="middle">月（影の中）</text><text x="160" y="18" fill="#FFE08A" font-size="11" text-anchor="middle">月食：太陽 → 地球 → 月</text></svg>`,
+air:`<svg viewBox="0 0 220 110" width="220" class="fig632"><circle cx="60" cy="55" r="45" fill="#8EC5FF"/><path d="M60 55 L60 10 A45 45 0 0 1 102 67 Z" fill="#FF9E7A"/><path d="M60 55 L102 67 A45 45 0 0 1 98 79 Z" fill="#ccc"/><text x="120" y="35" font-size="12" fill="#2B6CB0">■ 窒素約78%</text><text x="120" y="58" font-size="12" fill="#D2601E">■ 酸素約21%</text><text x="120" y="81" font-size="12" fill="#777">■ その他約1%</text></svg>`,
 btb:`<svg viewBox="0 0 240 90" width="240" class="fig632">${[['#F2D23B','酸性','黄'],['#4CB86A','中性','緑'],['#3B6FD8','アルカリ性','青']].map(([c,n,k],i)=>`<g transform="translate(${20+i*75} 6)"><rect x="10" y="0" width="30" height="58" rx="6" fill="#fff" stroke="#888"/><rect x="11" y="22" width="28" height="35" rx="5" fill="${c}"/><text x="25" y="74" font-size="11" text-anchor="middle">${n}</text><text x="25" y="16" font-size="10" text-anchor="middle" fill="#555">${k}</text></g>`).join('')}</svg>`,
 atom:`<svg viewBox="0 0 200 120" width="200" class="fig632"><ellipse cx="100" cy="60" rx="80" ry="28" fill="none" stroke="#9AA"/><ellipse cx="100" cy="60" rx="80" ry="28" fill="none" stroke="#9AA" transform="rotate(60 100 60)"/><ellipse cx="100" cy="60" rx="80" ry="28" fill="none" stroke="#9AA" transform="rotate(-60 100 60)"/><circle cx="94" cy="56" r="8" fill="#E8606A"/><circle cx="106" cy="56" r="8" fill="#9AA0AA"/><circle cx="100" cy="66" r="8" fill="#E8606A"/><circle cx="180" cy="60" r="5" fill="#3D8BE0"/><circle cx="60" cy="25" r="5" fill="#3D8BE0"/><text x="100" y="114" font-size="10" text-anchor="middle">●陽子(+) ●中性子 ●電子(−)</text></svg>`,
 numline:`<svg viewBox="0 0 320 60" width="320" class="fig632"><line x1="10" y1="28" x2="310" y2="28" stroke="#555" stroke-width="2"/><polygon points="310,28 302,23 302,33" fill="#555"/>${Array.from({length:17},(_,i)=>i-8).map(n=>`<line x1="${160+n*18}" y1="22" x2="${160+n*18}" y2="34" stroke="#555"/><text x="${160+n*18}" y="50" font-size="10" text-anchor="middle" fill="${n<0?'#3D6FD8':n>0?'#D2601E':'#000'}">${n<0?'−'+(-n):n}</text>`).join('')}<text x="40" y="14" font-size="10" fill="#3D6FD8">← 小さい</text><text x="250" y="14" font-size="10" fill="#D2601E">大きい →</text></svg>`,
@@ -8450,6 +8455,7 @@ function bankQ(id, lv, used){
   return {html:`<div class="mqSent">${qh}</div>`, ans:a, opts:shuffle([a, ...w]), key:'b632:' + id + ':' + q, ex632:{ex, fig, a}, u:'bank632', subj:'sci', qg:7};
 }
 function themeQ(t, lv, used, stage){
+  const hq66 = window.__sch66 && window.__sch66.hardQ ? window.__sch66.hardQ(t.id, lv, k => isRecent(k, used)) : null; if(hq66) return hq66;
   if(BANK632[t.id] && Math.random() < (BANK_RATE[t.id] || .8)){ const bq = bankQ(t.id, lv, used); if(bq) return bq; }
   const units = t.u.filter(u => u==='kanji' || MATH_UNITS[u]);
   const sorted = units.slice().sort((a,b) => (a==='kanji' ? 6 : ug(a)) - (b==='kanji' ? 6 : ug(b)));
@@ -8464,25 +8470,25 @@ function themeQ(t, lv, used, stage){
   }
   return best || subjQ('math', userG(), used, false);
 }
-/* ===== v6.34（STEP5）：研究ノート・レシピ・ひみつ・がっかい ===== */
-const IMG634 = './assets/images/v634/';
+/* ===== v6.34（STEP5）：研究ノート・レシピ・秘密・学会 ===== */
+const IMG634 = './assets/images/school/';
 const thImg = (id, cls='thi634') => `<img class="${cls}" src="${IMG634}th_${id}.webp" alt="">`;
-const CARDS = {"env": ["森は 雨水を たくわえるので「緑のダム」と よばれる。", "植物は 光を つかって 二酸化炭素から 養分と 酸素を つくる（光合成）。", "こん虫の からだは あたま・むね・はらの 3つ。あしは 6本。", "川の 水は 海から 蒸発して 雲に なり、雨と なって もどってくる。", "ペットボトルは リサイクルすると 服や たまごパックに 生まれかわる。", "日本の 国土の 約3分の2は 森林。世界でも 森の 多い 国。", "川の 上流の 石は 大きく 角ばり、下流の 石は 小さく 丸い。", "メダカの たまごは 約11日で かえる（水温 25℃くらい）。", "地球の 平均気温が 上がる ことを 地球温暖化という。", "食べる・食べられるの つながりを「食物連鎖」という。", "サンゴは 植物ではなく 動物の なかま。", "1本の 大きな 木は 1年に 数十kgの 二酸化炭素を すいこむ。", "海の プラスチックごみは 細かく くだけて 魚の おなかに 入る ことも ある。", "北極の 氷が へると、ホッキョクグマが えさを とりにくくなる。", "生き物の しゅるいが 多い ことを「生物多様性」という。"], "life": ["人の 心臓は 1日に 約10万回 ドクンと うつ。", "血液は 酸素や 養分を からだじゅうに とどける。", "大人の 骨は 約200こ。赤ちゃんは 約300こ あって くっついていく。", "食べた ものは 胃や 小腸で 消化されて 吸収される。", "ねむっている あいだに 成長ホルモンが 出て からだが 育つ。", "小腸の かべの ひだを 広げると テニスコートくらいの 広さに なる。", "肺の 中には ぶどうの ような「肺ほう」が たくさん ある。", "手あらいの とき、せっけんで 20びょう あらうと ばいきんが へる。", "人の からだの 約60%は 水で できている。", "メダカも 人も、心臓が 血液を おくり出す ポンプの はたらきを する。", "脳は からだの 重さの 約2%なのに エネルギーを 約20% つかう。", "ワクチンは からだに「てきの おぼえがき」を 先に つくる しくみ。", "じん臓は 血液から いらない ものを こし出して にょうを つくる。", "DNAには からだの つくり方の 設計図が 書かれている。", "白血球は からだに 入った ばいきんと たたかう 血液の せいぶん。"], "soc": ["日本で いちばん 高い 山は 富士山（3776m）。", "日本で いちばん 長い 川は 信濃川（約367km）。", "日本で いちばん 大きい 湖は 琵琶湖（滋賀県）。", "都道府県は 47。1都・1道・2府・43県。", "国会は 法律を つくる ところ。衆議院と 参議院が ある。", "お金を 銀行に あずけると 利子が つく ことが ある。", "日本の 食料自給率は（カロリーで）約4割。半分以上を 輸入に たよっている。", "税金は 学校・道路・病院など みんなの ために つかわれる。", "世界で いちばん 人口が 多い 国は インド（2023年から）。", "日本国憲法の 三つの 原則は 国民主権・平和主義・基本的人権の 尊重。", "ものの ねだんは ほしい 人と 売りたい 人の バランスで きまる。", "選挙で 投票できるのは 18さい から。", "三権分立：立法（国会）・行政（内閣）・司法（裁判所）が おたがいを チェックする。", "世界には 190以上の 国が ある。", "SDGsは 2030年までに 世界で めざす 17の 目標。"], "tech": ["コンピューターは 0と 1だけで すべての 情報を あらわす。", "プログラムは コンピューターへの「命令の ならび」。", "同じ ことを くりかえす 命令を「ループ（くりかえし）」という。", "「もし〜なら」で 動きを かえる 命令を「条件分岐」という。", "プログラムの まちがいを「バグ」、なおす ことを「デバッグ」という。", "世界で 最初の プログラマーは エイダ・ラブレス（1800年代）と いわれる。", "インターネットは 世界じゅうの コンピューターを つなぐ あみの め。", "パスワードは 長く、だれにも 教えない ことが 大事。", "ロボットは センサーで まわりを 知り、モーターで うごく。", "人工知能（AI）は たくさんの データから きまりを 見つけて 学ぶ。", "2進数の 1010 は ふつうの 数で 10。", "プログラムで 数を おぼえておく 箱を「変数」という。", "手じゅんを くふうすると、同じ 答えでも ずっと はやく 計算できる（アルゴリズム）。", "QRコードは 日本で 生まれた。少し よごれても 読みとれる。", "スマートフォン 1台は、むかしの 月ロケットの コンピューターより ずっと 高性能。"], "space": ["太陽系の わくせいは 8こ。すい・きん・ち・か・もく・ど・てん・かい。", "月は 地球の まわりを 約27日で 1しゅう する。", "太陽は 地球の 約109倍の 大きさ。", "光は 1びょうで 地球を 約7しゅう半 する。", "夏の 大三角は ベガ・アルタイル・デネブ。", "木星には 90こ以上の 衛星が ある。", "月の 表面の でこぼこは いん石が ぶつかった あと（クレーター）。", "金星は 自転の 向きが 地球と 反対。", "国際宇宙ステーションは 約90分で 地球を 1しゅう する。", "北極星は 1年じゅう ほぼ 真北に 見える。", "土星は 密度が 水より 小さい。大きな プールが あれば うかぶ ほど。", "1光年は 約9兆5000億km。", "太陽の 光は 地球まで 約8分20びょう かかる。", "天の川銀河には 1000億こ以上の 星が ある。", "宇宙は 約138億年前の ビッグバンで はじまったと 考えられている。"], "chem": ["水は H₂O。水素 2こと 酸素 1こで できている。", "空気の 約78%は 窒素、約21%は 酸素。", "元素は 118しゅるい 見つかっている。", "金は さびにくく、ずっと ぴかぴかの まま。", "氷が 水に うくのは、水より 密度が 小さいから。", "リトマス紙は 酸性で 青→赤、アルカリ性で 赤→青。", "鉄が さびるのは 空気中の 酸素と 結びつくから。", "ダイヤモンドと えんぴつの しんは どちらも 炭素で できている。", "食塩水を 熱すると 水が 蒸発して 食塩が のこる。", "ヘリウムは 空気より かるいので 風船が うかぶ。", "元素記号の Na は ナトリウム、K は カリウム。", "化学変化の 前と あとで 全体の 重さは かわらない（質量保存の 法則）。", "いちばん かるい 元素は 水素。宇宙で いちばん 多い 元素でも ある。", "周期表は メンデレーエフが 考えた。", "ドライアイスは 二酸化炭素の 固体。とけると 気体に なる。"], "lang": ["英語の アルファベットは 26文字。", "ひらがなは 漢字を くずして つくられた。", "世界で いちばん 話されている 言葉の 一つは 英語。", "「Hello」は「こんにちは」。「Thank you」は「ありがとう」。", "日本語には ひらがな・カタカナ・漢字の 3しゅるいの 文字が ある。", "「十人十色」は 人それぞれ ちがう という いみ。", "英語の 文は ふつう「だれが・する・何を」の じゅんばん。", "カステラ・パン・テンプラは ポルトガル語から きた ことば。", "漢字は 5万字以上 あると いわれる。", "「いろはうた」は かなを 1回ずつ つかった うた。", "英語の 曜日は Sunday（日）から Saturday（土）。", "「温故知新」は 昔の ことから 新しい ことを 学ぶ こと。", "英語の 過去形は ふつう ed を つける（play → played）。", "世界には 約7000の 言語が ある。", "ことわざ「急がば回れ」は 確実な 方法が けっきょく はやい という いみ。"], "math": ["0は インドで 考え出された 数。", "円周率 π は 3.14159… と ずっと つづく。", "三角形の 角を ぜんぶ たすと 180°。", "1から 10まで たすと 55。", "九九の 答えを ぜんぶ たすと 2025。", "正方形は 4つの 辺も 4つの 角も 等しい。", "素数は 1と その数でしか われない 数（2, 3, 5, 7…）。", "マイナスの 数どうしを かけると プラスに なる。", "四角形の 角を ぜんぶ たすと 360°。", "ハチの すは 正六角形。すき間なく ならべられて 強い。", "フィボナッチ数列 1,1,2,3,5,8… は 花びらの 数にも あらわれる。", "円の 面積は 半径×半径×円周率。", "ピタゴラスの 定理：直角三角形で a²＋b²＝c²。", "1／3 を 小数に すると 0.333… と ずっと つづく。", "さいころの 向かいあう 面を たすと かならず 7。"], "logic": ["数の ならびの きまりを 見つけると、つぎの 数が わかる。", "「すべての AはB」でも「すべての BはA」とは かぎらない。", "4人の ならび方は 4×3×2×1＝24通り。", "あくしゅの 回数は 人数×（人数−1）÷2。", "つるかめ算は「ぜんぶ つるだったら」と 考えると とける。", "うそつき問題は「もし Aが 本当なら」と 1つずつ ためす。", "立方体の 面は 6、辺は 12、頂点は 8。", "紙を 半分に おる たびに 部分の 数は 2倍に なる。", "ハノイの とうは 円ばんが n まいなら 2ⁿ−1 回で うつせる。", "迷路は 左手を かべに つけて すすむと いつか 出口に つく（つながった 迷路なら）。", "ぎゃくから 考えると とける 問題も 多い。", "数独は 1〜9を たて・よこ・ブロックに 1回ずつ 入れる パズル。", "5人から 2人 えらぶ えらび方は 10通り。", "ひとふで書きは 線が 奇数本 あつまる 点が 0か 2こなら できる。", "とけない 問題も「とけない ことを 証明する」ことが できる。"]};
+const CARDS = {"env": ["森は雨水を蓄えるので「緑のダム」と呼ばれる。", "植物は光を使って二酸化炭素から養分と酸素を作る（光合成）。", "こん虫の体は頭・胸・腹の3つ。足は6本。", "川の水は海から蒸発して雲になり、雨となって戻ってくる。", "ペットボトルはリサイクルすると服や卵パックに生まれ変わる。", "日本の国土の約3分の2は森林。世界でも森の多い国。", "川の上流の石は大きく角ばり、下流の石は小さく丸い。", "メダカの卵は約11日でかえる（水温25℃くらい）。", "地球の平均気温が上がることを地球温暖化という。", "食べる・食べられるのつながりを「食物連鎖」という。", "サンゴは植物ではなく動物の仲間。", "1本の大きな木は1年に数十kgの二酸化炭素を吸い込む。", "海のプラスチックごみは細かく砕けて魚のお腹に入ることもある。", "北極の氷が減ると、ホッキョクグマがえさを取りにくくなる。", "生き物の種類が多いことを「生物多様性」という。"], "life": ["人の心臓は1日に約10万回ドクンと打つ。", "血液は酸素や養分を体中に届ける。", "大人の骨は約200個。赤ちゃんは約300個あってくっついていく。", "食べたものは胃や小腸で消化されて吸収される。", "眠っている間に成長ホルモンが出て体が育つ。", "小腸の壁のひだを広げるとテニスコートくらいの広さになる。", "肺の中にはぶどうのような「肺胞」がたくさんある。", "手洗いの時、石けんで20秒洗うとばい菌が減る。", "人の体の約60%は水でできている。", "メダカも人も、心臓が血液を送り出すポンプの働きをする。", "脳は体の重さの約2%なのにエネルギーを約20%使う。", "ワクチンは体に「敵の覚え書き」を先に作る仕組み。", "腎臓は血液からいらないものをこし出して尿を作る。", "DNAには体の作り方の設計図が書かれている。", "白血球は体に入ったばい菌と戦う血液の成分。"], "soc": ["日本で一番高い山は富士山（3776m）。", "日本で一番長い川は信濃川（約367km）。", "日本で一番大きい湖は琵琶湖（滋賀県）。", "都道府県は47。1都・1道・2府・43県。", "国会は法律を作るところ。衆議院と参議院がある。", "お金を銀行に預けると利子がつくことがある。", "日本の食料自給率は（カロリーで）約4割。半分以上を輸入に頼っている。", "税金は学校・道路・病院などみんなのために使われる。", "世界で一番人口が多い国はインド（2023年から）。", "日本国憲法の三つの原則は国民主権・平和主義・基本的人権の尊重。", "ものの値段はほしい人と売りたい人のバランスで決まる。", "選挙で投票できるのは18歳から。", "三権分立：立法（国会）・行政（内閣）・司法（裁判所）がお互いをチェックする。", "世界には190以上の国がある。", "SDGsは2030年までに世界で目指す17の目標。"], "tech": ["コンピューターは0と1だけですべての情報を表す。", "プログラムはコンピューターへの「命令の並び」。", "同じことを繰り返す命令を「ループ（繰り返し）」という。", "「もし〜なら」で動きを変える命令を「条件分岐」という。", "プログラムの間違いを「バグ」、直すことを「デバッグ」という。", "世界で最初のプログラマーはエイダ・ラブレス（1800年代）と言われる。", "インターネットは世界中のコンピューターをつなぐ網の目。", "パスワードは長く、誰にも教えないことが大事。", "ロボットはセンサーで周りを知り、モーターで動く。", "人工知能（AI）はたくさんのデータから決まりを見つけて学ぶ。", "2進数の1010は普通の数で10。", "プログラムで数を覚えておく箱を「変数」という。", "手順を工夫すると、同じ答えでもずっと速く計算できる（アルゴリズム）。", "QRコードは日本で生まれた。少し汚れても読みとれる。", "スマートフォン1台は、昔の月ロケットのコンピューターよりずっと高性能。"], "space": ["太陽系の惑星は8個。すい・きん・ち・か・もく・ど・てん・かい。", "月は地球の周りを約27日で1周する。", "太陽は地球の約109倍の大きさ。", "光は1秒で地球を約7周半する。", "夏の大三角はベガ・アルタイル・デネブ。", "木星には90個以上の衛星がある。", "月の表面のでこぼこは隕石がぶつかったあと（クレーター）。", "金星は自転の向きが地球と反対。", "国際宇宙ステーションは約90分で地球を1周する。", "北極星は1年中ほぼ真北に見える。", "土星は密度が水より小さい。大きなプールがあれば浮かぶほど。", "1光年は約9兆5000億km。", "太陽の光は地球まで約8分20秒かかる。", "天の川銀河には1000億個以上の星がある。", "宇宙は約138億年前のビッグバンで始まったと考えられている。"], "chem": ["水はH₂O。水素2個と酸素1個でできている。", "空気の約78%は窒素、約21%は酸素。", "元素は118種類見つかっている。", "金はさびにくく、ずっとぴかぴかのまま。", "氷が水に浮くのは、水より密度が小さいから。", "リトマス紙は酸性で青→赤、アルカリ性で赤→青。", "鉄がさびるのは空気中の酸素と結びつくから。", "ダイヤモンドと鉛筆の芯はどちらも炭素でできている。", "食塩水を熱すると水が蒸発して食塩が残る。", "ヘリウムは空気より軽いので風船が浮かぶ。", "元素記号のNaはナトリウム、Kはカリウム。", "化学変化の前と後で全体の重さは変わらない（質量保存の法則）。", "一番軽い元素は水素。宇宙で一番多い元素でもある。", "周期表はメンデレーエフが考えた。", "ドライアイスは二酸化炭素の固体。溶けると気体になる。"], "lang": ["英語のアルファベットは26文字。", "ひらがなは漢字を崩して作られた。", "世界で一番話されている言葉の一つは英語。", "「Hello」は「こんにちは」。「Thank you」は「ありがとう」。", "日本語にはひらがな・カタカナ・漢字の3種類の文字がある。", "「十人十色」は人それぞれ違うという意味。", "英語の文は普通「誰が・する・何を」の順番。", "カステラ・パン・テンプラはポルトガル語から来た言葉。", "漢字は5万字以上あると言われる。", "「いろは歌」はかなを1回ずつ使った歌。", "英語の曜日はSunday（日）からSaturday（土）。", "「温故知新」は昔のことから新しいことを学ぶこと。", "英語の過去形は普通edをつける（play → played）。", "世界には約7000の言語がある。", "ことわざ「急がば回れ」は確実な方法が結局早いという意味。"], "math": ["0はインドで考え出された数。", "円周率 π は3.14159…とずっと続く。", "三角形の角を全部足すと180°。", "1から10まで足すと55。", "九九の答えを全部足すと2025。", "正方形は4つの辺も4つの角も等しい。", "素数は1とその数でしか割れない数（2, 3, 5, 7…）。", "マイナスの数同士をかけるとプラスになる。", "四角形の角を全部足すと360°。", "ハチのすは正六角形。隙間なく並べられて強い。", "フィボナッチ数列1,1,2,3,5,8…は花びらの数にも現れる。", "円の面積は半径×半径×円周率。", "ピタゴラスの定理：直角三角形でa²＋b²＝c²。", "1／3を小数にすると0.333…とずっと続く。", "さいころの向かい合う面を足すと必ず7。"], "logic": ["数の並びの決まりを見つけると、次の数がわかる。", "「すべてのAはB」でも「すべてのBはA」とはかぎらない。", "4人の並び方は4×3×2×1＝24通り。", "握手の回数は人数×（人数−1）÷2。", "つるかめ算は「全部つるだったら」と考えると解ける。", "うそつき問題は「もしAが本当なら」と1つずつ試す。", "立方体の面は6、辺は12、頂点は8。", "紙を半分におるたびに部分の数は2倍になる。", "ハノイの塔は円盤がn枚なら2ⁿ−1回で写せる。", "迷路は左手を壁につけて進むといつか出口につく（つながった迷路なら）。", "逆から考えると解ける問題も多い。", "数独は1〜9を縦・横・ブロックに1回ずつ入れるパズル。", "5人から2人選ぶ選び方は10通り。", "一筆書きは線が奇数本集まる点が0か2個ならできる。", "解けない問題も「解けないことを証明する」ことができる。"]};
 const TH_C = {env:'#3BAF6A', life:'#E8606A', soc:'#E79A2B', tech:'#3D8BE0', space:'#7A5CD6', chem:'#26A69A', lang:'#9A6AD8', math:'#D4A017', logic:'#F07B3F'};
 const isKira = i => i % 5 === 0;
 const cardsOf = id => { const u = UV(); u.cards = u.cards || {}; return u.cards[id] || (u.cards[id] = []); };
 const nCards = id => cardsOf(id).length;
 const RECIPE = {
-  env:['mori_salad','もりの グリーンサラダ','veggie_salad',{f_cabbage:2,f_tomato:1,f_carrot:1}],
-  life:['genki_soup','げんき いっぱい スープ','pumpkin_soup',{f_pumpkin:1,f_carrot:1,cf_chicken:1}],
-  soc:['sekai_plate','せかい いっしゅう プレート','lunchbox',{cf_pork:1,cf_egg:1,f_tomato:1,f_potato:1}],
-  tech:['robo_pancake','ロボット パンケーキ','pancake',{cf_egg:2,cf_milk:2,cf_honey:1}],
-  space:['hoshi_parfait','ほしぞら パフェ','royal_parfait',{f_strawberry:2,f_banana:1,cf_milk:2}],
-  chem:['fushigi_soda','ふしぎな ソーダ','watermelon_juice',{f_watermelon:1,f_apple:1,cf_honey:1}],
-  lang:['abc_cookie','ABC クッキー','fruit_tart',{cf_egg:1,cf_milk:1,cf_honey:1}],
-  math:['pi_pie','パイの パイ（π）','apple_honey_tart',{f_apple:3,cf_egg:2,cf_milk:1}],
-  logic:['puzzle_cake','パズル ケーキ','rainbow_cake',{f_strawberry:2,f_banana:1,cf_egg:2,cf_milk:2}],
-  deg:['gakui_cake','がくい おいわい ケーキ','fruit_tart',{f_strawberry:2,cf_egg:2,cf_milk:2}]
+  env:['mori_salad','森のグリーンサラダ','veggie_salad',{f_cabbage:2,f_tomato:1,f_carrot:1}],
+  life:['genki_soup','元気いっぱいスープ','pumpkin_soup',{f_pumpkin:1,f_carrot:1,cf_chicken:1}],
+  soc:['sekai_plate','世界一周プレート','lunchbox',{cf_pork:1,cf_egg:1,f_tomato:1,f_potato:1}],
+  tech:['robo_pancake','ロボットパンケーキ','pancake',{cf_egg:2,cf_milk:2,cf_honey:1}],
+  space:['hoshi_parfait','星空パフェ','royal_parfait',{f_strawberry:2,f_banana:1,cf_milk:2}],
+  chem:['fushigi_soda','不思議なソーダ','watermelon_juice',{f_watermelon:1,f_apple:1,cf_honey:1}],
+  lang:['abc_cookie','ABCクッキー','fruit_tart',{cf_egg:1,cf_milk:1,cf_honey:1}],
+  math:['pi_pie','パイのパイ（π）','apple_honey_tart',{f_apple:3,cf_egg:2,cf_milk:1}],
+  logic:['puzzle_cake','パズルケーキ','rainbow_cake',{f_strawberry:2,f_banana:1,cf_egg:2,cf_milk:2}],
+  deg:['gakui_cake','学位お祝いケーキ','fruit_tart',{f_strawberry:2,cf_egg:2,cf_milk:2}]
 };
 function addRecipeMenus(){
   try{ const M = window.__cafe61 && window.__cafe61.menus(); if(!M) return; const u = UV(); (u.recipes||[]).forEach(k => { const R0 = RECIPE[k]; if(!R0 || M.some(m => m.id==='rc_'+R0[0])) return;
@@ -8493,8 +8499,8 @@ function giveRecipe(k){ const u = UV(); u.recipes = u.recipes || []; if(u.recipe
 setTimeout(addRecipeMenus, 0);
 const masters = () => TH.filter(t => thData(t.id).lv >= 2).length;
 function secretChip(){ const n = masters(), pct = Math.round(n/9*100), done = UV().secret;
-  return `<button type="button" class="sec634 ${done ? 'open' : ''}" data-a="secret"><span class="sil634"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100-pct}%"></span><b>${done ? 'ひみつ' : '？？？'}</b><small>${n}/9</small></button>`; }
-/* 月ごとの きろく */
+  return `<button type="button" class="sec634 ${done ? 'open' : ''}" data-a="secret"><span class="sil634"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100-pct}%"></span><b>${done ? '秘密' : '？？？'}</b><small>${n}/9</small></button>`; }
+/* 月ごとの記録 */
 const ym = d => d.slice(0,7);
 function monRec(){ const u = UV(); u.mon = u.mon || {}; const k = ym(D4()); return u.mon[k] || (u.mon[k] = {res:0, cards:0, th:{}}); }
 function uniMates(n){
@@ -8502,25 +8508,25 @@ function uniMates(n){
   const L = shuffle(all.filter(r => r !== p)).slice(0, p ? n - 1 : n); if(p) L.unshift(p); return L;
 }
 const UMIS = [
-  {id:'res1', t:'けんきゅうを 1かい せいこう', ic:'rnote', ok:L => L.res >= 1},
-  {id:'two',  t:'2つの テーマで けんきゅう', ic:'pals', ok:L => L.chain.length >= 2},
-  {id:'reco', t:'おすすめ テーマに ちょうせん', ic:'grad', ok:L => L.chain.includes(recoTheme())}
+  {id:'res1', t:'研究を1回成功', ic:'rnote', ok:L => L.res >= 1},
+  {id:'two',  t:'2つのテーマで研究', ic:'pals', ok:L => L.chain.length >= 2},
+  {id:'reco', t:'おすすめテーマに挑戦', ic:'grad', ok:L => L.chain.includes(recoTheme())}
 ];
 const UMC = ['#FDE3E6','#DDEBFB','#E3F5E1'];
 function uTop(sub){
   const u = UV(), s = SV(), D = CFG.degree[u.degree];
   return `<div class="tp639 tpu641"><header class="hd639">
-      <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>まちへ</b></button>
-      <img class="lg639" src="${IMG634}logo_univ.webp" alt="だいがく">
-      <button type="button" class="st639" data-a="${u.enrolled ? 'deg' : 'cal'}"><span>${ic('streak')} れんぞく <em>${s.streak||0}</em> にち</span><span>${u.enrolled ? `${ic('grad')} <em class="g">${fmt(u.degPt)}</em>` : `<i class="sx639">★</i> <em class="g">${SK.reduce((a,k) => a + (s.stars[k]||0), 0)}</em>`}</span></button>
+      <button type="button" class="bk639" data-a="close"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12H20" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg><b>町へ</b></button>
+      <img class="lg639" src="${IMG634}logo_univ.webp" alt="大学">
+      <button type="button" class="st639" data-a="${u.enrolled ? 'deg' : 'cal'}"><span>${ic('streak')} 連続 <em>${s.streak||0}</em> にち</span><span>${u.enrolled ? `${ic('grad')} <em class="g">${fmt(u.degPt)}</em>` : `<i class="sx639">★</i> <em class="g">${SK.reduce((a,k) => a + (s.stars[k]||0), 0)}</em>`}</span></button>
     </header>
     <div class="cp639"><span>＼ ${sub} ／</span></div>
     <button type="button" class="pal639 u1" data-upal="0" aria-label="ハナ"></button><button type="button" class="pal639 u2" data-upal="1" aria-label="フクロウ"></button><button type="button" class="pal639 u3" data-upal="2" aria-label="アザラシ"></button>
-    <span class="pb639 u1" data-upal="0">もっと しりたい！</span><span class="pb639 u2" data-upal="1">まなびは みらいを ひろげるよ！</span><span class="pb639 u3" data-upal="2">いっしょに たのしく まなぼう！</span></div>`;
+    <span class="pb639 u1" data-upal="0">もっと知りたい！</span><span class="pb639 u2" data-upal="1">学びは未来を広げるよ！</span><span class="pb639 u3" data-upal="2">一緒に楽しく学ぼう！</span></div>`;
 }
-const UPAL = [['もっと しりたい！','はっけん したい！','カード あつめよう！','つぎは どの こうざ？'],
-  ['まなびは みらいを ひろげるよ！','しらべて かんがえて はっぴょう！','まちがえても ひらめきの かけらに なるよ','おすすめは ×1.3 だよ'],
-  ['いっしょに たのしく まなぼう！','レシピ ふえたら カフェに いこう！','ノーミスだと キラカード！','きょうも けんきゅう がんばろ〜']];
+const UPAL = [['もっと知りたい！','発見したい！','カード集めよう！','次はどの講座？'],
+  ['学びは未来を広げるよ！','調べて考えて発表！','間違えてもひらめきのかけらになるよ','おすすめは ×1.3だよ'],
+  ['一緒に楽しく学ぼう！','レシピ増えたらカフェに行こう！','ノーミスだとキラカード！','今日も研究頑張ろ〜']];
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-upal]'); if(!t || !ROOT || !ROOT.contains(t)) return; e.stopPropagation();
   const k = t.dataset.upal, b = ROOT.querySelector(`.pb639[data-upal="${k}"]`); if(!b) return; const L2 = UPAL[k]; let v; do{ v = choice(L2); }while(v===b.textContent);
   b.textContent = v; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); sound('tap'); }, true);
@@ -8532,27 +8538,27 @@ function uniMain(){
   L.umis = L.umis || {chest:0}; const done = UMIS.map(m => m.ok(L)), all = done.every(Boolean);
   const tile = (a, img, n, badge, extra='') => `<button type="button" class="tl639" data-a="${a}"><span class="ti">${img}</span><b>${n}</b>${badge ? `<i class="bd639 ${badge==='!' ? 'red' : ''}">${badge}</i>` : ''}${extra}</button>`;
   const stars3 = id => { const d = thData(id), n = d.s.some(Boolean) ? d.lv + 1 : 0; return stars(n); };
-  ROOT.innerHTML = `<div class="wrap631 uni s639 u641">${uTop('しらべて かんがえて せかいを ひろげよう！')}
-    <section class="pn639 pu641 ms639"><div class="ph639">${ic('grad')}<b>だいがくの ミッション</b><span class="ct639">${done.filter(Boolean).length}/3</span></div>
-      <div class="mw639"><ol>${UMIS.map((m,i) => `<li class="${done[i] ? 'ok' : ''}" style="--bg:${UMC[i]}"><i class="ck639 n">${done[i] ? '<svg viewBox="0 0 20 20"><path d="M4 10.5L8.5 15L16 6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : i+1}</i><span class="mi639">${ic(m.ic)}</span><span class="mt639">${m.id==='reco' ? `おすすめ「${X(THM(reco).n)}」に ちょうせん` : X(m.t)}</span></li>`).join('')}</ol>
-      <button type="button" class="cs639 ${all && !L.umis.chest ? 'glow' : ''} ${L.umis.chest ? 'got' : ''}" data-a="uchest"><img class="chi633" src="${IMG634}th_space.webp" alt=""><small>${L.umis.chest ? 'もらったよ！' : all ? 'タッチで うけとる！' : 'ぜんぶ できたら<br>すてきな ごほうび！'}</small></button></div></section>
-    <section class="pn639 pu641"><div class="ph639">${ic('rnote')}<b>まなべる こうざ</b><span class="hint639">＼ すきな こうざを えらんで まなぼう！ ／</span></div>
+  ROOT.innerHTML = `<div class="wrap631 uni s639 u641">${uTop('調べて考えて世界を広げよう！')}
+    <section class="pn639 pu641 ms639"><div class="ph639">${ic('grad')}<b>大学のミッション</b><span class="ct639">${done.filter(Boolean).length}/3</span></div>
+      <div class="mw639"><ol>${UMIS.map((m,i) => `<li class="${done[i] ? 'ok' : ''}" style="--bg:${UMC[i]}"><i class="ck639 n">${done[i] ? '<svg viewBox="0 0 20 20"><path d="M4 10.5L8.5 15L16 6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : i+1}</i><span class="mi639">${ic(m.ic)}</span><span class="mt639">${m.id==='reco' ? `おすすめ「${X(THM(reco).n)}」に挑戦` : X(m.t)}</span></li>`).join('')}</ol>
+      <button type="button" class="cs639 ${all && !L.umis.chest ? 'glow' : ''} ${L.umis.chest ? 'got' : ''}" data-a="uchest"><img class="chi633" src="${IMG634}th_space.webp" alt=""><small>${L.umis.chest ? 'もらったよ！' : all ? 'タッチで受け取る！' : '全部できたら<br>素敵なご褒美！'}</small></button></div></section>
+    <section class="pn639 pu641"><div class="ph639">${ic('rnote')}<b>学べる講座</b><span class="hint639">＼ 好きな講座を選んで学ぼう！／</span></div>
       <div class="tg641">${TH.map(x => { const open = thOpen(x);
-        return `<button type="button" class="tc641 ${open ? '' : 'lk'}" ${open ? `data-a="pickth" data-k="${x.id}"` : 'data-a="thlock"'} style="--c:${TH_C[x.id]}">${x.id===reco && open ? '<em class="x15">×1.3</em>' : ''}${L.chain.includes(x.id) ? '<i class="sp639">✔</i>' : ''}${open && nCards(x.id)===14 ? '<em class="last634">あと1まい</em>' : ''}
+        return `<button type="button" class="tc641 ${open ? '' : 'lk'}" ${open ? `data-a="pickth" data-k="${x.id}"` : 'data-a="thlock"'} style="--c:${TH_C[x.id]}">${x.id===reco && open ? '<em class="x15">×1.3</em>' : ''}${L.chain.includes(x.id) ? '<i class="sp639">✔</i>' : ''}${open && nCards(x.id)===14 ? '<em class="last634">あと1枚</em>' : ''}
           <span class="si">${thImg(x.id)}${open ? '' : '<i class="lk641"><svg viewBox="0 0 20 22"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg></i>'}</span>
-          <b>${x.n.replace(/（.*）/,'')}</b>${open ? stars3(x.id) : `<small>あと ${x.need - u.total}かい</small>`}${open ? `<small>カード ${nCards(x.id)}/15</small>` : ''}</button>`; }).join('')}</div>
-      <div class="stp639">きょうの けんきゅう ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes} ${'<i class="on"></i>'.repeat(Math.min(L.res, CFG.fullRes))}${'<i></i>'.repeat(Math.max(0, CFG.fullRes - L.res))} ${L.res >= CFG.fullRes ? '<b>まんかい！</b>' : ''}</div></section>
-    <section class="pn639 pu641"><div class="ph639"><svg class="pi639" viewBox="0 0 32 32"><path d="M4 24L6 10L12 16L16 6L20 16L26 10L28 24Z" fill="#FFD24A" stroke="#B5701C" stroke-width="2" stroke-linejoin="round"/><rect x="4" y="24" width="24" height="4" rx="1.5" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/></svg><b>これまでの きろく</b><span class="dl639"></span></div>
+          <b>${x.n.replace(/（.*）/,'')}</b>${open ? stars3(x.id) : `<small>あと ${x.need - u.total}回</small>`}${open ? `<small>カード ${nCards(x.id)}/15</small>` : ''}</button>`; }).join('')}</div>
+      <div class="stp639">今日の研究 ${Math.min(L.res, CFG.fullRes)}/${CFG.fullRes} ${'<i class="on"></i>'.repeat(Math.min(L.res, CFG.fullRes))}${'<i></i>'.repeat(Math.max(0, CFG.fullRes - L.res))} ${L.res >= CFG.fullRes ? '<b>満開！</b>' : ''}</div></section>
+    <section class="pn639 pu641"><div class="ph639"><svg class="pi639" viewBox="0 0 32 32"><path d="M4 24L6 10L12 16L16 6L20 16L26 10L28 24Z" fill="#FFD24A" stroke="#B5701C" stroke-width="2" stroke-linejoin="round"/><rect x="4" y="24" width="24" height="4" rx="1.5" fill="#F2A33A" stroke="#B5701C" stroke-width="2"/></svg><b>これまでの記録</b><span class="dl639"></span></div>
       <div class="tls639">
         ${tile('deg', ic('grad'), D.n, '', dn ? `<span class="mb639"><i style="width:${Math.min(100, u.degPt/dn.D.pt*100)}%"></i></span>` : '')}
         ${tile('note', ic('rnote'), '研究ノート', TH.reduce((a,t) => a + nCards(t.id), 0) || '')}
-        ${tile('partner', ic('pals'), 'なかま', '', p ? `<small class="nm641">${X(p.name)}</small>` : '')}
-        ${tile('secret', `<span class="sil634"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100 - Math.round(masters()/9*100)}%"></span>`, u.secret ? 'ひみつ' : '？？？', `${masters()}/9`)}
+        ${tile('partner', ic('pals'), '仲間', '', p ? `<small class="nm641">${X(p.name)}</small>` : '')}
+        ${tile('secret', `<span class="sil634"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100 - Math.round(masters()/9*100)}%"></span>`, u.secret ? '秘密' : '？？？', `${masters()}/9`)}
       </div>
       <div class="sub639">
         <span class="chip641">${ic('frag')} かけら ${u.frag}/5</span><span class="chip641">${ic('ticket')} ヒント ${u.tickets}</span>
-        <button type="button" data-a="toschool">${ic('school')} がっこう</button>
-        <button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button>
+        <button type="button" data-a="toschool">${ic('school')} 学校</button>
+        <button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> 説明</button>
       </div></section>
   </div>`;
   persist();
@@ -8560,63 +8566,63 @@ function uniMain(){
 async function pickTheme(id){
   const t = THM(id), d = thData(id), reco = recoTheme() === id, L = DL(); sound('ok');
   const btns = LV.map((n, i) => { const on = i <= d.lv, nd = i === d.lv + 1 ? lvNeed(id) : null;
-    return {label:`<b>${on ? '' : '<svg viewBox="0 0 20 22" width="14" height="15"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg>'}${n}</b>${stars(i+1)}<small>${on ? `せいこう ${d.s[i]}かい` : nd ? `あと${nd.n}かい・${Math.max(nd.d, nd.w)}にち` : 'まだ'}</small>${(UT.lv===i && on) ? '<i>まえかい</i>' : ''}`, cls:`white lv641 l${i} ${on ? '' : 'off'}`, v:on ? 'L'+i : ''}; });
-  const v = await dialog(`<div class="pk639" style="--c:${TH_C[id]}"><span class="pki">${thImg(id)}</span><div><b>${X(t.n)}</b>${reco ? '<em>おすすめ ×1.3！</em>' : ''}<small>${L.res >= CFG.fullRes ? 'きょうは れんしゅうモード' : `カード ${nCards(id)}/15・きょう ${L.res}/${CFG.fullRes}かい`}</small></div></div>
-    <p class="dlgP">どの レベルで けんきゅう する？<br><small>しらべる3もん → かんがえる3もん → はっぴょう1もん　♥×3</small></p>`, btns.concat([{label:'やめる', cls:'white cancel639', v:''}]), 'wide dfw639');
+    return {label:`<b>${on ? '' : '<svg viewBox="0 0 20 22" width="14" height="15"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg>'}${n}</b>${stars(i+1)}<small>${on ? `成功 ${d.s[i]}回` : nd ? `あと${nd.n}回・${Math.max(nd.d, nd.w)}日` : 'まだ'}</small>${(UT.lv===i && on) ? '<i>前回</i>' : ''}`, cls:`white lv641 l${i} ${on ? '' : 'off'}`, v:on ? 'L'+i : ''}; });
+  const v = await dialog(`<div class="pk639" style="--c:${TH_C[id]}"><span class="pki">${thImg(id)}</span><div><b>${X(t.n)}</b>${reco ? '<em>おすすめ ×1.3！</em>' : ''}<small>${L.res >= CFG.fullRes ? '今日は練習モード' : `カード ${nCards(id)}/15・今日 ${L.res}/${CFG.fullRes}回`}</small></div></div>
+    <p class="dlgP">どのレベルで研究する？<br><small>調べる3問 → 考える3問 → 発表1問　♥×3</small></p>`, btns.concat([{label:'やめる', cls:'white cancel639', v:''}]), 'wide dfw639');
   if(!v || v[0] !== 'L') return;
   UT.th = id; UT.lv = +v.slice(1); await runResearch(id, UT.lv);
 }
 function uniLocked(){
   const s = SV(), L = DL(), gold = s.badge >= 2;
   const b2 = CFG.badge[2], tot = SK.reduce((a,k) => a + (s.stars[k]||0), 0);
-  ROOT.innerHTML = `<div class="wrap631 uni s639 u641">${uTop('がっこうで ゴールドバッジを めざそう！')}
+  ROOT.innerHTML = `<div class="wrap631 uni s639 u641">${uTop('学校でゴールドバッジを目指そう！')}
     <section class="pn639 pu641"><div class="ph639"><svg class="pi639" viewBox="0 0 20 22"><rect x="2.5" y="9" width="15" height="11.5" rx="3" fill="#F2C14E" stroke="#7A5634" stroke-width="1.6"/><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="#7A5634" stroke-width="2"/></svg><b>入学まで</b></div>
-      ${gold ? '<p class="lk641p">🥇 ゴールド たっせい！ 入学試験に ちょうせん できるよ</p>' : `<div class="bdb639"><b>${medal(3,'s')} ゴールドバッジまで</b><div class="bb636"><small>★ ${tot}/${b2.st}</small><span class="bar631"><i style="width:${Math.min(100, tot/b2.st*100)}%"></i></span></div><div class="bb636"><small>しゅっせき ${s.attend}/${b2.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/b2.d*100)}%"></i></span></div></div>`}
-      <p class="lk641p sm">入学試験：10もん中 7もん せいかいで ごうかく（5きょうか 2もんずつ）</p>
-      <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は あした また ちょうせん' : `${ic('write','big')} 入学試験に ちょうせん！`) : `${ic('write','big')} 入学試験（ゴールドで かいほう）`}</button>
-      <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学は また あした' : `${ic('study','big')} 体験入学（1日1もん・せいかいで +10）`}</button></section>
-    <section class="pn639 pu641"><div class="ph639">${ic('rnote')}<b>まなべる こうざ</b><span class="hint639">＼ 入学すると えらべるよ ／</span></div>
+      ${gold ? '<p class="lk641p">🥇 ゴールド達成！入学試験に挑戦できるよ</p>' : `<div class="bdb639"><b>${medal(3,'s')} ゴールドバッジまで</b><div class="bb636"><small>★ ${tot}/${b2.st}</small><span class="bar631"><i style="width:${Math.min(100, tot/b2.st*100)}%"></i></span></div><div class="bb636"><small>出席 ${s.attend}/${b2.d}日</small><span class="bar631 d"><i style="width:${Math.min(100, s.attend/b2.d*100)}%"></i></span></div></div>`}
+      <p class="lk641p sm">入学試験：10問中7問正解で合格（5教科2問ずつ）</p>
+      <button type="button" class="go631 uni" data-a="exam" ${gold && L.exam < 1 ? '' : 'disabled'}>${gold ? (L.exam ? '入学試験は明日また挑戦' : `${ic('write','big')} 入学試験に挑戦！`) : `${ic('write','big')} 入学試験（ゴールドで解放）`}</button>
+      <button type="button" class="go631 sub" data-a="trial" ${L.trial ? 'disabled' : ''}>${L.trial ? '体験入学はまた明日' : `${ic('study','big')} 体験入学（1日1問・正解で +10）`}</button></section>
+    <section class="pn639 pu641"><div class="ph639">${ic('rnote')}<b>学べる講座</b><span class="hint639">＼ 入学すると選べるよ／</span></div>
       <div class="tg641">${TH.map(x => `<span class="tc641 lk" style="--c:${TH_C[x.id]}"><span class="si">${thImg(x.id)}</span><b>${x.n.replace(/（.*）/,'')}</b></span>`).join('')}</div>
-      <div class="sub639"><button type="button" data-a="toschool">${ic('school')} がっこうへ</button><button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> せつめい</button></div></section>
+      <div class="sub639"><button type="button" data-a="toschool">${ic('school')} 学校へ</button><button type="button" data-a="help"><img src="${X(artSrc('bird_think')||'')}" alt=""> 説明</button></div></section>
   </div>`;
 }
 async function trial(){
   const L = DL(); if(L.trial) return; L.trial = 1;
   const t = choice(TH.slice(0, 3)), m = themeQ(t, 0, new Set(), 1);
   const r = await askQ(m, `<div class="qh631 uni"><span>🎒 体験入学：${thImg(t.id,'ii635')} ${t.n}</span></div>`, 'one');
-  if(r.ok){ if(dayOK()) pts(10, 'だいがく 体験入学'); await pop('🎉', 'せいかい！ +10　だいがくって おもしろいね！'); }
+  if(r.ok){ if(dayOK()) pts(10, '大学体験入学'); await pop('🎉', '正解！ +10　大学って面白いね！'); }
   else await explainStep(m, r.v, `<div class="qh631 uni"><span>🎒 体験入学</span></div>`, [{label:'わかった！', cls:'gold', v:1}]);
   persist(); uniMain();
 }
 async function exam(){
   const L = DL(), s = SV(); if(L.exam || s.badge < 2) return; L.exam = 1; persist();
   const g = userG(), used = new Set(), list = []; SK.forEach(k => { list.push(k, k); });
-  QUITOK = true; QUITMSG = 'とちゅうで やめると きょうの 入学試験は おしまいに なるよ。<br>あした また ちょうせん できるよ';
-  const quitOut = () => { QUITOK = false; QUITFN = null; toast('入学試験を やめたよ'); uniMain(); };
+  QUITOK = true; QUITMSG = '途中でやめると今日の入学試験はおしまいになるよ。<br>明日また挑戦できるよ';
+  const quitOut = () => { QUITOK = false; QUITFN = null; toast('入学試験をやめたよ'); uniMain(); };
   let ok = 0, miss = [];
   for(let i=0; i<10; i++){
-    const subj = list[i], m = subjQ(subj, g, used, true); used.add(m.key);
-    const head = `<div class="qh631 uni"><span>📝 入学試験 ${i+1}/10</span><b class="cb631">${ok >= 7 ? 'ごうかく ライン こえた！' : `あと ${7 - ok}もんで ごうかく`}</b></div>`;
+    const subj = list[i], m = subjQ(subj, Math.min(9, Math.max(g, 5) + 1.5), used, true); used.add(m.key);
+    const head = `<div class="qh631 uni"><span>📝 入学試験 ${i+1}/10</span><b class="cb631">${ok >= 7 ? '合格ライン超えた！' : `あと ${7 - ok}問で合格`}</b></div>`;
     const r = await askQ(m, head, 'one');
     if(r.quit) return quitOut();
-    if(r.ok){ ok++; await pop('⭕', 'せいかい！'); }
-    else { miss.push(subj); addNote(m, 'k'); const ev = await explainStep(m, r.v, head, [{label:'つぎへ', cls:'gold', v:1}]); if(ev==='__quit') return quitOut(); }
+    if(r.ok){ ok++; await pop('⭕', '正解！'); }
+    else { miss.push(subj); addNote(m, 'k'); const ev = await explainStep(m, r.v, head, [{label:'次へ', cls:'gold', v:1}]); if(ev==='__quit') return quitOut(); }
   }
   QUITOK = false; QUITFN = null;
   if(ok >= 7 && dayOK()){
-    const u = UV(); u.enrolled = 1; u.enrollDay = D4(); pts(500, 'だいがく 入学'); persist();
+    const u = UV(); u.enrolled = 1; u.enrollDay = D4(); pts(500, '大学入学'); persist();
     const all = RES().slice(0, 12);
-    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631 ent631"><img class="bgE" src="${IMG}bg_univ.webp" alt=""><h2>🌸 ごうかく！ 入学 おめでとう！</h2>
+    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631 ent631"><img class="bgE" src="${IMG}bg_univ.webp" alt=""><h2>🌸 合格！入学おめでとう！</h2>
       <div class="clap631">${all.map((r,i) => `<span style="animation-delay:${(i*.12).toFixed(2)}s"><img src="${X(rsrc(r))}" alt=""><i>👏</i></span>`).join('')}</div>
-      <p class="hn631">${ok}/10 せいかい</p><ul class="ln631"><li>🪙 入学の ごほうび +500</li><li>🔓 かんきょう・いのち・しゃかい の 3テーマ かいほう</li><li>🎓 しょうごう「がくせい」</li></ul>
-      <div class="rb631"><button type="button" class="btn gold" data-a="toU">🎓 だいがくへ</button></div></div></div>`;
+      <p class="hn631">${ok}/10正解</p><ul class="ln631"><li>🪙 入学のご褒美 +500</li><li>🔓 環境・命・社会の3テーマ解放</li><li>🎓 称号「学生」</li></ul>
+      <div class="rb631"><button type="button" class="btn gold" data-a="toU">🎓 大学へ</button></div></div></div>`;
     confetti(3500); sound('fan');
     ROOT.querySelector('[data-a="toU"]').onclick = e => { e.stopPropagation(); uniMain(); };
   } else {
     const ms = [...new Set(miss)];
-    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>ざんねん… ${ok}/10</h2><p class="hn631">7もん せいかいで ごうかく。あした（あさ4じ いこう）また ちょうせん できるよ</p>
-      ${ms.length ? `<p class="tmr631">がっこうで <b>${ms.map(k => SUBJ[k]).join('・')}</b> の じゅぎょうを うけると いいかも！</p>` : ''}
-      <div class="rb631"><button type="button" class="btn gold" data-a="toS">🏫 ${ms.length ? SUBJ[ms[0]] + 'の じゅぎょうへ' : 'がっこうへ'}</button><button type="button" class="btn white" data-a="toU">もどる</button></div></div></div>`;
+    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>残念… ${ok}/10</h2><p class="hn631">7問正解で合格。明日（朝4時行こう）また挑戦できるよ</p>
+      ${ms.length ? `<p class="tmr631">学校で <b>${ms.map(k => SUBJ[k]).join('・')}</b> の授業を受けるといいかも！</p>` : ''}
+      <div class="rb631"><button type="button" class="btn gold" data-a="toS">🏫 ${ms.length ? SUBJ[ms[0]] + 'の授業へ' : '学校へ'}</button><button type="button" class="btn white" data-a="toU">戻る</button></div></div></div>`;
     sound('ng');
     ROOT.querySelector('[data-a="toS"]').onclick = e => { e.stopPropagation(); CUR = 'school'; if(ms[0]) ST.subj = ms[0]; schoolMain(); };
     ROOT.querySelector('[data-a="toU"]').onclick = e => { e.stopPropagation(); uniMain(); };
@@ -8625,11 +8631,11 @@ async function exam(){
 async function pickPartner(){
   const u = UV(), all = RES(), t = THM(UT.th);
   if(!all.length) return;
-  const v = await dialog(`<h2 class="dlgT">${ic('pals','h')} 研究なかまを えらぶ</h2><p class="dlgP facNote">とくいな きょうかが テーマと あうと ヒントが 1かい むりょう（きずなLv3いじょうで +1）</p>
-    <div class="pp631">${all.slice(0, 24).map(r => `<button type="button" class="ppb631 ${u.partner===r.id ? 'on' : ''}" data-pp="${X(r.id)}"><img src="${X(rsrc(r))}" alt=""><b>${X(r.name)}</b><small>${subjImg(fav(r))}${SUBJ[fav(r)]}${bondLv(r.id) >= 2 ? ` 💗${bondLv(r.id)}` : ''}</small></button>`).join('')}</div>`, [{label:'とじる', v:''}], 'wide');
+  const v = await dialog(`<h2 class="dlgT">${ic('pals','h')} 研究仲間を選ぶ</h2><p class="dlgP facNote">得意な教科がテーマと合うとヒントが1回無料（絆Lv3以上で +1）</p>
+    <div class="pp631">${all.slice(0, 24).map(r => `<button type="button" class="ppb631 ${u.partner===r.id ? 'on' : ''}" data-pp="${X(r.id)}"><img src="${X(rsrc(r))}" alt=""><b>${X(r.name)}</b><small>${subjImg(fav(r))}${SUBJ[fav(r)]}${bondLv(r.id) >= 2 ? ` 💗${bondLv(r.id)}` : ''}</small></button>`).join('')}</div>`, [{label:'閉じる', v:''}], 'wide');
   void v;
 }
-document.addEventListener('click', e => { const b = e.target.closest('[data-pp]'); if(!b) return; UV().partner = b.dataset.pp; persist(); document.querySelectorAll('.ppb631').forEach(x => x.classList.toggle('on', x===b)); toast('なかまを きめたよ'); if(CUR==='uni') uniMain(); }, true);
+document.addEventListener('click', e => { const b = e.target.closest('[data-pp]'); if(!b) return; UV().partner = b.dataset.pp; persist(); document.querySelectorAll('.ppb631').forEach(x => x.classList.toggle('on', x===b)); toast('仲間を決めたよ'); if(CUR==='uni') uniMain(); }, true);
 const TH_SUBJ = {env:'sci', life:'sci', soc:'soc', tech:'math', space:'sci', chem:'sci', lang:'en', math:'math', logic:'math'};
 async function runResearch(id, lv){
   const t = THM(id); if(!t || !thOpen(t)) return;
@@ -8637,39 +8643,39 @@ async function runResearch(id, lv){
   const p = u.partner && resBy(u.partner);
   let free = p && fav(p)===TH_SUBJ[id] ? 1 + (bondLv(p.id) >= 3 ? 1 : 0) : 0;
   let life = CFG.life, miss = 0; const used = new Set();
-  const stages = [['しらべる', 3, 1], ['かんがえる', 3, 2], ['はっぴょう', 1, 3]];
-  const tool = () => `<button type="button" class="btn small white" data-qt="h" ${free || u.tickets ? '' : 'disabled'}>💡 ヒント（${free ? `なかま ${free}` : `券 ${u.tickets}`}）</button>`;
+  const stages = [['調べる', 3, 1], ['考える', 3, 2], ['発表', 1, 3]];
+  const tool = () => `<button type="button" class="btn small white" data-qt="h" ${free || u.tickets ? '' : 'disabled'}>💡 ヒント（${free ? `仲間 ${free}` : `券 ${u.tickets}`}）</button>`;
   const onTool = (k, m) => { if(!free && !u.tickets) return null; if(free) free--; else u.tickets--; const ans = m.ansF || m.ans; return shuffle(m.opts.filter(o => o!==ans)).slice(0, 2); };
   let qi = 0, failed = false, lastM = null, lastV = '';
-  QUITOK = true; QUITMSG = 'とちゅうで やめると この けんきゅうの ごほうびは もらえないよ。<br>（♥は へらないよ）';
-  const quitOut = () => { QUITOK = false; QUITFN = null; toast('けんきゅうを やめたよ'); uniMain(); };
+  QUITOK = true; QUITMSG = '途中でやめるとこの研究のご褒美はもらえないよ。<br>（♥は減らないよ）';
+  const quitOut = () => { QUITOK = false; QUITFN = null; toast('研究をやめたよ'); uniMain(); };
   outer: for(const [sn, cnt, sk] of stages){
     for(let i=0; i<cnt; i++){
       const m = themeQ(t, lv, used, sk); used.add(m.key); noteRecent(m); qi++;
-      const head = `<div class="qh631 uni"><span>${thImg(t.id,'ii635')} ${t.n}・${LV[lv]}</span><span class="stg2">ステージ${sk}「${sn}」</span>${practice ? '<b class="cb631">れんしゅう</b>' : `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`}</div>
+      const head = `<div class="qh631 uni"><span>${thImg(t.id,'ii635')} ${t.n}・${LV[lv]}</span><span class="stg2">ステージ${sk}「${sn}」</span>${practice ? '<b class="cb631">練習</b>' : `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`}</div>
         <div class="nb631">📓 ${Array.from({length:7}, (_, k) => `<i class="${k < qi - 1 ? 'on' : ''}"></i>`).join('')}</div>`;
       const r = await askQ(m, head, 'one', {sec: sk===3 ? CFG.stageSec[lv] : 0, tool, onTool});
       if(r.quit) return quitOut();
-      if(r.ok){ await pop('📝', sk===3 ? 'はっぴょう だいせいこう！' : 'ノートが 1ぎょう うまった！'); continue; }
+      if(r.ok){ await pop('📝', sk===3 ? '発表大成功！' : 'ノートが1行埋まった！'); continue; }
       miss++; lastM = m; lastV = r.v;
       if(!practice){ life--; }
       if(!practice && life <= 0){ failed = true; break outer; }
-      const ev = await explainStep(m, r.v, head.replace(/<b class="lf631">[^<]*<\/b>/, `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`) + (r.timeout ? '<div class="revt631">⏱ じかんぎれ…</div>' : ''), [{label:'つぎへ', cls:'gold', v:1}]);
+      const ev = await explainStep(m, r.v, head.replace(/<b class="lf631">[^<]*<\/b>/, `<b class="lf631">${'♥'.repeat(life)}${'♡'.repeat(CFG.life - life)}</b>`) + (r.timeout ? '<div class="revt631">⏱ 時間切れ…</div>' : ''), [{label:'次へ', cls:'gold', v:1}]);
       if(ev==='__quit') return quitOut();
     }
   }
   QUITOK = false; QUITFN = null;
   if(failed){
-    const v = await explainStep(lastM, lastV, `<div class="qh631 uni"><span>${thImg(t.id,'ii635')} ${t.n}</span><b class="lf631">♡♡♡</b></div><div class="revt631">けんきゅうは しっぱい… でも かいせつを よめば まえに すすめるよ</div>`, [{label:'✅ わかった！', cls:'gold', v:'w'}]);
-    if(v==='w'){ u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; toast('✨ かけら 5こで ヒント券 1まい！'); } }
+    const v = await explainStep(lastM, lastV, `<div class="qh631 uni"><span>${thImg(t.id,'ii635')} ${t.n}</span><b class="lf631">♡♡♡</b></div><div class="revt631">研究は失敗…でも解説を読めば前に進めるよ</div>`, [{label:'✅ わかった！', cls:'gold', v:'w'}]);
+    if(v==='w'){ u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; toast('✨ かけら5個でヒント券1枚！'); } }
     persist();
-    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>けんきゅう しっぱい…</h2><p class="hn631">✨ ひらめきの かけら +1（${u.frag}/5）</p><p class="tmr631">おなじ テーマで もういちど ちょうせん できるよ</p>
-      <div class="rb631"><button type="button" class="btn gold" data-a="re">🔬 もういちど</button><button type="button" class="btn white" data-a="bk">もどる</button></div></div></div>`;
+    ROOT.innerHTML = `<div class="wrap631 result"><div class="res631"><h2>研究失敗…</h2><p class="hn631">✨ ひらめきのかけら +1（${u.frag}/5）</p><p class="tmr631">同じテーマでもう一度挑戦できるよ</p>
+      <div class="rb631"><button type="button" class="btn gold" data-a="re">🔬 もう一度</button><button type="button" class="btn white" data-a="bk">戻る</button></div></div></div>`;
     ROOT.querySelector('[data-a="re"]').onclick = e => { e.stopPropagation(); busy = true; runResearch(id, lv).finally(() => { busy = false; }); };
     ROOT.querySelector('[data-a="bk"]').onclick = e => { e.stopPropagation(); uniMain(); };
     return;
   }
-  /* せいこう */
+  /* 成功 */
   const lines = []; let coin = 0, dp = 0, cry = 0, dai = false, card = null, secretPending = false;
   const today = D4();
   if(good && !practice){
@@ -8682,34 +8688,34 @@ async function runResearch(id, lv){
     dp = Math.round(dp); coin = Math.round(coin);
     u.degPt += dp; lines.push(`🎓 学位ポイント +${dp}${nomiss ? '（ノーミス×1.5）' : ''}${chainN ? `（チェイン +${chainN*10}%）` : ''}${reco ? '（おすすめ×1.3）' : ''}`);
     lines.push(`🪙 コイン +${coin}`);
-    if(Math.random() < CFG.resCry[lv]){ if(giveCry()){ cry = 1; lines.push('💎 すいしょう 1こ！'); } else if(lv===2){ coin += 100; lines.push('🪙 すいしょうの かわりに +100'); } }
+    if(Math.random() < CFG.resCry[lv]){ if(giveCry()){ cry = 1; lines.push('💎 水晶1個！'); } else if(lv===2){ coin += 100; lines.push('🪙 水晶の代わりに +100'); } }
     d.s[lv]++; if(!d.days[lv].includes(today)) d.days[lv].push(today); if(lv===0 && !d.first) d.first = today;
     u.total++;
     if(u.lastDay !== today){ u.lastDay = today; u.days++; }
-    if(p) { addBond(p.id, 1, true); lines.push(`🤝 ${p.name}と きずな +1`); }
+    if(p) { addBond(p.id, 1, true); lines.push(`🤝 ${p.name}と絆 +1`); }
     const mr = monRec(); mr.res++; mr.th[id] = (mr.th[id]||0) + 1;
     card = drawCard(id, lv, nomiss, dai);
-    if(card && card.dup){ coin += 20; u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; } lines.push('🃏 カードは ぜんぶ もっているよ → コイン+20・かけら+1'); }
-    else if(card){ mr.cards++; lines.push(`🃏 はっけんカード ${card.kira ? '✨キラ' : ''}ゲット！（${t.n} ${nCards(id)}/15）`);
-      if(nCards(id)===15){ coin += 1000; const tt = t.n.replace(/（.*）/,'') + 'はかせ'; u.titles = u.titles || []; if(!u.titles.includes(tt)) u.titles.push(tt); u.title = tt; lines.push(`👑 コンプリート！ しょうごう「${tt}」 +1000`);
-        if(TH.every(x => nCards(x.id)===15) && !u.titles.includes('だいはかせ')){ u.titles.push('だいはかせ'); u.title = 'だいはかせ'; lines.push('🌟 ぜんぶの テーマを コンプリート！ しょうごう「だいはかせ」'); } } }
-    lvCheck(id).forEach(l => { lines.push(`⬆ ${t.n}の ${LV[l]}が かいほう！`);
-      if(l===2){ const rc = giveRecipe(id); if(rc) lines.push(`🍰 カフェの とくべつ レシピ「${rc[1]}」を おぼえた！`); lines.push(`❓ ひみつの シルエットが すこし 見えた（${masters()}/9）`);
+    if(card && card.dup){ coin += 20; u.frag++; if(u.frag >= 5){ u.frag -= 5; u.tickets++; } lines.push('🃏 カードは全部持っているよ → コイン+20・かけら+1'); }
+    else if(card){ mr.cards++; lines.push(`🃏 発見カード ${card.kira ? '✨キラ' : ''}ゲット！（${t.n} ${nCards(id)}/15）`);
+      if(nCards(id)===15){ coin += 1000; const tt = t.n.replace(/（.*）/,'') + '博士'; u.titles = u.titles || []; if(!u.titles.includes(tt)) u.titles.push(tt); u.title = tt; lines.push(`👑 コンプリート！称号「${tt}」 +1000`);
+        if(TH.every(x => nCards(x.id)===15) && !u.titles.includes('大博士')){ u.titles.push('大博士'); u.title = '大博士'; lines.push('🌟 全部のテーマをコンプリート！称号「大博士」'); } } }
+    lvCheck(id).forEach(l => { lines.push(`⬆ ${t.n}の ${LV[l]}が解放！`);
+      if(l===2){ const rc = giveRecipe(id); if(rc) lines.push(`🍰 カフェの特別レシピ「${rc[1]}」を覚えた！`); lines.push(`❓ 秘密のシルエットが少し見えた（${masters()}/9）`);
         if(masters()===9 && !u.secret) secretPending = true; } });
-    TH.forEach(x => { if(x.need && u.total === x.need) lines.push(`🔓 あたらしい テーマ「${x.n}」が かいほう！`); });
-    const dn = degNext(); if(dn && dn.ok){ u.degree++; if(dn.D.rew){ coin += dn.D.rew; } lines.push(`🎓 しょうごう「${dn.D.n}」に なった！${dn.D.rew ? ` +${dn.D.rew}` : ''}`);
-      if(dn.D.n==='修士'){ const rc = giveRecipe('deg'); if(rc) lines.push(`🍰 とくべつ レシピ「${rc[1]}」を おぼえた！`); } }
-  } else if(good){ coin = Math.round(CFG.resCoin[lv] * t.mul * CFG.overMul); lines.push(`🪙 れんしゅうモード +${coin}`); }
-  if(coin) pts(coin, `だいがく ${t.n}の けんきゅう`);
+    TH.forEach(x => { if(x.need && u.total === x.need) lines.push(`🔓 新しいテーマ「${x.n}」が解放！`); });
+    const dn = degNext(); if(dn && dn.ok){ u.degree++; if(dn.D.rew){ coin += dn.D.rew; } lines.push(`🎓 称号「${dn.D.n}」になった！${dn.D.rew ? ` +${dn.D.rew}` : ''}`);
+      if(dn.D.n==='修士'){ const rc = giveRecipe('deg'); if(rc) lines.push(`🍰 特別レシピ「${rc[1]}」を覚えた！`); } }
+  } else if(good){ coin = Math.round(CFG.resCoin[lv] * t.mul * CFG.overMul); lines.push(`🪙 練習モード +${coin}`); }
+  if(coin) pts(coin, `大学 ${t.n}の研究`);
   persist();
   const dn = degNext();
   ROOT.innerHTML = `<div class="wrap631 result"><div class="res631">${stage('bg_univ', uniMates(4), {pos:[[16,90],[38,96],[62,96],[84,90]], prop:() => t.prop, bounce:true, noLv:true, cls:'mini clear633'})}
-    <h2 class="hk631">${dai ? '🌟 だいはっけん！！' : '💡 はっけん！'}</h2>
+    <h2 class="hk631">${dai ? '🌟 大発見！！' : '💡 発見！'}</h2>
     ${card && !card.dup ? cardHTML(id, card.i, true) : ''}
     <ul class="ln631">${lines.map(l => `<li>${X(l)}</li>`).join('')}</ul>
-    ${dn ? `<div class="nx631">つぎの「${dn.D.n}」まで：学位 あと${fmt(dn.needP)}・あと${dn.needD}にち${dn.needA ? `・アドバンス ${dn.needA}テーマ` : ''}${dn.needM ? `・マスター ${dn.needM}テーマ` : ''}${bar(u.degPt, dn.D.pt)}</div>` : ''}
-    ${L.res >= CFG.fullRes ? `<p class="tmr631">きょうの けんきゅうは まんかい！ あしたも まってるよ</p>` : `<p class="tmr631">べつの テーマに ちょうせんすると 学位ポイントが ふえるよ（チェイン）</p>`}
-    <div class="rb631"><button type="button" class="btn gold" data-a="bk">🎓 だいがくに もどる</button></div></div></div>`;
+    ${dn ? `<div class="nx631">次の「${dn.D.n}」まで：学位あと${fmt(dn.needP)}・あと${dn.needD}日${dn.needA ? `・アドバンス ${dn.needA}テーマ` : ''}${dn.needM ? `・マスター ${dn.needM}テーマ` : ''}${bar(u.degPt, dn.D.pt)}</div>` : ''}
+    ${L.res >= CFG.fullRes ? `<p class="tmr631">今日の研究は満開！明日も待ってるよ</p>` : `<p class="tmr631">別のテーマに挑戦すると学位ポイントが増えるよ（チェイン）</p>`}
+    <div class="rb631"><button type="button" class="btn gold" data-a="bk">🎓 大学に戻る</button></div></div></div>`;
   confetti(dai ? 3500 : 2000); sound('fan');
   ROOT.querySelector('[data-a="bk"]').onclick = e => { e.stopPropagation(); uniMain(); };
   if(secretPending) setTimeout(() => { busy = true; secretOpen().finally(() => { busy = false; }); }, 1600);
@@ -8733,29 +8739,29 @@ function cardHTML(id, i, flip){
 }
 function noteBook(th){
   if(!ROOT) return; th = th && THM(th) ? th : TH[0].id; const own = cardsOf(th), tot = TH.reduce((a,t) => a + nCards(t.id), 0);
-  ROOT.innerHTML = `<div class="wrap631 nb634w"><header class="hd631"><button type="button" class="back631" data-nb="back">‹ だいがく</button><div class="tt631"><b class="nbt634">${ic('rnote')} 研究ノート</b><small>はっけんカード ${tot}/135</small></div><span></span></header>
-    <div class="nbt634s">${TH.map(t => `<button type="button" class="nbtab634 ${t.id===th ? 'on' : ''}" data-nb="${t.id}" style="--tc:${TH_C[t.id]}">${thImg(t.id)}<small>${nCards(t.id)}/15</small>${nCards(t.id)===14 ? '<em class="last634">あと1まい</em>' : ''}</button>`).join('')}</div>
+  ROOT.innerHTML = `<div class="wrap631 nb634w"><header class="hd631"><button type="button" class="back631" data-nb="back">‹ 大学</button><div class="tt631"><b class="nbt634">${ic('rnote')} 研究ノート</b><small>発見カード ${tot}/135</small></div><span></span></header>
+    <div class="nbt634s">${TH.map(t => `<button type="button" class="nbtab634 ${t.id===th ? 'on' : ''}" data-nb="${t.id}" style="--tc:${TH_C[t.id]}">${thImg(t.id)}<small>${nCards(t.id)}/15</small>${nCards(t.id)===14 ? '<em class="last634">あと1枚</em>' : ''}</button>`).join('')}</div>
     <div class="nbp634" style="--tc:${TH_C[th]}"><div class="nbh634">${thImg(th)}<b>${THM(th).n}</b><span>${own.length}/15${own.length===15 ? ' 👑 コンプリート' : ''}</span></div>
       ${LV.map((n, k) => `<div class="nbl634">${n}</div><div class="nbg634">${[0,1,2,3,4].map(j => { const i = k*5+j; return own.includes(i) ? `<button type="button" class="mini634 ${isKira(i) ? 'kira' : ''}" data-cd="${th}|${i}">${thImg(th,'ci634')}<small>No.${i+1}</small></button>` : `<span class="mini634 off">${isKira(i) ? '✨' : ''}？</span>`; }).join('')}</div>`).join('')}
-      <p class="nbn634">けんきゅうに せいこうすると カードが 1まい もらえるよ。ノーミスだと キラカードが 出やすい！</p></div></div>`;
+      <p class="nbn634">研究に成功するとカードが1枚もらえるよ。ノーミスだとキラカードが出やすい！</p></div></div>`;
   ROOT.scrollTop = 0;
   ROOT.querySelectorAll('[data-nb]').forEach(b => b.onclick = e => { e.stopPropagation(); const v = b.dataset.nb; if(v==='back') uniMain(); else noteBook(v); });
-  ROOT.querySelectorAll('[data-cd]').forEach(b => b.onclick = e => { e.stopPropagation(); const [id, i] = b.dataset.cd.split('|'); dialog(`<div class="cdw634">${cardHTML(id, +i, false)}</div>`, [{label:'とじる', cls:'gold', v:1}]); });
+  ROOT.querySelectorAll('[data-cd]').forEach(b => b.onclick = e => { e.stopPropagation(); const [id, i] = b.dataset.cd.split('|'); dialog(`<div class="cdw634">${cardHTML(id, +i, false)}</div>`, [{label:'閉じる', cls:'gold', v:1}]); });
 }
 async function secretView(){
   const u = UV(), n = masters();
-  if(u.secret) return dialog(`<div class="dlgArt"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="height:110px"></div><h2 class="dlgT">🌈 ひみつの ほうしゅう</h2><p class="dlgP">ぜんぶの テーマを マスターして <b>超レアかくていレター</b> を 手に入れたよ！</p>`, [{label:'とじる', cls:'gold', v:1}]);
-  await dialog(`<div class="dlgArt"><span class="sil634 big"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100 - Math.round(n/9*100)}%"></span></div><h2 class="dlgT">❓ ？？？の ひみつ</h2>
-    <p class="dlgP">テーマを 1つ「マスター」に するたびに シルエットが 9分の1ずつ 見えてくるよ。<br>ぜんぶ マスターすると ひみつが あきらかに！</p><p class="dlgP facNote">いま ${n}/9 テーマ</p>`, [{label:'とじる', cls:'gold', v:1}]);
+  if(u.secret) return dialog(`<div class="dlgArt"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="height:110px"></div><h2 class="dlgT">🌈 秘密の報酬</h2><p class="dlgP">全部のテーマをマスターして <b>超レア確定レター</b> を手に入れたよ！</p>`, [{label:'閉じる', cls:'gold', v:1}]);
+  await dialog(`<div class="dlgArt"><span class="sil634 big"><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="--r:${100 - Math.round(n/9*100)}%"></span></div><h2 class="dlgT">❓ ？？？の秘密</h2>
+    <p class="dlgP">テーマを1つ「マスター」にするたびにシルエットが9分の1ずつ見えてくるよ。<br>全部マスターすると秘密が明らかに！</p><p class="dlgP facNote">今 ${n}/9テーマ</p>`, [{label:'閉じる', cls:'gold', v:1}]);
 }
 async function secretOpen(){
   const u = UV(); if(u.secret || masters() < 9) return; u.secret = 1;
-  save.superLetter = (save.superLetter||0) + 3; save.crystal = (save.crystal||0) + 10; u.titles = u.titles || []; if(!u.titles.includes('でんせつの けんきゅうしゃ')) u.titles.push('でんせつの けんきゅうしゃ'); u.title = 'でんせつの けんきゅうしゃ';
+  save.superLetter = (save.superLetter||0) + 3; save.crystal = (save.crystal||0) + 10; u.titles = u.titles || []; if(!u.titles.includes('伝説の研究者')) u.titles.push('伝説の研究者'); u.title = '伝説の研究者';
   persist(); confetti(4000); sound('fan');
-  await dialog(`<div class="rareIntro rk4"><div class="rays"></div><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="height:120px;position:relative"></div><h2 class="dlgT">🌈 ひみつが あきらかに！</h2>
-    <p class="dlgP">9つの テーマを ぜんぶ マスター！<br><b>超レアかくていレター ×3</b>・<b>すいしょう ×10</b><br>しょうごう「でんせつの けんきゅうしゃ」</p><p class="dlgP facNote">レターは もちものから つかうと 超レアの 住民が かならず 来るよ</p>`, [{label:'すごい！', cls:'gold', v:1}], 'wide');
+  await dialog(`<div class="rareIntro rk4"><div class="rays"></div><img src="${X(artSrc('itm_superletter')||'')}" alt="" style="height:120px;position:relative"></div><h2 class="dlgT">🌈 秘密が明らかに！</h2>
+    <p class="dlgP">9つのテーマを全部マスター！<br><b>超レア確定レター ×3</b>・<b>水晶 ×10</b><br>称号「伝説の研究者」</p><p class="dlgP facNote">レターは持ち物から使うと超レアの住民が必ず来るよ</p>`, [{label:'すごい！', cls:'gold', v:1}], 'wide');
 }
-/* がっかい（月1回） */
+/* 学会（月1回） */
 let gkBusy = false;
 async function gakkai(){
   if(gkBusy || !save.uni631 || !UV().enrolled) return; const u = UV(), cur = ym(D4());
@@ -8767,23 +8773,23 @@ async function gakkai(){
     const mvp = Object.entries(M.th).sort((a,b) => b[1]-a[1])[0], t = mvp && THM(mvp[0]);
     save.crystal = (save.crystal||0) + 1; const it = decoItem(true); persist(); confetti(2500); sound('fan');
     const cl = RES().slice(0, 8);
-    await dialog(`<div class="gk634"><div class="gkt634">📜 ${+pk.slice(5)}月の がっかい はっぴょう</div>
-      <div class="gkb634">${t ? `<div class="gkm634">${thImg(t.id)}<div><small>こんげつの MVP テーマ</small><b>${t.n}</b><span>${mvp[1]}かい けんきゅう</span></div></div>` : ''}
-      <div class="gks634"><span>🔬 けんきゅう<b>${M.res}かい</b></span><span>🃏 カード<b>${M.cards}まい</b></span><span>📓 ぜんぶで<b>${TH.reduce((a,x) => a + nCards(x.id), 0)}/135</b></span></div></div>
+    await dialog(`<div class="gk634"><div class="gkt634">📜 ${+pk.slice(5)}月の学会発表</div>
+      <div class="gkb634">${t ? `<div class="gkm634">${thImg(t.id)}<div><small>今月のMVPテーマ</small><b>${t.n}</b><span>${mvp[1]}回研究</span></div></div>` : ''}
+      <div class="gks634"><span>🔬 研究<b>${M.res}回</b></span><span>🃏 カード<b>${M.cards}枚</b></span><span>📓 全部で<b>${TH.reduce((a,x) => a + nCards(x.id), 0)}/135</b></span></div></div>
       <div class="clap631">${cl.map((r,i) => `<span style="animation-delay:${(i*.12).toFixed(2)}s"><img src="${X(rsrc(r))}" alt=""><i>👏</i></span>`).join('')}</div>
-      <p class="dlgP">MVPの ごほうび：💎 すいしょう 1こ${it ? `・とくべつ かざり「${X(it.name)}」` : ''}</p></div>`, [{label:'こんげつも がんばる！', cls:'gold', v:1}], 'wide');
+      <p class="dlgP">MVPのご褒美：💎 水晶1個${it ? `・特別飾り「${X(it.name)}」` : ''}</p></div>`, [{label:'今月も頑張る！', cls:'gold', v:1}], 'wide');
   } finally { gkBusy = false; }
 }
 setInterval(() => { if(document.hidden || CUR || typeof curScreen==='undefined' || !['town','home','myhome'].includes(curScreen)) return; gakkai(); }, 5000);
 async function degreeView(){
   const u = UV();
-  await dialog(`<h2 class="dlgT">${ic('grad','h')} 学位</h2><p class="dlgP">いま：<b>${CFG.degree[u.degree].n}</b>　学位ポイント <b>${fmt(u.degPt)}</b>　けんきゅうした日 <b>${u.days}にち</b></p>
-    ${(UV().titles||[]).length ? `<p class="dlgP">しょうごう：${UV().titles.map(X).join('・')}</p>` : ''}${(UV().recipes||[]).length ? `<p class="dlgP facNote">🍰 おぼえた レシピ：${UV().recipes.map(k => RECIPE[k] ? RECIPE[k][1] : '').join('・')}（カフェの メニューに あるよ）</p>` : ''}
-    <table class="rep631">${CFG.degree.slice(1).map((D, i) => `<tr class="${u.degree >= i+1 ? 'got' : ''}"><th>${D.n}</th><td>${fmt(D.pt)}pt・${D.d}にち${D.adv ? '・アドバンス1テーマ' : ''}${D.mas ? `・マスター${D.mas}テーマ` : ''}</td><td>${u.degree >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>`, [{label:'とじる', cls:'gold', v:1}], 'wide');
+  await dialog(`<h2 class="dlgT">${ic('grad','h')} 学位</h2><p class="dlgP">今：<b>${CFG.degree[u.degree].n}</b>　学位ポイント <b>${fmt(u.degPt)}</b>　研究した日 <b>${u.days}日</b></p>
+    ${(UV().titles||[]).length ? `<p class="dlgP">称号：${UV().titles.map(X).join('・')}</p>` : ''}${(UV().recipes||[]).length ? `<p class="dlgP facNote">🍰 覚えたレシピ：${UV().recipes.map(k => RECIPE[k] ? RECIPE[k][1] : '').join('・')}（カフェのメニューにあるよ）</p>` : ''}
+    <table class="rep631">${CFG.degree.slice(1).map((D, i) => `<tr class="${u.degree >= i+1 ? 'got' : ''}"><th>${D.n}</th><td>${fmt(D.pt)}pt・${D.d}日${D.adv ? '・アドバンス1テーマ' : ''}${D.mas ? `・マスター${D.mas}テーマ` : ''}</td><td>${u.degree >= i+1 ? '✅' : ''}</td></tr>`).join('')}</table>`, [{label:'閉じる', cls:'gold', v:1}], 'wide');
 }
 
-/* ---------- まちの たてものに つなぐ ---------- */
-/* facilities.js の FAC は 中に かくれているので、タップの しゅんかんだけ セルの id を すりかえて こちらで うけとる */
+/* ---------- 町のたてものにつなぐ ---------- */
+/* facilities.jsのFACは中にかくれているので、タップのしゅんかんだけセルのidをすりかえてこちらで受け取る */
 const HOOK = {school:'school', bg_university:'uni'}; let swap = null;
 const restore = () => { if(swap && save.town && save.town.cells[swap.k]==='__sch631') save.town.cells[swap.k] = swap.id; swap = null; };
 window.addEventListener('pointerup', e => {
@@ -8800,7 +8806,7 @@ window.addEventListener('click', e => {
 }, true);
 document.addEventListener('keydown', e => { if(e.key==='Escape' && CUR && !document.querySelector('#dlg.show')) close(); });
 const _show631 = show; show = function(){ if(CUR) close(); return _show631.apply(this, arguments); };
-/* じゅぎょう中の 文字は 出さない（v6.30）／だいがくの 上の アイコンは そのまま */
+/* 授業中の文字は出さない（v6.30）／大学の上のアイコンはそのまま */
 window.__sch631 = {open, close, SV, UV, DL, CFG, TH, special};
 
 const css = document.createElement('style');
@@ -8865,7 +8871,7 @@ body.sc631on{overflow:hidden}
 .th631.on{border-color:#5A6FD6;background:#E6EAFF;box-shadow:0 3px 0 #5A6FD6}.th631.lock{opacity:.6;background:#F1F1F1;border-color:#E2E2E2}
 .ck631{position:absolute;right:3px;top:2px;font-style:normal;font-size:10px;color:#3BAF6A;font-weight:900}
 .lock631{background:#fff;border-radius:14px;padding:8px 10px;box-shadow:0 2px 0 #E1E4F2;font-size:12.5px;color:#3F4E9E;font-weight:800}.lock631 p{margin:4px 0 0}.lock631 .sm{font-size:10.5px;color:#6A74A8}
-/* もんだい */
+/* 問題 */
 .qz631{display:flex;flex-direction:column;gap:7px;padding-top:calc(8px + env(safe-area-inset-top));position:relative;min-height:60vh}
 .qh631{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fff;border-radius:12px;padding:6px 8px;box-shadow:0 2px 0 #EADCC4;border-left:6px solid var(--c,#5A6FD6);font-size:12.5px;font-weight:900;color:#6B4A2A}
 .qh631.uni{--c:#5A6FD6}.qh631 .stg2{font-size:11px;color:#5A6FD6}
@@ -8907,7 +8913,7 @@ body.sc631on{overflow:hidden}
 .rb631{display:flex;flex-direction:column;gap:6px}.rb631 .btn{width:100%}
 .ent631{position:relative}.ent631 .bgE{width:100%;border-radius:16px;aspect-ratio:3/1.4;object-fit:cover}
 .clap631{display:flex;flex-wrap:wrap;justify-content:center;gap:2px}.clap631 span{position:relative;width:15%;max-width:70px;animation:hop631 .5s ease-in-out infinite alternate}.clap631 img{width:100%}.clap631 i{position:absolute;right:-4px;top:-4px;font-style:normal;font-size:16px}
-/* ダイアログの なかみ */
+/* ダイアログのなかみ */
 .rep631{width:100%;border-collapse:collapse;font-size:12.5px}.rep631 th,.rep631 td{padding:4px 5px;border-bottom:1px solid #F0E6D6;text-align:left;vertical-align:top}.rep631 th{white-space:nowrap;color:#6B4A2A}.rep631 td small{display:block;color:#3F55C4;font-weight:800}.rep631 tr.got{background:#EAF8EC}
 .up631{display:block;color:#E8414B;font-size:12px}
 .cal631{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:6px 0}.cal631 span{background:#F6EFE2;border-radius:8px;min-height:36px;display:flex;flex-direction:column;align-items:center;font-size:14px}.cal631 span small{font-size:9px;color:#8A6A45}.cal631 span.on{background:#FFE3EC}.cal631 span.td{outline:2px solid #F2A33A}
@@ -8916,9 +8922,9 @@ body.sc631on{overflow:hidden}
 .nt631{display:grid;grid-template-columns:1fr 1fr;gap:5px;text-align:left}.nt631>div{background:#FFF8EA;border-radius:10px;padding:5px 7px;font-size:12px}.nt631 span{float:right;font-weight:900}.nt631 small{display:block;color:#7A5634;font-size:10.5px;line-height:1.35;margin-top:2px}
 .sbst631{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0;font-size:12px;font-weight:800}.sbst631 span{background:#FFF5DE;border-radius:999px;padding:1px 8px}
 .fig632{max-width:100%;height:auto;display:block}
-/* v6.33 がっこう */
+/* v6.33学校 */
 #sc631.bgS633{background:#F6E9C8}
-#sc631.bgS633::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_school.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
+#sc631.bgS633::before{content:"";position:fixed;inset:0;background:url(./assets/images/school/bg_school.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
 #sc631.bgS633>*{position:relative;z-index:1}
 #sc631.bgS633 .hd631{background:none!important;position:relative}
 .logo633{height:62px;width:auto;max-width:100%;display:block;margin:0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
@@ -8941,15 +8947,15 @@ body.sc631on{overflow:hidden}
 .chest633 small{font-size:9.5px;font-weight:900;color:#B5701C;white-space:nowrap}
 .chi633{width:46px;height:46px;object-fit:contain}
 .chest633.glow{animation:glow631 1s ease-in-out infinite alternate;background:#FFE08A}.chest633.got{opacity:.5}
-/* じゅぎょうは カード */
+/* じゅぎょうはカード */
 .wrap631.card633{min-height:100%;justify-content:center;padding-top:calc(14px + env(safe-area-inset-top));padding-bottom:20px}
 .card633 .qz631{min-height:0;background:rgba(255,251,242,.97);border-radius:22px;padding:12px 10px 12px;box-shadow:0 8px 28px rgba(60,40,10,.35);border:3px solid #fff;margin:0 2px}
 .quit633{align-self:flex-end;border:none;background:#fff;border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:900;color:#8A6A45;box-shadow:0 2px 0 #E6D6BB;margin-bottom:-2px}
 .card633 .pop631{top:45%}
-/* ===== v6.41 だいがく ===== */
+/* ===== v6.41大学 ===== */
 #sc631.bgU634{background:#EADFC4}
-#sc631.bgU634::before{background:url(./assets/images/v641/bg_univ_pals.webp) center top/cover no-repeat!important;filter:blur(6px);opacity:.55}
-.s639.u641{container-type:inline-size;background:#EADFC4 url(./assets/images/v641/bg_univ_pals.webp) center top/100% auto no-repeat}
+#sc631.bgU634::before{background:url(./assets/images/school/bg_univ_pals.webp) center top/cover no-repeat!important;filter:blur(6px);opacity:.55}
+.s639.u641{container-type:inline-size;background:#EADFC4 url(./assets/images/school/bg_univ_pals.webp) center top/100% auto no-repeat}
 .tp639.tpu641{min-height:86cqw}
 .tpu641 .lg639{max-width:170px}
 .tpu641 .cp639 span{font-size:11.5px}
@@ -8984,10 +8990,10 @@ body.sc631on{overflow:hidden}
 .btn.lv641.off{opacity:.55;pointer-events:none}
 .btn.lv641 i{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:900;background:#fff;color:#6A74A8;border:1.5px solid #C9D3F2;border-radius:8px;padding:0 5px;white-space:nowrap}
 
-/* ===== v6.40 がっこう：フクロウ＆アザラシの 背景・ロゴ ===== */
+/* ===== v6.40学校：フクロウ＆アザラシの背景・ロゴ ===== */
 #sc631.bgS633{background:#F3DCAB}
-#sc631.bgS633::before{background:url(./assets/images/v639/bg_school_pals.webp) center top/cover no-repeat!important;filter:blur(6px) saturate(1.1);opacity:.6}
-.s639{container-type:inline-size;background:#F3DCAB url(./assets/images/v639/bg_school_pals.webp) center top/100% auto no-repeat;padding-left:8px;padding-right:8px;box-shadow:0 0 30px rgba(0,0,0,.15)}
+#sc631.bgS633::before{background:url(./assets/images/school/bg_school_pals.webp) center top/cover no-repeat!important;filter:blur(6px) saturate(1.1);opacity:.6}
+.s639{container-type:inline-size;background:#F3DCAB url(./assets/images/school/bg_school_pals.webp) center top/100% auto no-repeat;padding-left:8px;padding-right:8px;box-shadow:0 0 30px rgba(0,0,0,.15)}
 .tp639{position:relative;min-height:88cqw}
 .lg639{justify-self:center;width:100%;max-width:200px;height:auto;display:block;margin-top:-4px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.18));animation:sg639 3s ease-in-out infinite}
 .hd639{grid-template-columns:auto minmax(0,1fr) auto!important}
@@ -9001,8 +9007,8 @@ body.sc631on{overflow:hidden}
 .pb639.pop{animation:pbp639 .35s ease-out, bub639 2.6s ease-in-out .35s infinite}
 @keyframes pbp639{from{transform:scale(.6)}to{transform:scale(1)}}
 
-/* ===== v6.39 がっこう（テンション UP） ===== */
-#sc631.bgS633::before{background:url(./assets/images/v639/bg_school_gate.webp) center top/cover no-repeat!important}
+/* ===== v6.39学校（テンションUP） ===== */
+#sc631.bgS633::before{background:url(./assets/images/school/bg_school_gate.webp) center top/cover no-repeat!important}
 .s639{gap:9px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 .hd639{display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 0 0}
 .bk639{display:flex;align-items:center;gap:2px;border:3px solid #fff;background:linear-gradient(180deg,#FFF6E2,#F7E3BE);border-radius:18px;padding:5px 7px 5px 4px;font:inherit;box-shadow:0 3px 0 #C9A36A,0 4px 8px rgba(0,0,0,.15)}
@@ -9077,7 +9083,7 @@ body.sc631on{overflow:hidden}
 .sub639 button{position:relative;display:inline-flex;align-items:center;gap:3px;border:none;background:#FFF6E4;border-radius:99px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:900;color:#6B4A2A}
 .sub639 img{width:20px;height:20px;object-fit:contain}.sub639 .ii635{width:20px;height:20px;margin:0}
 .sub639 .bd639{position:static;min-width:16px;height:16px;line-height:16px;font-size:10px;padding:0 4px;border:none}
-/* むずかしさ えらび */
+/* むずかしさ選び */
 .pk639{display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--c) 12%,#fff);border:3px solid var(--c);border-radius:16px;padding:6px 10px}
 .pk639 .pki .sic633{width:56px;height:56px;margin:0}
 .pk639 div{display:flex;flex-direction:column;text-align:left}.pk639 b{font-size:22px;color:var(--c);filter:brightness(.85)}.pk639 small{font-size:11px;color:#7A5634;font-weight:800}
@@ -9099,7 +9105,7 @@ body.sc631on{overflow:hidden}
 .bb636{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:6px}.bb636 small{font-size:10.5px;color:#7A5634;white-space:nowrap}.bb636 .bar631{margin:0;height:8px}.bb636 .bar631.d i{background:linear-gradient(90deg,#9BE0AE,#3BAF6A)}
 .bb636.e{display:block}.bb636.e small{color:#D2601E;white-space:normal}
 
-/* v6.35 アイコン・ナビ */
+/* v6.35アイコン・ナビ */
 .ii635{width:1.45em;height:1.45em;object-fit:contain;display:inline-block;vertical-align:middle;margin:-3px 1px 0 0}
 .ii635.big{width:1.6em;height:1.6em;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 .ii635.h{width:1.5em;height:1.5em}
@@ -9119,9 +9125,9 @@ body.sc631on{overflow:hidden}
 .gdt635 p{margin:0;font-size:13.5px;line-height:1.6;color:#4A3A2A}
 .gdd635{display:flex;justify-content:center;gap:5px;margin-top:8px}.gdd635 i{width:8px;height:8px;border-radius:50%;background:#E3D6BE}.gdd635 i.on{background:#F2A33A;width:18px;border-radius:99px}
 
-/* v6.34 だいがく */
+/* v6.34大学 */
 #sc631.bgU634{background:#EEF1E4}
-#sc631.bgU634::before{content:"";position:fixed;inset:0;background:url(./assets/images/v631/bg_univ.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
+#sc631.bgU634::before{content:"";position:fixed;inset:0;background:url(./assets/images/school/bg_univ.webp) center top/cover no-repeat;z-index:0;pointer-events:none}
 #sc631.bgU634>*{position:relative;z-index:1}
 #sc631.bgU634 .hd631{background:none!important;position:relative}
 #sc631.bgU634 .tt631 small{background:rgba(255,255,255,.85);border-radius:99px;padding:0 6px;display:inline-block;max-width:100%;color:#3F55C4}
@@ -9172,7 +9178,7 @@ body.sc631on{overflow:hidden}
 .mini634.kira{background:linear-gradient(135deg,#FFF6D0,#E8F4FF,#FFE3F4);box-shadow:0 0 6px rgba(255,190,0,.6)}
 .mini634.off{border-style:dashed;border-color:#C9CCE0;background:#F3F4FA;color:#B0B4CC;font-weight:900;font-size:16px}
 .nbn634{font-size:11px;color:#6A74A8;font-weight:800;margin:8px 0 0}
-/* がっかい */
+/* 学会 */
 .gk634{text-align:center}
 .gkt634{display:inline-block;background:linear-gradient(90deg,#3F55C4,#7A5CD6);color:#fff;font-weight:900;font-size:16px;border-radius:12px;padding:5px 14px;box-shadow:0 3px 0 #2A3A8E}
 .gkb634{margin:8px 0;background:#FFFDF4;border:3px double #C9A55A;border-radius:12px;padding:8px}
@@ -9188,7 +9194,188 @@ body.sc631on{overflow:hidden}
 @media (min-width:600px){ .stg631{aspect-ratio:3/1.3} .op631{font-size:17px} }
 `;
 document.head.appendChild(css);
-try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `学びタウンv${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+
+
+
+/* =====================================================================
+   まなびタウン v6.66：がっこう・大学
+   ・iPad横の専用イラスト（トップ・勉強画面）／スマホ縦は今までどおり
+   ・大学の問題を大学レベルのむずかしい問題に（9テーマ×3レベル）
+   ・文字を漢字で表示（ふりがなは「難しい字／全部／なし」を切りかえ）
+   ・苦手ノート：正解するとすぐに回数が進み、3回で卒業・チャレンジも達成
+   ・画像は ./assets/images/school/ にまとめました
+   ===================================================================== */
+(function(){
+'use strict';
+const IMG = './assets/images/school/';
+const BANK66 = {"env":[[["大気中の二酸化炭素の濃度は、産業革命前の約280ppmから、現在は約何ppmまで増えている？","約420ppm",["約320ppm","約520ppm","約720ppm"],"観測では近年約420ppmに達している。化石燃料の燃焼や森林の減少が主な原因。"],["同じ質量で比べたとき、100年間の温室効果が二酸化炭素の約28倍とされる気体は？","メタン",["窒素","酸素","アルゴン"],"メタンは稲作・家畜・天然ガスの漏れなどから出る。大気中の寿命は約12年と短いが、温室効果は強い。"],["食物連鎖で、ひとつ上の栄養段階へエネルギーが伝わる割合は、平均してどれくらい？","約10%",["約1%","約40%","約90%"],"「10%の法則」。残りは呼吸による熱などで失われるので、上位の捕食者ほど個体数が少なくなる。"],["水中の窒素やリンが増えすぎて、植物プランクトンが大発生する現象は？","富栄養化",["酸性化","砂漠化","オゾン層破壊"],"富栄養化が進むと赤潮・アオコが発生し、分解で酸素が使われて魚が死ぬこともある。"],["生物多様性の3つの階層は「生態系の多様性」「種の多様性」と、もう1つは？","遺伝子の多様性",["気候の多様性","資源の多様性","国の多様性"],"同じ種の中の遺伝子の違いが多いほど、環境の変化や病気に強い集団になる。"],["海洋酸性化の主な原因は？","海が大気中の二酸化炭素を吸収すること",["海に酸性雨が降ること","海底火山の噴火","海水中の塩分の増加"],"二酸化炭素が海水にとけて炭酸になり、pHが下がる。貝やサンゴの殻ができにくくなる。"],["再生可能エネルギーに「入らない」ものは？","天然ガス",["太陽光","風力","地熱"],"天然ガスは化石燃料で、使うと減る。太陽光・風力・地熱は自然の中で繰り返し得られる。"]],[["パリ協定が努力目標とする、産業革命前からの世界の平均気温上昇の上限は？","1.5℃",["0.5℃","3.0℃","5.0℃"],"パリ協定（2015年）は「2℃より十分低く、できれば1.5℃以内」を目標にしている。"],["エルニーニョ現象とは、太平洋の赤道付近の東〜中部で、何が平年より高くなる現象？","海面水温",["海面の高さだけ","風の強さだけ","塩分濃度"],"貿易風が弱まり、暖かい海水が東へ広がる。世界の天候に影響し、日本は冷夏や暖冬になりやすい。"],["分解されにくい物質が、食物連鎖の上位の生物ほど高い濃度になる現象は？","生物濃縮",["光合成","富栄養化","自然淘汰"],"DDTやPCBなどが、食べられるたびに濃縮されていく。"],["製品の原料の採取から、製造・使用・廃棄までの環境への負荷を評価する手法は？","ライフサイクルアセスメント（LCA）",["環境アセスメント","リスクヘッジ","バランスシート"],"LCAは「作るときだけ」でなく、使い終わるまでの全体で温室効果ガスや資源の使用量を比べる。"],["永久凍土がとけると、大量に出ることが心配されている温室効果ガスは？","メタン",["ヘリウム","ネオン","アルゴン"],"凍土にとじこめられていた有機物が分解されて、メタンや二酸化炭素が出る。温暖化がさらに進む悪循環が心配されている。"],["ラムサール条約が保全の対象にしているのは？","湿地",["砂漠","氷河","高山の森林"],"水鳥のすむ湿地などを国際的に守る条約。釧路湿原や琵琶湖なども登録されている。"],["日本の一次エネルギー供給にしめる化石燃料（石油・石炭・天然ガス）の割合は約？","約8割",["約2割","約4割","ほぼ10割"],"日本は化石燃料のほとんどを輸入に頼っている。エネルギー自給率は約13%（2021年度）と低い。"]],[["大気中の二酸化炭素が2倍になったとき、平衡状態で上がる地球の平均気温の目安（気候感度）は、IPCC第6次報告書の最良推定値でおよそ？","約3℃",["約0.5℃","約1℃","約8℃"],"IPCC第6次評価報告書では、最良推定値は約3℃（可能性の高い範囲は2.5〜4℃）。"],["温室効果がまったくないと仮定したとき、地球の地表の平均気温は約何℃になる？","約−18℃",["約0℃","約＋10℃","約−80℃"],"太陽放射と釣り合う放射平衡温度は約255K（−18℃）。実際は約15℃なので、約33℃分の温室効果がある。"],["ハーバー・ボッシュ法の発明が、環境に与えた大きな影響は？","窒素肥料の大量生産で、地球の窒素循環が大きく変わった",["オゾン層が増えた","大気中の酸素が減った","海水の塩分が増えた"],"空気中の窒素からアンモニアを作れるようになって食料生産は増えたが、肥料の流出で富栄養化なども起きた。"],["水質の指標「BOD（生物化学的酸素要求量）」は何を表す？","水中の有機物が微生物に分解されるときに消費される酸素の量",["水の中の塩分の量","水に含まれる重金属の量","水の温度が変化する速さ"],"BODが大きいほど、有機物による汚れが多い水。"],["「ティッピングポイント」の例として、研究者がよく挙げるものは？","アマゾンの熱帯雨林が、草原のような状態へ変わってしまうこと",["火山が噴火すること","月の満ち欠け","昼と夜が入れ替わること"],"一度こえると元に戻れない急な変化に入る限界点のこと。氷床の崩壊やサンゴ礁の死滅なども例とされる。"],["「カーボンニュートラル」の説明として最も正確なものは？","温室効果ガスの排出量と、吸収・除去量を差し引きでゼロにすること",["二酸化炭素を一切出さないこと","炭素でできた製品を使わないこと","石炭だけを使うこと"],"「排出ゼロ」ではなく「実質ゼロ」。森林による吸収や回収技術で、残りを相殺する。"],["南極上空のオゾンホールが、特に大きくなる季節は？","9〜10月（南半球の春）",["12〜1月","3〜4月","6〜7月"],"冬の間に極域成層圏雲ができ、春に日光があたって塩素化合物がオゾンを壊す反応が急に進む。"]]],"life":[[["DNAをつくる4つの塩基は、アデニン（A）・チミン（T）・グアニン（G）と、あと1つは？","シトシン（C）",["ウラシル（U）","ロイシン（L）","セリン（S）"],"DNAはA-T、G-Cの組み合わせで対になる。ウラシルはRNAでチミンの代わりに使われる。"],["細胞の中で、ATP（エネルギーの通貨）を主につくる小器官は？","ミトコンドリア",["核","リボソーム","ゴルジ体"],"ミトコンドリアで酸素を使って有機物を分解し、大量のATPをつくる（好気呼吸）。"],["遺伝情報の流れ「セントラルドグマ」を正しく表した順は？","DNA → RNA → タンパク質",["タンパク質 → DNA → RNA","RNA → タンパク質 → DNA","DNA → タンパク質 → RNA"],"DNAの情報が転写されてRNAになり、翻訳されてタンパク質がつくられる。"],["細胞周期で、DNAが複製される時期は？","S期",["G1期","G2期","M期"],"S期はSynthesis（合成）の頭文字。DNAが2倍になってからM期に入って分裂する。"],["血糖値を下げるホルモン「インスリン」をつくる細胞があるのは？","すい臓のランゲルハンス島（β細胞）",["肝臓の細胞","副腎の皮質","甲状腺"],"インスリンが足りなかったり効きにくかったりすると、血糖値が高いままの糖尿病になる。"],["抗生物質（細菌をたおす薬）が効かない病原体は？","ウイルス",["大腸菌","結核菌","黄色ブドウ球菌"],"抗生物質は細菌の細胞壁やタンパク質合成をじゃまするので、細胞をもたないウイルスには効かない。"],["筋肉が縮むときに、筋原繊維の中で必要になるイオンは？","カルシウムイオン（Ca²⁺）",["塩化物イオン（Cl⁻）","水素イオン（H⁺）","マグネシウムイオンだけ"],"神経からの信号でCa²⁺が放出され、アクチンとミオシンが滑り合って筋肉が収縮する。"]],[["mRNAの3つの塩基の並びで、1つのアミノ酸を指定する単位を何という？","コドン",["アンチコドン","エキソン","オペロン"],"コドンは全部で64通り。アミノ酸は20種類なので、同じアミノ酸を指定するコドンが複数ある。"],["PCR法でDNAを増やすときの3つの工程は、変性・アニーリングと、あと1つは？","伸長反応",["凝固","透析","発酵"],"高温で2本鎖をほどき（変性）、プライマーが結合し（アニーリング）、DNAポリメラーゼが伸ばす（伸長）。"],["減数第一分裂で、相同染色体どうしが部分的に入れかわる現象は？","乗換え（交差）",["転座","逆位","欠失"],"乗換えによって、親とは違う遺伝子の組み合わせ（組換え）ができ、子の多様性が増える。"],["神経の活動電位が生じるとき、最初に細胞内へ流れこむイオンは？","ナトリウムイオン（Na⁺）",["カリウムイオン（K⁺）","塩化物イオン（Cl⁻）","カルシウムイオンだけ"],"Na⁺が流入して膜電位が逆転し（脱分極）、続いてK⁺が流れ出て元にもどる。"],["山中伸弥さんがiPS細胞をつくるときに体細胞へ入れた遺伝子（山中因子）は、いくつ？","4つ",["2つ","7つ","20個"],"Oct3/4・Sox2・Klf4・c-Mycの4つ。2012年にノーベル生理学・医学賞を受賞した。"],["光合成の明反応でつくられ、暗反応（カルビン・ベンソン回路）で使われる物質の組み合わせは？","ATPとNADPH",["ADPとNAD⁺","ATPとO₂","グルコースとCO₂"],"明反応で光エネルギーをATPとNADPHに変え、暗反応でCO₂を固定して糖をつくる。"],["腎臓で、原尿から水分とグルコースの大部分が再吸収される場所は？","近位尿細管",["糸球体","ボーマンのう","集合管だけ"],"原尿の約7割の水分と、グルコースやアミノ酸がほぼ全部、近位尿細管で再吸収される。"]],[["ゲノム編集のCRISPR-Cas9で、切る場所を決める役割をもつ分子は？","ガイドRNA",["DNAリガーゼ","ヘリカーゼ","ATP合成酵素"],"ガイドRNAが目的のDNA配列に結合し、Cas9がそこを切る。"],["真核生物で、mRNAの前駆体からイントロンを取り除く過程は？","スプライシング",["複製","翻訳","変性"],"エキソンがつなぎ合わされて成熟したmRNAになる。つなぎ方を変えると、1つの遺伝子から複数のタンパク質ができる。"],["解糖系で、グルコース1分子から正味で得られるATPは？","2分子",["1分子","4分子","36分子"],"解糖系では4分子のATPができるが、はじめに2分子使うので正味2分子。"],["p53タンパク質の主な働きは？","DNAの損傷があると細胞周期を止め、修復できなければアポトーシスを起こす",["DNAを複製する","タンパク質を分解する","細胞膜をつくる"],"p53は「ゲノムの守護者」とよばれる。この遺伝子の異常は、多くのがんで見つかる。"],["ATP合成酵素を回して、ATPをつくる力のもとになるのは？","ミトコンドリア内膜をはさんだ、H⁺の濃度勾配",["ミトコンドリアの温度差","水の流れ","光のエネルギー"],"ミッチェルの化学浸透説。電子伝達系でくみ出されたH⁺が戻る流れで、ATP合成酵素が回る。"],["自分の細胞のMHCクラスI分子を調べ、ウイルスに感染した細胞を直接こわすのは？","キラーT細胞（細胞傷害性T細胞）",["ヘルパーT細胞","B細胞","好酸球"],"感染した細胞が出す異常な抗原を見つけて、細胞ごと攻撃する（細胞性免疫）。"],["「エピジェネティクス」の例として正しいものは？","DNAの塩基配列は変えずに、メチル化などで遺伝子の働きが調節される",["DNAの塩基が別の塩基に置きかわる","染色体の数が変わる","遺伝子が別の種へ移る"],"DNAのメチル化やヒストンの修飾で、遺伝子のスイッチが入ったり切れたりする。"]]],"soc":[[["GDP（国内総生産）とは、何の合計？","一定期間に国内で新たに生み出された付加価値",["国民が持っている貯金の総額","政府の借金の総額","輸出した商品の金額だけ"],"原材料などの中間生産物をのぞいた、新しく生まれた価値を足したもの。"],["経済学の「機会費用」とは？","ある選択をしたために、あきらめた次善の選択肢の価値",["商品を買ったときの代金","工場を建てる費用","税金の合計"],"お金を払っていなくても、時間などを使ったら、その分だけ機会費用が生じる。"],["三権分立を唱えた、フランスの思想家は？","モンテスキュー",["ルソー","ロック","ホッブズ"],"『法の精神』で、権力を立法・行政・司法に分けて、たがいに抑えあうことを説いた。"],["国連安全保障理事会の常任理事国に「入っていない」国は？","ドイツ",["アメリカ","フランス","中国"],"常任理事国は、アメリカ・イギリス・フランス・中国・ロシアの5か国で、拒否権をもつ。"],["「比較優位」の考え方を示した、イギリスの経済学者は？","リカード",["アダム・スミス","ケインズ","マルサス"],"各国が機会費用の低い財に特化して貿易すると、どちらの国も利益を得られる。"],["累進課税とは？","所得が増えるほど、税率が高くなる仕組み",["全員が同じ税率を払う仕組み","物を買うときだけかかる税","所得が増えるほど税率が低くなる仕組み"],"所得税などで採用されていて、所得の格差をやわらげる働きがある。"],["法律が憲法に違反していないかを、最終的に判断する権限をもつ裁判所は？","最高裁判所",["家庭裁判所","簡易裁判所","地方裁判所"],"違憲審査権はすべての裁判所にあるが、最終判断をするのは最高裁判所で、「憲法の番人」とよばれる。"]],[["ジニ係数が0に近いほど、所得の分配はどうなっている？","平等に近い",["不平等が大きい","全員の所得が0","富が1人に集中"],"ジニ係数は0〜1の値。0は完全な平等、1は1人がすべてをもつ完全な不平等。"],["ゲーム理論の「囚人のジレンマ」が示すことは？","協力したほうが良い結果なのに、おたがいが自分の利益だけを考えて裏切ってしまうこと",["かならず協力が成立すること","裏切ったほうがいつも損をすること","ゲームは偶然だけで決まること"],"個人にとっての最善が、全体にとっては最善でないことがある。"],["景気が過熱しているとき、中央銀行が行うことが多い金融政策は？","政策金利を引き上げる",["政策金利を引き下げる","国債を大量に発行する","税金を下げる"],"金利が上がると、お金を借りにくくなり、投資や消費がおさえられる。"],["為替レートが1ドル＝100円から150円に変わった。円は？","ドルに対して円安",["ドルに対して円高","ドルに対して変わらない","ドルより強くなった"],"1ドルを買うのに必要な円が増えたので、円の価値が下がった（円安）。輸入品は高くなりやすい。"],["社会保障の「賦課方式」とは？","現役世代の保険料などで、今の高齢者の給付をまかなう方式",["自分で積み立てたお金を自分が受け取る方式","国が全部の費用を借金でまかなう方式","会社がすべて出す方式"],"日本の年金は賦課方式が中心。少子高齢化が進むと、現役世代の負担が重くなる。"],["「公共財」の性質として正しいものは？","お金を払わない人を排除しにくく、同時に多くの人が使える",["使う人が1人に限られる","お金を払った人だけが使える","使うほど減る"],"非排除性と非競合性。国防・灯台・街灯などの例がある。"],["ケインズ経済学の主張に最も近いものは？","不況のときは、政府が支出を増やして需要をつくり出す",["不況のときは政府が何もしない","物価は必ず自然に下がる","税金は上げ続ける"],"ケインズは、市場にまかせるだけでは不況が長引くと考え、財政政策の必要性を説いた。"]],[["ゲーム理論の「ナッシュ均衡」とは？","相手の戦略がわかっているとき、どのプレイヤーも自分の戦略を変えても得をしない状態",["全員が必ず協力する状態","全員の利益が等しくなる状態","一方が必ず勝つ状態"],"ジョン・ナッシュが示した。囚人のジレンマでは、「両者が裏切る」がナッシュ均衡になる。"],["「流動性のわな」とは？","金利が極端に低いとき、金融緩和をしても景気刺激の効果が小さくなる状態",["お金の流通が増えすぎる状態","物価が急に上がる状態","税収が急に増える状態"],"金利がほぼゼロだと、増やしたお金が借りられず、手元に保有されるだけになる。"],["「購買力平価説」の基本的な考え方は？","為替レートは、長期的には2国の物価水準の比で決まる",["為替レートは政府が自由に決める","為替レートは金の量だけで決まる","為替レートは毎日同じ"],"同じ商品が、どの国でも同じ値段になるように、為替レートが調整されるという考え方。"],["「限界効用逓減の法則」とは？","同じ財を消費し続けるほど、追加の1単位から得る満足が小さくなること",["財を買うほど値段が上がること","財が使うほど増えること","満足が一定のままであること"],"空腹のとき1個目のパンはおいしいが、5個目はそれほどでもない、という例。"],["経済学の「パレート効率的」な状態とは？","誰かの満足を下げずに、他の誰かの満足を上げることができない状態",["全員の所得が同じ状態","国が全部を管理する状態","物価がまったく変わらない状態"],"パレート効率的でも、格差が大きい状態はありうる。効率と公平は別の観点。"],["「プリンシパル・エージェント問題」とは？","依頼人と代理人の間で情報や利害がずれ、代理人が依頼人の望まない行動をとること",["売り手と買い手が値段を決める問題","銀行が預金を集める問題","国どうしが貿易する問題"],"株主（依頼人）と経営者（代理人）の関係などで起こる。契約や監視の工夫で対応する。"],["「アローの不可能性定理」が示したことは？","いくつかの公平な条件をすべて満たす完全な社会的選択のルール（多数決など）は存在しないこと",["多数決はいつも最善であること","選挙は必ず成立すること","投票は1人1票にできないこと"],"3人以上が3つ以上の選択肢から選ぶとき、民主的な決め方に必ず矛盾が出てくることを数学的に示した。"]]],"tech":[[["10進数の100を2進数で表すと？","1100100",["1100010","1010100","1100110"],"100＝64＋32＋4。2の6乗・5乗・2乗のところが1になるので、1100100。"],["16進数の「FF」を10進数に直すと？","255",["16","256","127"],"F＝15なので 15×16＋15＝255。8ビットで表せる最大の値。"],["ドメイン名とIPアドレスを対応づける仕組みは？","DNS",["HTTP","SMTP","FTP"],"人間が覚えやすい名前を、コンピューターが使う番号に変換する、インターネットの「電話帳」。"],["整列済みの1000個のデータから二分探索で探すとき、最悪でおよそ何回比較する？","約10回",["約1000回","約500回","約100回"],"探索範囲が毎回半分になる。2の10乗は1024なので、約10回で必ず見つかる。"],["スタックというデータ構造の、取り出しのルールは？","後に入れたものから先に取り出す（LIFO）",["先に入れたものから取り出す（FIFO）","小さいものから取り出す","ランダムに取り出す"],"本を積み重ねたとき、いちばん上から取るのと同じ。先に入れたものから取り出すのはキュー。"],["ある関数が、その関数自身を呼び出すプログラムの手法は？","再帰",["継承","カプセル化","圧縮"],"階乗の計算やフラクタル図形などで使う。終わる条件を書かないと、止まらなくなる。"],["Webページの通信を暗号化して、安全に行うためのプロトコルは？","HTTPS",["HTTP","FTP","SMTP"],"HTTPSはTLSという暗号化の仕組みを使う。URLが「https://」で始まる。"]],[["計算量がO(n²)のアルゴリズムで、データ数nが10倍になると、処理時間は約何倍？","約100倍",["約10倍","約20倍","約1000倍"],"(10n)²＝100n²なので、約100倍。"],["公開鍵暗号で、メッセージを暗号化するときに使うのは？","受信者の公開鍵",["受信者の秘密鍵","送信者の秘密鍵","共通のパスワードだけ"],"受信者の公開鍵で暗号化し、受信者だけが持つ秘密鍵で復号する。"],["機械学習で、訓練データにだけ合いすぎて、新しいデータでは性能が落ちる現象は？","過学習（過剰適合）",["転移学習","強化学習","次元削減"],"モデルが複雑すぎたり、データが少なすぎたりすると起こりやすい。検証データで確認する。"],["ブロックチェーンで、過去の取引記録の改ざんがむずかしい理由は？","各ブロックが、ひとつ前のブロックのハッシュ値を含んでつながっているから",["データを紙に印刷しているから","1人の管理者が全部を見張っているから","毎日データを消しているから"],"途中のブロックを書きかえると、そのあとのすべてのハッシュ値を計算し直さなければならない。"],["クイックソートの、平均的な計算量は？","O(n log n)",["O(n)","O(n²)","O(log n)"],"最悪のときはO(n²)になるが、平均はO(n log n)で、実際にはとても速い。"],["リレーショナルデータベースで、複数の表を共通の列で結びつけて取り出す操作は？","結合（JOIN）",["削除（DELETE）","並べ替え（SORT）","複製（COPY）"],"たとえば「注文表」と「顧客表」を顧客番号で結びつける。"],["排他的論理和（XOR）で、ある値に同じ値を2回XORすると？","元の値に戻る",["0になる","1になる","2倍になる"],"A XOR B XOR B ＝ A。この性質は、暗号やデータの誤り検出などで使われる。"]],[["チューリングが示した「停止性問題」について正しいものは？","どんなプログラムでも停止するかどうかを判定できる一般的なアルゴリズムは存在しない",["すべてのプログラムは必ず停止する","停止するかどうかは簡単に判定できる","停止性問題は1960年に解決された"],"プログラムが無限ループするか判定する万能のプログラムは作れない、という計算の限界を示した。"],["RSA暗号の安全性の根拠となっているのは？","とても大きな合成数の素因数分解が難しいこと",["暗号の方式が秘密であること","パスワードが長いこと","通信がとても速いこと"],"大きな2つの素数の積から、元の素数を求めるのに現実的な時間ではできない、と考えられている。"],["分散システムの「CAP定理」で、同時には2つまでしか満たせないとされる3つの性質は？","一貫性・可用性・分断耐性",["速度・容量・価格","機密性・完全性・可用性","安全性・公平性・効率性"],"ネットワークが分断されたとき、データの一貫性と、いつでも応答できること（可用性）の両方は保てない。"],["プログラムで0.1＋0.2が、0.3ちょうどにならないことがある理由は？","0.1が2進数では割り切れず、近い値で保存されるから",["コンピューターの計算が間違っているから","足し算ができないから","0.1が整数だから"],"10進数の0.1は、2進数では0.0001100110011…と無限に続く。"],["ダイクストラ法は、何を求めるアルゴリズム？","辺の重みが負でないグラフでの、最短経路",["データの並べ替え","文字列の検索","暗号の解読"],"出発点から近い順に、確定させながら最短距離を求めていく。カーナビの経路探索などの考え方のもと。"],["ディープラーニングの「誤差逆伝播法」が行うことは？","出力の誤差を後ろから前へ伝え、各重みを更新するための勾配を計算する",["入力データを圧縮する","画像を拡大する","データを暗号化する"],"連鎖律を使って、ネットワーク全体の重みをどう直せば誤差が小さくなるかを効率よく求める。"],["「SQLインジェクション」とは？","入力欄に不正なSQL文を入れて、データベースを不正に操作する攻撃",["ウイルスがメールで広がること","通信を盗み聞きすること","パスワードを推測すること"],"対策は、入力を文字として扱う「プレースホルダー（バインド変数）」を使うこと。"]]],"space":[[["1天文単位（au）は、何の平均距離？","地球と太陽の間の距離",["地球と月の間の距離","太陽と木星の間の距離","太陽と銀河の中心の間の距離"],"1auは約1億5000万km。光で約8分20秒かかる距離。"],["太陽がかがやくエネルギーのもとになっている反応は？","水素の核融合",["石油の燃焼","ウランの核分裂","水素の燃焼（化学反応）"],"中心部で水素の原子核がヘリウムの原子核に変わるとき、質量の一部がエネルギーになる（E＝mc²）。"],["太陽系の惑星のうち、平均密度が水より小さいのは？","土星",["木星","地球","火星"],"土星の平均密度は約0.69g/cm³。水（1g/cm³）より小さい。"],["月がいつも地球に同じ面を向けているのは、なぜ？","自転の周期と公転の周期が等しいから",["月が自転していないから","地球の引力が弱いから","月の形が球ではないから"],"月は自転しているが、公転と同じ周期（約27.3日）なので、同じ面しか見えない（同期回転）。"],["恒星の表面温度が最も高いのは、どの色の星？","青白い星",["赤い星","黄色い星","オレンジ色の星"],"表面温度は、青白（約1万K以上）＞白＞黄（太陽は約5800K）＞オレンジ＞赤（約3000K）の順。"],["系外惑星を見つける方法のひとつで、恒星の前を惑星が横切って、恒星がわずかに暗くなるのを調べる方法は？","トランジット法",["ドップラー法","視差法","重力波法"],"ケプラー宇宙望遠鏡などが、この方法で多くの系外惑星を見つけた。"],["国際宇宙ステーション（ISS）が地球を1周するのにかかる時間は、約？","約90分",["約24時間","約10分","約8時間"],"高度約400kmを、秒速約7.7kmで飛ぶ。1日で約16周する。"]],[["ケプラーの第三法則として正しいのは？","公転周期の2乗は、軌道の長半径の3乗に比例する",["公転周期は、軌道の長半径に比例する","公転周期の3乗は、軌道の長半径の2乗に比例する","公転周期は、惑星の質量だけで決まる"],"T²／a³＝一定。地球（1年・1au）を基準にして、他の惑星の周期や距離を比べられる。"],["太陽の質量の約8倍より重い恒星が、最後に起こす大爆発は？","超新星爆発",["新星爆発","ガンマ線バースト","太陽フレア"],"中心核が重力で崩壊して爆発する。中性子星やブラックホールが残る。"],["「ハッブル・ルメートルの法則」が示すことは？","遠い銀河ほど、速く遠ざかっている",["近い銀河ほど速く遠ざかっている","すべての銀河は同じ速さで動いている","銀河は動いていない"],"宇宙そのものが膨張していることを示す。距離と後退速度が比例する。"],["宇宙マイクロ波背景放射の温度は、約何K？","約2.7K",["約27K","約270K","約2700K"],"ビッグバンの名残の光。いまは宇宙の膨張で冷えて、約−270℃（2.7K）になっている。"],["ブラックホールの「事象の地平線」とは？","そこをこえると光でさえ外へ出られなくなる境界",["ブラックホールの中心にある点","ブラックホールをまわる円盤","ブラックホールから出るジェット"],"事象の地平線の内側からは、光を含めてどんな情報も外へ出られない。"],["太陽の寿命（主系列にとどまる期間）は、全体でおよそ何年？","約100億年",["約1億年","約10億年","約1000億年"],"いまは約46億歳で、あと約50億年ほど、水素を核融合して輝く。"],["HR図（ヘルツシュプルング・ラッセル図）で、恒星の大多数がならぶ帯を何という？","主系列",["巨星系列","白色矮星列","超巨星列"],"太陽も主系列星。質量が大きい星ほど、明るくて、寿命が短い。"]],[["シュワルツシルト半径はr＝2GM／c²で表される。ブラックホールの質量が2倍になると、この半径は？","2倍になる",["4倍になる","半分になる","変わらない"],"半径は質量Mに比例する。太陽質量なら約3km、地球質量なら約9mm。"],["白色矮星が安定でいられる質量の上限「チャンドラセカール限界」は、太陽質量の約何倍？","約1.4倍",["約0.1倍","約8倍","約100倍"],"この限界をこえると、電子の縮退圧でも重力に耐えられず、Ia型超新星などになる。"],["暗黒物質（ダークマター）の存在を示す観測的な根拠の例は？","銀河の回転速度が、見えている物質だけでは説明できないこと",["月が地球からはなれていくこと","太陽が自転していること","彗星の尾が長いこと"],"銀河の外側の星も、予想より速く回っている。見えない質量が必要になる。"],["宇宙の「晴れ上がり」は、ビッグバンから約何年後に起きた？","約38万年後",["約1秒後","約3分後","約10億年後"],"電子が原子核と結びついて原子ができ、光がまっすぐ進めるようになった。この光がCMBとして今も見える。"],["天体どうしの潮汐力の大きさは、距離rに対して、何に反比例する？","r³",["r","r²","r⁴"],"重力は1/r²だが、その「差」である潮汐力はさらに1/rが加わって1/r³になる。"],["2015年に、重力波を初めて直接検出した施設は？","LIGO",["ALMA","すばる望遠鏡","ハッブル宇宙望遠鏡"],"2つのブラックホールが合体したときの重力波を、2つのLIGO検出器がとらえた。2017年にノーベル物理学賞。"],["連星パルサーの観測で間接的に確かめられた、一般相対性理論の予言は？","重力波を出して、公転周期が少しずつ短くなること",["光の速さが変わること","星が膨張すること","惑星が逆向きに公転すること"],"ハルスとテイラーによるPSR B1913＋16の観測。1993年にノーベル物理学賞。"]]],"chem":[[["アボガドロ定数は、約いくつ？","6.0×10²³／mol",["6.0×10¹⁹／mol","1.0×10²⁴／mol","3.0×10⁸／mol"],"物質1molに含まれる粒子の数。炭素12の12gにふくまれる原子の数。"],["水素イオン濃度が1.0×10⁻³ mol/Lの水溶液のpHは？","3",["−3","7","11"],"pH＝−log₁₀[H⁺]＝−log₁₀(10⁻³)＝3。酸性。"],["共有結合でできている物質は？","水（H₂O）",["塩化ナトリウム（NaCl）","鉄（Fe）","塩化カルシウム（CaCl₂）"],"NaClとCaCl₂はイオン結合、鉄は金属結合。水は水素と酸素が電子を共有している。"],["酸化還元反応で、「酸化された」物質は電子をどうする？","電子を失う",["電子を受け取る","電子の数が変わらない","陽子を失う"],"「酸化＝電子を失う」「還元＝電子を受け取る」。覚え方は「OIL RIG」。"],["同位体とは？","陽子の数は同じで、中性子の数がちがう原子",["陽子の数がちがう原子","電子の数がちがう原子","質量が同じ別の元素"],"たとえば炭素12・炭素13・炭素14は同位体。化学的な性質はほぼ同じ。"],["標準状態（0℃・1atm）での、気体1molの体積は？","22.4L",["11.2L","24.5L","44.8L"],"理想気体の場合。25℃・1atmなら約24.5L。"],["電気陰性度が、元素の中で最も大きいのは？","フッ素",["酸素","塩素","窒素"],"フッ素は電子を最も強く引きつける。周期表の右上にいくほど電気陰性度は大きい。"]],[["酢酸のような弱酸の特徴は？","水溶液中で、一部しか電離しない",["全部が電離する","電離しない","塩基性を示す"],"塩酸（強酸）はほぼ全部電離するが、酢酸は1％ほどしか電離しない。"],["ルシャトリエの原理によると、発熱反応の平衡は、温度を上げるとどちらへ移動する？","逆反応（吸熱）の向き",["正反応（発熱）の向き","どちらにも移動しない","両方向に同時に移動する"],"平衡は、加えた変化をやわらげる向きに移動する。"],["触媒が反応を速くするのは、何を下げるから？","活性化エネルギー",["反応熱","温度","分子の質量"],"触媒は反応の経路を変えて、活性化エネルギーを下げるが、自分は変化せず、平衡の位置も変えない。"],["カリウム・亜鉛・銅・銀のうち、イオン化傾向が最も大きい金属は？","カリウム",["亜鉛","銅","銀"],"イオン化傾向は K＞Zn＞Cu＞Ag の順。大きいほど、陽イオンになりやすい。"],["ダニエル電池で、酸化が起こる負極になるのは？","亜鉛板",["銅板","白金板","塩橋"],"亜鉛は銅よりイオン化傾向が大きいので、Zn→Zn²⁺＋2e⁻と電子を放出して負極になる。"],["エタノールを濃硫酸と約170℃で加熱したとき、主に得られる生成物は？","エチレン",["ジエチルエーテル","酢酸","メタン"],"約170℃で脱水してエチレン、約130℃ではジエチルエーテルができる。"],["官能基「−COOH」の名前は？","カルボキシ基",["ヒドロキシ基","アミノ基","カルボニル基"],"カルボキシ基をもつ有機化合物をカルボン酸という。酢酸（CH₃COOH）など。"]],[["ベンゼン環は、二重結合が3つあるように書かれるが、実際の炭素どうしの結合の長さは？","すべて等しい",["交互に長い・短い","すべて二重結合の長さ","すべて単結合の長さ"],"電子が環全体に広がる（非局在化・共鳴）ので、6つの結合がすべて同じ長さになる。"],["ヘンリーの法則で、温度一定のとき、気体が液体にとける量（質量）は何に比例する？","その気体の分圧",["温度","液体の質量だけ","気体の色"],"炭酸飲料のふたを開けると、圧力が下がって二酸化炭素が泡になって出るのは、この法則の例。"],["電離定数Ka＝1.0×10⁻⁵の弱酸HAの0.10mol/L水溶液のpHは、近似するとおよそ？","3",["1","5","7"],"[H⁺]≒√(Ka×C)＝√(1.0×10⁻⁶)＝1.0×10⁻³なので、pH＝3。"],["ギブズエネルギー変化ΔGが負のとき、反応は？","自発的に進む",["進まない","平衡状態にある","必ず吸熱である"],"ΔG＝ΔH−TΔS。ΔG＜0で自発的、ΔG＝0で平衡。"],["1次反応の半減期について正しいのは？","初濃度に関係なく、一定である",["初濃度に比例する","初濃度に反比例する","初濃度の2乗に比例する"],"1次反応では半減期t½＝(ln2)/k。放射性同位体の半減期が一定なのも、この例。"],["鏡像異性体（光学異性体）がもつ性質のちがいは？","偏光面を回す向きが逆になる",["沸点が大きくちがう","分子式がちがう","密度が大きくちがう"],"右手と左手のような関係。物理的な性質はほぼ同じだが、旋光性が逆で、生体内での働きもちがうことがある。"],["メタンの炭素原子の混成軌道は？","sp³",["sp","sp²","sp³d"],"4つのC−H結合は正四面体形で、結合角は約109.5°。"]]],"lang":[[["四字熟語「蛍雪の功」の意味は？","苦労して学問に励んだ成果",["まじめに働いた成果","運よく得た成功","仲間と協力した成果"],"中国の故事で、蛍の光や雪明かりで勉強した人の話から。"],["ことわざ「漁夫の利」の意味は？","二者が争っているすきに、第三者が利益を得ること",["苦労せずに得る大きな利益","漁師が海で得た収入","仲間が助けあう利益"],"鷸（しぎ）と蛤（はまぐり）が争っているところを、漁師が両方つかまえたという故事。"],["四字熟語「臥薪嘗胆」の意味は？","目的のために長い間、苦労を重ねて耐えること",["突然に大成功を収めること","のんびり暮らすこと","別の人をだますこと"],"薪の上に寝て、苦い胆をなめて復讐を誓った故事から。"],["英語の“ubiquitous”の意味は？","どこにでもある",["とても美しい","とても古い","ほとんど見えない"],"「遍在する」の意味。ubiquitous computing（どこでもコンピューター）などと使う。"],["英語の“ephemeral”の意味は？","つかのまの、はかない",["永遠の","とても大きな","とても重い"],"ephemeral flowers（ほんの短い間さく花）のように使う。"],["『枕草子』の作者は？","清少納言",["紫式部","和泉式部","菅原孝標女"],"『枕草子』は平安時代の随筆。『源氏物語』の作者は紫式部。"],["「情けは人の為ならず」の本来の意味は？","人に情けをかければ、めぐりめぐって自分にもよい報いがある",["人に情けをかけるのは、その人のためにならない","情けは人にかけるものではない","他人のためだけに行うもの"],"「為ならず」は「その人のためだけではない」の意味。"]],[["英語の“notwithstanding”の意味に近いのは？","にもかかわらず",["のおかげで","を除いて","のために"],"“Notwithstanding the rain, we went out.”は「雨にもかかわらず出かけた」。"],["言語学の「形態素」とは？","意味をもつ最小の言語単位",["意味をもたない最小の音","文の最小単位","文字の最小単位"],"「本棚」は「本」と「棚」の2つの形態素からなる。"],["古文の「あはれ」が表す感情として、最も近いものは？","しみじみとした深い情趣",["はげしい怒り","おかしくて笑うこと","つよい憎しみ"],"『源氏物語』などの美意識「もののあはれ」の「あはれ」。"],["英語の“serendipity”の意味は？","思いがけず幸運なものを発見すること",["とても深い悲しみ","計画的な成功","きびしい批判"],"スリランカの昔話から作られた言葉。ペニシリンの発見の例などがよく挙げられる。"],["「はな」＋「ひ」が「はなび」と濁る音の変化は？","連濁",["促音便","撥音便","イ音便"],"複合語で、後ろの語の最初の清音が濁音になる現象。「ひと」＋「ひと」→「ひとびと」も同じ。"],["「サピア＝ウォーフの仮説」の主張は？","使う言語が、思考のしかたに影響する",["言語は思考に影響しない","すべての言語は同じ文法をもつ","言語は遺伝で決まる"],"言語相対性仮説ともいう。強い形（言語が思考を決める）は否定されたが、弱い形は研究が続く。"],["助詞や助動詞を次々とつなげて文法関係を表す「膠着語」に分類される言語は？","日本語",["英語","中国語","フランス語"],"「食べ・させ・られ・た」のように語尾がつながる。中国語は孤立語、ラテン語は屈折語に分類される。"]],[["チョムスキーが提唱した、人間には生まれつきの言語能力があるとする考えは？","生成文法",["構造主義","行動主義","認知言語学"],"限られた経験から子どもが言語を習得できることを、「普遍文法」という生得的な能力で説明しようとした。"],["イギリスの言語が古英語から中英語へ変わる大きな転機となった、1066年の出来事は？","ノルマン・コンクエスト（ノルマン人の征服）",["百年戦争の始まり","ローマ帝国の成立","宗教改革"],"フランス語を話すノルマン人の支配で、英語の語彙にフランス語系の単語が大量に入った。"],["ソシュールの言語記号の「シニフィアン」と「シニフィエ」は、それぞれ何を指す？","音声などの表すもの（能記）と、意味の概念（所記）",["文字と音","主語と述語","単語と文"],"言語記号は、音のイメージ（シニフィアン）と意味の概念（シニフィエ）の結びつきで、その結びつきは恣意的。"],["英語で14〜18世紀ごろに起きた「大母音推移」で起きたのは？","長母音の発音が大きく変わった",["子音が全部消えた","語順が変わった","文字が変わった"],"“name”が昔は「ナーメ」のように発音されたなど、綴りと発音がずれる原因のひとつ。"],["『万葉集』の歌を書き表すために使われた、漢字の音や訓を借りた表記は？","万葉仮名",["ひらがな","カタカナ","当て字（現代の）"],"「夜麻（やま）」のように、漢字の意味ではなく音を借りる。ひらがな・カタカナのもとになった。"],["異なる言語の人が意思疎通のために作った簡単な言葉（ピジン）が、子どもたちの母語になって安定した文法をもつようになった言語を何という？","クレオール",["方言","古語","共通語"],"ピジンが母語として習得されると、文法が整ってクレオールになる。"],["英語の“The horse raced past the barn fell.”のように、最後まで読まないと文の構造が分からない文を何という？","袋小路文（ガーデンパス文）",["倒置文","省略文","受動文"],"“raced”を主文の動詞と読んでしまうが、実は「納屋のそばを走らされた馬が倒れた」という意味。"]]],"math":[[["f(x)＝x³ の導関数は？","3x²",["x²","3x","2x³"],"(xⁿ)′＝n·xⁿ⁻¹。n＝3なら3x²。"],["定積分∫₀¹ x² dx の値は？","1/3",["1/2","1","1/4"],"∫x² dx＝x³/3。x＝1と0を代入して 1/3−0＝1/3。"],["行列 [[1, 2], [3, 4]] の行列式は？","−2",["2","10","−10"],"行列式＝1×4−2×3＝4−6＝−2。"],["等比数列1, 2, 4, 8, …の、初項から第10項までの和は？","1023",["1024","1000","2047"],"和＝(2¹⁰−1)÷(2−1)＝1023。"],["オイラーの等式 e^(iπ)＋1 の値は？","0",["1","π","i"],"e^(iπ)＝−1。5つの重要な数（e, i, π, 1, 0）をつなぐ美しい式。"],["2¹⁰⁰ の一の位の数字は？","6",["2","4","8"],"2ⁿの一の位は2, 4, 8, 6の繰り返し。100÷4＝25あまり0なので、6。"],["正規分布で、平均から±1標準偏差の範囲に入る確率は、約？","約68%",["約50%","約95%","約99.7%"],"±1σで約68%、±2σで約95%、±3σで約99.7%。"]],[["不定積分 ∫ x·eˣ dx を求めると？","(x−1)eˣ＋C",["x·eˣ＋C","(x＋1)eˣ＋C","eˣ＋C"],"部分積分。微分して確かめると、{(x−1)eˣ}′＝eˣ＋(x−1)eˣ＝x·eˣ。"],["行列 [[2, 1], [1, 2]] の固有値は？","1と3",["2と2","0と4","1と2"],"特性方程式 (2−λ)²−1＝0 より λ＝1, 3。"],["調和級数 1＋1/2＋1/3＋1/4＋… について正しいのは？","発散する（限りなく大きくなる）",["2に収束する","eに収束する","π²/6に収束する"],"項は0に近づくのに、和は無限大になる。1/2以上のかたまりが無限にできるから。"],["有病率1％の病気で、検査の感度99％、偽陽性率1％。検査で陽性だったとき、実際に病気である確率は？","50％",["99％","1％","90％"],"ベイズの定理。0.99×0.01÷(0.99×0.01＋0.01×0.99)＝0.5。"],["√2が無理数であることを証明する、標準的な方法は？","背理法",["数学的帰納法","図形の合同","コンピューターで確かめる"],"√2＝p/q（既約）と仮定すると、pもqも偶数になって矛盾する。"],["25！（25の階乗）の末尾に連続して並ぶ0の数は？","6個",["5個","4個","25個"],"5の倍数の個数 5 ＋ 25の倍数の個数 1 ＝ 6。"],["ベクトル(1, 2, 3)と(4, 5, 6)の内積は？","32",["15","21","60"],"1×4＋2×5＋3×6＝4＋10＋18＝32。"]],[["バーゼル問題：1＋1/4＋1/9＋1/16＋…（自然数の2乗の逆数の和）は何に等しい？","π²／6",["π／4","2","e"],"オイラーが1735年に解いた。ゼータ関数 ζ(2)＝π²/6。"],["ガウス積分 ∫(−∞〜∞) e^(−x²) dx の値は？","√π",["π","1","√(2π)"],"極座標に直す「2乗してから計算する」方法で求める。正規分布の基礎になる。"],["位数が5の群は、必ずどんな群？","巡回群",["非可換群","対称群S₅","自明な群"],"素数位数の群は、単位元以外のどの元でも全体を生成するので、必ず巡回群になる。"],["実数全体の集合と、自然数全体の集合を比べると？","実数全体のほうが濃度が大きい（非可算）",["同じ濃度","自然数のほうが大きい","比べられない"],"カントールの対角線論法で示された。自然数や有理数は「可算」で、実数は「非可算」。"],["連結な平面グラフの、頂点数V・辺数E・面の数F（外側も数える）の関係は？","V − E ＋ F ＝ 2",["V＋E＋F＝2","V − E − F＝2","V × E ＝ F"],"オイラーの多面体公式。立方体なら 8−12＋6＝2。"],["フェルマーの小定理：pが素数で、aがpと互いに素のとき、a^(p−1)をpで割った余りは？","1",["0","a","p−1"],"例：2⁶＝64を7で割ると、余りは1。RSA暗号の理論にも使われる。"],["eˣのマクロリン展開で、x³の項までを正しく書いたものは？","1＋x＋x²/2＋x³/6",["1＋x＋x²＋x³","1＋x＋x²/2＋x³/3","x＋x²/2＋x³/6＋x⁴/24"],"eˣ＝Σ xⁿ/n!。係数は 1, 1, 1/2, 1/6, …。"]]],"logic":[[["「AならばB」が真のとき、必ず真といえるのは？","「BでなければAでない」（対偶）",["「BならばA」（逆）","「AでなければBでない」（裏）","「AかつBでない」"],"命題とその対偶は、いつも真偽が一致する。逆と裏は、真とは限らない。"],["「すべての鳥は飛べる」の否定は？","飛べない鳥が、少なくとも1羽いる",["すべての鳥は飛べない","どの鳥も飛ぶことがある","鳥は1羽もいない"],"「すべて〜」の否定は「〜でないものが存在する」。「すべて〜でない」ではない。"],["13人がいれば、同じ月に生まれた人が必ず2人以上いるといえる理由は？","月は12か月で、人数のほうが多いから",["誕生日は偶然に決まるから","13は素数だから","12月に生まれた人が多いから"],"鳩の巣原理。13羽の鳩を12個の巣に入れると、必ず2羽以上が同じ巣に入る。"],["3つの扉のうち1つに賞品がある。1つを選ぶと、司会者が外れの扉を1つ開けてくれた。選び直したときに当たる確率は？","2/3",["1/2","1/3","1"],"モンティ・ホール問題。最初に当たりを選ぶ確率は1/3なので、選び直すほうが2/3で有利。"],["論理式「¬(P ∧ Q)」と同じ意味のものは？","¬P ∨ ¬Q",["¬P ∧ ¬Q","P ∨ Q","P ∧ ¬Q"],"ド・モルガンの法則。「PかつQ」の否定は、「Pでない、またはQでない」。"],["見た目が同じ金貨9枚のうち、1枚だけ軽い偽物がある。天秤だけで偽物を必ず見つけるのに必要な最少の回数は？","2回",["1回","3回","4回"],"3枚ずつ3組に分けて1回、軽い組から1枚ずつ比べてもう1回。"],["3時15分のとき、時計の短針と長針がつくる小さいほうの角度は？","7.5°",["0°","15°","30°"],"長針は90°、短針は3×30°＋15分×0.5°＝97.5°。差は7.5°。"]],[["数学的帰納法で証明するとき、必要な2つのステップは？","n＝1で成り立つことと、n＝kで成り立てばn＝k＋1でも成り立つこと",["nが偶数のときと奇数のとき","n＝1とn＝2のときだけ","すべてのnで1つずつ確かめること"],"ドミノ倒しと同じ。最初のドミノが倒れて、どのドミノが倒れても次が倒れるなら、全部が倒れる。"],["ハノイの塔で、円盤が4枚のときの最小の移動回数は？","15回",["8回","16回","31回"],"n枚なら2ⁿ−1回。4枚なら2⁴−1＝15回。"],["オイラーが解いた「ケーニヒスベルクの橋」の結論は？","すべての橋を1回ずつ渡って元に戻る道は存在しない",["存在する","橋が7つなら存在する","橋が増えれば存在する"],"頂点に集まる辺の数が奇数の頂点が4つあるため、一筆書きはできない。グラフ理論の始まり。"],["2つの整数の最大公約数を求める、古代ギリシャの有名なアルゴリズムは？","ユークリッドの互除法",["ガウスの消去法","エラトステネスのふるい","二分探索"],"大きいほうを小さいほうで割った余りで、また割る、を繰り返す。"],["集合A＝{1, 2, 3}のべき集合（すべての部分集合の集合）の要素の数は？","8個",["3個","6個","9個"],"各要素を「入れる・入れない」で2³＝8通り。空集合とA自身も含む。"],["パーティーで握手が行われた。握手の回数が奇数の人の人数は、どうなる？","必ず偶数人",["必ず奇数人","必ず0人","決まっていない"],"握手補題。全員の握手の回数の合計は、握手の2倍で偶数になるので、奇数回の人は偶数人。"],["1から20までの整数から11個を選ぶと、必ずふくまれるものは？","連続する2つの整数の組",["偶数だけの組","5の倍数","素数だけの組"],"(1,2)(3,4)…(19,20)の10組に分けると、11個選べば、どれかの組がそろう。鳩の巣原理。"]],[["「自分自身を要素に含まない集合全体の集合」は、自分自身を含むか？という、ラッセルのパラドックスが示した問題は？","素朴な集合の考え方に矛盾があること",["実数が無限にあること","素数が無限にあること","円周率が無理数であること"],"含んでも含まなくても矛盾する。これをきっかけに、公理的集合論が整えられた。"],["ゲーデルの不完全性定理が示したことは？","十分に強い無矛盾な体系には、証明も反証もできない命題がある",["すべての命題は証明できる","数学は矛盾している","公理は必要ない"],"1931年に発表。数学のすべてを機械的に証明できるという、ヒルベルトの夢が成り立たないことを示した。"],["石の山が3つ（3個・4個・5個）あるニムのゲーム。石の個数のXOR（排他的論理和）が0でないとき、先手は？","必ず勝てる戦略がある",["必ず負ける","どう打っても引き分け","勝敗は運だけで決まる"],"3 XOR 4 XOR 5＝2で0でない。XORが0になるように石を取り続けると、必ず勝てる。"],["「ヒルベルトのホテル」が示す無限の不思議な性質は？","無限の部屋がすべて満室でも、新しい客を受け入れられる",["無限の部屋はぜったいに満室にならない","無限の部屋は数えられない","無限の部屋は存在しない"],"客を1人ずつ隣の部屋に移すと、1号室があく。さらに無限人でも、2倍の部屋番号に移してもらえば入れる。"],["「P対NP問題」とは？","答えを素早く確かめられる問題は、素早く解くこともできるのか？という未解決問題",["素数が無限にあるかを問う問題","円周率が無理数かを問う問題","三角形の内角の和の問題"],"クレイ数学研究所の「ミレニアム懸賞問題」の1つで、解決すると100万ドルの賞金。"],["子どもが2人いる家庭で、「少なくとも1人は男の子」とわかっている。もう1人も男の子である確率は？","1/3",["1/2","1/4","2/3"],"可能性は（男男・男女・女男）の3通り。そのうち男男は1通りなので、1/3。"],["6の次に小さい完全数（自分以外の約数の和が自分自身に等しい数）は？","28",["12","24","496"],"28の約数1, 2, 4, 7, 14の和は28。次は496、その次は8128。"]]]};
+const RBD = {"虹色":"にじいろ","週間":"しゅうかん","月":"つき","皆勤":"かいきん","学生":"がくせい","学士":"がくし","修士":"しゅうし","博士":"はかせ","国語":"こくご","算数":"さんすう","理科":"りか","社会":"しゃかい","英語":"えいご","解説":"かいせつ","大学":"だいがく","正しい":"ただしい","答え":"こたえ","君":"きみ","今日":"きょう","頑張ろう":"がんばろう","一緒":"いっしょ","学ぼう":"まなぼう","教科":"きょうか","楽しい":"たのしい","前":"まえ","問題":"もんだい","難しかっ":"むずかしかっ","見せ":"みせ","席替え":"せきがえ","隣":"となり","明日":"あした","先生":"せんせい","任せ":"まかせ","数":"かず","教え":"おしえ","友だち":"ともだち","町":"まち","礼":"れい","渡す":"わたす","学ぶ":"まなぶ","一番":"いちばん","取ろう":"とろう","苦手":"にがて","正解":"せいかい","連続":"れんぞく","授業":"じゅぎょう","教室":"きょうしつ","来る":"くる","集める":"あつめる","卒業":"そつぎょう","帰り":"かえり","守っ":"まもっ","飾り":"かざり","水晶":"すいしょう","個":"こ","学校":"がっこう","福引き":"ふくびき","仲間":"なかま","受け":"うけ","方":"かた","選ぶ":"えらぶ","簡単":"かんたん","普通":"ふつう","難しい":"むずかしい","問":"もん","解く":"とく","花丸":"はなまる","間違え":"まちがえ","挑戦":"ちょうせん","毎日":"まいにち","楽しみ":"たのしみ","宝箱":"たからばこ","全部":"ぜんぶ","券":"けん","出席":"しゅっせき","伸びる":"のびる","目指せ":"めざせ","集め":"あつめ","入学":"にゅうがく","試験":"しけん","始めよう":"はじめよう","褒美":"ほうび","大きい":"おおきい","体験":"たいけん","日":"ひ","試せる":"ためせる","研究":"けんきゅう","仕方":"しかた","選ん":"えらん","調べる":"しらべる","考える":"かんがえる","発表":"はっぴょう","失敗":"しっぱい","成功":"せいこう","発見":"はっけん","埋めよう":"うめよう","特別":"とくべつ","秘密":"ひみつ","次":"つぎ","集めよう":"あつめよう","大丈夫":"だいじょうぶ","偉い":"えらい","頑張ろ":"がんばろ","目指そう":"めざそう","開け":"あけ","応援":"おうえん","面白い":"おもしろい","何":"なん","開い":"ひらい","回数":"かいすう","増える":"ふえる","新しい":"あたらしい","講座":"こうざ","開く":"ひらく","素敵":"すてき","建てる":"たてる","通える":"かよえる","建物":"たてもの","練習":"れんしゅう","日付":"ひづけ","戻っ":"もどっ","開ける":"あける","好き":"すき","記録":"きろく","週":"しゅう","目標":"もくひょう","願い":"ねがい","説明":"せつめい","大変":"たいへん","増え":"ふえ","通信":"つうしん","今週":"こんしゅう","頑張る":"がんばる","途中":"とちゅう","載せ":"のせ","残る":"のこる","続ける":"つづける","秒":"びょう","読ん":"よん","候補":"こうほ","減っ":"へっ","惜しい":"おしい","見":"み","考え":"かんがえ","倍":"ばい","始める":"はじめる","落ち着い":"おちつい","満額":"まんがく","終わっ":"おわっ","行ける":"いける","達成":"たっせい","通算":"つうさん","称号":"しょうごう","枚":"まい","絆":"きずな","学習":"がくしゅう","昇格":"しょうかく","最大":"さいだい","端末":"たんまつ","合計":"ごうけい","日数":"にっすう","頑張っ":"がんばっ","待っ":"まっ","戻る":"もどる","休み":"やすみ","毎週":"まいしゅう","月曜":"げつよう","閉じる":"とじる","毎朝":"まいあさ","時":"じ","変わる":"かわる","残り":"のこり","今":"いま","漢字":"かんじ","別々":"べつべつ","選ぼう":"えらぼう","自分":"じぶん","後":"あと","決め":"きめ","手伝っ":"てつだっ","宿題":"しゅくだい","来週":"らいしゅう","回":"かい","受ける":"うける","前回":"ぜんかい","以上":"いじょう","環境":"かんきょう","命":"いのち","健康":"けんこう","経済":"けいざい","宇宙":"うちゅう","化学":"かがく","元素":"げんそ","言葉":"ことば","数学":"すうがく","論理":"ろんり","太陽":"たいよう","水星":"すいせい","金星":"きんせい","地球":"ちきゅう","火星":"かせい","木星":"もくせい","土星":"どせい","天王":"てんのう","海王":"かいおう","影":"かげ","中":"なか","月食":"げっしょく","窒素":"ちっそ","酸素":"さんそ","酸性":"さんせい","黄":"き","中性":"ちゅうせい","緑":"みどり","性":"せい","青":"あお","陽子":"ようこ","電子":"でんし","小さい":"ちいさい","森":"もり","雨水":"あまみず","蓄える":"たくわえる","呼ば":"よば","植物":"しょくぶつ","光":"ひかり","使っ":"つかっ","酸化":"さんか","炭素":"たんそ","養分":"ようぶん","作る":"つくる","合成":"ごうせい","こん虫":"こんちゅう","体":"からだ","頭":"あたま","胸":"むね","腹":"はら","足":"あし","本":"ほん","川":"かわ","水":"みず","海":"うみ","蒸発":"じょうはつ","雲":"くも","雨":"あめ","服":"ふく","卵":"たまご","生まれ変わる":"うまれかわる","日本":"にっぽん","国土":"こくど","約":"やく","分":"ぶん","森林":"しんりん","世界":"せかい","多い":"おおい","国":"くに","上流":"じょうりゅう","石":"いし","大きく":"おおきく","角ばり":"かくばり","下流":"かりゅう","小さく":"ちいさく","丸い":"まりい","水温":"すいおん","平均":"へいきん","気温":"きおん","上がる":"あがる","温暖":"おんだん","食べる":"たべる","食べ":"たべ","食物":"しょくもつ","連鎖":"れんさ","動物":"どうぶつ","大きな":"おおきな","木":"き","年":"ねん","数十":"すうじゅう","吸い込む":"すいこむ","細かく":"こまかく","砕け":"くだけ","魚":"さかな","お腹":"おなか","入る":"はいる","北極":"ほっきょく","氷":"こおり","減る":"へる","取り":"とり","生き物":"いきもの","種類":"しゅるい","生物":"せいぶつ","多様":"たよう","人":"ひと","心臓":"しんぞう","打つ":"うつ","血液":"けつえき","届ける":"とどける","大人":"おとな","骨":"ほね","赤ちゃん":"あかちゃん","胃":"い","小腸":"しょうちょう","消化":"しょうか","吸収":"きゅうしゅう","眠っ":"ねむっ","間":"あいだ","成長":"せいちょう","出":"で","育つ":"そだつ","壁":"かべ","広げる":"ひろげる","広":"ひろ","肺":"はい","肺胞":"はいほう","手洗い":"てあらい","石けん":"せっけん","洗う":"あらう","ばい菌":"ばいきん","送り出す":"おくりだす","働き":"はたらき","脳":"のう","重":"おも","使う":"つかう","敵":"てき","覚え書き":"おぼえがき","先":"さき","仕組み":"しくみ","腎臓":"じんぞう","こし出し":"こしだし","尿":"にょう","作り":"つくり","設計":"せっけい","書か":"かか","血球":"けっきゅう","入っ":"はいっ","戦う":"たたかう","成分":"せいぶん","高い":"たかい","山":"やま","富士":"ふじ","長い":"ながい","信濃川":"しなのがわ","湖":"みずうみ","琵琶":"びわ","滋賀":"しが","都":"と","道":"どう","府":"ふ","県":"けん","国会":"こっかい","法律":"ほうりつ","衆議":"しゅうぎ","参議":"さんぎ","金":"かね","銀行":"ぎんこう","預ける":"あずける","利子":"りし","食料":"しょくりょう","自給":"じきゅう","割":"わり","半分":"はんぶん","輸入":"ゆにゅう","頼っ":"たよっ","税金":"ぜいきん","道路":"どうろ","病院":"びょういん","使わ":"つかわ","人口":"じんこう","憲法":"けんぽう","三":"さん","原則":"げんそく","国民":"こくみん","主権":"しゅけん","平和":"へいわ","主義":"しゅぎ","基本":"きほん","人権":"じんけん","尊重":"そんちょう","値段":"ねだん","売り":"うり","決まる":"きまる","選挙":"せんきょ","投票":"とうひょう","歳":"さい","分立":"ぶんりつ","立法":"りっぽう","行政":"ぎょうせい","内閣":"ないかく","司法":"しほう","裁判":"さいばん","互い":"たがい","目指す":"めざす","情報":"じょうほう","表す":"あらわす","命令":"めいれい","並び":"ならび","同じ":"おなじ","繰り返す":"くりかえす","繰り返し":"くりかえし","動き":"うごき","変える":"かえる","条件":"じょうけん","分岐":"ぶんき","間違い":"まちがい","直す":"なおす","最初":"さいしょ","年代":"ねんだい","言わ":"いわ","網":"あみ","目":"め","長く":"ながく","誰":"だれ","大事":"だいじ","周り":"まわり","知り":"しり","動く":"うごく","人工":"じんこう","知能":"ちのう","決まり":"きまり","見つけ":"みつけ","覚え":"おぼえ","箱":"ばこ","変数":"へんすう","手順":"てじゅん","工夫":"くふう","速く":"はやく","計算":"けいさん","生まれ":"うまれ","少し":"すこし","汚れ":"よごれ","読みとれる":"よみとれる","台":"だい","昔":"むかし","性能":"せいのう","惑星":"わくせい","周":"しゅう","大き":"おおき","夏":"なつ","三角":"さんかく","衛星":"えいせい","表面":"ひょうめん","隕石":"いんせき","自転":"じてん","向き":"むき","反対":"はんたい","国際":"こくさい","真北":"まきた","見える":"みえる","密度":"みつど","浮かぶ":"うかぶ","光年":"こうねん","兆":"ちょう","億":"おく","天の川":"あまのがわ","銀河":"ぎんが","星":"ほし","始まっ":"はじまっ","水素":"すいそ","空気":"くうき","見つかっ":"みつかっ","浮く":"うく","紙":"かみ","赤":"あか","鉄":"てつ","結びつく":"むすびつく","鉛筆":"えんぴつ","芯":"しん","食塩":"しょくえん","熱する":"ねっする","軽い":"かるい","風船":"ふうせん","記号":"きごう","変化":"へんか","全体":"ぜんたい","変わら":"かわら","質量":"しつりょう","保存":"ほぞん","法則":"ほうそく","周期":"しゅうき","固体":"こたい","溶ける":"とける","気体":"きたい","文字":"もじ","崩し":"くずし","作ら":"つくら","話さ":"はなさ","一":"いち","違う":"ちがう","意味":"いみ","文":"ぶん","順番":"じゅんばん","語":"ご","来":"き","いろは歌":"いろはうた","歌":"うた","曜日":"ようび","土":"ど","温故":"おんこ","知新":"ちしん","過去":"かこ","言語":"げんご","急が":"いそが","回れ":"まわれ","確実":"かくじつ","方法":"ほうほう","結局":"けっきょく","早い":"はやい","考え出さ":"かんがえださ","円周":"えんしゅう","続く":"つづく","角":"かど","足す":"たす","九九":"くく","方形":"ほうけい","辺":"へん","等しい":"ひとしい","割れ":"われ","同士":"どうし","四角":"しかく","六角":"ろっかく","隙間":"すきま","並べ":"ならべ","強い":"つよい","数列":"すうれつ","花びら":"はなびら","現れる":"あらわれる","円":"えん","面積":"めんせき","半径":"はんけい","定理":"ていり","直角":"ちょっかく","小数":"しょうすう","向かい合う":"むかいあう","面":"めん","必ず":"かならず","見つける":"みつける","通り":"とおり","握手":"あくしゅ","人数":"にんずう","算":"さん","解ける":"とける","本当":"ほんとう","試す":"ためす","立方":"りっぽう","頂点":"ちょうてん","部分":"ぶぶん","塔":"とう","円盤":"えんばん","写せる":"うつせる","迷路":"めいろ","左手":"ひだりて","進む":"すすむ","出口":"でぐち","逆":"ぎゃく","数独":"すうどく","縦":"たて","横":"よこ","入れる":"いれる","選び":"えらび","筆書き":"ふでがき","線":"せん","奇数":"きすう","集まる":"あつまる","点":"てん","解け":"とけ","証明":"しょうめい","元気":"げんき","星空":"ほしぞら","不思議":"ふしぎ","学位":"がくい","祝い":"いわい","学び":"まなび","未来":"みらい","楽しく":"たのしく","調べ":"しらべ","行こう":"いこう","広げよう":"ひろげよう","受け取る":"うけとる","学べる":"まなべる","満開":"まんかい","合格":"ごうかく","解放":"かいほう","選べる":"えらべる","超え":"こえ","残念":"ざんねん","朝":"あさ","得意":"とくい","合う":"あう","無料":"むりょう","減ら":"へら","行":"ぎょう","埋まっ":"うまっ","時間":"じかん","切れ":"きれ","読め":"よめ","進める":"すすめる","代わり":"かわり","持っ":"もっ","見え":"みえ","別":"べつ","報酬":"ほうしゅう","超":"ちょう","確定":"かくてい","手":"て","入れ":"いれ","明らか":"あきらか","伝説":"でんせつ","持ち物":"もちもの","住民":"じゅうみん","学会":"がっかい","今月":"こんげつ","大気":"たいき","濃度":"のうど","産業":"さんぎょう","革命":"かくめい","現在":"げんざい","観測":"かんそく","近年":"きんねん","達し":"たっし","化石":"かせき","燃料":"ねんりょう","燃焼":"ねんしょう","減少":"げんしょう","主な":"おもな","原因":"げんいん","比べ":"くらべ","年間":"ねんかん","温室":"おんしつ","効果":"こうか","稲作":"いなさく","家畜":"かちく","天然":"てんねん","漏れ":"もれ","出る":"でる","寿命":"じゅみょう","短い":"みじかい","上":"うえ","栄養":"えいよう","段階":"だんかい","伝わる":"つたわる","割合":"わりあい","呼吸":"こきゅう","熱":"ねつ","失わ":"うしなわ","上位":"じょうい","捕食":"ほしょく","個体":"こたい","少なく":"すくなく","水中":"すいちゅう","発生":"はっせい","現象":"げんしょう","赤潮":"あかしお","分解":"ぶんかい","死ぬ":"しぬ","砂漠":"さばく","破壊":"はかい","階層":"かいそう","生態":"せいたい","種":"しゅ","遺伝":"いでん","違い":"ちがい","病気":"びょうき","集団":"しゅうだん","気候":"きこう","資源":"しげん","海洋":"かいよう","海水":"かいすい","炭酸":"たんさん","下がる":"さがる","貝":"かい","殻":"から","降る":"ふる","海底":"かいてい","火山":"かざん","噴火":"ふんか","塩分":"えんぶん","増加":"ぞうか","再生":"さいせい","可能":"かのう","入ら":"はいら","風力":"ふうりょく","地熱":"じねつ","自然":"しぜん","得":"え","協定":"きょうてい","努力":"どりょく","上昇":"じょうしょう","上限":"じょうげん","十分":"じゅうぶん","低く":"ひくく","以内":"いない","太平":"たいへい","赤道":"せきどう","付近":"ふきん","東":"ひがし","中部":"ちゅうぶ","平年":"へいねん","高く":"たかく","海面":"かいめん","貿易":"ぼうえき","弱まり":"よわまり","暖かい":"あたたかい","広がる":"ひろがる","天候":"てんこう","影響":"えいきょう","冷夏":"れいか","暖冬":"だんとう","高":"たか","風":"かぜ","強":"つよ","物質":"ぶっしつ","濃縮":"のうしゅく","淘汰":"とうた","製品":"せいひん","原料":"げんりょう","採取":"さいしゅ","製造":"せいぞう","使用":"しよう","廃棄":"はいき","負荷":"ふか","評価":"ひょうか","手法":"しゅほう","使い":"つかい","終わる":"おわる","比べる":"くらべる","永久":"えいきゅう","凍土":"とうど","大量":"たいりょう","心配":"しんぱい","有機":"ゆうき","循環":"じゅんかん","条約":"じょうやく","保全":"ほぜん","対象":"たいしょう","湿地":"しっち","水鳥":"すいちょう","守る":"まもる","釧路":"くしろ","湿原":"しつげん","登録":"とうろく","氷河":"ひょうが","高山":"こうざん","供給":"きょうきゅう","石油":"せきゆ","石炭":"せきたん","年度":"ねんど","低い":"ひくい","平衡":"へいこう","状態":"じょうたい","目安":"めやす","感度":"かんど","第":"だい","報告":"ほうこく","最良":"さいりょう","推定":"すいてい","範囲":"はんい","仮定":"かてい","地表":"ちひょう","放射":"ほうしゃ","釣り合う":"つりあう","温度":"おんど","実際":"じっさい","法":"ほう","発明":"はつめい","与え":"あたえ","肥料":"ひりょう","生産":"せいさん","変わっ":"かわっ","作れる":"つくれる","流出":"りゅうしゅつ","起き":"おき","層":"そう","水質":"すいしつ","指標":"しひょう","要求":"ようきゅう","消費":"しょうひ","量":"りょう","含ま":"ふくま","金属":"きんぞく","速":"はや","例":"れい","挙げる":"あげる","熱帯":"ねったい","雨林":"うりん","草原":"そうげん","元":"もと","戻れ":"もどれ","急":"きゅう","限界":"げんかい","氷床":"ひょうしょう","崩壊":"ほうかい","礁":"しょう","死滅":"しめつ","満ち欠け":"みちかけ","昼":"ひる","夜":"よる","入れ替わる":"いれかわる","最も":"もっとも","正確":"せいかく","排出":"はいしゅつ","除去":"じょきょ","差し引き":"さしひき","実質":"じっしつ","回収":"かいしゅう","技術":"ぎじゅつ","相殺":"そうさい","一切":"いっさい","出さ":"ださ","南極":"なんきょく","上空":"じょうくう","特に":"とくに","季節":"きせつ","半球":"はんきゅう","春":"はる","冬":"ふゆ","極域":"きょくいき","成層":"せいそう","日光":"にっこう","塩素":"えんそ","化合":"かごう","壊す":"こわす","反応":"はんのう","塩基":"えんき","組み合わせ":"くみあわせ","対":"たい","細胞":"さいぼう","通貨":"つうか","主に":"おもに","小器":"しょうき","好気":"こうき","核":"かく","流れ":"ながれ","正しく":"ただしく","表し":"あらわし","順":"じゅん","質":"しつ","転写":"てんしゃ","翻訳":"ほんやく","複製":"ふくせい","時期":"じき","期":"き","分裂":"ぶんれつ","血糖":"けっとう","下げる":"さげる","すい臓":"すいぞう","島":"しま","足り":"たり","効き":"きき","糖尿":"とうにょう","肝臓":"かんぞう","副腎":"ふくじん","皮質":"ひしつ","甲状":"こうじょう","抗生":"こうせい","細菌":"さいきん","薬":"くすり","効か":"きか","病原":"びょうげん","大腸":"だいちょう","結核":"けっかく","黄色":"きいろ","球菌":"きゅうきん","筋肉":"きんにく","縮む":"ちぢむ","筋原":"きんげん","繊維":"せんい","必要":"ひつよう","神経":"しんけい","信号":"しんごう","放出":"ほうしゅつ","滑り":"すべり","合っ":"あっ","収縮":"しゅうしゅく","塩化":"えんか","酸":"さん","指定":"してい","単位":"たんい","複数":"ふくすう","増やす":"ふやす","工程":"こうてい","変性":"へんせい","伸長":"しんちょう","高温":"こうおん","結合":"けつごう","伸ばす":"のばす","凝固":"ぎょうこ","透析":"とうせき","発酵":"はっこう","減数":"げんすう","相同":"そうどう","染色":"せんしょく","入れかわる":"いれかわる","乗換え":"のりかえ","交差":"こうさ","親":"おや","組換え":"くみかえ","子":"こ","転座":"てんざ","逆位":"ぎゃくい","欠失":"けっしつ","活動":"かつどう","電位":"でんい","生じる":"しょうじる","流れこむ":"ながれこむ","流入":"りゅうにゅう","逆転":"ぎゃくてん","分極":"ぶんきょく","続い":"つづい","流れ出":"ながれで","山中":"やまなか","伸弥":"しんや","因子":"いんし","生理":"せいり","医学":"いがく","受賞":"じゅしょう","回路":"かいろ","変え":"かえ","固定":"こてい","糖":"とう","原尿":"げんにょう","水分":"すいぶん","場所":"ばしょ","近位":"きんい","細管":"さいかん","球体":"きゅうたい","集合":"しゅうごう","編集":"へんしゅう","切る":"きる","決める":"きめる","役割":"やくわり","分子":"ぶんし","目的":"もくてき","配列":"はいれつ","酵素":"こうそ","真核":"しんかく","前駆":"せんぐ","取り除く":"とりのぞく","過程":"かてい","つなぎ合わさ":"つなぎあわさ","成熟":"せいじゅく","解糖":"かいとう","正味":"しょうみ","損傷":"そんしょう","止め":"とめ","修復":"しゅうふく","起こす":"おこす","守護":"しゅご","異常":"いじょう","多く":"おおく","見つかる":"みつかる","回し":"まわし","力":"ちから","内膜":"ないまく","勾配":"こうばい","浸透":"しんとう","伝達":"でんたつ","くみ出さ":"くみださ","回る":"まわる","感染":"かんせん","直接":"ちょくせつ","傷害":"しょうがい","出す":"だす","抗原":"こうげん","攻撃":"こうげき","免疫":"めんえき","好酸":"こうさん","化":"か","調節":"ちょうせつ","修飾":"しゅうしょく","置きかわる":"おきかわる","移る":"うつる","国内":"こくない","一定":"いってい","期間":"きかん","新た":"あらた","生み出さ":"うみださ","付加":"ふか","価値":"かち","材料":"ざいりょう","中間":"ちゅうかん","新しく":"あたらしく","足し":"たし","貯金":"ちょきん","総額":"そうがく","政府":"せいふ","借金":"しゃっきん","輸出":"ゆしゅつ","商品":"しょうひん","金額":"きんがく","機会":"きかい","費用":"ひよう","選択":"せんたく","次善":"じぜん","払っ":"はらっ","買っ":"かっ","代金":"だいきん","工場":"こうじょう","唱え":"となえ","思想":"しそう","精神":"せいしん","権力":"けんりょく","分け":"わけ","抑え":"おさえ","説い":"とい","国連":"こくれん","安全":"あんぜん","保障":"ほしょう","理事":"りじ","常任":"じょうにん","中国":"ちゅうごく","か国":"かこく","拒否":"きょひ","比較":"ひかく","優位":"ゆうい","示し":"しめし","各国":"かっこく","財":"ざい","特化":"とっか","利益":"りえき","累進":"るいしん","課税":"かぜい","所得":"しょとく","採用":"さいよう","格差":"かくさ","全員":"ぜんいん","払う":"はらう","物":"もの","買う":"かう","税":"ぜい","違反":"いはん","最終":"さいしゅう","判断":"はんだん","権限":"けんげん","最高":"さいこう","違憲":"いけん","審査":"しんさ","番人":"ばんにん","家庭":"かてい","簡易":"かんい","地方":"ちほう","係数":"けいすう","近い":"ちかい","分配":"ぶんぱい","平等":"びょうどう","値":"あたい","完全":"かんぜん","富":"とみ","集中":"しゅうちゅう","理論":"りろん","囚人":"しゅうじん","示す":"しめす","協力":"きょうりょく","良い":"よい","結果":"けっか","裏切っ":"うらぎっ","個人":"こじん","最善":"さいぜん","成立":"せいりつ","損":"そん","偶然":"ぐうぜん","景気":"けいき","過熱":"かねつ","中央":"ちゅうおう","行う":"おこなう","金融":"きんゆう","政策":"せいさく","金利":"きんり","引き上げる":"ひきあげる","借り":"かり","投資":"とうし","引き下げる":"ひきさげる","国債":"こくさい","発行":"はっこう","為替":"かわせ","対し":"たいし","円安":"えんやす","下がっ":"さがっ","円高":"えんだか","強く":"つよく","賦課":"ふか","方式":"ほうしき","現役":"げんえき","世代":"せだい","保険":"ほけん","高齢":"こうれい","給付":"きゅうふ","年金":"ねんきん","中心":"ちゅうしん","少子":"しょうし","負担":"ふたん","重く":"おもく","積み立て":"つみたて","会社":"かいしゃ","公共":"こうきょう","性質":"せいしつ","払わ":"はらわ","排除":"はいじょ","同時":"どうじ","使える":"つかえる","競合":"きょうごう","国防":"こくぼう","灯台":"とうだい","街灯":"がいとう","限ら":"かぎら","主張":"しゅちょう","不況":"ふきょう","支出":"ししゅつ","増やし":"ふやし","需要":"じゅよう","つくり出す":"つくりだす","市場":"しじょう","長引く":"ながびく","財政":"ざいせい","物価":"ぶっか","上げ":"あげ","均衡":"きんこう","相手":"あいて","戦略":"せんりゃく","両者":"りょうしゃ","裏切る":"うらぎる","等しく":"ひとしく","一方":"いっぽう","勝つ":"かつ","流動":"りゅうどう","極端":"きょくたん","緩和":"かんわ","刺激":"しげき","手元":"てもと","保有":"ほゆう","流通":"りゅうつう","税収":"ぜいしゅう","購買":"こうばい","平価":"へいか","長期":"ちょうき","水準":"すいじゅん","比":"ひ","調整":"ちょうせい","自由":"じゆう","効用":"こうよう","逓減":"ていげん","追加":"ついか","得る":"える","満足":"まんぞく","空腹":"くうふく","効率":"こうりつ","下げ":"さげ","他":"た","上げる":"あげる","公平":"こうへい","観点":"かんてん","管理":"かんり","依頼":"いらい","代理":"だいり","利害":"りがい","望ま":"のぞま","行動":"こうどう","株主":"かぶぬし","経営":"けいえい","関係":"かんけい","起こる":"おこる","契約":"けいやく","監視":"かんし","対応":"たいおう","売り手":"うりて","買い手":"かいて","預金":"よきん","満たす":"みたす","多数":"たすう","存在":"そんざい","民主":"みんしゅ","矛盾":"むじゅん","票":"ひょう","乗":"じょう","表せる":"あらわせる","名":"めい","人間":"にんげん","名前":"なまえ","番号":"ばんごう","変換":"へんかん","電話":"でんわ","整列":"せいれつ","済み":"ずみ","探索":"たんさく","探す":"さがす","最悪":"さいあく","毎回":"まいかい","構造":"こうぞう","取り出し":"とりだし","取り出す":"とりだす","積み重ね":"つみかさね","取る":"とる","関数":"かんすう","自身":"じしん","呼び出す":"よびだす","再帰":"さいき","階乗":"かいじょう","図形":"ずけい","止まら":"とまら","継承":"けいしょう","圧縮":"あっしゅく","暗号":"あんごう","始まる":"はじまる","処理":"しょり","開鍵":"かいけん","受信":"じゅしん","公開":"こうかい","持つ":"もつ","復号":"ふくごう","送信":"そうしん","共通":"きょうつう","機械":"きかい","訓練":"くんれん","合い":"あい","落ちる":"おちる","過剰":"かじょう","適合":"てきごう","複雑":"ふくざつ","少な":"すくな","起こり":"おこり","検証":"けんしょう","確認":"かくにん","転移":"てんい","強化":"きょうか","次元":"じげん","削減":"さくげん","取引":"とりひき","改ざん":"かいざん","理由":"りゆう","各":"かく","含ん":"ふくん","書きかえる":"かきかえる","直さ":"なおさ","印刷":"いんさつ","見張っ":"みはっ","消し":"けし","速い":"はやい","表":"ひょう","列":"れつ","結びつけ":"むすびつけ","操作":"そうさ","注文":"ちゅうもん","顧客":"こきゃく","結びつける":"むすびつける","削除":"さくじょ","並べ替え":"ならべかえ","排他":"はいた","誤り":"あやまり","検出":"けんしゅつ","停止":"ていし","判定":"はんてい","一般":"いっぱん","無限":"むげん","万能":"ばんのう","作れ":"つくれ","解決":"かいけつ","根拠":"こんきょ","素因":"そいん","積":"せき","求める":"もとめる","現実":"げんじつ","分散":"ぶんさん","満たせ":"みたせ","一貫":"いっかん","可用":"かよう","分断":"ぶんだん","耐性":"たいせい","応答":"おうとう","両方":"りょうほう","保て":"たもて","速度":"そくど","容量":"ようりょう","価格":"かかく","機密":"きみつ","割り切れ":"わりきれ","間違っ":"まちがっ","足し算":"たしざん","整数":"せいすう","重み":"おもみ","負":"ふ","最短":"さいたん","経路":"けいろ","出発":"しゅっぱつ","距離":"きょり","求め":"もとめ","検索":"けんさく","解読":"かいどく","誤差":"ごさ","伝播":"でんぱ","出力":"しゅつりょく","後ろ":"うしろ","伝え":"つたえ","更新":"こうしん","直せ":"なおせ","入力":"にゅうりょく","画像":"がぞう","拡大":"かくだい","不正":"ふせい","対策":"たいさく","扱う":"あつかう","盗み聞き":"ぬすみぎき","推測":"すいそく","天文":"てんもん","万":"まん","融合":"ゆうごう","原子":"げんし","一部":"いちぶ","向け":"むけ","公転":"こうてん","同期":"どうき","回転":"かいてん","引力":"いんりょく","弱い":"よわい","形":"かたち","球":"きゅう","恒星":"こうせい","色":"いろ","青白い":"あおじろい","青白":"せいはく","白":"しろ","赤い":"あかい","黄色い":"きいろい","系外":"けいがい","横切っ":"よこぎっ","暗く":"くらく","望遠":"ぼうえん","視差":"しさ","重力":"じゅうりょく","高度":"こうど","秒速":"びょうそく","飛ぶ":"とぶ","軌道":"きどう","比例":"ひれい","基準":"きじゅん","重い":"おもい","最後":"さいご","爆発":"ばくはつ","新星":"しんせい","遠い":"とおい","遠ざかっ":"とおざかっ","膨張":"ぼうちょう","後退":"こうたい","動い":"うごい","背景":"はいけい","名残":"なごり","冷え":"ひえ","事象":"じしょう","地平":"ちへい","外":"そと","境界":"きょうかい","内側":"うちがわ","含め":"ふくめ","系列":"けいれつ","輝く":"かがやく","図":"ず","帯":"おび","明るく":"あかるく","巨星":"きょせい","白色":"はくしょく","矮星":"わいせい","表さ":"あらわさ","安定":"あんてい","縮退":"しゅくたい","耐え":"たえ","暗黒":"あんこく","外側":"そとがわ","予想":"よそう","回っ":"まわっ","彗星":"すいせい","尾":"お","晴れ上がり":"はれあがり","結びつい":"むすびつい","天体":"てんたい","潮汐":"ちょうせき","差":"さ","加わっ":"くわわっ","初めて":"はじめて","施設":"しせつ","合体":"がったい","物理":"ぶつり","連星":"れんせい","間接":"かんせつ","確かめ":"たしかめ","相対":"そうたい","予言":"よげん","出し":"だし","短く":"みじかく","逆向き":"ぎゃくむき","定数":"ていすう","粒子":"りゅうし","水溶":"すいよう","共有":"きょうゆう","還元":"かんげん","失う":"うしなう","同位":"どうい","標準":"ひょうじゅん","体積":"たいせき","理想":"りそう","場合":"ばあい","電気":"でんき","陰性":"いんせい","フッ素":"ふっそ","引きつける":"ひきつける","右上":"みぎうえ","酢酸":"さくさん","弱酸":"じゃくさん","特徴":"とくちょう","液中":"えきちゅう","電離":"でんり","塩酸":"えんさん","強酸":"きょうさん","原理":"げんり","発熱":"はつねつ","移動":"いどう","吸熱":"きゅうねつ","加え":"くわえ","方向":"ほうこう","触媒":"しょくばい","活性":"かっせい","位置":"いち","亜鉛":"あえん","銅":"どう","銀":"ぎん","傾向":"けいこう","陽":"ひ","電池":"でんち","負極":"ふきょく","鉛板":"えんばん","銅板":"どうばん","白金":"しろかね","硫酸":"りゅうさん","加熱":"かねつ","生成":"せいせい","脱水":"だっすい","官能":"かんのう","基":"もと","環":"かん","長":"なが","局在":"きょくざい","共鳴":"きょうめい","交互":"こうご","液体":"えきたい","分圧":"ぶんあつ","飲料":"いんりょう","圧力":"あつりょく","泡":"あわ","近似":"きんじ","自発":"じはつ","進ま":"すすま","半減":"はんげん","鏡像":"きょうぞう","異性":"いせい","光学":"こうがく","偏光":"へんこう","回す":"まわす","右手":"みぎて","旋光":"せんこう","生体":"せいたい","沸点":"ふってん","混成":"こんせい","体形":"たいけい","熟語":"じゅくご","蛍雪":"けいせつ","功":"こう","苦労":"くろう","学問":"がくもん","励ん":"はげん","成果":"せいか","故事":"こじ","蛍":"ほたる","雪明かり":"ゆきあかり","勉強":"べんきょう","話":"はなし","働い":"はたらい","運":"うん","漁夫":"ぎょふ","利":"り","二者":"にしゃ","争っ":"あらそっ","蛤":"はまぐり","漁師":"りょうし","収入":"しゅうにゅう","助けあう":"たすけあう","臥薪":"がしん","嘗胆":"しょうたん","重ね":"かさね","耐える":"たえる","薪":"たきぎ","寝":"ね","苦い":"にがい","胆":"きも","復讐":"ふくしゅう","誓っ":"ちかっ","突然":"とつぜん","収める":"おさめる","暮らす":"くらす","遍在":"へんざい","美しい":"うつくしい","古い":"ふるい","花":"はな","永遠":"えいえん","草子":"そうし","作者":"さくしゃ","清少納言":"せいしょうなごん","平安":"へいあん","時代":"じだい","随筆":"ずいひつ","源氏":"げんじ","物語":"ものがたり","紫式部":"むらさきしきぶ","和泉":"いずみ","式部":"しきぶ","菅原":"すがわら","孝標":"たかすえ","情け":"なさけ","為":"ため","本来":"ほんらい","報い":"むくい","他人":"たにん","出かけ":"でかけ","除い":"のぞい","形態":"けいたい","最小":"さいしょう","本棚":"ほんだな","棚":"たな","音":"おと","古文":"こぶん","感情":"かんじょう","深い":"ふかい","情趣":"じょうしゅ","意識":"いしき","怒り":"いかり","笑う":"わらう","憎しみ":"にくしみ","思いがけ":"おもいがけ","幸運":"こううん","昔話":"むかしばなし","挙げ":"あげ","悲しみ":"かなしみ","計画":"けいかく","批判":"ひはん","濁る":"にごる","連濁":"れんだく","複合":"ふくごう","清音":"せいおん","濁音":"だくおん","促音":"そくおん","撥音":"はつおん","音便":"おんびん","仮説":"かせつ","思考":"しこう","否定":"ひてい","文法":"ぶんぽう","助詞":"じょし","動詞":"どうし","次々":"つぎつぎ","膠着":"こうちゃく","分類":"ぶんるい","語尾":"ごび","孤立":"こりつ","屈折":"くっせつ","提唱":"ていしょう","生まれつき":"うまれつき","能力":"のうりょく","経験":"けいけん","子ども":"こども","習得":"しゅうとく","普遍":"ふへん","生得":"せいとく","認知":"にんち","転機":"てんき","出来事":"できごと","征服":"せいふく","話す":"はなす","支配":"しはい","語彙":"ごい","単語":"たんご","戦争":"せんそう","始まり":"はじまり","帝国":"ていこく","宗教":"しゅうきょう","改革":"かいかく","指す":"さす","音声":"おんせい","能記":"のうき","概念":"がいねん","所記":"しょき","結びつき":"むすびつき","恣意":"しい","主語":"しゅご","述語":"じゅつご","世紀":"せいき","母音":"ぼいん","推移":"すいい","発音":"はつおん","綴り":"つづり","子音":"しいん","消え":"きえ","語順":"ごじゅん","万葉":"まんよう","書き表す":"かきあらわす","訓":"くん","表記":"ひょうき","仮名":"かな","借りる":"かりる","当て字":"あてじ","現代":"げんだい","異なる":"ことなる","意思":"いし","疎通":"そつう","作っ":"つくっ","母語":"ぼご","整っ":"ととのっ","方言":"ほうげん","古語":"こご","読ま":"よま","分から":"わから","袋小路":"ふくろこうじ","主文":"しゅぶん","実":"じつ","納屋":"なや","走らさ":"はしらさ","馬":"うま","倒れ":"たおれ","倒置":"とうち","省略":"しょうりゃく","受動":"じゅどう","積分":"せきぶん","代入":"だいにゅう","行列":"ぎょうれつ","等比":"とうひ","初項":"しょこう","項":"こう","和":"わ","等式":"とうしき","重要":"じゅうよう","式":"しき","位":"くらい","数字":"すうじ","正規":"せいき","分布":"ぶんぷ","偏差":"へんさ","確率":"かくりつ","不定":"ふてい","微分":"びぶん","確かめる":"たしかめる","固有":"こゆう","特性":"とくせい","方程":"ほうてい","調和":"ちょうわ","級数":"きゅうすう","発散":"はっさん","限りなく":"かぎりなく","近づく":"ちかづく","収束":"しゅうそく","有病":"ゆうびょう","検査":"けんさ","陽性":"ようせい","無理":"むり","背理":"はいり","既約":"きやく","偶数":"ぐうすう","帰納":"きのう","合同":"ごうどう","末尾":"まつび","並ぶ":"ならぶ","倍数":"ばいすう","個数":"こすう","内積":"ないせき","逆数":"ぎゃくすう","解い":"とい","座標":"ざひょう","基礎":"きそ","位数":"いすう","群":"ぐん","巡回":"じゅんかい","以外":"いがい","可換":"かかん","対称":"たいしょう","自明":"じめい","実数":"じっすう","可算":"かさん","対角":"たいかく","論法":"ろんぽう","示さ":"しめさ","有理":"ゆうり","連結":"れんけつ","平面":"へいめん","辺数":"へんすう","数える":"かぞえる","多面":"ためん","公式":"こうしき","素":"そ","割っ":"わっ","余り":"あまり","割る":"われる","展開":"てんかい","書い":"かい","真":"しん","対偶":"たいぐう","命題":"めいだい","真偽":"しんぎ","一致":"いっち","裏":"うら","鳥":"とり","飛べる":"とべる","飛べ":"とべ","羽":"わ","か月":"かげつ","鳩":"はと","巣":"す","誕生":"たんじょう","扉":"とびら","賞品":"しょうひん","司会":"しかい","外れ":"はずれ","選び直し":"えらびなおし","当たる":"あたる","当たり":"あたり","選び直す":"えらびなおす","有利":"ゆうり","金貨":"きんか","偽物":"にせもの","天秤":"てんびん","最少":"さいしょう","組":"くみ","時計":"とけい","短針":"たんしん","長針":"ちょうしん","角度":"かくど","成り立つ":"なりたつ","成り立て":"なりたて","倒し":"たおし","倒れる":"たおれる","橋":"はし","結論":"けつろん","渡っ":"わたっ","増えれ":"ふえれ","公約":"こうやく","古代":"こだい","有名":"ゆうめい","互除":"ごじょ","消去":"しょうきょ","要素":"ようそ","含む":"ふくむ","行わ":"おこなわ","補題":"ほだい","決まっ":"きまっ","分ける":"わける","選べ":"えらべ","素朴":"そぼく","公理":"こうり","整え":"ととのえ","体系":"たいけい","反証":"はんしょう","夢":"ゆめ","成り立た":"なりたた","先手":"せんて","勝てる":"かてる","負ける":"まける","打っ":"うっ","引き分け":"ひきわけ","勝敗":"しょうはい","部屋":"へや","満室":"まんしつ","客":"きゃく","受け入れ":"うけいれ","移す":"うつす","移し":"うつし","数え":"かぞえ","素早く":"すばやく","懸賞":"けんしょう","賞金":"しょうきん","問う":"とう","内角":"ないかく","男の子":"おとこのこ","男女":"だんじょ","約数":"やくすう","一週間":"いっしゅうかん","百日":"ひゃくにち","先生役":"せんせいやく","問正解":"もんせいかい","一度挑戦":"いちどちょうせん","教科全部":"きょうかぜんぶ","皆勤賞":"かいきんしょう","連続出席":"れんぞくしゅっせき","入学試験":"にゅうがくしけん","問中":"もんちゅう","体験入学":"たいけんにゅうがく","特別授業":"とくべつじゅぎょう","通信簿":"つうしんぼ","一度":"いちど","挑戦成功":"ちょうせんせいこう","苦手卒業":"にがてそつぎょう","問達成":"もんたっせい","通算出席":"つうさんしゅっせき","目標達成":"もくひょうたっせい","学習者":"がくしゅうしゃ","大学入学試験":"だいがくにゅうがくしけん","最大連続":"さいだいれんぞく","毎週月曜":"まいしゅうげつよう","回正解":"かいせいかい","学校苦手":"がっこうにがて","日教室":"かきょうしつ","天王星":"てんのうせい","海王星":"かいおうせい","窒素約":"ちっそやく","酸素約":"さんそやく","他約":"たやく","中性子":"ちゅうせいし","二酸化炭素":"にさんかたんそ","光合成":"こうごうせい","平均気温":"へいきんきおん","地球温暖化":"ちきゅうおんだんか","食物連鎖":"しょくもつれんさ","生物多様性":"せいぶつたようせい","万回":"まんかい","体中":"からだじゅう","設計図":"せっけいず","白血球":"はっけっきゅう","富士山":"ふじさん","琵琶湖":"びわこ","滋賀県":"しがけん","都道府県":"とどうふけん","衆議院":"しゅうぎいん","参議院":"さんぎいん","食料自給率":"しょくりょうじきゅうりつ","半分以上":"はんぶんいじょう","一番人口":"いちばんじんこう","日本国憲法":"にっぽんこくけんぽう","国民主権":"こくみんしゅけん","平和主義":"へいわしゅぎ","基本的人権":"きほんてきじんけん","三権分立":"さんけんぶんりつ","裁判所":"さいばんしょ","条件分岐":"じょうけんぶんき","世界中":"せかいじゅう","人工知能":"じんこうちのう","進数":"しんすう","高性能":"こうせいのう","太陽系":"たいようけい","周半":"しゅうはん","大三角":"だいさんかく","個以上":"こいじょう","国際宇宙":"こくさいうちゅう","北極星":"ほっきょくほし","年中":"ねんじゅう","億個以上":"おくこいじょう","億年前":"おくねんまえ","空気中":"くうきちゅう","食塩水":"しょくえんすい","元素記号":"げんそきごう","化学変化":"かがくへんか","質量保存":"しつりょうほぞん","周期表":"しゅうきひょう","日本語":"にっぽんご","十人十色":"じゅうにんといろ","万字以上":"まんじいじょう","温故知新":"おんこちしん","過去形":"かこかたち","円周率":"えんしゅうりつ","三角形":"さんかくけい","正方形":"せいほうけい","素数":"そすう","数同士":"すうどうし","四角形":"しかくけい","正六角形":"せいろっかくけい","直角三角形":"ちょっかくさんかくけい","立方体":"りっぽうたい","奇数本":"きすうほん","世界一周":"せかいいっしゅう","回成功":"かいせいこう","大学体験入学":"だいがくたいけんにゅうがく","大学入学":"だいがくにゅうがく","研究仲間":"けんきゅうなかま","回無料":"かいむりょう","発表大成功":"はっぴょうだいせいこう","研究失敗":"けんきゅうしっぱい","大博士":"だいはかせ","大発見":"だいはっけん","研究者":"けんきゅうしゃ","学会発表":"がっかいはっぴょう","回研究":"かいけんきゅう","大気中":"たいきちゅう","産業革命前":"さんぎょうかくめいぜん","約何":"やくなん","近年約":"きんねんやく","化石燃料":"かせきねんりょう","温室効果":"おんしつこうか","栄養段階":"えいようだんかい","捕食者":"ほしょくしゃ","個体数":"こたいすう","大発生":"だいはっせい","富栄養化":"ふえいようか","酸性化":"さんせいか","砂漠化":"さばくか","層破壊":"そうはかい","生態系":"せいたいけい","多様性":"たようせい","遺伝子":"いでんし","海洋酸性化":"かいようさんせいか","酸性雨":"さんせいう","海底火山":"かいていかざん","海水中":"かいすいちゅう","再生可能":"さいせいかのう","太陽光":"たいようこう","努力目標":"どりょくもくひょう","平均気温上昇":"へいきんきおんじょうしょう","太平洋":"たいへいよう","赤道付近":"せきどうふきん","海面水温":"かいめんすいおん","貿易風":"ぼうえきふう","塩分濃度":"えんぶんのうど","生物濃縮":"せいぶつのうしゅく","自然淘汰":"しぜんとうた","使用量":"しようりょう","永久凍土":"えいきゅうとうど","有機物":"ゆうきぶつ","温暖化":"おんだんか","悪循環":"あくじゅんかん","国際的":"こくさいてき","釧路湿原":"くしろしつげん","一次":"いちじ","自給率":"じきゅうりつ","平衡状態":"へいこうじょうたい","気候感度":"きこうかんど","次報告書":"じほうこくしょ","最良推定値":"さいりょうすいていち","次評価報告書":"じひょうかほうこくしょ","可能性":"かのうせい","太陽放射":"たいようほうしゃ","放射平衡温度":"ほうしゃへいこうおんど","窒素肥料":"ちっそひりょう","大量生産":"たいりょうせいさん","窒素循環":"ちっそじゅんかん","食料生産":"しょくりょうせいさん","生物化学的酸素要求量":"せいぶつかがくてきさんそようきゅうりょう","微生物":"びせいぶつ","重金属":"じゅうきんぞく","熱帯雨林":"ねったいうりん","限界点":"げんかいてん","排出量":"はいしゅつりょう","除去量":"じょきょりょう","回収技術":"かいしゅうぎじゅつ","南極上空":"なんきょくじょうくう","南半球":"みなみはんきゅう","極域成層圏雲":"きょくいきせいそうけんくも","塩素化合物":"えんそかごうぶつ","小器官":"しょうきかん","好気呼吸":"こうきこきゅう","遺伝情報":"いでんじょうほう","細胞周期":"さいぼうしゅうき","頭文字":"かしらもじ","血糖値":"けっとうち","糖尿病":"とうにょうびょう","甲状腺":"こうじょうせん","抗生物質":"こうせいぶっしつ","病原体":"びょうげんたい","細胞壁":"さいぼうへき","質合成":"しつごうせい","大腸菌":"だいちょうきん","結核菌":"けっかくきん","筋原繊維":"きんげんせんい","塩化物":"えんかぶつ","伸長反応":"しんちょうはんのう","本鎖":"ほんさ","減数第一分裂":"げんすうだいいちぶんれつ","相同染色体":"そうどうせんしょくたい","部分的":"ぶぶんてき","活動電位":"かつどうでんい","細胞内":"さいぼうない","膜電位":"まくでんい","脱分極":"だつぶんきょく","山中伸弥":"やまなかしんや","体細胞":"たいさいぼう","山中因子":"やまなかいんし","生理学":"せいりがく","医学賞":"いがくしょう","明反応":"めいはんのう","暗反応":"あんはんのう","大部分":"だいぶぶん","再吸収":"さいきゅうしゅう","近位尿細管":"きんいにょうさいかん","糸球体":"しきゅうたい","集合管":"しゅうごうかん","合成酵素":"ごうせいこうそ","真核生物":"しんかくせいぶつ","前駆体":"せんぐたい","解糖系":"かいとうけい","守護者":"しゅごしゃ","細胞膜":"さいぼうまく","濃度勾配":"のうどこうばい","化学浸透説":"かがくしんとうせつ","電子伝達系":"でんしでんたつけい","温度差":"おんどさ","細胞傷害性":"さいぼうしょうがいせい","細胞性免疫":"さいぼうせいめんえき","好酸球":"こうさんきゅう","塩基配列":"えんきはいれつ","染色体":"せんしょくたい","国内総生産":"こくないそうせいさん","一定期間":"いっていきかん","付加価値":"ふかかち","原材料":"げんざいりょう","中間生産物":"ちゅうかんせいさんぶつ","経済学":"けいざいがく","機会費用":"きかいひよう","選択肢":"せんたくし","思想家":"しそうか","国連安全保障理事会":"こくれんあんぜんほしょうりじかい","常任理事国":"じょうにんりじこく","拒否権":"きょひけん","比較優位":"ひかくゆうい","経済学者":"けいざいがくしゃ","累進課税":"るいしんかぜい","税率":"ぜいりつ","所得税":"しょとくぜい","最終的":"さいしゅうてき","最高裁判所":"さいこうさいばんしょ","違憲審査権":"いけんしんさけん","最終判断":"さいしゅうはんだん","家庭裁判所":"かていさいばんしょ","簡易裁判所":"かんいさいばんしょ","地方裁判所":"ちほうさいばんしょ","不平等":"ふびょうどう","中央銀行":"ちゅうおうぎんこう","金融政策":"きんゆうせいさく","政策金利":"せいさくきんり","輸入品":"ゆにゅうひん","社会保障":"しゃかいほしょう","賦課方式":"ふかほうしき","現役世代":"げんえきせだい","保険料":"ほけんりょう","高齢者":"こうれいしゃ","少子高齢化":"しょうしこうれいか","公共財":"こうきょうざい","非排除性":"ひはいじょせい","非競合性":"ひきょうごうせい","財政政策":"ざいせいせいさく","必要性":"ひつようせい","流動性":"りゅうどうせい","金融緩和":"きんゆうかんわ","景気刺激":"けいきしげき","購買力平価説":"こうばいりょくへいかせつ","基本的":"きほんてき","長期的":"ちょうきてき","物価水準":"ぶっかすいじゅん","限界効用逓減":"げんかいこうようていげん","個目":"こめ","効率的":"こうりつてき","依頼人":"いらいにん","代理人":"だいりにん","経営者":"けいえいしゃ","不可能性定理":"ふかのうせいていり","社会的選択":"しゃかいてきせんたく","多数決":"たすうけつ","人以上":"にんいじょう","民主的":"みんしゅてき","数学的":"すうがくてき","電話帳":"でんわちょう","二分探索":"にふんたんさく","何回比較":"なんかいひかく","探索範囲":"たんさくはんい","毎回半分":"まいかいはんぶん","関数自身":"かんすうじしん","暗号化":"あんごうか","計算量":"けいさんりょう","処理時間":"しょりじかん","約何倍":"やくなんばい","公開鍵暗号":"こうかいけんあんごう","受信者":"じゅしんしゃ","公開鍵":"こうかいかぎ","秘密鍵":"ひみつかぎ","送信者":"そうしんしゃ","機械学習":"きかいがくしゅう","過学習":"かがくしゅう","過剰適合":"かじょうてきごう","転移学習":"てんいがくしゅう","強化学習":"きょうかがくしゅう","次元削減":"じげんさくげん","取引記録":"とりひききろく","管理者":"かんりしゃ","平均的":"へいきんてき","注文表":"ちゅうもんひょう","顧客表":"こきゃくひょう","顧客番号":"こきゃくばんごう","排他的論理和":"はいたてきろんりわ","停止性問題":"ていしせいもんだい","一般的":"いっぱんてき","安全性":"あんぜんせい","合成数":"ごうせいすう","素因数分解":"そいんすうぶんかい","現実的":"げんじつてき","一貫性":"いっかんせい","可用性":"かようせい","分断耐性":"ぶんだんたいせい","機密性":"きみつせい","完全性":"かんぜんせい","公平性":"こうへいせい","効率性":"こうりつせい","最短経路":"さいたんけいろ","出発点":"しゅっぱつてん","最短距離":"さいたんきょり","経路探索":"けいろたんさく","文字列":"もじれつ","誤差逆伝播法":"ごさぎゃくでんぱほう","連鎖律":"れんさりつ","入力欄":"にゅうりょくらん","天文単位":"てんもんたんい","平均距離":"へいきんきょり","核融合":"かくゆうごう","中心部":"ちゅうしんぶ","原子核":"げんしかく","核分裂":"かくぶんれつ","化学反応":"かがくはんのう","平均密度":"へいきんみつど","同期回転":"どうきかいてん","表面温度":"ひょうめんおんど","系外惑星":"けいがいわくせい","宇宙望遠鏡":"うちゅうぼうえんきょう","視差法":"しさほう","重力波法":"じゅうりょくはほう","高度約":"こうどやく","秒速約":"びょうそくやく","第三法則":"だいさんほうそく","公転周期":"こうてんしゅうき","長半径":"ちょうはんけい","大爆発":"だいばくはつ","超新星爆発":"ちょうしんせいばくはつ","中心核":"ちゅうしんかく","中性子星":"ちゅうせいしせい","新星爆発":"しんせいばくはつ","後退速度":"こうたいそくど","波背景放射":"ははいけいほうしゃ","地平線":"ちへいせん","主系列":"しゅけいれつ","何年":"なんねん","億年":"おくねん","億歳":"おくさい","大多数":"だいたすう","主系列星":"しゅけいれつせい","巨星系列":"きょせいけいれつ","白色矮星列":"はくしょくわいせいれつ","超巨星列":"ちょうきょせいれつ","太陽質量":"たいようしつりょう","地球質量":"ちきゅうしつりょう","白色矮星":"はくしょくわいせい","縮退圧":"しゅくたいあつ","型超新星":"がたちょうしんせい","暗黒物質":"あんこくぶっしつ","観測的":"かんそくてき","回転速度":"かいてんそくど","約何年後":"やくなんねんご","万年後":"まんねんご","秒後":"びょうご","分後":"ふんご","億年後":"おくねんご","潮汐力":"ちょうせきりょく","反比例":"はんひれい","重力波":"じゅうりょくは","直接検出":"ちょくせつけんしゅつ","検出器":"けんしゅつき","物理学賞":"ぶつりがくしょう","望遠鏡":"ぼうえんきょう","間接的":"かんせつてき","一般相対性理論":"いっぱんそうたいせいりろん","水溶液":"すいようえき","共有結合":"きょうゆうけつごう","金属結合":"きんぞくけつごう","酸化還元反応":"さんかかんげんはんのう","同位体":"どういたい","化学的":"かがくてき","標準状態":"ひょうじゅんじょうたい","理想気体":"りそうきたい","電気陰性度":"でんきいんせいど","水溶液中":"すいようえきちゅう","全部電離":"ぜんぶでんり","塩基性":"えんきせい","発熱反応":"はつねつはんのう","逆反応":"ぎゃくはんのう","正反応":"せいはんのう","両方向":"りょうほうこう","活性化":"かっせいか","反応熱":"はんのうねつ","化傾向":"かけいこう","亜鉛板":"あえんばん","白金板":"しろかねいた","塩橋":"しおはし","濃硫酸":"のうりゅうさん","生成物":"せいせいぶつ","官能基":"かんのうき","有機化合物":"ゆうきかごうぶつ","二重結合":"にじゅうけつごう","環全体":"かんぜんたい","非局在化":"ひきょくざいか","単結合":"たんけつごう","温度一定":"おんどいってい","炭酸飲料":"たんさんいんりょう","電離定数":"でんりていすう","自発的":"じはつてき","次反応":"じはんのう","半減期":"はんげんき","初濃度":"はつのうど","放射性同位体":"ほうしゃせいどういたい","鏡像異性体":"きょうぞういせいたい","光学異性体":"こうがくいせいたい","偏光面":"へんこうめん","物理的":"ぶつりてき","旋光性":"せんこうせい","生体内":"せいたいない","分子式":"ぶんししき","炭素原子":"たんそげんし","混成軌道":"こんせいきどう","正四面体形":"せいよんめんたいけい","結合角":"けつごうかく","四字熟語":"よんじじゅくご","第三者":"だいさんしゃ","臥薪嘗胆":"がしんしょうたん","大成功":"だいせいこう","枕草子":"まくらのそうし","平安時代":"へいあんじだい","源氏物語":"げんじものがたり","和泉式部":"いずみしきぶ","菅原孝標女":"すがわらのたかすえのむすめ","言語学":"げんごがく","形態素":"けいたいそ","言語単位":"げんごたんい","最小単位":"さいしょうたんい","美意識":"びいしき","計画的":"けいかくてき","複合語":"ふくごうご","促音便":"そくおんびん","撥音便":"はつおんびん","言語相対性仮説":"げんごそうたいせいかせつ","助動詞":"じょどうし","文法関係":"ぶんぽうかんけい","膠着語":"こうちゃくご","中国語":"ちゅうごくご","孤立語":"こりつご","屈折語":"くっせつご","言語能力":"げんごのうりょく","生成文法":"せいせいぶんぽう","普遍文法":"ふへんぶんぽう","生得的":"せいとくてき","構造主義":"こうぞうしゅぎ","行動主義":"こうどうしゅぎ","認知言語学":"にんちげんごがく","古英語":"こえいご","中英語":"ちゅうえいご","語系":"ごけい","百年戦争":"ひゃくねんせんそう","宗教改革":"しゅうきょうかいかく","言語記号":"げんごきごう","恣意的":"しいてき","大母音推移":"だいぼいんすいい","長母音":"ちょうぼいん","万葉集":"まんようしゅう","万葉仮名":"まんようかな","夜麻":"よるあさ","意思疎通":"いしそつう","共通語":"きょうつうご","袋小路文":"ふくろこうじぶん","倒置文":"とうちぶん","省略文":"しょうりゃくぶん","受動文":"じゅどうぶん","導関数":"どうかんすう","定積分":"ていせきぶん","行列式":"ぎょうれつしき","等比数列":"とうひすうれつ","正規分布":"せいきぶんぷ","標準偏差":"ひょうじゅんへんさ","不定積分":"ふていせきぶん","部分積分":"ぶぶんせきぶん","固有値":"こゆうち","特性方程式":"とくせいほうていしき","調和級数":"ちょうわきゅうすう","無限大":"むげんだい","有病率":"ゆうびょうりつ","偽陽性率":"にせようせいりつ","無理数":"むりすう","標準的":"ひょうじゅんてき","背理法":"はいりほう","数学的帰納法":"すうがくてききのうほう","自然数":"しぜんすう","極座標":"ごくざひょう","巡回群":"じゅんかいぐん","素数位数":"そすういすう","単位元以外":"たんいげんいがい","非可換群":"ひかかんぐん","対称群":"たいしょうぐん","実数全体":"じっすうぜんたい","自然数全体":"しぜんすうぜんたい","非可算":"ひかさん","対角線論法":"たいかくせんろんぽう","有理数":"ゆうりすう","頂点数":"ちょうてんすう","多面体公式":"ためんたいこうしき","小定理":"しょうていり","巣原理":"すげんり","羽以上":"わいじょう","誕生日":"たんじょうひ","司会者":"しかいしゃ","論理式":"ろんりしき","移動回数":"いどうかいすう","最大公約数":"さいだいこうやくすう","互除法":"ごじょほう","消去法":"しょうきょほう","部分集合":"ぶぶんしゅうごう","各要素":"かくようそ","空集合":"くうしゅうごう","偶数人":"たますうにん","握手補題":"あくしゅほだい","奇数回":"きすうかい","奇数人":"きすうにん","自分自身":"じぶんじしん","集合全体":"しゅうごうぜんたい","公理的集合論":"こうりてきしゅうごうろん","不完全性定理":"ふかんぜんせいていり","無矛盾":"むむじゅん","機械的":"きかいてき","号室":"ごうしつ","無限人":"むげんにん","部屋番号":"へやばんごう","未解決問題":"みかいけつもんだい","数学研究所":"すうがくけんきゅうしょ","懸賞問題":"けんしょうもんだい","完全数":"かんぜんすう","自分以外":"じぶんいがい","上手":"じょうず"};
+const TMIG = {"にじいろの がくしゅうしゃ":"虹色の学習者","でんせつの けんきゅうしゃ":"伝説の研究者","だいはかせ":"大博士","かいきん":"皆勤","いっしゅうかん":"一週間","ひとつき":"ひと月","ひゃくにち":"百日","かんきょうはかせ":"環境博士","いのち・けんこうはかせ":"命・健康博士","しゃかい・けいざいはかせ":"社会・経済博士","テクノロジーはかせ":"テクノロジー博士","うちゅうはかせ":"宇宙博士","かがくはかせ":"化学博士","ことばと えいごはかせ":"言葉と英語博士","すうがくはかせ":"数学博士","ろんり パズルはかせ":"論理パズル博士"};
+const RBC = {'人':'にん','回':'かい','枚':'まい','問':'もん','秒':'びょう','度':'ど','万':'まん','日':'にち','時':'じ','年':'ねん','個':'こ','歳':'さい','倍':'ばい','周':'しゅう','行':'ぎょう'};
+const esc = t => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------- 大学の問題（大学レベル） ---------- */
+function hardQ(id, lv, recent){
+  const B = BANK66[id]; if(!B) return null;
+  const l = Math.max(0, Math.min(2, lv | 0));
+  let L = (B[l] || []).slice(); if(l > 0) L = L.concat((B[l - 1] || []).filter(() => Math.random() < .25));
+  const fresh = L.filter(x => !recent('b66:' + id + ':' + x[0])), pool = fresh.length ? fresh : L; if(!pool.length) return null;
+  const it = pool[Math.random() * pool.length | 0], q = it[0], a = it[1], w = it[2], ex = it[3];
+  return {html:`<div class="mqSent bk66">${esc(q)}</div>`, ans:a, opts:shuf([a].concat(w)), key:'b66:' + id + ':' + q, ex632:{ex, fig:'', a}, u:'bank66', subj:'sci', qg:8};
+}
+
+/* ---------- ふりがな ---------- */
+const KJ = /[\u4E00-\u9FFF々〆]/, KANA = /[\u3040-\u30FFー]/;
+const RBK_MAX = Math.max(1, ...Object.keys(RBD).map(k => k.length));
+const mode = () => { const m = save.sch631 && save.sch631.furi66; return m === 'all' || m === 'none' ? m : 'hard'; };
+function hardW(k){ try{ const w = window.__yu659; return w && w.hardWord ? w.hardWord(k) : true; }catch(e){ return true; } }
+function rbMake(key, rd, md){
+  let base = key, r = rd, tail = '';
+  while(base.length > 1 && KANA.test(base[base.length - 1]) && r.length > 1 && r[r.length - 1] === base[base.length - 1]){ tail = base[base.length - 1] + tail; base = base.slice(0, -1); r = r.slice(0, -1); }
+  if(md === 'none' || (md === 'hard' && !hardW(base))) return esc(key);
+  return `<ruby class="rb66">${esc(base)}<rt>${esc(r)}</rt></ruby>${esc(tail)}`;
+}
+function rbText(text, md){
+  md = md || mode(); text = String(text ?? ''); if(md === 'none') return esc(text);
+  let out = '', i = 0;
+  while(i < text.length){
+    const ch = text[i];
+    if(!KJ.test(ch)){ out += esc(ch); i++; continue; }
+    if(i > 0 && /[0-9０-９]/.test(text[i - 1])){
+      if(ch === '分'){
+        if(text[i + 1] === 'の'){ out += rbMake('分', 'ぶん', md); i++; continue; }
+        const rd = '134680'.includes(text[i - 1]) ? 'ぷん' : 'ふん';
+        if(text[i + 1] === '間'){ out += rbMake('分間', rd + 'かん', md); i += 2; } else { out += rbMake('分', rd, md); i++; } continue;
+      }
+      if(RBC[ch]){ out += rbMake(ch, RBC[ch], md); i++; continue; }
+    }
+    let hit = null;
+    for(let L = Math.min(RBK_MAX, text.length - i); L >= 1; L--){ const k = text.substr(i, L); if(RBD[k] !== undefined){ hit = k; break; } }
+    if(hit){ out += rbMake(hit, RBD[hit], md); i += hit.length; } else { out += esc(ch); i++; }
+  }
+  return out;
+}
+function skip(n){
+  const el = n.parentElement; if(!el) return true;
+  if(el.closest('ruby,rt,script,style,textarea,canvas,svg,[data-norb],.furi66')) return true;
+  const q = el.closest('.qq631,.ops631,.exw631,.hint631,.ex56,.nt631');
+  if(q){
+    if(q.matches('.hint631')) return true;
+    if(q.matches('.ops631')) return !q.classList.contains('bk66');
+    if(q.matches('.ex56')) return !q.classList.contains('bk66');
+    return !q.querySelector('.bk66');
+  }
+  return false;
+}
+function rubify(root){
+  if(!root || mode() === 'none') return; const md = mode();
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode: n => (KJ.test(n.nodeValue) && !skip(n)) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT});
+  const L = []; while(w.nextNode()) L.push(w.currentNode);
+  L.forEach(n => { const h = rbText(n.nodeValue, md); if(h.indexOf('<ruby') < 0) return; const t = document.createElement('template'); t.innerHTML = h; n.replaceWith(t.content); });
+}
+function unrubify(root){
+  if(!root) return; root.querySelectorAll('ruby.rb66').forEach(r => { r.replaceWith(document.createTextNode(r.firstChild ? r.firstChild.textContent : '')); });
+  root.normalize();
+}
+
+/* ---------- 画面に つなぐ ---------- */
+let RT = 0, OBR = null, ROOT_EL = null;
+const MLAB = {hard:'ふりがな：難しい字', all:'ふりがな：全部', none:'ふりがな：なし'};
+function decorate(root){
+  const cp = root.querySelector('.tp639 .cp639');
+  if(cp && !cp.querySelector('.furi66')) cp.insertAdjacentHTML('beforeend', `<button type="button" class="furi66" data-norb="1">${MLAB[mode()]}</button>`);
+  else if(cp){ const b = cp.querySelector('.furi66'); if(b && b.textContent !== MLAB[mode()]) b.textContent = MLAB[mode()]; }
+}
+function run(){
+  RT = 0; const r = document.getElementById('sc631');
+  if(r){ migrate(); decorate(r); rubify(r); fit(); }
+  if(document.body.classList.contains('sc631on')){ const d = document.getElementById('dlgBody'); if(d) rubify(d); const b = document.getElementById('dlgBtns'); if(b) rubify(b); }
+}
+const sched = () => { if(!RT) RT = setTimeout(run, 24); };
+function watch(){
+  const r = document.getElementById('sc631');
+  if(r && r !== ROOT_EL){ ROOT_EL = r; if(OBR) OBR.disconnect(); OBR = new MutationObserver(sched); OBR.observe(r, {childList:true, subtree:true, characterData:true}); sched(); }
+  else if(!r && ROOT_EL){ ROOT_EL = null; if(OBR) OBR.disconnect(); }
+}
+new MutationObserver(watch).observe(document.body, {childList:true});
+(function(){ const d = document.getElementById('dlgBody'); if(d) new MutationObserver(() => { if(document.body.classList.contains('sc631on')) sched(); }).observe(d, {childList:true, subtree:true, characterData:true}); })();
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.furi66'); if(!b) return;
+  e.stopPropagation(); e.preventDefault();
+  const s = save.sch631 || (save.sch631 = {}); s.furi66 = mode() === 'hard' ? 'all' : mode() === 'all' ? 'none' : 'hard'; try{ persist(); }catch(err){}
+  try{ sound('tap'); }catch(err){}
+  const r = document.getElementById('sc631'); unrubify(r); unrubify(document.getElementById('dlgBody')); run();
+}, true);
+
+/* ---------- 保存データの 名前の ひっこし（かなの 称号 → 漢字） ---------- */
+function migrate(){
+  try{
+    const s = save.sch631, u = save.uni631; const f = a => Array.isArray(a) ? a.map(x => TMIG[x] || x) : a;
+    if(s){ s.titles = f(s.titles); s.badges = f(s.badges); }
+    if(u){ u.titles = f(u.titles); if(u.title && TMIG[u.title]) u.title = TMIG[u.title]; }
+  }catch(e){}
+}
+migrate();
+
+/* ---------- iPad横：絵の位置に ぴったり あわせる ---------- */
+function fit(){
+  const r = document.getElementById('sc631'); if(!r) return;
+  const W = r.clientWidth || innerWidth, H = r.clientHeight || innerHeight, s = Math.max(W / 1536, H / 1024), wi = 1536 * s, hi = 1024 * s;
+  r.style.setProperty('--wi', wi + 'px'); r.style.setProperty('--hi', hi + 'px'); r.style.setProperty('--ox', ((W - wi) / 2) + 'px'); r.style.setProperty('--oy', ((H - hi) / 2) + 'px');
+}
+addEventListener('resize', () => { fit(); }); addEventListener('orientationchange', () => setTimeout(fit, 200));
+
+/* ---------- CSS ---------- */
+const css = document.createElement('style');
+const LAND = '(orientation:landscape) and (min-width:900px) and (min-height:560px)';
+css.textContent = `
+#sc631 ruby.rb66 rt,#dlg ruby.rb66 rt{font-size:.5em;font-weight:800;line-height:1;letter-spacing:0;color:inherit;opacity:.85}
+#sc631 ruby.rb66,#dlg ruby.rb66{ruby-position:over}
+.furi66{display:inline-flex;align-items:center;margin-left:8px;border:2.5px solid #fff;border-radius:99px;background:rgba(255,255,255,.92);padding:2px 10px;font:inherit;font-size:12px;font-weight:900;color:#6B3A12;box-shadow:0 2px 4px rgba(0,0,0,.14);cursor:pointer;vertical-align:middle;white-space:nowrap}
+.furi66:active{transform:translateY(1px)}
+.ops631.bk66{grid-template-columns:1fr}
+.ops631.bk66 .op631{text-align:left;padding:10px 12px;line-height:1.5}
+.qq631 .mqSent.bk66{font-size:16px;font-weight:800;line-height:1.75;color:#3A2E22}
+@media ${LAND}{
+  #sc631.bgS633:has(> .wrap631.s639)::before{background:url(${IMG}bg_school_pals_l.webp) center/cover no-repeat!important;filter:none!important;opacity:1!important}
+  #sc631.bgU634:has(> .wrap631.s639)::before{background:url(${IMG}bg_univ_pals_l.webp) center/cover no-repeat!important;filter:none!important;opacity:1!important}
+  #sc631.bgS633:not(:has(> .wrap631.s639))::before{background:url(${IMG}bg_school_gate_l.webp) center/cover no-repeat!important;filter:none!important;opacity:1!important}
+  #sc631.bgU634:not(:has(> .wrap631.s639))::before{background:url(${IMG}bg_univ_gate_l.webp) center/cover no-repeat!important;filter:none!important;opacity:1!important}
+  #sc631 .wrap631.s639{max-width:none!important;width:min(44vw,520px)!important;margin:0 16px 0 auto!important;padding:calc(12px + env(safe-area-inset-top)) 0 calc(16px + env(safe-area-inset-bottom))!important;display:flex!important;flex-direction:column!important;gap:10px!important;background:none!important;box-shadow:none!important;container-type:normal!important;min-height:100%;align-items:stretch}
+  #sc631 .wrap631.s639>.pn639{grid-column:auto!important;margin:0!important}
+  #sc631 .wrap631.s639>.pn639:first-of-type{margin-top:0!important}
+  #sc631 .wrap631.s639>.tp639{position:fixed!important;left:0;top:0;bottom:0;right:calc(min(44vw,520px) + 32px);width:auto!important;min-height:0!important;aspect-ratio:auto!important;background:none!important;box-shadow:none!important;border-radius:0!important;container-type:normal!important;padding:0!important;pointer-events:none;grid-column:auto!important;grid-row:auto!important;z-index:3}
+  #sc631 .wrap631.s639>.tp639>*{pointer-events:auto}
+  #sc631 .tp639 .hd639{padding-left:16px!important;padding-right:12px!important}
+  #sc631 .tp639 .cp639 span{font-size:14px}
+  #sc631 .tp639 .lg639{max-width:230px}
+  #sc631 .tp639 .pal639{position:absolute!important;display:block}
+  #sc631 .tp639 .pal639.ow{left:calc(var(--ox) + .124*var(--wi));top:calc(var(--oy) + .366*var(--hi));width:calc(.19*var(--wi));height:calc(.345*var(--hi))}
+  #sc631 .tp639 .pal639.se{left:calc(var(--ox) + .31*var(--wi));top:calc(var(--oy) + .50*var(--hi));width:calc(.16*var(--wi));height:calc(.21*var(--hi))}
+  #sc631 .tp639 .pb639{max-width:calc(.2*var(--wi));font-size:clamp(13px,1.5vw,19px);padding:6px 12px;right:auto;line-height:1.35}
+  #sc631 .tp639 .pb639.ow{left:max(10px,calc(var(--ox) + .09*var(--wi)));top:calc(var(--oy) + .205*var(--hi))}
+  #sc631 .tp639 .pb639.se{left:max(10px,calc(var(--ox) + .30*var(--wi)));top:calc(var(--oy) + .345*var(--hi))}
+  #sc631 .tp639 .pal639.u1{left:calc(var(--ox) + .073*var(--wi));top:calc(var(--oy) + .42*var(--hi));width:calc(.162*var(--wi));height:calc(.40*var(--hi))}
+  #sc631 .tp639 .pal639.u2{left:calc(var(--ox) + .218*var(--wi));top:calc(var(--oy) + .41*var(--hi));width:calc(.183*var(--wi));height:calc(.40*var(--hi))}
+  #sc631 .tp639 .pal639.u3{left:calc(var(--ox) + .365*var(--wi));top:calc(var(--oy) + .50*var(--hi));width:calc(.166*var(--wi));height:calc(.29*var(--hi))}
+  #sc631 .tp639 .pb639.u1,#sc631 .tp639 .pb639.u2,#sc631 .tp639 .pb639.u3{max-width:calc(.17*var(--wi));font-size:clamp(12.5px,1.4vw,18px);padding:5px 10px}
+  #sc631 .tp639 .pb639.u1{left:max(12px,calc(var(--ox) + .045*var(--wi)));top:calc(var(--oy) + .26*var(--hi))}
+  #sc631 .tp639 .pb639.u2{left:max(12px,calc(var(--ox) + .21*var(--wi)));top:calc(var(--oy) + .255*var(--hi))}
+  #sc631 .tp639 .pb639.u3{left:max(12px,calc(var(--ox) + .35*var(--wi)));top:calc(var(--oy) + .38*var(--hi))}
+  #sc631 .wrap631.quiz{max-width:none!important;width:min(54vw,760px)!important;margin:0 24px 0 auto!important;justify-content:center;min-height:100%}
+  #sc631 .card633 .qz631{padding:18px 18px}
+  #sc631 .qq631{font-size:19px}
+  #sc631 .qq631 .mqSent.bk66{font-size:19px}
+  #sc631 .op631{font-size:17px;min-height:58px}
+  #sc631 .ops631.bk66 .op631{font-size:16px}
+}
+`;
+document.head.appendChild(css);
+window.__sch66 = {hardQ, BANK66, rbText, rubify, unrubify, RBD, mode, fit};
 })();
 
 
@@ -10657,8 +10844,8 @@ body.rot650on{overflow:hidden!important}
   .wrap631.s639{max-width:min(1280px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:16px;row-gap:10px;align-items:start;align-content:start;min-height:100%;
     padding:0 16px calc(16px + env(safe-area-inset-bottom));background:rgba(255,248,232,.25)!important;box-shadow:none}
   .wrap631.s639>.tp639{grid-column:1;grid-row:1 / 5;align-self:start;position:sticky;top:0;container-type:inline-size;min-height:0;aspect-ratio:100/88;
-    background:#F3DCAB url(./assets/images/v639/bg_school_pals.webp) center top/calc(100% + 16px) auto no-repeat;border-radius:0 0 28px 28px;box-shadow:0 6px 18px rgba(80,50,10,.22)}
-  .wrap631.s639.u641>.tp639{aspect-ratio:100/86;background:#EADFC4 url(./assets/images/v641/bg_univ_pals.webp) center top/calc(100% + 16px) auto no-repeat}
+    background:#F3DCAB url(./assets/images/school/bg_school_pals.webp) center top/calc(100% + 16px) auto no-repeat;border-radius:0 0 28px 28px;box-shadow:0 6px 18px rgba(80,50,10,.22)}
+  .wrap631.s639.u641>.tp639{aspect-ratio:100/86;background:#EADFC4 url(./assets/images/school/bg_univ_pals.webp) center top/calc(100% + 16px) auto no-repeat}
   .wrap631.s639>.tp639 .hd639{padding-left:10px;padding-right:10px}
   .wrap631.s639>.pn639{grid-column:2}
   .wrap631.s639>.pn639:first-of-type{margin-top:calc(12px + env(safe-area-inset-top))}
@@ -13782,7 +13969,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.65.0', IMG = './assets/images/airport/';
+const VER = '6.66.0', IMG = './assets/images/airport/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
