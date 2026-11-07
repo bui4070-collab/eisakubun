@@ -10,7 +10,7 @@
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.70.0', IMG = './assets/images/science/';
+const VER = '6.71.0', IMG = './assets/images/science/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -1082,7 +1082,7 @@ async function expStart(id, daily){
   if(!r || !r.pick) return;
   s.d.used += CFG.tixExp; persist();
   const star = +r.pick; E = {id, star, daily:!!daily, kind:EXRUN[id] ? 'x' : 'lab', i:0, ok:0, tries:0, done:false, msg:null};
-  if(!EXRUN[id]){ E.ms = LABDEF[id](star); E.vals = labVals(E.ms[0]); }
+  if(!EXRUN[id]){ E.ms = LABDEF[id](star); E.ms.forEach(m => { if(m.choices){ const ca = m.choices[m.ans]; m.choices = shuf(m.choices); m.ans = m.choices.indexOf(ca); } }); E.vals = labVals(E.ms[0]); }
   else EXRUN[id].init(E);
   go('exp', {e:id, z:e.z});
 }
@@ -1193,7 +1193,7 @@ LABDEF.emag = star => {
   for(let n = 0; n < 3; n++){
     if(star === 2){ const t = pick([8, 10, 12]); ms.push({text:`クリップを ${t}こ いじょう つり上げよう`, ctrl:[sl('turns', 'まき数', 0, 100, 10, 0, '回'), sl('batt', '電池', 1, 4, 1, 1, 'こ')], view:emagView, check:v => CLIPS(v.turns, v.batt) >= t ? {ok:true} : {ok:false, msg:`いまは ${CLIPS(v.turns, v.batt)}こ。まき数か 電池を ふやそう`}, explain:EXP, answer:''}); }
     else if(star === 3){ const lo = pick([6, 9, 12]), hi = lo + 2; ms.push({text:`クリップを ちょうど ${lo}〜${hi}こ つり上げよう（多すぎても ダメ！）`, ctrl:[sl('turns', 'まき数', 0, 100, 10, 0, '回'), sl('batt', '電池', 1, 4, 1, 1, 'こ')], view:emagView, check:v => { const c = CLIPS(v.turns, v.batt); return c >= lo && c <= hi ? {ok:true} : {ok:false, msg:`いまは ${c}こ。${c < lo ? 'もう少し 強く' : '少し 弱く'} しよう`}; }, explain:EXP, answer:''}); }
-    else { const b = pick([2, 3]), lo = pick([9, 12, 15]); ms.push({text:`電池は ${b}こ に きまって いる。まき数を かえて クリップを ${lo}〜${lo + 2}こ に しよう`, ctrl:[sl('turns', 'まき数', 0, 100, 10, 0, '回'), sl('batt', '電池', 1, 4, 1, b, 'こ', true)], view:emagView, check:v => { const c = CLIPS(v.turns, v.batt); return c >= lo && c <= lo + 2 ? {ok:true} : {ok:false, msg:`いまは ${c}こ`}; }, explain:EXP, answer:''}); }
+    else { const b = pick([2, 3]), lo = b === 2 ? pick([6, 9]) : pick([9, 12, 15]); ms.push({text:`電池は ${b}こ に きまって いる。まき数を かえて クリップを ${lo}〜${lo + 2}こ に しよう`, ctrl:[sl('turns', 'まき数', 0, 100, 10, 0, '回'), sl('batt', '電池', 1, 4, 1, b, 'こ', true)], view:emagView, check:v => { const c = CLIPS(v.turns, v.batt); return c >= lo && c <= lo + 2 ? {ok:true} : {ok:false, msg:`いまは ${c}こ`}; }, explain:EXP, answer:''}); }
   }
   return ms;
 };
@@ -1703,6 +1703,7 @@ function onClick(e){
     case 'enc': return EXRUN.engine.pick(+v);
     case 'enok': return EXRUN.engine.ok();
     case 'ennext': return EXRUN.engine.next();
+    default: return extClick(a, v, t);
   }
 }
 
@@ -1769,8 +1770,585 @@ try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { c
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
 window.__sci700 = {RB, open, close, SC, CFG, ZONES, EXPS, CARD_IDS, REWARDS, QBANK, GENS, getSet, award, go, render, get V(){ return V; }, get E(){ return E; }, get Q(){ return Q; }, RANKS, townEvent, EXRUN, LABDEF, FLAME, rankNo, rwState, giveReward, giveCar, expStart, QSEL};
 
+
+
+/* =====================================================================
+   v6.71 追加：のこり 10この 実験
+   ばけがく：色が かわる 水／けっしょうを そだてる
+   でんき　：プラズマボール（静電気）
+   くるま　：でんき車 vs ガソリン車
+   ひかり　：レンズの ふしぎ／かがみ めいろ
+   うちゅう：プラネタリウム／てんきの ふしぎ
+   いのち　：いでんの ふしぎ／からだの しくみ
+   ===================================================================== */
+const tgl = (k, l, opts, v) => ({type:'tog', k, l, opts, v});
+const slid = (k, l, min, max, step, v, u, lock) => ({k, l, min, max, step, v, u, lock});
+const frame = (w, h, fill = '#F4FBFF', stroke = '#BFDDEE') => `<rect x="2" y="2" width="${w - 4}" height="${h - 4}" rx="22" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+const T = (x, y, t, fs = 14, col = '#4A3420', anchor = 'middle', w = 900) => `<text x="${x}" y="${y}" font-size="${fs}" font-weight="${w}" text-anchor="${anchor}" fill="${col}">${t}</text>`;
+
+/* ===================== ばけがく：色が かわる 水 ===================== */
+const LIQ = {
+  lemon:{n:'レモン水', ph:2.5}, vinegar:{n:'す', ph:3}, soda:{n:'炭酸水', ph:4.5}, water:{n:'水', ph:7}, salt:{n:'食塩水', ph:7}, sugar:{n:'さとう水', ph:7},
+  baking:{n:'重そう水', ph:8.3}, soap:{n:'せっけん水', ph:10}, hcl:{n:'塩酸', ph:1}, naoh:{n:'水酸化ナトリウム水', ph:13}
+};
+const phKind = ph => ph < 6 ? 'acid' : ph > 7.6 ? 'alk' : 'neu';
+const btbCol = ph => ph < 6 ? '#F6D93A' : ph <= 7.6 ? '#4CB84C' : '#3C6FE0';
+const btbName = ph => ph < 6 ? '黄色' : ph <= 7.6 ? '緑色' : '青色';
+const cabCol = ph => ph < 3.5 ? '#E0364A' : ph < 5.5 ? '#C95AA5' : ph < 7.5 ? '#8A5CC6' : ph < 9 ? '#4A6FD6' : ph < 11.5 ? '#2FA89A' : '#C9C94A';
+const cabName = ph => ph < 3.5 ? '赤' : ph < 5.5 ? 'ピンク' : ph < 7.5 ? 'むらさき' : ph < 9 ? '青' : ph < 11.5 ? '青緑' : '黄緑';
+const litRed = ph => ph > 8 ? '#3C6FE0' : '#E0364A';        /* 赤い リトマス紙 */
+const litBlue = ph => ph < 5 ? '#E0364A' : '#3C6FE0';       /* 青い リトマス紙 */
+function beakerSVG(x, y, col, w = 90, h = 110, fillPct = .68){
+  const lv = h * fillPct;
+  return `<path d="M${x} ${y}h${w}v${h - 12}q0 12 -12 12h${-(w - 24)}q-12 0 -12 -12z" fill="#fff" fill-opacity=".55" stroke="#7FB6E6" stroke-width="3"/><path d="M${x + 2} ${y + h - lv}h${w - 4}v${lv - 12}q0 10 -10 10h${-(w - 24)}q-10 0 -10 -10z" fill="${col}" fill-opacity=".9"/>
+    <path d="M${x - 4} ${y}h${w + 8}" stroke="#7FB6E6" stroke-width="3" stroke-linecap="round"/>`;
+}
+function indicView(v, m){
+  if(m.mode === 'neu'){
+    const nA = m.va * m.ca, nB = v.nv * m.cb, tot = m.va + v.nv, d = nA - nB;
+    const conc = Math.abs(d) / tot, ph = Math.abs(d) < 1e-9 ? 7 : (d > 0 ? -Math.log10(conc) : 14 + Math.log10(conc));
+    const col = btbCol(ph), fillP = clampN(tot / 80, .3, .95);
+    return SVGW(300, 260, `${frame(300, 260)}${beakerSVG(100, 60, col, 100, 140, fillP)}${T(150, 36, `さん ${m.va} mL ＋ アルカリ ${v.nv} mL`, 14)}${T(150, 230, `BTB液：${btbName(ph)}　pH ≒ ${r1(ph)}`, 15, '#4A3420')}
+      <path d="M232 70v30M222 92l10 12 10-12" stroke="#3C93DC" stroke-width="5" fill="none" stroke-linecap="round"/>${T(232, 56, 'アルカリ', 11, '#3C93DC')}`)
+      + `<div class="sxGs"><div class="sxGg">さん：${m.ca} mol/L　${m.va} mL ／ アルカリ：${m.cb} mol/L（${m.cb > .1 ? '濃い' : m.cb < .1 ? 'うすい' : '同じ'}）</div></div>`;
+  }
+  const L = LIQ[v.liq], ph = L.ph;
+  let body = '';
+  if(m.mode === 'litmus'){
+    body = `${beakerSVG(100, 60, '#D9ECFF', 100, 140)}${T(150, 36, L.n, 16)}
+      <g transform="translate(118 20)"><rect x="0" y="0" width="22" height="110" rx="3" fill="${litRed(ph)}" stroke="#fff" stroke-width="2"/></g><g transform="translate(160 20)"><rect x="0" y="0" width="22" height="110" rx="3" fill="${litBlue(ph)}" stroke="#fff" stroke-width="2"/></g>
+      ${T(129, 236, '赤い 紙', 12)}${T(171, 236, '青い 紙', 12)}${T(150, 252, `赤い 紙 → ${litRed(ph) === '#3C6FE0' ? '青' : '赤のまま'}　青い 紙 → ${litBlue(ph) === '#E0364A' ? '赤' : '青のまま'}`, 11, '#6B5A44')}`;
+  } else if(m.mode === 'btb'){
+    body = `${beakerSVG(100, 60, btbCol(ph), 100, 140)}${T(150, 36, L.n + ' ＋ BTB液', 16)}${T(150, 236, `BTB液：${btbName(ph)}`, 16)}`;
+  } else {
+    body = `${beakerSVG(100, 60, cabCol(ph), 100, 140)}${T(150, 36, L.n + ' ＋ むらさきキャベツ液', 15)}${T(150, 236, `いろ：${cabName(ph)}`, 16)}
+      <g transform="translate(228 70)">${[['#E0364A', '強い さん'], ['#C95AA5', 'さん'], ['#8A5CC6', '中性'], ['#4A6FD6', 'アルカリ'], ['#2FA89A', '強い アルカリ']].map((c, i) => `<rect x="0" y="${i * 24}" width="16" height="16" rx="4" fill="${c[0]}"/>${T(22, i * 24 + 13, c[1], 10, '#6B5A44', 'start')}`).join('')}</g>`;
+  }
+  return SVGW(300, 260, frame(300, 260) + body);
+}
+LABDEF.indic = star => {
+  const O = (a, b, c) => [['lemon', 'レモン水'], ['salt', '食塩水'], ['soap', 'せっけん水']];
+  const liqTog = keys => tgl('liq', 'しらべる 水', keys.map(k => [k, LIQ[k].n]), keys[0]);
+  const ms = [];
+  if(star === 1){
+    const Q = [['lemon', 'レモン水', '酸性', '青い リトマス紙が 赤に かわる のは 酸性。'], ['soap', 'せっけん水', 'アルカリ性', '赤い リトマス紙が 青に かわる のは アルカリ性。'], ['salt', '食塩水', '中性', 'どちらの 紙も 色が かわらない のは 中性。']];
+    shuf(Q).forEach(q => ms.push({mode:'litmus', text:`リトマス紙で しらべよう。${q[1]}は 何性かな？（まず ${q[1]}を えらんでね）`, ctrl:[liqTog(['lemon', 'salt', 'soap'])], view:indicView, choices:['酸性', '中性', 'アルカリ性'], ans:['酸性', '中性', 'アルカリ性'].indexOf(q[2]), need:v => v.liq === q[0] ? null : `まず ${q[1]}を えらんで、紙の 色を 見て みよう`, explain:q[3], hintNG:'赤い 紙と 青い 紙の 色の かわりかたを 見よう！'}));
+  } else if(star === 2){
+    const Q = [['acid', '黄色', ['vinegar', 'water', 'baking', 'soap']], ['neu', '緑色', ['lemon', 'water', 'soap', 'soda']], ['alk', '青色', ['salt', 'baking', 'vinegar', 'sugar']]];
+    Q.forEach(q => ms.push({mode:'btb', text:`BTB液を 入れて「${q[1]}」に なる 水を えらぼう（えらんだら「けってい！」）`, ctrl:[liqTog(q[2])], view:indicView, check:v => phKind(LIQ[v.liq].ph) === q[0] ? {ok:true} : {ok:false, msg:`${LIQ[v.liq].n}は ${btbName(LIQ[v.liq].ph)}だよ。ほかの 水を ためして みよう`}, explain:'BTB液は 酸性で 黄色、中性で 緑色、アルカリ性で 青色に なる。', answer:`こたえ：${LIQ[q[2].find(k => phKind(LIQ[k].ph) === q[0])].n}。`}));
+  } else if(star === 3){
+    const Q = [['むらさきキャベツ液が「赤」に なる のは どの 水？', '塩酸', ['せっけん水', '食塩水', '重そう水'], ['hcl', 'soap', 'salt', 'baking'], '強い 酸性では 赤に なる。'],
+      ['むらさきキャベツ液が「青〜青緑」に なる のは どの 水？', 'せっけん水', ['レモン水', '食塩水', 'す'], ['lemon', 'soap', 'salt', 'vinegar'], 'アルカリ性が 強く なるほど 青 → 青緑 → 黄緑に かわる。'],
+      ['むらさきキャベツ液が「むらさき」の まま なのは どの 水？', '食塩水', ['レモン水', 'せっけん水', '塩酸'], ['lemon', 'salt', 'soap', 'hcl'], '中性の 水は むらさきの まま。']];
+    Q.forEach(q => ms.push({mode:'cab', text:q[0] + '（水を 切りかえて ためそう）', ctrl:[liqTog(q[3])], view:indicView, choices:[q[1]].concat(q[2]), ans:0, explain:q[4], hintNG:'水を 切りかえて、色を 見くらべて みよう！'}));
+  } else {
+    [[20, .1, .1, 20], [20, .1, .2, 10], [10, .2, .1, 20], [20, .1, .05, 40], [15, .2, .1, 30]].sort(() => Math.random() - .5).slice(0, 3).forEach(p => {
+      const [va, ca, cb, ans] = p;
+      ms.push({mode:'neu', va, ca, cb, text:`${ca} mol/L の さん ${va} mL に、${cb} mol/L の アルカリを 少しずつ 入れる。BTB液が「緑色」（ちょうど 中和）に なる ように 量を えらぼう`, ctrl:[slid('nv', 'アルカリの 量', 0, 60, 1, 0, ' mL')], view:indicView,
+        check:v => v.nv === ans ? {ok:true} : {ok:false, msg:`いまは ${v.nv} mL。${v.nv * cb > va * ca ? 'アルカリが 多すぎて 青く なって いるよ' : 'まだ さんが のこって 黄色いよ'}`}, explain:`中和は「さんの 物質量 ＝ アルカリの 物質量」。${va}×${ca}＝${r1(va * ca)}、アルカリは ${cb} mol/L なので ${r1(va * ca)}÷${cb}＝${ans} mL。`, answer:`こたえ：${ans} mL。`});
+    });
+  }
+  return ms;
+};
+
+/* ===================== ばけがく：けっしょうを そだてる ===================== */
+const SOL = {alum:{n:'ミョウバン', pts:[[0, 3], [20, 6], [40, 12], [60, 25], [80, 71]]}, salt:{n:'食塩', pts:[[0, 35.7], [20, 35.8], [40, 36.3], [60, 37.1], [80, 38.0]]}};
+function solCap(sub, t){
+  const P = SOL[sub].pts; for(let i = 0; i < P.length - 1; i++){ if(t <= P[i + 1][0]) return P[i][1] + (P[i + 1][1] - P[i][1]) * (t - P[i][0]) / (P[i + 1][0] - P[i][0]); }
+  return P[P.length - 1][1];
+}
+function crystalView(v, m){
+  const sub = m.sub || 'alum', W = m.water || 100, cap = solCap(sub, v.T) * W / 100, amt = m.amt, cryst = Math.max(0, amt - cap), pct = clampN(v.T / 80, 0, 1);
+  const nC = Math.min(16, Math.round(cryst / Math.max(amt, 1) * 24));
+  const cs = Array.from({length:nC}, (_, i) => `<path d="M${112 + (i * 17) % 78} ${196 - (i % 3) * 8}l7 -10l8 4l-2 10z" fill="#BFE8FF" stroke="#5FA8D8" stroke-width="1.5"/>`).join('');
+  const dots = Array.from({length:Math.min(18, Math.round(Math.min(amt, cap) / Math.max(amt, 1) * 18))}, (_, i) => `<circle cx="${112 + (i * 23) % 80}" cy="${100 + (i * 29) % 80}" r="2.5" fill="#fff" fill-opacity=".8"/>`).join('');
+  return SVGW(300, 260, `${frame(300, 260)}<path d="M96 52h108v150q0 14 -14 14h-80q-14 0 -14 -14z" fill="#fff" fill-opacity=".55" stroke="#7FB6E6" stroke-width="3"/><path d="M99 84h102v118q0 11 -11 11h-80q-11 0 -11 -11z" fill="rgb(${Math.round(150 + pct * 90)},${Math.round(210 - pct * 20)},${Math.round(250 - pct * 120)})" fill-opacity=".75"/>${dots}${cs}
+    <g transform="translate(240 50)"><rect x="0" y="0" width="14" height="120" rx="7" fill="#fff" stroke="#8A929C" stroke-width="2"/><rect x="3" y="${120 - pct * 114}" width="8" height="${pct * 114 + 3}" rx="4" fill="#E8414B"/>${T(7, 142, v.T + '℃', 14)}</g>
+    ${T(150, 32, `${SOL[sub].n} ${amt} g を 水 ${W} g に`, 14)}${T(150, 238, `とける 限界：${r1(cap)} g　→ 結晶：${r1(cryst)} g`, 14, cryst > 0 ? '#2C6FB0' : '#4A3420')}`)
+    + `<div class="sxGs">${gauge(cap / Math.max(amt, 1) * 100 > 100 ? 100 : cap / Math.max(amt, 1) * 100, 'とけている わりあい', '#3C93DC')}</div>`;
+}
+LABDEF.crystal = star => {
+  const ctl = (lock, v0 = 80) => [slid('T', '水の 温度', 0, 80, 5, v0, '℃', lock)];
+  const ms = [];
+  if(star === 3){
+    [[6, 20], [12, 40], [25, 60]].sort(() => Math.random() - .5).forEach(([a, tmin]) => ms.push({sub:'alum', amt:a, text:`ミョウバン ${a} g を 水 100 g に ぜんぶ とかしたい。いちばん 低い 温度（±5℃）に しよう（20℃ のとき 6 g、40℃ のとき 12 g、60℃ のとき 25 g まで とけるよ）`, ctrl:ctl(false, 0), view:crystalView,
+      check:v => v.T >= tmin && v.T <= tmin + 5 ? {ok:true} : {ok:false, msg:v.T < tmin ? '結晶が まだ のこって いるよ。もう少し 温度を 上げよう' : '高すぎ！ もっと 低い 温度でも とけるよ'}, explain:`水の 温度が 高いほど たくさん とける。${a} g が ちょうど とける のは およそ ${tmin}℃。`, answer:`${tmin}℃ くらい。`}));
+  } else if(star === 4){
+    [[25, 60, 20], [25, 60, 0], [71, 80, 40]].forEach(([a, t0, t1]) => { const ans = Math.round(a - solCap('alum', t1)), ch = [ans, a, Math.round(solCap('alum', t1)), ans + 8].map(x => r1(x) + ' g');
+      ms.push({sub:'alum', amt:a, text:`${t0}℃ の 水 100 g に ミョウバン ${a} g を ちょうど とかした。${t1}℃ まで 冷やすと、何 g の 結晶が 出る？（温度を うごかして たしかめよう）`, ctrl:ctl(false, t0), view:crystalView, choices:ch, ans:0, need:v => v.T === t1 ? null : `まず 温度を ${t1}℃ に して たしかめよう`, explain:`${t1}℃ では ${r1(solCap('alum', t1))} g までしか とけない。${a} − ${r1(solCap('alum', t1))} ＝ ${ans} g が 結晶に なる。`, hintNG:'とける 限界と 入れた 量の さを 計算しよう！'}); });
+  } else {
+    ms.push({sub:'alum', amt:50, water:200, text:'60℃ の 水 200 g に ミョウバン 50 g を とかした（60℃ では 水 200 g に 50 g まで とける）。20℃ まで 冷やすと 何 g の 結晶が 出る？', ctrl:ctl(false, 60), view:crystalView, choices:['38 g', '50 g', '12 g', '44 g'], ans:0, need:v => v.T === 20 ? null : 'まず 温度を 20℃ に して たしかめよう', explain:'20℃ では 水 200 g に 12 g（100 g に 6 g の 2ばい）しか とけない。50 − 12 ＝ 38 g。'});
+    ms.push({sub:'salt', amt:30, text:'食塩は 水の 温度を 変えても とける 量が ほとんど 同じ（100 g に 約 36 g）。食塩水から 食塩の 結晶を とり出す には どうする？（温度を うごかして たしかめよう）', ctrl:ctl(false, 80), view:crystalView, choices:['水を 蒸発させる', 'ゆっくり 冷やす', 'さらに 熱する', '氷を 入れる'], ans:0, explain:'食塩は 冷やしても ほとんど 結晶が 出ない。水を 蒸発させて とり出す。', hintNG:'温度を 下げても 結晶が 出ない ことに 注目！'});
+    ms.push({sub:'alum', amt:71, text:'80℃ の 水 100 g に ミョウバン 71 g を ちょうど とかした。40℃ まで 冷やすと 何 g の 結晶が 出る？（温度を うごかして たしかめよう）', ctrl:ctl(false, 80), view:crystalView, choices:['59 g', '71 g', '12 g', '65 g'], ans:0, need:v => v.T === 40 ? null : 'まず 温度を 40℃ に して たしかめよう', explain:'40℃ では 12 g まで。71 − 12 ＝ 59 g が 結晶に なる。'});
+  }
+  return ms;
+};
+
+/* ===================== でんき：プラズマボール（静電気） ===================== */
+function staticView(v, m){
+  if(m.kind === 'balloon'){
+    const q = v.rub, lift = q >= 20 ? 2 : q >= 10 ? 1 : 0;
+    const charges = Array.from({length:Math.min(14, Math.round(q / 2))}, (_, i) => `<text x="${96 + (i * 11) % 66}" y="${100 + (i * 17) % 50}" font-size="14" font-weight="900" fill="#3C6FE0" text-anchor="middle">−</text>`).join('');
+    const bits = [0, 1, 2, 3, 4].map(i => `<rect x="${84 + i * 24}" y="${lift ? 150 - (lift === 2 ? 28 : 10) - (i % 2) * 6 : 214}" width="14" height="8" rx="2" fill="#F0709A" transform="rotate(${(i - 2) * 14} ${91 + i * 24} 200)"/>`).join('');
+    return SVGW(300, 260, `${frame(300, 260)}<ellipse cx="130" cy="108" rx="${50 + q * .3}" ry="${60 + q * .3}" fill="#F2A33A" stroke="#C27A1C" stroke-width="3"/><ellipse cx="108" cy="82" rx="10" ry="18" fill="#fff" fill-opacity=".5"/>${charges}<path d="M130 168v12l-6 8h12z" fill="#F2A33A"/>
+      <path d="M60 226h140" stroke="#8A7A65" stroke-width="5" stroke-linecap="round"/>${bits}${T(150, 250, lift === 2 ? '紙が ぴったり くっつく！' : lift === 1 ? '紙が すこし うく' : '紙は うごかない', 14)}
+      <g transform="translate(232 70)"><path d="M0 0l30 10-4 30" fill="none" stroke="#8A5A2B" stroke-width="10" stroke-linecap="round"/>${T(14, 70, 'ぬの', 12, '#6B5A44')}</g>`)
+      + `<div class="sxGs">${gauge(q / 30 * 100, `こすった 回数：${q}`, '#F2A33A')}${gauge(Math.min(100, q * 3.4), 'たまった 静電気（−）', '#3C6FE0')}</div>`;
+  }
+  const d = v.dist, near = d <= 3, arcs = Array.from({length:8}, (_, i) => { const a = i / 8 * Math.PI * 2, tx = near && i === 0 ? 150 + 78 + (3 - d) * 0 : null;
+    return `<path d="M150 130Q${150 + Math.cos(a + .6) * 36} ${130 + Math.sin(a + .6) * 36} ${150 + Math.cos(a) * 80} ${130 + Math.sin(a) * 80}" fill="none" stroke="${near ? '#E8A0FF' : '#B58CFF'}" stroke-opacity="${near ? .6 : .85}" stroke-width="${near ? 2 : 2.6}"/>`; }).join('');
+  const fx = 230 + d * 6;
+  return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#14102A"/><circle cx="150" cy="130" r="84" fill="#2A1F55" fill-opacity=".55" stroke="#B9A8E8" stroke-width="3"/>${arcs}
+    ${near ? `<path d="M150 130Q${(150 + fx) / 2} ${130 - 24} ${fx - 14} 140" fill="none" stroke="#FFE6FF" stroke-width="${6 - d}" stroke-linecap="round"/><circle cx="150" cy="130" r="16" fill="#FFD0FF" fill-opacity=".9"/>` : `<circle cx="150" cy="130" r="10" fill="#E8C0FF" fill-opacity=".9"/>`}
+    <rect x="124" y="212" width="52" height="22" rx="8" fill="#3A3F47"/><g transform="translate(${fx} 150)"><rect x="-8" y="0" width="16" height="80" rx="8" fill="#F2C49B" stroke="#C98A5B" stroke-width="2"/><rect x="-7" y="-26" width="14" height="30" rx="7" fill="#F2C49B" stroke="#C98A5B" stroke-width="2"/></g>
+    ${T(150, 252, near ? '光が ゆびの ほうへ あつまる！' : '光は ぜんたいに ひろがる', 13, '#fff')}`)
+    + `<div class="sxGs">${gauge(100 - d * 10, '光が ゆびに あつまる 強さ', '#B58CFF')}</div>`;
+}
+LABDEF.plasma = star => {
+  const bal = [slid('rub', 'ふうせんを こする 回数', 0, 30, 1, 0, ' かい')], fin = [slid('dist', 'ゆびと ガラスの きょり', 0, 10, 1, 8, ' cm')];
+  const ms = [];
+  if(star === 1){
+    ms.push({kind:'balloon', text:'ふうせんを ぬので こすって、紙きれを 持ち上げよう（10回 いじょう）', ctrl:bal, view:staticView, check:v => v.rub >= 10 ? {ok:true} : {ok:false, msg:`いまは ${v.rub}回。もっと こすろう`}, explain:'こすると マイナスの 電気（静電気）が ふうせんに たまり、紙を ひきつける。', answer:'10回 いじょう。'});
+    ms.push({kind:'balloon', text:'もっと 強く こすって、紙が ぴったり くっつく ように しよう（20回 いじょう）', ctrl:bal, view:staticView, check:v => v.rub >= 20 ? {ok:true} : {ok:false, msg:`いまは ${v.rub}回`}, explain:'こする 回数が ふえるほど たまる 電気も ふえる。', answer:'20回 いじょう。'});
+    ms.push({kind:'balloon', text:'ふうせんを こすると、ふうせんに たまる ものは？', ctrl:bal, view:staticView, choices:['静電気（電気）', '音', '熱だけ', '磁石の 力'], ans:0, explain:'ものを こすり あわせると 静電気が うまれる。冬に ドアノブで パチッと するのも 同じ。', hintNG:'こすって 紙が くっつく ようすを 思い出そう！'});
+  } else if(star === 2){
+    ms.push({kind:'ball', text:'ゆびを ガラスに ちかづけて、光を ゆびに あつめよう（きょり 3 cm いか）', ctrl:fin, view:staticView, check:v => v.dist <= 3 ? {ok:true} : {ok:false, msg:`いまは ${v.dist} cm。もっと ちかづけよう`}, explain:'ゆびは 電気を にがす 通り道に なる。だから 光が ゆびの ほうへ あつまる。', answer:'3 cm いか。'});
+    ms.push({kind:'ball', text:'ゆびを はなして、光が ぜんたいに ひろがる ように しよう（8 cm いじょう）', ctrl:[slid('dist', 'ゆびと ガラスの きょり', 0, 10, 1, 1, ' cm')], view:staticView, check:v => v.dist >= 8 ? {ok:true} : {ok:false, msg:`いまは ${v.dist} cm`}, explain:'ゆびが とおいと、電気は まわり ぜんたいに ひろがる。', answer:'8 cm いじょう。'});
+    ms.push({kind:'ball', text:'プラズマボールの 中で 光って 見える のは、何が おきて いる から？', ctrl:fin, view:staticView, choices:['ガスの 中を 電気が 流れる（放電）', '電球が 入って いる', '光る 水が 入って いる', '太陽の 光を ためて いる'], ans:0, explain:'ガラスの 中の うすい ガスに 高い 電圧を かけると、電気が 流れて 光る（放電）。', hintNG:'ゆびを ちかづけると どうなったかな？'});
+  } else {
+    const Q = [['ふうせんを 2こ 同じ ように こすって ちかづけると、2この ふうせんは？', 'しりぞけあう', ['ひきあう', 'くっつく', '何も おきない'], '同じ 種類の 電気（−と −）は しりぞけあう。', 'balloon'],
+      ['かみなりは、何が おきて いる？', '雲の 大きな 静電気が 一気に 流れる（放電）', ['雲が ぶつかって 光る', '太陽の 光が 反射する', '空気が 燃える'], '雲の 中の 氷の つぶが こすれて 静電気が たまり、大きな 放電が おきる。', 'ball'],
+      ['冬の かわいた 日に ドアノブで パチッと する のは？', '体に たまった 静電気が 放電する から', ['ドアノブが 熱い から', '磁石が 入って いる から', '電池が 入って いる から'], 'かわいた 冬は 静電気が にげにくく、たまりやすい。', 'ball']];
+    Q.forEach(q => ms.push({kind:q[4], text:q[0], ctrl:q[4] === 'balloon' ? bal : fin, view:staticView, choices:[q[1]].concat(q[2]), ans:0, explain:q[3], hintNG:'ふうせんや プラズマボールの ようすを 思い出そう！'}));
+  }
+  return ms;
+};
+
+/* ===================== くるま：でんき車 vs ガソリン車 ===================== */
+function evView(v, m){
+  const bar = (x, label, eta, col) => `<rect x="${x}" y="40" width="64" height="150" rx="10" fill="#fff" stroke="#BFDDEE" stroke-width="3"/><rect x="${x + 3}" y="${40 + 150 * (1 - eta) + 3}" width="58" height="${150 * eta - 6}" rx="8" fill="${col}"/><rect x="${x + 3}" y="43" width="58" height="${150 * (1 - eta) - 3}" rx="8" fill="#F2A3A3" fill-opacity=".7"/>
+    ${T(x + 32, 40 + 150 * (1 - eta) + (150 * eta) / 2 + 5, `${Math.round(eta * 100)}%`, 16, '#fff')}${T(x + 32, 212, label, 12)}${T(x + 32, 228, `動力 ${Math.round(eta * 100)}% ／ 熱 ${Math.round((1 - eta) * 100)}%`, 10, '#6B5A44')}`;
+  if(m.chain){
+    const ch = m.chain; let acc = 1;
+    const boxes = ch.map((c, i) => { acc *= c[1]; const x = 8 + i * (284 / ch.length); return `<rect x="${x + 3}" y="70" width="${284 / ch.length - 8}" height="64" rx="10" fill="#fff" stroke="#BFDDEE" stroke-width="3"/>${T(x + 3 + (284 / ch.length - 8) / 2, 94, c[0], 12)}${T(x + 3 + (284 / ch.length - 8) / 2, 120, Math.round(c[1] * 100) + '%', 18, '#C27A1C')}${i < ch.length - 1 ? T(x + 284 / ch.length - 2, 106, '×', 16, '#8A7A65') : ''}`; }).join('');
+    return SVGW(300, 260, `${frame(300, 260)}${T(150, 34, m.title || 'エネルギーの 流れ', 14)}${boxes}${T(150, 168, 'ぜんぶ かけあわせた 効率', 13)}<rect x="30" y="180" width="240" height="26" rx="13" fill="#EFE5D3"/><rect x="30" y="180" width="${240 * clampN(v.eta / 100, 0, 1)}" height="26" rx="13" fill="#4CB84C"/>${T(150, 199, `あなたの こたえ：${v.eta}%`, 14, '#fff')}${T(150, 238, '発電 → 送電 → 充電 → モーター', 12, '#6B5A44')}`);
+  }
+  return SVGW(300, 260, `${frame(300, 260)}${bar(42, 'ガソリン車', m.etaG || .3, '#E8803A')}${bar(190, 'でんき車', m.etaE || .9, '#3C93DC')}${T(150, 24, 'エネルギーの ゆくえ（赤＝むだな 熱）', 12, '#6B5A44')}`)
+    + (m.showAns ? `<div class="sxGs">${gauge(clampN(v.ans / m.max * 100, 0, 100), `あなたの こたえ：${r1(v.ans)}${m.u || ''}`, '#4CB84C')}</div>` : '');
+}
+LABDEF.evgas = star => {
+  const ms = [];
+  if(star === 4){
+    ms.push({showAns:1, max:9, u:' kWh', text:'ガソリン 1 L は 約 9 kWh の エネルギー。熱効率 30% の エンジンで、動力に なる のは 何 kWh？', ctrl:[slid('ans', '動力に なる 量', 0, 9, .1, 0, ' kWh')], view:evView, check:v => Math.abs(v.ans - 2.7) <= .3 ? {ok:true} : {ok:false, msg:`いまは ${r1(v.ans)} kWh。9 × 0.3 を 計算しよう`}, explain:'9 × 0.3 ＝ 2.7 kWh。のこり 6.3 kWh は 熱として すてられる。', answer:'2.7 kWh。'});
+    ms.push({showAns:1, max:10, u:' kWh', text:'バッテリー 10 kWh の でんき車。モーターの 効率 90% なら、動力に なる のは 何 kWh？', ctrl:[slid('ans', '動力に なる 量', 0, 10, .1, 0, ' kWh')], view:evView, check:v => Math.abs(v.ans - 9) <= .4 ? {ok:true} : {ok:false, msg:`いまは ${r1(v.ans)} kWh`}, explain:'10 × 0.9 ＝ 9 kWh。モーターは 熱に なる むだが 少ない。', answer:'9 kWh。'});
+    ms.push({text:'同じ エネルギーを つかった とき、走る ための 動力に かえる わりあいが 大きい のは？', showAns:0, ctrl:[], view:evView, choices:['でんき車（モーター）', 'ガソリン車（エンジン）', 'どちらも 同じ', 'ガソリン車の ほうが 2ばい'], ans:0, explain:'モーターは 約 9割、ガソリンエンジンは 約 3割 が 動力に なる。'});
+  } else if(star === 5){
+    [[15, .15], [30, .15], [48, .12]].forEach(([B, e]) => { const km = Math.round(B / e);
+      ms.push({showAns:1, max:500, u:' km', etaG:.3, etaE:.9, text:`バッテリー ${B} kWh、1 km 走る のに 電気 ${e} kWh（電費）を つかう 車。満充電で 走れる きょりは？`, ctrl:[slid('ans', '走れる きょり', 0, 500, 5, 0, ' km')], view:evView, check:v => Math.abs(v.ans - km) <= Math.max(10, km * .05) ? {ok:true} : {ok:false, msg:`いまは ${v.ans} km。${B} ÷ ${e} を 計算しよう`}, explain:`きょり ＝ 電気の 量 ÷ 電費 ＝ ${B} ÷ ${e} ＝ 約 ${km} km。`, answer:`約 ${km} km。`}); });
+  } else {
+    const chainE = [['発電所', .4], ['送電', .95], ['充電', .9], ['モーター', .9]];
+    const tot = Math.round(.4 * .95 * .9 * .9 * 1000) / 10;
+    ms.push({chain:chainE, title:'でんき車の 総合効率（火力発電の 電気）', text:'火力発電（効率 40%）の 電気で 走る でんき車。発電 → 送電 → 充電 → モーター の 効率を ぜんぶ かけた 総合効率は？（±2%）', ctrl:[slid('eta', 'あなたの こたえ', 0, 100, 1, 10, '%')], view:evView, check:v => Math.abs(v.eta - tot) <= 2 ? {ok:true} : {ok:false, msg:`いまは ${v.eta}%。0.40 × 0.95 × 0.90 × 0.90 を 計算しよう`}, explain:`0.40 × 0.95 × 0.90 × 0.90 ＝ 約 ${tot}%。ガソリン車の 熱効率（約 30%）と それほど かわらない！`, answer:`約 ${tot}%。`});
+    const chain2 = [['発電所', .6], ['送電', .95], ['充電', .9], ['モーター', .9]], tot2 = Math.round(.6 * .95 * .9 * .9 * 1000) / 10;
+    ms.push({chain:chain2, title:'最新の 火力発電（効率 60%）の 場合', text:'最新の 発電所（効率 60%）に すると、でんき車の 総合効率は？（±2%）', ctrl:[slid('eta', 'あなたの こたえ', 0, 100, 1, 10, '%')], view:evView, check:v => Math.abs(v.eta - tot2) <= 2 ? {ok:true} : {ok:false, msg:`いまは ${v.eta}%`}, explain:`0.60 × 0.95 × 0.90 × 0.90 ＝ 約 ${tot2}%。発電所が よく なる ほど でんき車の 総合効率も 上がる。`, answer:`約 ${tot2}%。`});
+    ms.push({chain:chainE, title:'総合効率で かんがえよう', text:'総合効率だけ 見ると、でんき車と ガソリン車が ほぼ 同じ に なる 場合が ある。それでも でんき車が CO₂ を へらす ために 役立つ のは どんな とき？', ctrl:[slid('eta', '', 0, 100, 1, tot, '%', true)], view:evView, choices:['太陽光など 再生可能エネルギーで 発電した 電気を 使う とき', '夜に 充電 すれば かならず', 'タイヤを 大きく した とき', 'ガソリンを まぜた とき'], ans:0, explain:'再生可能エネルギーの 電気なら 発電で CO₂ が ほとんど 出ない。どんな 電気を 使うか が だいじ。'});
+  }
+  return ms;
+};
+
+/* ===================== ひかり：レンズの ふしぎ ===================== */
+function lensView(v, m){
+  const f = m.f, a = v.a, scl = 2.4, X0 = 150, Y0 = 118, h0 = 34;
+  const bv = a === f ? Infinity : a * f / (a - f), real = a > f, mag = bv === Infinity ? 0 : Math.abs(bv) / a;
+  const ox = X0 - a * scl, ix = Math.min(308, X0 + bv * scl);   /* 虚像は bv<0 → 左側 */
+  const ih = bv === Infinity ? 0 : Math.min(92, h0 * mag);
+  const sx = m.screen ? X0 + v.s * scl : null;
+  const blur = m.screen ? Math.min(8, Math.abs(v.s - bv) * .35) : 0, filt = `lf${Math.round(Math.abs(v.s || 0))}`;
+  let rays = '', img = '';
+  if(real && isFinite(bv)){
+    rays = `<path d="M${ox} ${Y0 - h0}H${X0}L${ix} ${Y0 + ih}" fill="none" stroke="#E8414B" stroke-width="2"/><path d="M${ox} ${Y0 - h0}L${X0} ${Y0}L${ix} ${Y0 + ih}" fill="none" stroke="#F2A33A" stroke-width="2"/>`;
+    img = `<path d="M${ix} ${Y0}v${ih}" stroke="#2C6FB0" stroke-width="5"/><path d="M${ix - 5} ${Y0 + ih - 6}l5 7l5 -7" fill="none" stroke="#2C6FB0" stroke-width="3"/>`;
+  } else if(!real && a < f){
+    const vx = ix; rays = `<path d="M${ox} ${Y0 - h0}H${X0}L${X0 + 60} ${Y0 - h0 + 60 * h0 / (f * scl)}" fill="none" stroke="#E8414B" stroke-width="2"/><path d="M${ox} ${Y0 - h0}L${X0} ${Y0}L${X0 + 70} ${Y0 + 70 * h0 / (X0 - ox)}" fill="none" stroke="#F2A33A" stroke-width="2"/>
+      <path d="M${X0} ${Y0 - h0}L${vx} ${Y0 - ih}" stroke="#E8414B" stroke-width="2" stroke-dasharray="4 4"/><path d="M${X0} ${Y0}L${vx} ${Y0 - ih}" stroke="#F2A33A" stroke-width="2" stroke-dasharray="4 4"/>`;
+    img = `<path d="M${vx} ${Y0}v${-ih}" stroke="#2C6FB0" stroke-width="5" stroke-dasharray="5 4" opacity=".8"/><path d="M${vx - 5} ${Y0 - ih + 6}l5 -7l5 7" fill="none" stroke="#2C6FB0" stroke-width="3"/>`;
+  }
+  const info = a === f ? '焦点の 上：像は できない（光が 平行に なる）' : real ? `実像：${r1(bv)} cm ／ 大きさ ${r1(mag)} 倍（さかさま）` : `虚像：レンズの 手前 ${r1(-bv)} cm ／ ${r1(mag)} 倍（正立）`;
+  return SVGW(320, 240, `<rect x="2" y="2" width="316" height="236" rx="22" fill="#F4FBFF" stroke="#BFDDEE" stroke-width="3"/><path d="M10 ${Y0}H310" stroke="#8A929C" stroke-width="2"/>
+    <path d="M${X0} ${Y0 - 70}C${X0 + 14} ${Y0 - 30} ${X0 + 14} ${Y0 + 30} ${X0} ${Y0 + 70}C${X0 - 14} ${Y0 + 30} ${X0 - 14} ${Y0 - 30} ${X0} ${Y0 - 70}z" fill="#BFE7FF" fill-opacity=".7" stroke="#2C6FB0" stroke-width="2.5"/>
+    ${[-1, 1].map(s => `<circle cx="${X0 + s * f * scl}" cy="${Y0}" r="4" fill="#9B6CE0"/>${T(X0 + s * f * scl, Y0 + 18, 'F', 12, '#9B6CE0')}`).join('')}
+    ${rays}<path d="M${ox} ${Y0}v${-h0}" stroke="#4A3420" stroke-width="5"/><path d="M${ox - 5} ${Y0 - h0 + 6}l5 -7l5 7" fill="none" stroke="#4A3420" stroke-width="3"/>${img}
+    ${m.screen ? `<rect x="${sx - 3}" y="${Y0 - 60}" width="6" height="120" rx="3" fill="#fff" stroke="#8A929C" stroke-width="2"/>${isFinite(bv) && real ? `<g opacity="${Math.max(.15, 1 - blur / 8)}"><path d="M${sx} ${Y0}v${ih}" stroke="#2C6FB0" stroke-width="${5 + blur * 2}" stroke-linecap="round"/></g>` : ''}` : ''}
+    ${T(160, 214, info, 11, '#4A3420')}${T(160, 232, `焦点距離 f ＝ ${f} cm ／ 物体 a ＝ ${a} cm`, 11, '#6B5A44')}`);
+}
+LABDEF.lens = star => {
+  const aCtl = (v0 = 30, lock) => [slid('a', 'ものの 位置（レンズから）', 5, 45, 1, v0, ' cm', lock)];
+  const ms = [];
+  if(star === 3){
+    ms.push({f:10, text:'焦点距離 10 cm の とつレンズ。スクリーンに うつる「実像」が できる 位置に ものを おこう（焦点より 遠く）', ctrl:aCtl(8), view:lensView, check:v => v.a > 10 ? {ok:true} : {ok:false, msg:'焦点より 近いと 実像は できないよ'}, explain:'ものが 焦点より 遠い とき、スクリーンに さかさまの 実像が できる。'});
+    ms.push({f:10, text:'実像が ものより「大きく」なる 位置に しよう（焦点と 焦点距離の 2ばいの 間）', ctrl:aCtl(30), view:lensView, check:v => v.a > 10 && v.a < 20 ? {ok:true} : {ok:false, msg:v.a >= 20 ? 'まだ 遠いよ。もう少し ちかづけよう' : '焦点より 遠く しよう'}, explain:'f ＜ a ＜ 2f の とき、像は ものより 大きい 実像に なる。'});
+    ms.push({f:10, text:'ものを 焦点より「近く」に おくと、レンズを のぞいた とき どう 見える？（位置を うごかして たしかめよう）', ctrl:aCtl(30), view:lensView, choices:['大きく 正立（同じ 向き）の 虚像', '小さく さかさま', '見えなく なる', '色が かわる'], ans:0, need:v => v.a < 10 ? null : 'まず ものを 焦点（10 cm）より 近づけて みよう', explain:'a ＜ f の とき、虚像が 大きく 見える。虫めがねの しくみ！'});
+  } else if(star === 4){
+    ms.push({f:10, text:'ものと 同じ 大きさの 実像（さかさま）が できる 位置に しよう（焦点距離の 2ばい ±1 cm）', ctrl:aCtl(30), view:lensView, check:v => Math.abs(v.a - 20) <= 1 ? {ok:true} : {ok:false, msg:`いまは ${v.a} cm。像の 大きさを 見くらべよう`}, explain:'a ＝ 2f の とき、像は 同じ 大きさ（1倍）で、レンズから 2f の 位置に できる。'});
+    ms.push({f:10, text:'ものより「小さい」実像に するには、ものを どう する？（位置を うごかして たしかめよう）', ctrl:aCtl(14), view:lensView, choices:['2f より 遠くに おく', 'f と 2f の 間に おく', '焦点より 近く', 'レンズに くっつける'], ans:0, need:v => v.a > 20 ? null : 'まず ものを 遠ざけて みよう', explain:'a ＞ 2f の とき、像は 小さく なる（カメラの しくみ）。'});
+    ms.push({f:10, text:'f ＝ 10 cm の レンズの 前 15 cm に もの。像は レンズの 何 cm うしろに できる？（式：1/a ＋ 1/b ＝ 1/f）', ctrl:aCtl(15, true), view:lensView, choices:['30 cm', '15 cm', '6 cm', '25 cm'], ans:0, explain:'1/b ＝ 1/10 − 1/15 ＝ 1/30。b ＝ 30 cm。'});
+  } else {
+    [[10, 15], [10, 30], [15, 30]].forEach(([f, a]) => { const b = a * f / (a - f);
+      ms.push({f, screen:1, text:`f ＝ ${f} cm の レンズ。ものは ${a} cm の 位置。スクリーンを ずらして、像が くっきり うつる 位置を さがそう（±2 cm）`, ctrl:aCtl(a, true).concat([slid('s', 'スクリーンの 位置（レンズから）', 5, 65, 1, 8, ' cm')]), view:lensView, check:v => Math.abs(v.s - b) <= 2 ? {ok:true} : {ok:false, msg:`いまは ${v.s} cm。像が ぼやけて いるよ。1/a ＋ 1/b ＝ 1/f を 使おう`}, explain:`1/b ＝ 1/${f} − 1/${a}。b ＝ ${r1(b)} cm。`, answer:`スクリーンは ${r1(b)} cm の ところ。`}); });
+  }
+  return ms;
+};
+
+/* ===================== うちゅう：プラネタリウム ===================== */
+function moonSVG(age, R = 54, cx = 0, cy = 0){
+  const th = 2 * Math.PI * age / 29.53, c = Math.cos(th), rx = Math.abs(c) * R, wax = age <= 14.765;
+  const sw1 = wax ? 1 : 0, sw2 = wax ? (c > 0 ? 0 : 1) : (c > 0 ? 1 : 0);
+  return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#2C3558" stroke="#8A9AC8" stroke-width="2"/><path d="M${cx} ${cy - R}A${R} ${R} 0 0 ${sw1} ${cx} ${cy + R}A${rx} ${R} 0 0 ${sw2} ${cx} ${cy - R}Z" fill="#FFF4C2"/>`;
+}
+const phaseName = age => age < 1 || age > 28.5 ? '新月' : age < 6.4 ? '三日月' : age < 8.4 ? '上弦の月' : age < 13.8 ? '満ちて いく 月' : age < 15.8 ? '満月' : age < 21 ? '欠けて いく 月' : age < 23 ? '下弦の月' : '細い 月';
+const SKY = {
+  winter:{n:'冬', stars:[[-60,-50,'ベテルギウス',2],[40,-50,'',1],[-30,0,'',1],[0,0,'',1],[30,0,'',1],[-50,55,'',1],[50,55,'リゲル',2],[-110,40,'シリウス',3],[10,-95,'プロキオン',2]], lines:[[0,1],[0,2],[1,4],[2,3],[3,4],[2,5],[4,6]], label:'オリオン座・冬の 大三角'},
+  spring:{n:'春', stars:[[-80,-40,'',1],[-40,-60,'',1],[0,-40,'',1],[30,-10,'デネボラ',2],[-20,10,'',1],[-90,10,'',1],[40,70,'スピカ',2],[-50,95,'アルクトゥルス',3]], lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]], label:'しし座・春の 大曲線'},
+  summer:{n:'夏', stars:[[-70,-70,'デネブ',3],[20,-20,'ベガ',3],[70,40,'アルタイル',3],[-40,70,'',1],[-10,95,'アンタレス',2]], lines:[[0,1],[1,2],[2,0],[3,4]], label:'夏の 大三角'},
+  autumn:{n:'秋', stars:[[-60,-40,'',1],[40,-40,'',1],[40,40,'',1],[-60,40,'',1],[-100,-95,'',1],[-70,-85,'',1],[-45,-100,'',1]], lines:[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6]], label:'ペガスス座の 秋の 四辺形'}
+};
+const seasonOf = mo => mo <= 2 || mo === 12 ? 'winter' : mo <= 5 ? 'spring' : mo <= 8 ? 'summer' : 'autumn';
+function planetView(v, m){
+  if(m.kind === 'moon'){
+    return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#0E1530"/>${[...Array(16)].map((_, i) => `<circle cx="${(i * 61) % 290 + 5}" cy="${(i * 43) % 150 + 10}" r="1.5" fill="#fff" opacity=".7"/>`).join('')}${moonSVG(v.age, 62, 150, 98)}
+      ${T(150, 196, `${phaseName(v.age)}（${r1(v.age)} 日め）`, 16, '#fff')}${m.rise ? T(150, 222, `月が のぼる 時刻 ≒ ${String(Math.floor((6 + v.age / 29.53 * 24) % 24)).padStart(2, '0')}時ごろ`, 14, '#FFE08A') : T(150, 222, '新月 → 満月 → 新月 で 約 29.5日', 12, '#9AA8D8')}`);
+  }
+  if(m.kind === 'season'){
+    const S = SKY[seasonOf(v.mo)];
+    return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#0E1530"/><g transform="translate(150 128)">${S.lines.map(l => `<path d="M${S.stars[l[0]][0]} ${S.stars[l[0]][1]}L${S.stars[l[1]][0]} ${S.stars[l[1]][1]}" stroke="#8FB4FF" stroke-width="1.6" opacity=".7"/>`).join('')}${S.stars.map(s => `<circle cx="${s[0]}" cy="${s[1]}" r="${2 + s[3] * 1.4}" fill="#FFF4C2"/>${s[2] ? T(s[0], s[1] - 8, s[2], 8, '#CFE0FF') : ''}`).join('')}</g>
+      ${T(150, 26, `${v.mo}月 夜9時ごろの 南の 空`, 14, '#fff')}${T(150, 244, S.label, 13, '#FFE08A')}`);
+  }
+  if(m.kind === 'rot'){
+    const ang = v.h * 15, rot = a => `rotate(${-ang} 150 128)`;
+    const dipper = [[-30,-62],[-18,-70],[-6,-72],[8,-66],[16,-52],[42,-50],[48,-70]], cas = [[-70,28],[-52,48],[-34,30],[-18,50],[0,30]];
+    const grp = (pts, col) => `<g transform="${rot()}"><path d="M${pts.map(p => (150 + p[0]) + ' ' + (128 + p[1])).join('L')}" fill="none" stroke="${col}" stroke-width="1.6" opacity=".8"/>${pts.map(p => `<circle cx="${150 + p[0]}" cy="${128 + p[1]}" r="3" fill="#FFF4C2"/>`).join('')}</g>`;
+    return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#0E1530"/><circle cx="150" cy="128" r="104" fill="none" stroke="#2A3A7A" stroke-width="1.5" stroke-dasharray="4 5"/>${grp(dipper, '#8FB4FF')}${grp(cas, '#FFB08F')}
+      <circle cx="150" cy="128" r="4.5" fill="#FFE08A"/>${T(150, 118, '北極星', 10, '#FFE08A')}${T(150, 22, `${v.h} 時間 たった（回った 角度 ${ang}°）`, 14, '#fff')}${T(150, 246, '北の 空：北極星の まわりを 反時計回りに 回る', 11, '#9AA8D8')}`);
+  }
+  /* top：太陽・地球・月 を 上から */
+  const a = v.ang, rad = a * Math.PI / 180, mx = 150 + Math.cos(rad - Math.PI) * 74, my = 128 + Math.sin(rad - Math.PI) * 74 * -1;
+  const age = a / 360 * 29.53, ecl = Math.abs(a - 0) <= 8 || Math.abs(a - 360) <= 8 ? '日食（太陽が かくれる）' : Math.abs(a - 180) <= 8 ? '月食（月が 地球の かげに 入る）' : '';
+  return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#0E1530"/><circle cx="22" cy="128" r="30" fill="#FFB02E"/><path d="M52 90H100M52 128H100M52 166H100" stroke="#FFE08A" stroke-width="2" opacity=".6"/>${T(24, 178, '太陽', 12, '#FFE08A')}
+    <circle cx="150" cy="128" r="74" fill="none" stroke="#3A4A8A" stroke-dasharray="4 5"/><circle cx="150" cy="128" r="16" fill="#3C93DC"/>${T(150, 133, '地球', 10, '#fff')}<circle cx="${mx}" cy="${my}" r="9" fill="#FFF4C2" stroke="#8A9AC8" stroke-width="2"/>
+    <g transform="translate(246 60)">${moonSVG(age, 22, 0, 0)}${T(0, 40, phaseName(age), 10, '#fff')}</g>${T(150, 232, ecl || `月の ち位置：${a}°`, 13, ecl ? '#FFE08A' : '#fff')}`);
+}
+LABDEF.planet = star => {
+  const ms = [];
+  if(star === 1){
+    [['新月', 0, 1.2], ['三日月', 3.5, 1.5], ['上弦の月（半月）', 7.4, 1.3], ['満月', 14.8, 1.3], ['下弦の月（半月）', 22.1, 1.3]].sort(() => Math.random() - .5).slice(0, 3).forEach(([n, a0, tol]) =>
+      ms.push({kind:'moon', text:`月の 日づけ（月齢）を うごかして「${n}」に しよう`, ctrl:[slid('age', '月齢（日）', 0, 29, .5, 10, ' 日')], view:planetView, check:v => Math.abs(v.age - a0) <= tol || (a0 === 0 && v.age >= 28.5) ? {ok:true} : {ok:false, msg:`いまは ${phaseName(v.age)}。もう少し うごかそう`}, explain:`月は 地球の まわりを 回る ため、太陽に 照らされる 部分の 見え方が 約 29.5日で かわる。${n}は 月齢 ${r1(a0)} 日ごろ。`, answer:`月齢 ${r1(a0)} 日 くらい。`}));
+  } else if(star === 2){
+    [['winter', 'オリオン座が 見える「冬」の 空（12・1・2月）'], ['summer', '夏の 大三角が 見える「夏」の 空（6〜8月）'], ['autumn', 'ペガスス座の 四辺形が 見える「秋」の 空（9〜11月）'], ['spring', 'しし座が 見える「春」の 空（3〜5月）']].sort(() => Math.random() - .5).slice(0, 3).forEach(([s, t]) =>
+      ms.push({kind:'season', text:`月を えらんで、夜9時の 空に ${t}に しよう`, ctrl:[slid('mo', '月', 1, 12, 1, 4, '月')], view:planetView, check:v => seasonOf(v.mo) === s ? {ok:true} : {ok:false, msg:`${v.mo}月の 空は ${SKY[seasonOf(v.mo)].n}の 星座だよ`}, explain:'地球が 太陽の まわりを 回る ため、季節ごとに 夜に 見える 星座が かわる。', answer:`${SKY[s].n}の 月に しよう。`}));
+  } else if(star === 3){
+    ms.push({kind:'rot', text:'北の 空の 星は 北極星を 中心に 回る。ちょうど 90° 回った 時刻（何時間後？）に しよう', ctrl:[slid('h', '時間（じかん）', 0, 12, 1, 0, ' 時間')], view:planetView, check:v => v.h === 6 ? {ok:true} : {ok:false, msg:`いまは ${v.h * 15}°`}, explain:'地球が 1日（24時間）で 1回転 する ので、星は 1時間に 15° 動く。90°÷15°＝6時間。', answer:'6 時間。'});
+    ms.push({kind:'rot', text:'星は 1時間に 何度 動いて 見える？（時間を うごかして たしかめよう）', ctrl:[slid('h', '時間（じかん）', 0, 12, 1, 0, ' 時間')], view:planetView, choices:['15°', '30°', '5°', '60°'], ans:0, need:v => v.h > 0 ? null : '時間を うごかして 角度を 見て みよう', explain:'360° ÷ 24時間 ＝ 15°/時間。'});
+    ms.push({kind:'rot', text:'北極星は ほとんど 動かない のは なぜ？', ctrl:[slid('h', '時間（じかん）', 0, 12, 1, 0, ' 時間')], view:planetView, choices:['地球の 自転の 軸の ほぼ 真上に ある から', '地球に いちばん 近い から', '星が 止まって いる から', '月と 同じ 動きを する から'], ans:0, explain:'自転の 軸の 延長線上 だから、地球が 回っても ほとんど 位置が かわらない。'});
+  } else if(star === 4){
+    ms.push({kind:'moon', rise:1, text:'満月は 何時ごろ 東の 空から のぼる？（月齢を うごかして「月が のぼる 時刻」を 見よう）', ctrl:[slid('age', '月齢（日）', 0, 29, .5, 0, ' 日')], view:planetView, choices:['夕方 6時ごろ', '朝 6時ごろ', '正午ごろ', '真夜中'], ans:0, need:v => Math.abs(v.age - 14.8) <= 1.5 ? null : 'まず 満月（月齢 15日ごろ）に して 見よう', explain:'満月は 太陽と 反対がわに ある ので、夕方 のぼって 明け方 しずむ。'});
+    ms.push({kind:'moon', rise:1, text:'新月に 近い 月は、いつ ごろ 空に あって 見えにくい？', ctrl:[slid('age', '月齢（日）', 0, 29, .5, 8, ' 日')], view:planetView, choices:['昼間（太陽と 同じ 方向）', '真夜中', '夕方だけ', '朝だけ'], ans:0, explain:'新月は 太陽と 同じ 方向に ある ので、昼の 空に あって 夜は 見えない。'});
+    ms.push({kind:'moon', rise:1, text:'月が のぼる 時刻が 夜12時ごろ に なる のは、どの 月？（月齢を うごかして さがそう）', ctrl:[slid('age', '月齢（日）', 0, 29, .5, 3, ' 日')], view:planetView, check:v => { const t = (6 + v.age / 29.53 * 24) % 24; return Math.min(Math.abs(t - 0), Math.abs(t - 24)) <= 1.2 ? {ok:true} : {ok:false, msg:`いまは ${Math.floor(t)}時ごろ`}; }, explain:'月は 1日に 約 50分ずつ おそく のぼる。下弦の月（月齢 22日ごろ）が 夜12時ごろ。', answer:'月齢 22 日ごろ（下弦の月）。'});
+  } else {
+    ms.push({kind:'top', text:'太陽・地球・月が 一直線に なって、月が 地球の かげに 入る「月食」の 位置に しよう（±8°）', ctrl:[slid('ang', '月の 位置（°）', 0, 360, 2, 90, '°')], view:planetView, check:v => Math.abs(v.ang - 180) <= 8 ? {ok:true} : {ok:false, msg:`いまは ${v.ang}°`}, explain:'月食は 太陽 → 地球 → 月 の じゅんに 並び、満月の ときに おきる。', answer:'180° ごろ。'});
+    ms.push({kind:'top', text:'月が 太陽を かくす「日食」の 位置に しよう（±8°）', ctrl:[slid('ang', '月の 位置（°）', 0, 360, 2, 90, '°')], view:planetView, check:v => Math.abs(v.ang) <= 8 || Math.abs(v.ang - 360) <= 8 ? {ok:true} : {ok:false, msg:`いまは ${v.ang}°`}, explain:'日食は 太陽 → 月 → 地球 の じゅんに 並び、新月の ときに おきる。', answer:'0° ごろ。'});
+    ms.push({kind:'top', text:'毎月 新月と 満月が あるのに、日食・月食が 毎月は おきない のは なぜ？', ctrl:[slid('ang', '月の 位置（°）', 0, 360, 2, 90, '°')], view:planetView, choices:['月の 軌道が 地球の 軌道（黄道）に 対して 少し かたむいて いる から', '月が 毎月 小さく なる から', '地球が かげを つくらない から', '太陽が 動く から'], ans:0, explain:'月の 軌道は 約 5° かたむいて いる ので、新月・満月でも 3つが 一直線に ならない ことが 多い。'});
+  }
+  return ms;
+};
+
+/* ===================== うちゅう：てんきの ふしぎ ===================== */
+function weatherView(v, m){
+  if(m.kind === 'press'){
+    const P = v.p, hi = P >= 1013, rings = [1, 2, 3, 4].map(i => `<circle cx="150" cy="120" r="${i * 24}" fill="none" stroke="${hi ? '#E8414B' : '#3C6FE0'}" stroke-width="2" opacity=".6"/>`).join('');
+    const wx = P >= 1018 ? '晴れ' : P >= 1006 ? 'くもり' : 'あめ';
+    const icon = wx === '晴れ' ? `<circle cx="150" cy="225" r="14" fill="#FFB02E"/>` : wx === 'くもり' ? `<ellipse cx="150" cy="226" rx="22" ry="11" fill="#B9C2CF"/>` : `<ellipse cx="150" cy="220" rx="22" ry="10" fill="#8A929C"/><path d="M140 232l-3 10M152 232l-3 10M164 232l-3 10" stroke="#3C6FE0" stroke-width="3" stroke-linecap="round"/>`;
+    return SVGW(300, 260, `${frame(300, 260)}${rings}<circle cx="150" cy="120" r="26" fill="${hi ? '#FFE0E0' : '#E0E8FF'}" stroke="${hi ? '#E8414B' : '#3C6FE0'}" stroke-width="3"/>${T(150, 128, hi ? '高' : '低', 24, hi ? '#E8414B' : '#3C6FE0')}${T(150, 28, `中心の 気圧：${P} hPa`, 14)}
+      ${hi ? '<path d="M60 120h-24M240 120h24M150 30v-12M150 210v12" stroke="#E8414B" stroke-width="4" stroke-linecap="round"/>' : '<path d="M36 120h24M264 120h-24M150 18v12M150 222v-12" stroke="#3C6FE0" stroke-width="4" stroke-linecap="round"/>'}
+      ${icon}${T(150, 254, `天気：${wx}　${hi ? '（下りてくる 空気）' : '（のぼって いく 空気）'}`, 12, '#6B5A44')}`);
+  }
+  if(m.kind === 'front'){
+    const cold = v.type === 'cold', h = v.h;
+    const rain = cold ? (h >= -1 && h <= 2) : (h >= -6 && h <= 0), strong = cold && rain;
+    const temp = cold ? (h < 0 ? 24 : 24 - Math.min(8, h * 4 + 2)) : (h < 0 ? 14 : 14 + Math.min(6, h * 2 + 1));
+    const xf = 150 + h * 14;
+    const wedge = cold ? `<path d="M${xf} 120L${xf - 18} 40L${xf + 48} 120z" fill="#3C6FE0" fill-opacity=".35" stroke="#3C6FE0" stroke-width="2"/><path d="M${xf - 18} 40q18-22 42-6q20-14 24 10q-26 4-66-4z" fill="#8A929C"/>` : `<path d="M${xf} 120L${xf - 120} 62L${xf - 120} 120z" fill="#E8414B" fill-opacity=".3" stroke="#E8414B" stroke-width="2"/><path d="M${xf - 110} 62h92v18h-92z" fill="#B9C2CF"/>`;
+    const drops = rain ? Array.from({length:cold ? 7 : 9}, (_, i) => { const x = cold ? xf - 14 + i * 7 : xf - 100 + i * 12; return `<path d="M${x} ${96 + (i % 2) * 8}l-3 ${cold ? 18 : 10}" stroke="#3C6FE0" stroke-width="${cold ? 3 : 1.6}" stroke-linecap="round"/>`; }).join('') : '';
+    return SVGW(300, 260, `${frame(300, 260)}<rect x="10" y="30" width="280" height="96" rx="10" fill="#EAF6FF"/><rect x="10" y="120" width="280" height="12" fill="#BFE8B0"/>${wedge}${drops}
+      <path d="M${150 + h * 14} 132v-12" stroke="#8A7A65" stroke-width="2"/><g transform="translate(150 150)"><circle r="6" fill="#4A3420"/>${T(0, 22, 'あなたの 町', 11, '#4A3420')}</g>
+      ${T(150, 24, cold ? '寒冷前線（つめたい 空気が もぐりこむ）' : '温暖前線（あたたかい 空気が はいあがる）', 13)}${T(150, 192, `前線が 通る 時刻から ${h >= 0 ? '+' : ''}${h} 時間`, 13)}${T(60, 220, `気温 ${Math.round(temp)}℃`, 14, '#C2541F')}${T(190, 220, rain ? (strong ? 'はげしい 雨（せまい はんい）' : 'しとしと 雨（ひろい はんい）') : '雨は ふって いない', 12, '#2C6FB0')}`);
+  }
+  if(m.kind === 'iso'){
+    const sp = v.sp, wind = Math.round(48 / sp), lines = [0, 1, 2, 3, 4].map(i => `<path d="M${40 + i * sp * 13} 30Q${60 + i * sp * 13} 120 ${40 + i * sp * 13} 214" fill="none" stroke="#6B7AA8" stroke-width="2"/>`).join('');
+    const arrows = [0, 1, 2].map(i => `<path d="M${54 + i * 6} ${70 + i * 54}h${Math.min(60, wind * 3)}l-8 -6m8 6l-8 6" stroke="#E8414B" stroke-width="3" fill="none" stroke-linecap="round"/>`).join('');
+    return SVGW(300, 260, `${frame(300, 260)}${lines}${arrows}${T(150, 24, `等圧線の 間隔：${sp}（×100 km）`, 13)}${T(150, 246, `ふく 風の 速さ ≒ ${wind} m/秒`, 15, '#E8414B')}`) + `<div class="sxGs">${gauge(wind / 24 * 100, '風の 強さ', '#E8414B')}</div>`;
+  }
+  /* pat：気圧配置 */
+  const P = m.pat;
+  let body = '';
+  if(P === 'winter') body = `${[0, 1, 2, 3, 4].map(i => `<path d="M${180 + i * 12} 30Q${196 + i * 12} 120 ${180 + i * 12} 220" fill="none" stroke="#6B7AA8" stroke-width="2"/>`).join('')}${T(70, 120, '高', 34, '#E8414B')}${T(250, 120, '低', 34, '#3C6FE0')}<path d="M130 70l-40 20M136 110l-40 14M130 150l-40 14" stroke="#E8414B" stroke-width="3" opacity=".5"/>`;
+  else if(P === 'baiu') body = `<path d="M20 124H280" stroke="#3C6FE0" stroke-width="5" stroke-dasharray="14 10"/><path d="M20 124H280" stroke="#E8414B" stroke-width="5" stroke-dasharray="10 14" stroke-dashoffset="12"/>${T(80, 70, '高', 28, '#E8414B')}${T(220, 190, '高', 28, '#E8414B')}${T(150, 150, '停滞前線', 14, '#6B5A44')}`;
+  else if(P === 'summer') body = `${[1, 2, 3].map(i => `<circle cx="210" cy="170" r="${i * 30}" fill="none" stroke="#E8414B" stroke-width="2" opacity=".6"/>`).join('')}${T(210, 180, '高', 32, '#E8414B')}${T(60, 60, '低', 20, '#3C6FE0')}`;
+  else body = `${[1, 2, 3].map(i => `<circle cx="150" cy="120" r="${i * 24}" fill="none" stroke="#3C6FE0" stroke-width="2" opacity=".6"/>`).join('')}${T(150, 130, '低', 34, '#3C6FE0')}<path d="M232 120a82 82 0 0 0-30-60M68 120a82 82 0 0 0 30 60" stroke="#E8414B" stroke-width="3" fill="none"/><path d="M206 66l-4-8 9 1M94 174l4 8-9-1" stroke="#E8414B" stroke-width="3" fill="none"/>`;
+  return SVGW(300, 260, `${frame(300, 260)}${body}${T(150, 250, m.cap || '', 12, '#6B5A44')}`);
+}
+LABDEF.weather = star => {
+  const ms = [];
+  if(star === 2){
+    ms.push({kind:'press', text:'中心の 気圧を かえて、天気を「晴れ」に しよう（1018 hPa いじょう）', ctrl:[slid('p', '中心の 気圧', 980, 1040, 2, 1010, ' hPa')], view:weatherView, check:v => v.p >= 1018 ? {ok:true} : {ok:false, msg:`いまは ${v.p} hPa`}, explain:'高気圧の 中心では 空気が 下りてきて 雲が できにくい ので 晴れる。', answer:'1018 hPa いじょう。'});
+    ms.push({kind:'press', text:'こんどは「あめ」に しよう（1004 hPa いか）', ctrl:[slid('p', '中心の 気圧', 980, 1040, 2, 1020, ' hPa')], view:weatherView, check:v => v.p < 1006 ? {ok:true} : {ok:false, msg:`いまは ${v.p} hPa`}, explain:'低気圧の 中心では 空気が 上へ のぼり、雲が できて 雨が ふりやすい。', answer:'1004 hPa いか。'});
+    ms.push({kind:'press', text:'低気圧の 中心 付近では、空気は どう 動く？（気圧を かえて ようすを 見よう）', ctrl:[slid('p', '中心の 気圧', 980, 1040, 2, 1010, ' hPa')], view:weatherView, choices:['上へ のぼって いく（上昇気流）', '下へ おりて くる', '動かない', '地面に そって まわるだけ'], ans:0, explain:'低気圧では 中心に 向かって 風が ふきこみ、上昇気流に なる。'});
+  } else if(star === 3){
+    const fr = [tgl('type', '前線の しゅるい', [['cold', '寒冷前線'], ['warm', '温暖前線']], 'cold'), slid('h', '時刻（前線が 通る のが 0）', -6, 6, 1, -3, ' 時間')];
+    ms.push({kind:'front', text:'せまい はんいで「はげしい 雨」が ふる 前線に しよう（種類を えらんで「けってい！」）', ctrl:fr, view:weatherView, check:v => v.type === 'cold' ? {ok:true} : {ok:false, msg:'温暖前線は ひろい はんいに しとしと 雨だよ'}, explain:'寒冷前線は つめたい 空気が 暖かい 空気の 下へ もぐり、積乱雲が できる。', answer:'寒冷前線。'});
+    ms.push({kind:'front', text:'ひろい はんいで 長い 間「しとしと 雨」が つづく 前線に しよう', ctrl:fr, view:weatherView, check:v => v.type === 'warm' ? {ok:true} : {ok:false, msg:'寒冷前線は せまく はげしいよ'}, explain:'温暖前線は 暖かい 空気が ゆるやかに はいあがり、乱層雲が ひろがる。', answer:'温暖前線。'});
+    ms.push({kind:'front', text:'前線が 通った あと、気温が 急に 下がる のは どちら？（時刻を うごかして たしかめよう）', ctrl:fr, view:weatherView, choices:['寒冷前線', '温暖前線', 'どちらも 同じ', 'どちらも 上がる'], ans:0, explain:'寒冷前線の あとは つめたい 空気に おおわれる ので 気温が 下がる。温暖前線の あとは 上がる。'});
+  } else if(star === 4){
+    ms.push({kind:'iso', text:'等圧線の 間隔を かえて、強い 風（20 m/秒 いじょう）に しよう', ctrl:[slid('sp', '等圧線の 間隔', 1, 8, 1, 6, '')], view:weatherView, check:v => 48 / v.sp >= 20 ? {ok:true} : {ok:false, msg:`いまは ${Math.round(48 / v.sp)} m/秒`}, explain:'等圧線の 間隔が せまい ほど 気圧の ちがいが 大きく、風が 強く なる。', answer:'間隔 2 いか。'});
+    ms.push({kind:'iso', text:'おだやかな 風（8 m/秒 いか）に しよう', ctrl:[slid('sp', '等圧線の 間隔', 1, 8, 1, 2, '')], view:weatherView, check:v => 48 / v.sp <= 8 ? {ok:true} : {ok:false, msg:`いまは ${Math.round(48 / v.sp)} m/秒`}, explain:'等圧線の 間隔が ひろい ところは 風が 弱い。', answer:'間隔 6 いじょう。'});
+    ms.push({kind:'iso', text:'天気図で 等圧線の 間隔が せまい ところは、風が どう なる？', ctrl:[slid('sp', '等圧線の 間隔', 1, 8, 1, 4, '')], view:weatherView, choices:['強い', '弱い', 'ほとんど ない', '同じ'], ans:0, explain:'間隔が せまい ＝ 気圧の かたむきが 大きい ＝ 風が 強い。'});
+  } else {
+    ms.push({kind:'pat', pat:'winter', cap:'日本の ある 季節の 気圧配置', text:'左（西）に 高気圧、右（東）に 低気圧。等圧線が 東がわに 集まって いる。この 気圧配置を 何という？', ctrl:[], view:weatherView, choices:['西高東低（冬）', '南高北低（夏）', '梅雨', '台風'], ans:0, explain:'冬は ユーラシア大陸の 高気圧と 日本の 東の 低気圧で 西高東低。北西の 強い 季節風が ふき、日本海側は 雪が 多い。'});
+    ms.push({kind:'pat', pat:'baiu', cap:'ほぼ 動かない 前線', text:'東西に のびて ほとんど 動かない 前線が ある。この 前線の 名前は？', ctrl:[], view:weatherView, choices:['停滞前線（梅雨前線）', '寒冷前線', '温暖前線', '閉そく前線'], ans:0, explain:'北の つめたい 空気と 南の 暖かい 空気が ぶつかり あって 動かない のが 停滞前線。梅雨や 秋雨の 原因。'});
+    ms.push({kind:'pat', pat:'typhoon', cap:'台風（北半球）', text:'北半球の 台風（低気圧）では、風は 中心に 向かって どう ふきこむ？', ctrl:[], view:weatherView, choices:['反時計回りに ふきこむ', '時計回りに ふきこむ', 'まっすぐ 外へ ふき出す', '上から ふきおろす'], ans:0, explain:'北半球では 地球の 自転の えいきょう（転向力）で、低気圧の まわりを 反時計回りに 風が ふきこむ。'});
+  }
+  return ms;
+};
+
+/* ===================== いのち：いでんの ふしぎ ===================== */
+function seedSVG(x, y, r, wr, col){
+  return wr ? `<path d="M${x - r} ${y}q${r * .3} ${-r * .9} ${r} ${-r * .8}q${r * .8} ${r * .2} ${r * .8} ${r * .8}q${-r * .2} ${r * .9} ${-r * .8} ${r * .9}q${-r} ${r * .1} ${-r} ${-r}z" fill="${col}" stroke="rgba(0,0,0,.35)" stroke-width="2"/><path d="M${x - r * .4} ${y - r * .3}l${r * .5} ${r * .3}m${-r * .1} ${-r * .4}l${r * .5} ${r * .4}" stroke="rgba(0,0,0,.3)" stroke-width="1.6" fill="none"/>`
+    : `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="rgba(0,0,0,.35)" stroke-width="2"/><ellipse cx="${x - r * .3}" cy="${y - r * .35}" rx="${r * .25}" ry="${r * .15}" fill="#fff" fill-opacity=".6"/>`;
+}
+const gam = g => g.split('');
+const GENO = ['RR', 'Rr', 'rr'];
+function geneView(v, m){
+  if(m.kind === 'di'){
+    const G = ['RY', 'Ry', 'rY', 'ry'], cell = 50, x0 = 52, y0 = 52; let cnt = {ry:0, rY:0, Ry:0, RY:0}, out = '';
+    out += G.map((g, i) => T(x0 + i * cell + cell / 2, y0 - 8, g, 12) + T(x0 - 22, y0 + i * cell + cell / 2 + 4, g, 12)).join('');
+    G.forEach((a, i) => G.forEach((b, j) => { const A = a[0] + b[0], Bb = a[1] + b[1], rd = /R/.test(A), yl = /Y/.test(Bb), col = yl ? '#E5D47A' : '#7FBF5A'; cnt[(rd ? 'R' : 'r') + (yl ? 'Y' : 'y')]++; out += `<rect x="${x0 + j * cell}" y="${y0 + i * cell}" width="${cell}" height="${cell}" fill="#fff" stroke="#BFDDEE" stroke-width="2"/>${seedSVG(x0 + j * cell + cell / 2, y0 + i * cell + cell / 2, 15, !rd, col)}`; }));
+    return SVGW(300, 290, `${frame(300, 290)}${out}${T(150, 28, 'RrYy × RrYy（丸・黄色が 優性）', 13)}${T(150, 276, `丸黄 ${cnt.RY}／丸緑 ${cnt.Ry}／しわ黄 ${cnt.rY}／しわ緑 ${cnt.ry}`, 13, '#4A3420')}`);
+  }
+  if(m.kind === 'sex'){
+    const mo = v.mom, fa = v.dad, ga = mo.split('|'), gb = fa.split('|');
+    const lab = g => g === 'Xc' ? 'Xc' : g === 'XC' ? 'X' : g, col = c => c === 'Y' ? '#8FB4FF' : '#F0A0C0';
+    const kids = ga.map(a => gb.map(b => [a, b]));
+    let out = '';
+    ga.forEach((a, i) => { out += T(116 + i * 80, 78, a === 'Xc' ? 'Xᶜ' : a, 15, a === 'Xc' ? '#E8414B' : '#4A3420'); });
+    gb.forEach((b, j) => { out += T(60, 118 + j * 70, b === 'Xc' ? 'Xᶜ' : b, 15, b === 'Xc' ? '#E8414B' : '#4A3420'); });
+    let aff = 0;
+    ga.forEach((a, i) => gb.forEach((b, j) => { const boy = b === 'Y', cc = boy ? a === 'Xc' : (a === 'Xc' && b === 'Xc'), car = !boy && (a === 'Xc') !== (b === 'Xc'); if(cc) aff++;
+      out += `<rect x="${78 + i * 80}" y="${90 + j * 70}" width="76" height="64" rx="10" fill="${boy ? '#E6F0FF' : '#FFE6F0'}" stroke="${cc ? '#E8414B' : '#BFDDEE'}" stroke-width="${cc ? 4 : 2}"/>${T(116 + i * 80, 118 + j * 70, boy ? '男の子' : '女の子', 12)}${T(116 + i * 80, 138 + j * 70, cc ? '色覚異常' : car ? '保因者' : 'ふつう', 12, cc ? '#E8414B' : '#6B5A44')}`; }));
+    return SVGW(300, 250, `${frame(300, 250)}${T(150, 26, '色覚異常の 遺伝（Xᶜ の 遺伝子）', 13)}${T(150, 46, `母：${mo.replace('|', ' ')}　父：${fa.replace('|', ' ')}`, 12, '#6B5A44')}${out}`);
+  }
+  const p1 = v.p1, p2 = v.p2, g1 = gam(p1), g2 = gam(p2), cell = 62, x0 = 100, y0 = 70;
+  let out = '', n = {R:0, r:0};
+  g1.forEach((a, i) => { out += T(x0 + i * cell + cell / 2, y0 - 10, a, 18, a === 'R' ? '#2F8A2F' : '#C2541F'); });
+  g2.forEach((b, j) => { out += T(x0 - 22, y0 + j * cell + cell / 2 + 6, b, 18, b === 'R' ? '#2F8A2F' : '#C2541F'); });
+  g1.forEach((a, i) => g2.forEach((b, j) => { const g = [a, b].sort().join(''), wr = g === 'rr'; wr ? n.r++ : n.R++; out += `<rect x="${x0 + i * cell}" y="${y0 + j * cell}" width="${cell}" height="${cell}" fill="#fff" stroke="#BFDDEE" stroke-width="2"/>${seedSVG(x0 + i * cell + cell / 2, y0 + j * cell + cell / 2 - 6, 17, wr, wr ? '#C9A855' : '#E5D47A')}${T(x0 + i * cell + cell / 2, y0 + j * cell + cell - 8, g, 12)}`; }));
+  return SVGW(300, 250, `${frame(300, 250)}${T(150, 24, `親：${p1} × ${p2}（丸 R が 優性）`, 13)}${out}${T(150, 238, `丸 ${n.R} ： しわ ${n.r}`, 15, '#4A3420')}`);
+}
+LABDEF.gene = star => {
+  const par = [tgl('p1', '親Aの 遺伝子', GENO.map(g => [g, g]), 'RR'), tgl('p2', '親Bの 遺伝子', GENO.map(g => [g, g]), 'rr')];
+  const ms = [];
+  const has = (v, f) => { const g1 = gam(v.p1), g2 = gam(v.p2); const res = []; g1.forEach(a => g2.forEach(b => res.push([a, b].sort().join('')))); return f(res); };
+  if(star === 3){
+    ms.push({kind:'one', text:'純系の 丸（RR）と しわ（rr）を かけあわせると、子（F1）は？（親を RR と rr に して ためそう）', ctrl:par, view:geneView, choices:['すべて 丸', 'すべて しわ', '丸：しわ ＝ 1：1', '丸：しわ ＝ 3：1'], ans:0, need:v => (v.p1 === 'RR' && v.p2 === 'rr') || (v.p1 === 'rr' && v.p2 === 'RR') ? null : 'まず 親を RR と rr に して ようすを 見よう', explain:'F1 は ぜんぶ Rr。丸（R）が 優性 なので すべて 丸い 種。（優性の 法則）'});
+    ms.push({kind:'one', text:'子の 半分（50%）が「しわ」に なる 組み合わせを 作ろう（親を えらんで「けってい！」）', ctrl:par, view:geneView, check:v => has(v, r => r.filter(x => x === 'rr').length === 2 && r.length === 4) ? {ok:true} : {ok:false, msg:'子の 4つの うち 2つが rr に なる 組み合わせを さがそう'}, explain:'Rr × rr だと、子は Rr と rr が 1：1。しわ（rr）が 半分。', answer:'Rr × rr。'});
+    ms.push({kind:'one', text:'子が ぜったいに「しわ」に ならない 組み合わせを 1つ 作ろう', ctrl:par, view:geneView, check:v => has(v, r => !r.includes('rr')) ? {ok:true} : {ok:false, msg:'rr が 1つでも できて しまうよ。親の どちらかを RR に しよう'}, explain:'どちらかの 親が RR なら、子は かならず R を もらう ので しわ（rr）には ならない。', answer:'RR × なんでも。'});
+  } else if(star === 4){
+    const par2 = [tgl('p1', '親Aの 遺伝子', GENO.map(g => [g, g]), 'Rr'), tgl('p2', '親Bの 遺伝子', GENO.map(g => [g, g]), 'Rr')];
+    ms.push({kind:'one', text:'Rr × Rr の 子（F2）の「丸：しわ」の 比は？', ctrl:par2, view:geneView, choices:['3：1', '1：1', '1：3', '2：1'], ans:0, explain:'RR：Rr：rr ＝ 1：2：1。丸（RR・Rr）3 に 対して しわ（rr）1。（分離の 法則）'});
+    ms.push({kind:'one', text:'Rr × Rr の 種を 400こ まいた。しわの 種は およそ 何こ 生まれる？', ctrl:par2, view:geneView, choices:['約 100こ', '約 200こ', '約 300こ', '約 400こ'], ans:0, explain:'しわの わりあいは 1/4。400 × 1/4 ＝ 100 こ。'});
+    ms.push({kind:'one', text:'丸い 種の 親（遺伝子型が わからない）に しわ（rr）を かけたら、子に しわが 出た。丸い 親の 遺伝子型は？', ctrl:[tgl('p1', '親Aの 遺伝子', GENO.map(g => [g, g]), 'RR'), tgl('p2', '親Bの 遺伝子', [['rr', 'rr']], 'rr')], view:geneView, choices:['Rr', 'RR', 'rr', 'どれでも'], ans:0, explain:'子に しわ（rr）が 出た なら、丸い 親は r を もって いる ので Rr。（検定交雑）'});
+  } else if(star === 5){
+    ms.push({kind:'di', text:'RrYy × RrYy の 子の「丸黄 : 丸緑 : しわ黄 : しわ緑」の 比は？', ctrl:[], view:geneView, choices:['9：3：3：1', '1：1：1：1', '3：1：3：1', '12：4：0：0'], ans:0, explain:'独立の 法則。丸と しわ（3：1）、黄と 緑（3：1）が 別々に 分かれる ので 3×3＝9、3×1＝3、1×3＝3、1×1＝1。'});
+    ms.push({kind:'di', text:'この 16この 中で「しわで 緑」の 種は 何分の いくつ？', ctrl:[], view:geneView, choices:['1/16', '3/16', '9/16', '1/4'], ans:0, explain:'しわ（rr）は 1/4、緑（yy）も 1/4 なので 1/4 × 1/4 ＝ 1/16。'});
+    ms.push({kind:'di', text:'丸い 種（丸黄＋丸緑）の わりあいは？', ctrl:[], view:geneView, choices:['3/4（12/16）', '9/16', '1/2', '1/4'], ans:0, explain:'丸黄 9 ＋ 丸緑 3 ＝ 12。12/16 ＝ 3/4。'});
+  } else {
+    const sx = [tgl('mom', '母', [['X|X', 'ふつう'], ['X|Xc', '保因者'], ['Xc|Xc', '色覚異常']], 'X|Xc'), tgl('dad', '父', [['X|Y', 'ふつう'], ['Xc|Y', '色覚異常']], 'X|Y')];
+    ms.push({kind:'sex', text:'母が 保因者（X Xᶜ）、父が ふつう（X Y）。男の子が 色覚異常に なる 確率は？（母と 父を えらんで たしかめよう）', ctrl:sx, view:geneView, choices:['1/2（50%）', '0', '1/4', '1（100%）'], ans:0, need:v => v.mom === 'X|Xc' && v.dad === 'X|Y' ? null : '母を「保因者」、父を「ふつう」に して みよう', explain:'男の子は 母から X か Xᶜ を もらう。Xᶜ を もらうと 色覚異常（Y には 打ち消す 遺伝子が ない）。1/2。'});
+    ms.push({kind:'sex', text:'母が 保因者、父が ふつう。女の子が 色覚異常に なる 確率は？', ctrl:sx, view:geneView, choices:['0', '1/2', '1/4', '1'], ans:0, need:v => v.mom === 'X|Xc' && v.dad === 'X|Y' ? null : '母を「保因者」、父を「ふつう」に して みよう', explain:'女の子は 父から かならず ふつうの X を もらう ので 色覚異常に ならない（保因者に なる ことは ある）。'});
+    ms.push({kind:'sex', text:'母が 色覚異常（Xᶜ Xᶜ）、父が ふつう（X Y）。子は どう なる？', ctrl:sx, view:geneView, choices:['男の子は 全員 色覚異常、女の子は 全員 保因者', '全員 ふつう', '男女とも 全員 色覚異常', '女の子だけ 色覚異常'], ans:0, need:v => v.mom === 'Xc|Xc' && v.dad === 'X|Y' ? null : '母を「色覚異常」、父を「ふつう」に して みよう', explain:'男の子は 母の Xᶜ を もらい 全員 色覚異常。女の子は 母から Xᶜ、父から X で 保因者。'});
+  }
+  return ms;
+};
+
+/* ===================== くるま：かがみ めいろ ===================== */
+const MIR_CFG = {2:{n:4, k:1, rock:0, stars:0, lim:99}, 3:{n:5, k:2, rock:0, stars:0, lim:99}, 4:{n:6, k:3, rock:0, stars:1, lim:99}, 5:{n:6, k:3, rock:4, stars:1, lim:4}, 6:{n:7, k:4, rock:5, stars:2, lim:4}};
+const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];    /* 右・下・左・上 */
+function mirGen(star){
+  const C = MIR_CFG[star];
+  for(let tries = 0; tries < 400; tries++){
+    const n = C.n, r0 = ri(0, n - 1); let r = r0, c = 0, d = 0; const used = new Set([r + ',' + c]), path = [[r, c]], mir = {};
+    let ok = true;
+    for(let t = 0; t < C.k && ok; t++){
+      /* 進める 長さ（0 以上） */
+      const maxS = d === 0 ? n - 1 - c : d === 2 ? c : d === 1 ? n - 1 - r : r, s = ri(t === 0 ? 1 : 1, Math.max(1, maxS));
+      if(maxS < 1){ ok = false; break; }
+      for(let i = 0; i < s; i++){ r += DIRS[d][1]; c += DIRS[d][0]; if(used.has(r + ',' + c)){ ok = false; break; } used.add(r + ',' + c); path.push([r, c]); }
+      if(!ok) break;
+      const nd = (d + (Math.random() < .5 ? 1 : 3)) % 4, room = nd === 0 ? n - 1 - c : nd === 2 ? c : nd === 1 ? n - 1 - r : r;
+      if(room < 0) { ok = false; break; }
+      mir[r + ',' + c] = (d === 0 && nd === 3) || (d === 3 && nd === 0) || (d === 2 && nd === 1) || (d === 1 && nd === 2) ? '/' : '\\';
+      d = nd;
+    }
+    if(!ok) continue;
+    /* まっすぐ 出口まで */
+    let guard = 0; while(guard++ < 20){ const nr = r + DIRS[d][1], nc = c + DIRS[d][0]; if(nr < 0 || nc < 0 || nr >= n || nc >= n) break; r = nr; c = nc; if(used.has(r + ',' + c)){ ok = false; break; } used.add(r + ',' + c); path.push([r, c]); }
+    if(!ok) continue;
+    if(Object.keys(mir).length !== C.k) continue;
+    const exit = {r, c, d};
+    const free = []; for(let y = 0; y < n; y++) for(let x = 0; x < n; x++) if(!used.has(y + ',' + x)) free.push([y, x]);
+    const rocks = shuf(free).slice(0, C.rock);
+    const cand = path.filter(p => !mir[p[0] + ',' + p[1]] && !(p[0] === r0 && p[1] === 0) && !(p[0] === r && p[1] === c)); const stars = shuf(cand).slice(0, C.stars);
+    if(stars.length < C.stars) continue;
+    return {n, r0, mir, exit, rocks:rocks.map(x => x.join(',')), stars:stars.map(x => x.join(',')), lim:C.lim, k:C.k};
+  }
+  return mirGen(2);
+}
+function mirTrace(P, pl){
+  const n = P.n; let r = P.r0, c = 0, d = 0, steps = 0; const pts = [[-0.5, r + .5]], hit = new Set(); let blocked = false, exit = null;
+  const rocks = new Set(P.rocks);
+  while(steps++ < 200){
+    if(rocks.has(r + ',' + c)){ blocked = true; pts.push([c + .5, r + .5]); break; }
+    hit.add(r + ',' + c);
+    const m = pl[r + ',' + c];
+    if(m){ pts.push([c + .5, r + .5]); d = m === '/' ? (d === 0 ? 3 : d === 3 ? 0 : d === 2 ? 1 : 2) : (d === 0 ? 1 : d === 1 ? 0 : d === 2 ? 3 : 2); }
+    const nr = r + DIRS[d][1], nc = c + DIRS[d][0];
+    if(nr < 0 || nc < 0 || nr >= n || nc >= n){ pts.push([c + .5 + DIRS[d][0] * .5, r + .5 + DIRS[d][1] * .5]); exit = {r, c, d}; break; }
+    r = nr; c = nc;
+  }
+  return {pts, hit, blocked, exit};
+}
+const mirSolved = (P, pl) => { const t = mirTrace(P, pl); return !t.blocked && t.exit && t.exit.r === P.exit.r && t.exit.c === P.exit.c && t.exit.d === P.exit.d && P.stars.every(s => t.hit.has(s)); };
+EXRUN.mirror = {
+  init(E){ E.rounds = [0, 1, 2].map(() => mirGen(E.star)); E.pl = {}; E.done = false; E.msg = null; E.hintN = 0; E.show = false; },
+  html(tab){
+    const P = E.rounds[E.i], n = P.n, cs = 46, pad = 34, W = n * cs + pad * 2, H = n * cs + pad * 2;
+    const tr = mirTrace(P, E.pl), solved = E.done && E.msg && E.msg.ok;
+    let g = '';
+    for(let y = 0; y < n; y++) for(let x = 0; x < n; x++){
+      const key = y + ',' + x, m = E.pl[key], isRock = P.rocks.includes(key), isStar = P.stars.includes(key), X0 = pad + x * cs, Y0 = pad + y * cs, sol = E.show && P.mir[key];
+      g += `<g data-a="mrc" data-v="${key}" style="cursor:pointer"><rect x="${X0}" y="${Y0}" width="${cs}" height="${cs}" fill="${isRock ? '#B9AFA0' : '#fff'}" stroke="#BFDDEE" stroke-width="2"/>`;
+      if(isRock) g += `<path d="M${X0 + 8} ${Y0 + 34}l8 -20l12 -4l10 14l-2 12z" fill="#8A7A65" stroke="#6B5A44" stroke-width="2"/>`;
+      if(isStar) g += `<path d="M${X0 + 23} ${Y0 + 6}l5 11l12 1l-9 8l3 12l-11 -6l-11 6l3 -12l-9 -8l12 -1z" fill="${tr.hit.has(key) ? '#FFC93C' : '#FFE9A8'}" stroke="#E0A000" stroke-width="2"/>`;
+      if(sol && !m) g += `<line x1="${X0 + 8}" y1="${P.mir[key] === '/' ? Y0 + 38 : Y0 + 8}" x2="${X0 + 38}" y2="${P.mir[key] === '/' ? Y0 + 8 : Y0 + 38}" stroke="#4CB84C" stroke-width="6" stroke-linecap="round" stroke-dasharray="3 7"/>`;
+      if(m) g += `<line x1="${X0 + 8}" y1="${m === '/' ? Y0 + 38 : Y0 + 8}" x2="${X0 + 38}" y2="${m === '/' ? Y0 + 8 : Y0 + 38}" stroke="#2C6FB0" stroke-width="7" stroke-linecap="round"/>`;
+      g += `</g>`;
+    }
+    const line = `<polyline points="${tr.pts.map(p => (pad + p[0] * cs).toFixed(1) + ',' + (pad + p[1] * cs).toFixed(1)).join(' ')}" fill="none" stroke="#E8414B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85" pointer-events="none"/>`;
+    const ex = P.exit, ed = DIRS[ex.d], gx = pad + (ex.c + .5 + ed[0] * .5) * cs, gy = pad + (ex.r + .5 + ed[1] * .5) * cs;
+    const goal = `<g transform="translate(${gx + ed[0] * 14} ${gy + ed[1] * 14})"><circle r="13" fill="#4CB84C" stroke="#fff" stroke-width="3"/><path d="M-6 0l4 5l8 -10" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    const src = `<g transform="translate(${pad - 20} ${pad + (P.r0 + .5) * cs})"><rect x="-16" y="-12" width="26" height="24" rx="6" fill="#4A3420"/><path d="M10 0h10" stroke="#FFD84A" stroke-width="4"/></g>`;
+    const svg = SVGW(W, H, `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="22" fill="#EAF6FF" stroke="#BFDDEE" stroke-width="3"/>${g}${line}${goal}${src}`);
+    const used = Object.keys(E.pl).length, lim = P.lim < 99 ? `　つかえる かがみ：${used} / ${P.lim}` : '';
+    const stage = `<div class="sxStage">${svg}</div>`;
+    const stars = P.stars.length ? `<br>★の マスを ぜんぶ 通って ゴールへ！（${P.stars.filter(s => tr.hit.has(s)).length}/${P.stars.length}）` : '';
+    const info = `<div class="sxMis"><span class="sxMisN">もんだい ${E.i + 1} / 3</span><p>${RB('光を ゴール（緑の ○）に とどけよう。マスを タッチすると かがみ（／ ＼ なし）が きりかわるよ。岩には 光が とどかない。' + lim + stars.replace('<br>', '　')).replace('　', '<br>')}</p><p style="font-size:.82em;color:#8A7A65;margin-top:4px">${RB('かがみで はねかえる とき、入る 角と 出る 角は 同じ（反射の 法則）。')}</p></div>`;
+    const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいこう！' : 'こたえは これ！'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+    const acts = E.done ? `<button class="sxBtn big" data-a="mrn">${E.i + 1 >= 3 ? 'けっかへ' : 'つぎへ ▶'}</button>` : `<div class="sxQAct"><button class="sxBtn v sm" data-a="mrh">ヒント</button><button class="sxBtn w sm" data-a="mrg">わからない</button></div>`;
+    const side = `${info}${fb}${acts}`;
+    return tab ? `<div class="sxLabG"><div class="sxLabL">${stage}</div><div class="sxLabR">${side}</div></div>` : `${stage}${side}`;
+  },
+  tap(key){
+    if(E.done) return; const P = E.rounds[E.i]; if(P.rocks.includes(key)) return;
+    const cur = E.pl[key]; if(!cur){ if(Object.keys(E.pl).length >= P.lim){ try{ toast('かがみは ' + P.lim + 'こ まで！'); }catch(e){} snd('ng'); return; } E.pl[key] = '/'; } else if(cur === '/') E.pl[key] = '\\'; else delete E.pl[key];
+    snd('tap');
+    if(mirSolved(P, E.pl)){ E.done = true; E.ok++; E.msg = {ok:true, t:'光が ゴールに とどいたよ！ 反射の 法則を うまく 使えたね。'}; snd('ok'); }
+    render();
+  },
+  hint(){ const P = E.rounds[E.i]; const need = Object.keys(P.mir).find(k => E.pl[k] !== P.mir[k]); if(need){ E.pl[need] = P.mir[need]; E.hintN++; snd('tap'); if(mirSolved(P, E.pl)){ E.done = true; E.msg = {ok:false, t:'ヒントで 正解に なったよ。つぎは じぶんの 力で！'}; } } render(); },
+  give(){ const P = E.rounds[E.i]; E.show = true; E.done = true; E.pl = Object.assign({}, P.mir); E.msg = {ok:false, t:'この ように かがみを おくと、光が ゴールに とどくよ。'}; render(); },
+  next(){ if(E.i + 1 >= 3) return expFinish(E.ok, 3); E.i++; E.pl = {}; E.done = false; E.msg = null; E.show = false; render(); }
+};
+
+/* ===================== いのち：からだの しくみ ===================== */
+const ORD = {
+  digest:{t:'食べ物が 口から こうもんまで 通る じゅんばんに タッチ！', cap:'しょうか（食べ物の 通り道）', nodes:[['口', 50, 12], ['食道', 50, 27], ['胃', 36, 44], ['小腸', 50, 62], ['大腸', 50, 78], ['肛門', 50, 92]]},
+  circ:{t:'からだから もどった 血液が 通る じゅんばんに タッチ！（さいしょは 右心房）', cap:'血液の 流れ', nodes:[['右心房', 28, 36], ['右心室', 28, 62], ['肺', 50, 12], ['左心房', 72, 36], ['左心室', 72, 62], ['全身', 50, 90]], order:[0, 1, 2, 3, 4, 5]},
+  circ2:{t:'血液が 大静脈から 大動脈まで 通る じゅんばんに タッチ！', cap:'血液の 流れ（くわしく）', nodes:[['大静脈', 18, 78], ['右心房', 26, 46], ['右心室', 26, 66], ['肺動脈', 22, 22], ['肺', 50, 8], ['肺静脈', 78, 22], ['左心房', 74, 46], ['左心室', 74, 66], ['大動脈', 82, 86]]},
+  resp:{t:'空気が 鼻から 血液まで 通る じゅんばんに タッチ！', cap:'こきゅう（空気の 通り道）', nodes:[['鼻', 50, 8], ['気管', 50, 28], ['気管支', 50, 48], ['肺胞', 50, 68], ['毛細血管', 50, 90]]},
+  kidney:{t:'尿が つくられて 体の 外へ 出る じゅんばんに タッチ！', cap:'はいせつ（尿の 通り道）', nodes:[['腎臓', 50, 14], ['輸尿管', 50, 38], ['ぼうこう', 50, 64], ['尿道', 50, 88]]}
+};
+const BQ = {
+  1:[['食べ物を こまかく くだく のは どこ？', '口（歯）', ['胃だけ', '小腸', '大腸'], '口で かみくだいて、だ液と まぜる。'], ['心臓の はたらきは？', '血液を 全身に おくる ポンプ', ['食べ物を とかす', '空気を すう', '考える'], '心臓は 血液を おくり出す ポンプの はたらき。'],
+     ['息を すうと、空気が まず 入る のは？', '鼻や 口から 気管', ['胃', '心臓', '大腸'], '空気は 鼻・口 → 気管 → 肺へ 進む。'], ['栄養を おもに 吸収する のは？', '小腸', ['胃', '大腸', '口'], '小腸の かべから 栄養が 血液に とりこまれる。'],
+     ['ほねの はたらきは？', 'からだを ささえ、内ぞうを 守る', ['空気を すう', '食べ物を こなに する', '電気を おくる'], 'ほねは からだを ささえ、脳や 心臓を 守る。'], ['筋肉が ほねを 動かす とき、筋肉は どうなる？', '縮む（ちぢむ）', ['のびるだけ', '固まる', '消える'], '筋肉が 縮む ことで ほねが 動く。']],
+  2:[['だ液の はたらきは？', 'でんぷんを 糖に 分ける', ['たんぱく質を 分ける', '脂肪を 分ける', '空気を きれいに する'], 'だ液に ふくまれる アミラーゼが でんぷんを 分ける。'], ['胃液に ふくまれ、たんぱく質を 分ける 酵素は？', 'ペプシン', ['アミラーゼ', 'リパーゼ', 'インスリン'], '胃液の ペプシンが たんぱく質を 分ける。'],
+     ['酸素を 運ぶ のは 血液の 何？', '赤血球', ['白血球', '血小板', '血しょう'], '赤血球の ヘモグロビンが 酸素と むすびつく。'], ['体に 入った ばい菌を 食べる のは？', '白血球', ['赤血球', '血小板', '血しょう'], '白血球が 細菌などを とりこんで 体を 守る。'],
+     ['血が 出た とき、固めて 止める のは？', '血小板', ['赤血球', '白血球', '血しょう'], '血小板が 集まって 傷口を ふさぐ。'], ['肝臓の はたらきとして 正しい のは？', '栄養の たくわえ・有害な ものの 分解', ['空気を すう', '尿を つくる', '血を 固める だけ'], '肝臓は 栄養を たくわえ、有害な ものを 分解する。']],
+  3:[['肺で 行われる ガス交換 とは？', '酸素を とり入れ、二酸化炭素を 出す', ['栄養を 吸収する', '尿を つくる', '血を 固める'], '肺胞で 血液と 空気の 間で ガスが 交換される。'], ['肺に 空気が 入る とき、横隔膜は？', '下がる', ['上がる', '動かない', 'ふくらむ'], '横隔膜が 下がり、あばら骨が 上がって 胸が ひろがる。'],
+     ['動脈には どんな 血液が 流れて いる？（肺動脈 以外）', '酸素の 多い 血液（動脈血）', ['酸素の 少ない 血液', '栄養だけ', '尿'], '心臓から 全身へ 向かう 動脈には 酸素の 多い 血液。'], ['静脈には ある しくみが ある。それは？', '血液の 逆流を ふせぐ 弁', ['酸素を ためる 袋', '血を 固める 弁', '音を 出す しくみ'], '静脈には 逆流を ふせぐ 弁が ある。'],
+     ['小腸の かべに ある 小さな でっぱり は？', '柔毛（じゅうもう）。表面積を ふやす', ['空気を ためる', '血を 固める', '音を 聞く'], '柔毛で 表面積が 大きく なり、栄養を 吸収しやすい。'], ['心臓の 部屋の 数は？', '2心房 2心室（4つ）', ['1つ', '2つ', '6つ'], '心臓は 心房 2つ・心室 2つの 4部屋。']],
+  4:[['1回の 拍動で 心臓が おくり出す 血液が 70 mL、1分間に 70回 拍動。1分間に おくり出す 血液は？', '約 4.9 L', ['約 0.49 L', '約 49 L', '約 140 mL'], '70 mL × 70回 ＝ 4900 mL ＝ 約 4.9 L。'], ['ヒトの 血液は 体重の 約 何%？', '約 8%', ['約 1%', '約 25%', '約 50%'], '体重の 約 1/13（約 8%）が 血液。'],
+     ['1分間に 18回 呼吸、1回 に 0.5 L の 空気を すう。1分間に すう 空気は？', '9 L', ['0.9 L', '90 L', '36 L'], '0.5 L × 18回 ＝ 9 L。'], ['腎臓で 血液から 尿を つくる とき、からだに 必要な ものを 血液に もどす のは？', '再吸収', ['ろ過', '分泌', '消化'], '腎臓は 血液を ろ過し、ブドウ糖や 水など 必要な ものを 再吸収する。'],
+     ['空気を すったとき、吸う 空気より はく 息に ふえる 気体は？', '二酸化炭素', ['酸素', 'ちっ素', 'ヘリウム'], '体内で 酸素が 使われ、二酸化炭素が 出る。'], ['血液の 成分の うち、いちばん 多い（液体の）成分は？', '血しょう（約 55%）', ['赤血球', '白血球', '血小板'], '血しょうが 約 55%、血球が のこり。']],
+  5:[['ヘモグロビンが 酸素と むすびつく のは 酸素が どんな 場所？', '酸素が 多い 場所（肺）', ['酸素が 少ない 場所（筋肉）', '二酸化炭素が 多い 場所', 'どこでも 同じ'], '肺では 酸素と むすびつき、筋肉では 酸素を はなす。'], ['運動して 筋肉が 酸素を たくさん 使う と、心拍数は？', '上がる', ['下がる', '変わらない', '止まる'], '酸素を 多く 運ぶ ために 心拍数と 呼吸数が 上がる。'],
+     ['血液型 A型は 赤血球に どんな 物質（抗原）を もつ？', 'A抗原', ['B抗原', '抗原なし', 'A・B 両方'], 'A型は A抗原、B型は B抗原、AB型は 両方、O型は なし。'], ['インスリンを 出す 臓器は？', 'すい臓', ['肝臓', '腎臓', '胃'], 'すい臓から 出る インスリンが 血糖値を 下げる。'],
+     ['神経の 反射（熱い ものから 手を 引く）で、信号を 判断する のは？', 'せきずい', ['大脳', '小脳', '心臓'], '反射は せきずいが 命令を 出す ので、速く 動ける。'], ['体の 水分を 調節 して いる おもな 臓器は？', '腎臓', ['肝臓', '胃', '肺'], '腎臓が 水分と 塩分の 量を 調節して 尿を つくる。']]
+};
+EXRUN.body = {
+  init(E){
+    const st = E.star, SET = {1:['digest'], 2:['circ', 'digest'], 3:['resp', 'circ'], 4:['kidney', 'resp'], 5:['kidney', 'circ2']}[st];
+    const ch = shuf(BQ[st]).slice(0, 5 - SET.length).map(q => ({t:'c', q:q[0], a:q[1], ch:shuf([q[1]].concat(q[2])), e:q[3]}));
+    E.rounds = shuf(SET.map(s => ({t:'o', set:s})).concat(ch)); E.seq = []; E.miss = 0; E.done = false; E.msg = null; E.picked = null;
+  },
+  html(tab){
+    const r = E.rounds[E.i]; let stage = '', body = '';
+    if(r.t === 'o'){
+      const S = ORD[r.set], nodes = S.nodes.map((nd, i) => { const k = E.seq.indexOf(i);
+        return `<button class="sxBo ${k >= 0 ? 'on' : ''}" data-a="bdo" data-v="${i}" style="left:${nd[1]}%;top:${nd[2]}%" ${E.done ? 'disabled' : ''}>${k >= 0 ? `<i>${k + 1}</i>` : ''}${nd[0]}</button>`; }).join('');
+      const pts = E.seq.map(i => S.nodes[i]), line = `<svg class="sxBoSvg" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts.map(p => p[1] + ',' + p[2]).join(' ')}" fill="none" stroke="#4CB84C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+      stage = `<div class="sxStage"><div class="sxBoW"><div class="sxBoCap">${S.cap}</div>${line}${nodes}</div></div>`;
+      const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいこう！' : 'ざんねん…'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+      body = `<div class="sxMis"><span class="sxMisN">もんだい ${E.i + 1} / 5</span><p>${RB(S.t)}　ミス ${'♥'.repeat(Math.max(0, 3 - E.miss))}${'♡'.repeat(Math.min(3, E.miss))}</p></div>${fb}${E.done ? `<button class="sxBtn big" data-a="bdn">${E.i + 1 >= 5 ? 'けっかへ' : 'つぎへ ▶'}</button>` : ''}`;
+    } else {
+      stage = `<div class="sxStage"><div class="sxBoQ"><img src="${IC(({1:'card_life_skeleton', 2:'card_life_heart', 3:'card_life_brain', 4:'card_life_heart', 5:'card_life_brain'})[E.star])}" alt=""></div></div>`;
+      const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいかい！' : 'ざんねん…'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+      body = `<div class="sxMis"><span class="sxMisN">クイズ ${E.i + 1} / 5</span><p>${RB(r.q)}</p></div><div class="sxChG">${r.ch.map((c, i) => `<button class="sxCh ${E.done ? (c === r.a ? 'ok' : (E.picked === i ? 'ng' : 'dim')) : ''}" data-a="bdc" data-v="${i}" ${E.done ? 'disabled' : ''}>${RB(c)}</button>`).join('')}</div>${fb}${E.done ? `<button class="sxBtn big" data-a="bdn">${E.i + 1 >= 5 ? 'けっかへ' : 'つぎへ ▶'}</button>` : ''}`;
+    }
+    return tab ? `<div class="sxLabG"><div class="sxLabL">${stage}</div><div class="sxLabR">${body}</div></div>` : `${stage}${body}`;
+  },
+  tapO(i){
+    const r = E.rounds[E.i]; if(E.done || r.t !== 'o' || E.seq.includes(i)) return; const S = ORD[r.set];
+    if(i === E.seq.length){ E.seq.push(i); snd('tap'); if(E.seq.length >= S.nodes.length){ E.done = true; E.ok++; E.msg = {ok:true, t:`正しい じゅんばん！ ${S.nodes.map(n => n[0]).join(' → ')}`}; snd('ok'); } }
+    else { E.miss++; snd('ng'); if(E.miss >= 3){ E.done = true; E.msg = {ok:false, t:`こたえ：${S.nodes.map(n => n[0]).join(' → ')}`}; E.seq = S.nodes.map((_, k) => k); } }
+    render();
+  },
+  pick(i){ const r = E.rounds[E.i]; if(E.done || r.t !== 'c') return; E.picked = i; const ok = r.ch[i] === r.a; if(ok) E.ok++; E.done = true; E.msg = {ok, t:r.e}; snd(ok ? 'ok' : 'ng'); render(); },
+  next(){ if(E.i + 1 >= 5) return expFinish(E.ok, 5); E.i++; E.seq = []; E.miss = 0; E.done = false; E.msg = null; E.picked = null; render(); }
+};
+
+/* ---------- 新しい ボタンの うごき ---------- */
+function extClick(a, v, t){
+  switch(a){
+    case 'mrc': return EXRUN.mirror.tap(v);
+    case 'mrh': return EXRUN.mirror.hint();
+    case 'mrg': return EXRUN.mirror.give();
+    case 'mrn': return EXRUN.mirror.next();
+    case 'bdo': return EXRUN.body.tapO(+v);
+    case 'bdc': return EXRUN.body.pick(+v);
+    case 'bdn': return EXRUN.body.next();
+  }
+}
+/* 新しい 実験を「あそべる」に する */
+['indic', 'crystal', 'plasma', 'evgas', 'lens', 'mirror', 'planet', 'weather', 'gene', 'body'].forEach(id => { const e = EX(id); if(e) e.impl = 1; });
+const MOREC = {
+  mirror:{st:[2, 6]}
+};
+/* 追加の ふりがな */
+Object.assign(RBD, {
+  "酸性":"さんせい","中性":"ちゅうせい","性質":"せいしつ","塩酸":"えんさん","水酸化":"すいさんか","指示薬":"しじやく","中和":"ちゅうわ","溶解度":"ようかいど","結晶":"けっしょう","蒸発":"じょうはつ","温度":"おんど","静電気":"せいでんき","放電":"ほうでん","電費":"でんぴ","動力":"どうりょく","熱効率":"ねつこうりつ","総合効率":"そうごうこうりつ","再生可能":"さいせいかのう","焦点":"しょうてん","実像":"じつぞう","虚像":"きょぞう","月齢":"げつれい","上弦":"じょうげん","下弦":"かげん","満月":"まんげつ","新月":"しんげつ","三日月":"みかづき","月食":"げっしょく","日食":"にっしょく","北極星":"ほっきょくせい","気圧":"きあつ","高気圧":"こうきあつ","低気圧":"ていきあつ","寒冷前線":"かんれいぜんせん","温暖前線":"おんだんぜんせん","停滞前線":"ていたいぜんせん","梅雨":"つゆ","前線":"ぜんせん","等圧線":"とうあつせん","転向力":"てんこうりょく","優性":"ゆうせい","劣性":"れっせい","遺伝子":"いでんし","遺伝":"いでん","色覚異常":"しきかくいじょう","保因者":"ほいんしゃ","右心房":"みぎしんぼう","右心室":"みぎしんしつ","左心房":"ひだりしんぼう","左心室":"ひだりしんしつ","肺":"はい","全身":"ぜんしん","食道":"しょくどう","小腸":"しょうちょう","大腸":"だいちょう","肛門":"こうもん","気管":"きかん","気管支":"きかんし","肺胞":"はいほう","毛細血管":"もうさいけっかん","腎臓":"じんぞう","輸尿管":"ゆにょうかん","尿道":"にょうどう","大静脈":"だいじょうみゃく","大動脈":"だいどうみゃく","肺動脈":"はいどうみゃく","肺静脈":"はいじょうみゃく","赤血球":"せっけっきゅう","白血球":"はっけっきゅう","血小板":"けっしょうばん","血しょう":"けっしょう","横隔膜":"おうかくまく","柔毛":"じゅうもう","再吸収":"さいきゅうしゅう","心拍数":"しんぱくすう","反射":"はんしゃ","口":"くち","胃":"い","鼻":"はな","胃液":"いえき","酵素":"こうそ","肝臓":"かんぞう","筋肉":"きんにく","心臓":"しんぞう","酸素":"さんそ","二酸化炭素":"にさんかたんそ","呼吸":"こきゅう","栄養":"えいよう"
+});
+
 /* ---------- CSS ---------- */
 const css = document.createElement('style'); css.id = 'sc700css';
 css.textContent = "#sc700{position:fixed;inset:0;z-index:66;opacity:0;transition:opacity .22s;background:linear-gradient(180deg,#DDF1FF,#FFF8E8 60%);overflow:hidden;color:#4A3420;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}\n#sc700.show{opacity:1}\nbody.sc700on{overflow:hidden}\n#sc700 *{box-sizing:border-box;min-width:0}\n:where(#sc700) button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}\n:where(#sc700) button:disabled{cursor:default}\n#sxView{position:absolute;inset:0;display:flex;flex-direction:column}\nbody.sc700on #toast{z-index:90}\n/* ---- 上の バー ---- */\n.sxBarT{flex:none;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;position:relative;z-index:6;background:linear-gradient(#fff 55%,rgba(255,255,255,0))}\n.sxBack{display:flex;align-items:center;background:#fff;border:3px solid #fff;border-radius:99px;padding:2px 14px 2px 6px;font-weight:900;font-size:15px;color:#2E6FB5;box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap;flex:none}\n.sxBack svg{width:22px;height:22px}\n.sxTtl{flex:1;text-align:center;overflow:hidden}\n.sxTtl span{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(#FFE08A,#F6B93B);border:3px solid #fff;border-radius:99px;padding:3px 16px;font-size:17px;font-weight:900;color:#6B3E0A;box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap}\n.sxRb{background:#fff;border-radius:99px;padding:4px 10px;font-weight:900;font-size:11px;color:#6B5A44;box-shadow:0 2px 4px rgba(0,0,0,.2);flex:none;white-space:nowrap}\n.sxPt{display:flex;align-items:center;gap:4px;background:#fff;border-radius:99px;padding:3px 12px 3px 4px;font-weight:900;font-size:15px;box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap;flex:none}\n.sxPt small{font-size:11px;color:#8A7A65}\n.sxCoin{display:inline-flex;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFE98A,#F2B33D);border:2px solid #C98A12;color:#8A5A00;font-size:12px;font-weight:900;align-items:center;justify-content:center;font-style:normal;flex:none}\n.sxMain{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;padding-bottom:calc(14px + env(safe-area-inset-bottom))}\n.sxPh{padding:10px 12px;display:flex;flex-direction:column;gap:10px}\n.tab .sxBarT{padding:calc(10px + env(safe-area-inset-top)) 18px 8px}\n.tab .sxBack{font-size:19px;padding:3px 18px 3px 8px}\n.tab .sxTtl span{font-size:21px;padding:4px 24px}\n.tab .sxPt{font-size:18px}\n.tab .sxRb{font-size:14px;padding:6px 14px}\n/* タブレット：左右2分割 */\n.tab .sxMain.top,.tab .sxMain.zone,.tab .sxMain.qsel,.tab .sxMain.res{display:grid;grid-template-columns:57% 43%;overflow:hidden;padding:0}\n.tab .sxTabL{position:relative;overflow:hidden;min-height:0}\n.tab .sxTabR{overflow-y:auto;overflow-x:hidden;padding:6px 16px 16px;display:flex;flex-direction:column;gap:10px;min-height:0;border-left:6px solid #F1D9AA;background:#FFF8E8}\n/* ---- ボタン・カード ---- */\n.sxBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;font-weight:900;color:#fff;background:#F2A33A;box-shadow:0 5px 0 #C27A1C;padding:9px 18px;font-size:16px;position:relative;white-space:nowrap}\n.sxBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #C27A1C}\n.sxBtn.b{background:#3C93DC;box-shadow:0 5px 0 #2569A6}.sxBtn.p{background:#F0709A;box-shadow:0 5px 0 #BE4570}.sxBtn.g{background:#4CB84C;box-shadow:0 5px 0 #2F8A2F}.sxBtn.v{background:#9B6CE0;box-shadow:0 5px 0 #6F45B3}\n.sxBtn.w{background:#fff;color:#4A3420;box-shadow:0 5px 0 #CFC3AE;border:2px solid #EADFCF}\n.sxBtn.sm{padding:6px 14px;font-size:14px}.sxBtn.big{font-size:19px;padding:12px 22px;width:100%}\n.sxBtn:disabled{opacity:.5}\n.sxBtn svg,.sxBtn img{width:22px;height:22px}\n.sxBtn small{font-size:11px;opacity:.9}\n.tab .sxBtn{font-size:19px}.tab .sxBtn.sm{font-size:16px}.tab .sxBtn.big{font-size:22px;padding:14px}\n.sxCard{background:#fff;border:3px solid #F1D9AA;border-radius:22px;box-shadow:0 4px 0 #EADCC4;position:relative;padding:8px 12px}\n.sxDot{position:absolute;right:-4px;top:-8px;min-width:22px;height:22px;border-radius:99px;background:#E8414B;color:#fff;font-size:13px;font-weight:900;font-style:normal;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 4px}\n.sxBar2{height:13px;border-radius:99px;background:#EFE5D3;overflow:hidden;position:relative}\n.sxBar2 i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FFD25A,#F2A33A);transition:width .4s}\n.sxBar2.bl i{background:linear-gradient(90deg,#8FDDF7,#2C8FD0)}\n.sxSt{color:#F2A33A;letter-spacing:1px}.sxSt u{text-decoration:none;color:#E0D6C2}\n.sxX2{display:inline-block;background:#fff;color:#E8414B;border-radius:99px;padding:2px 10px;font-size:13px;font-weight:900;white-space:nowrap}\n.sxPtT{display:inline-flex;align-items:center;gap:3px;font-weight:900;color:#C27A1C}.sxPtT .sxCoin{width:18px;height:18px;font-size:10px}\n.sxTix{display:inline-flex;align-items:center;gap:3px;background:#FFF3D6;border-radius:99px;padding:1px 8px;font-weight:900;font-size:13px}.sxTix svg{width:22px;height:16px}.sxTix small{font-size:11px;color:#8A7A65}\n.sxOk{display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-weight:900;color:#2F8A2F}.sxOk svg{width:24px;height:24px}.sxOk small{font-size:11px}\n.sxNew{display:inline-block;background:#E8414B;color:#fff;border-radius:8px;padding:1px 8px;font-size:12px;font-weight:900}\n.sxSoon{display:inline-flex;flex-direction:column;align-items:center;font-size:11px;color:#8A7A65;font-weight:900}.sxSoon svg{width:22px;height:22px}\n.sxNote{font-size:12.5px;color:#8A7A65;line-height:1.6;padding:2px 6px}\n.sxBub2{position:relative;background:#fff;border:3px solid #E8B04A;border-radius:16px;padding:6px 12px;font-weight:900;font-size:14px;line-height:1.45;box-shadow:0 3px 6px rgba(0,0,0,.18)}\n.sxBub2 b{display:block;font-size:11px;color:#C27A1C}\n.sxBub2:before{content:\"\";position:absolute;left:-11px;top:50%;margin-top:-8px;border:8px solid transparent;border-right-color:#E8B04A;border-left:0}\n.tab .sxBub2{font-size:18px;padding:10px 16px}\n/* ---- トップ ---- */\n.sxHero{position:relative;height:300px;overflow:hidden;border-radius:0 0 26px 26px}\n.sxHeroBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}\n.sxOwl{position:absolute;left:3%;bottom:-6px;height:62%;max-height:210px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}\n.sxHana{position:absolute;right:5%;bottom:-6px;height:58%;max-height:195px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}\n.sxBub{position:absolute;left:12px;top:10px;max-width:62%;background:#fff;border:3px solid #E8B04A;border-radius:16px;padding:5px 12px;font-weight:900;font-size:13px;line-height:1.4;box-shadow:0 3px 6px rgba(0,0,0,.25);cursor:pointer}\n.sxBub b{display:block;font-size:11px;color:#C27A1C}\n.tab .sxMain.top .sxTabL{height:100%}.tab .sxHero{height:100%;border-radius:0}.tab .sxBub{font-size:19px;padding:10px 18px;top:18px;left:18px}.tab .sxBub b{font-size:14px}\n.tab .sxOwl{max-height:none;height:50%}.tab .sxHana{max-height:none;height:46%}\n.sxRank{display:flex;align-items:center;gap:10px;cursor:pointer}\n.sxRk{flex:1}.sxRkN{font-size:16px;font-weight:900}.sxRkN small{font-size:11px;color:#8A7A65;margin-left:8px}\n.sxRkS{font-size:12px;color:#8A7A65;margin-top:3px;display:flex;justify-content:space-between;align-items:center;gap:6px}\n.sxDaily{display:flex;align-items:center;gap:10px;width:100%;border-radius:20px;background:linear-gradient(90deg,#F7B733,#F0653C);border:3px solid #fff;box-shadow:0 4px 0 #C2541F;padding:6px 10px 6px 6px;color:#fff;text-align:left}\n.sxDaily img{width:46px;height:46px;border-radius:12px;background:#fff;border:2px solid #fff;object-fit:contain;padding:2px;flex:none}\n.sxDaily div{flex:1;line-height:1.25}.sxDaily small{font-size:12px;display:block}.sxDaily b{font-size:17px}\n.sxZg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px 8px}\n.sxZc{position:relative;background:#fff;border:3px solid var(--zc);border-radius:18px;overflow:hidden;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.12);display:flex;flex-direction:column}\n.sxZi{display:block;width:100%;height:70px;background-size:cover}\n.sxZc b{display:flex;align-items:center;padding:3px 6px 0;font-size:11.5px;line-height:1.2;min-height:2.5em}\n.sxZc i{font-style:normal;padding:0 6px 4px;font-size:11px;color:var(--zc);letter-spacing:1px;min-height:18px}\n.tab .sxZg{grid-template-columns:repeat(2,1fr);gap:10px}.tab .sxZi{height:84px}.tab .sxZc b{font-size:15px;padding:4px 10px 0;min-height:0}.tab .sxZc i{font-size:14px;padding:0 10px 6px}\n.sxNav{display:flex;gap:8px}.sxNav .sxBtn{flex:1;padding:10px 4px}\n/* ---- ゾーン ---- */\n.sxZHero{position:relative;height:230px;overflow:hidden;border-radius:0 0 26px 26px}\n.sxZHero img{width:100%;height:100%;object-fit:cover;display:block}\n.sxZName{position:absolute;left:12px;bottom:10px;background:var(--zc);color:#fff;border:3px solid #fff;border-radius:99px;padding:3px 16px;font-weight:900;font-size:16px;box-shadow:0 3px 6px rgba(0,0,0,.3)}\n.tab .sxMain.zone .sxTabL{display:flex;flex-direction:column}.tab .sxZHero{height:100%;flex:1;border-radius:0}.tab .sxZName{font-size:22px;padding:5px 24px}\n.sxSay{display:flex;align-items:center;gap:8px}.sxSay img{width:54px;height:54px;object-fit:contain;flex:none}\n.tab .sxMain.zone .sxSay{position:absolute;left:14px;right:14px;bottom:62px}.tab .sxSay img{width:86px;height:86px}\n.sxTabs{display:flex;gap:6px}\n.sxTabs button{flex:1;border-radius:99px;padding:7px 4px;font-weight:900;font-size:15px;background:#fff;border:3px solid #fff;box-shadow:0 3px 0 #CFC3AE;position:relative}\n.sxTabs button.on{background:var(--zc);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.25)}\n.tab .sxTabs button{font-size:18px;padding:9px 4px}\n.sxExL{display:flex;flex-direction:column;gap:9px}\n.sxEx{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:7px 10px 7px 7px;text-align:left;box-shadow:0 4px 0 #EADCC4;width:100%}\n.sxEx.isSoon{opacity:.55;filter:grayscale(.5)}\n.sxEx>img{width:62px;height:62px;border-radius:14px;background:radial-gradient(#fff,#EAF6FF);border:3px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.2);object-fit:contain;flex:none;padding:3px}\n.sxExT{flex:1;line-height:1.3}.sxExT b{font-size:16px;display:block}.sxExT em{font-style:normal;font-size:11.5px;color:#8A7A65;font-weight:700;display:block}\n.sxExM{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px;flex-wrap:wrap}.sxExM span:nth-child(2){color:#8A7A65;font-weight:900}\n.tab .sxEx>img{width:78px;height:78px}.tab .sxExT b{font-size:20px}.tab .sxExT em{font-size:14px}.tab .sxExM{font-size:14px}\n.sxMaster{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:6px 12px}\n.sxMaster>div{flex:1;font-size:13px;font-weight:900}.sxMaster .sxBar2{margin-top:3px}.sxMaster>span{font-size:13px;font-weight:900;color:#C27A1C;text-align:center;line-height:1.2}.sxMaster small{display:block;font-size:11px;color:#8A7A65}\n/* ---- カード ---- */\n.sxCZ{display:flex;gap:6px;padding:4px 12px;overflow-x:auto}.sxCz{flex:none;width:58px;border:3px solid #fff;background:#fff;border-radius:16px;box-shadow:0 2px 4px rgba(0,0,0,.2);padding:2px;text-align:center;opacity:.75}\n.sxCz.on{border-color:var(--zc);opacity:1}.sxCz img{width:100%;height:40px;object-fit:contain}.sxCz small{font-size:10px;font-weight:900}\n.sxCH{display:flex;align-items:center;gap:10px;padding:6px 14px}.sxCH b{color:var(--zc);font-size:17px}.sxCH>div{flex:1}.sxCH span{font-weight:900}\n.sxCB{padding:0 14px 6px;font-size:13px;font-weight:900;color:#6B5A44}.sxCB b{color:#C27A1C}\n.sxCg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 12px}\n.sxCd{position:relative;background:#fff;border:3px solid #fff;border-radius:18px;box-shadow:0 3px 0 #EADCC4,0 0 0 2px #F1D9AA;padding:6px;text-align:center}\n.sxCd.rare{background:#FFF8DD;box-shadow:0 3px 0 #E0B94A,0 0 0 3px #F2B33D}\n.sxCdI{position:relative;display:block;aspect-ratio:1;border-radius:12px;background:radial-gradient(#fff,#EAF6FF);overflow:hidden}.sxCdI img{width:100%;height:100%;object-fit:contain;padding:6px}\n.sxCd.no .sxCdI img{filter:grayscale(1) brightness(.4) blur(3px);opacity:.5}.sxCdI em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-style:normal;font-weight:900;color:#8A7A65}\n.sxCd b{display:block;font-size:12px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.sxCd u{position:absolute;left:-4px;top:-6px;background:#F2B33D;color:#fff;border-radius:8px;padding:0 8px;font-size:11px;text-decoration:none;font-weight:900}\n.tab .sxCg{grid-template-columns:repeat(4,1fr);gap:14px;padding:6px 22px}.tab .sxCd b{font-size:15px}.tab .sxCz{width:84px}.tab .sxCz img{height:56px}.tab .sxCH b{font-size:22px}\n/* ---- ごほうび ---- */\n.sxRwG{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:8px 12px}\n.sxRw{background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:6px 6px 8px;text-align:center;box-shadow:0 3px 0 #EADCC4;display:flex;flex-direction:column;gap:2px}\n.sxRw.ready{border-color:#4CB84C;background:#F4FFF0}.sxRw.xLk .sxRwI img{filter:grayscale(.85) brightness(.85)}\n.sxRwI{position:relative;height:120px;border-radius:14px;background:radial-gradient(#fff,#EAF6FF);display:flex;align-items:center;justify-content:center}.sxRwI>img{max-width:100%;max-height:100%;object-fit:contain}\n.sxRwT{position:absolute;right:4px;bottom:4px;width:44px;height:44px;border-radius:10px;border:2px solid #fff;background:#fff;object-fit:contain;box-shadow:0 2px 4px rgba(0,0,0,.25)}\n.sxRwTL{position:absolute;right:4px;bottom:46px;font-size:9px;font-style:normal;background:#4A3420;color:#fff;border-radius:6px;padding:0 4px}\n.sxRw b{font-size:14px;line-height:1.25}.sxRw em{font-style:normal;font-size:11px;color:#8A7A65;font-weight:700;line-height:1.35;min-height:2.7em}\n.sxRwA{margin-top:auto;padding-top:4px}.sxRP{display:flex;flex-direction:column;gap:3px}.sxRP small{font-size:10.5px;color:#8A7A65;font-weight:900;display:flex;align-items:center;gap:3px;justify-content:center;line-height:1.3}.sxRP small svg{width:14px;height:14px;flex:none}\n.tab .sxRwG{grid-template-columns:repeat(4,1fr);gap:14px;padding:10px 22px}.tab .sxRwI{height:150px}.tab .sxRw b{font-size:17px}.tab .sxRw em{font-size:13px}.tab .sxRP small{font-size:12px}\n.sxRkL{display:flex;flex-direction:column;gap:8px;padding:8px 12px}.sxRkR{display:flex;align-items:center;gap:10px;opacity:.6}.sxRkR.on{opacity:1}.sxRkR b{display:block;font-size:15px}.sxRkR small{display:block;font-size:11px;color:#8A7A65}.sxRkR em{display:block;font-style:normal;font-size:12px;color:#2F8A2F;font-weight:900}.sxRkR>div{flex:1}.sxRkR>svg{width:24px;height:24px}\n.sxRkL.m{padding:0}.sxRkL.m .sxRkR{padding:4px 0}\n.sxMain.rew .sxTabs{padding:6px 12px 0}.sxMain.rew .sxTabs button.on{background:#4CB84C}\n/* ---- もんだい：レベル ---- */\n.sxQHead{display:flex;align-items:flex-end;gap:10px;padding:6px 12px 0}.sxQHead img{width:74px;height:100px;object-fit:contain;flex:none}.sxQHead .sxBub2{flex:1;margin-bottom:22px}\n.tab .sxMain.qsel .sxTabL.qh{display:flex;align-items:center;justify-content:center;background:linear-gradient(#DDF1FF,#FFF8E8)}.tab .sxQHead{flex-direction:column;align-items:center;padding:0 30px}.tab .sxQHead img{width:210px;height:280px}.tab .sxQHead .sxBub2{margin:0 0 20px}.tab .sxQHead .sxBub2:before{display:none}\n.sxChips{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;flex:none}.sxChip{flex:none;border-radius:99px;padding:4px 12px;font-weight:900;font-size:13px;background:#fff;border:3px solid var(--zc);color:#4A3420;white-space:nowrap}.sxChip.on{background:var(--zc);color:#fff}\n.tab .sxChips{padding:2px 0;flex-wrap:wrap}.tab .sxChip{font-size:16px;padding:5px 16px}\n.sxLvG{display:flex;flex-direction:column;gap:7px;padding:4px 12px}\n.tab .sxLvG{padding:0}\n.sxLv{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:6px 12px 6px 8px;text-align:left;width:100%;box-shadow:0 3px 0 #EADCC4}\n.sxLv.sel{border-color:#F2A33A;background:#FFF8DD}.sxLv.xLk{opacity:.55}\n.sxLvI{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);line-height:1;flex:none}.sxLvI i{font-style:normal;font-size:11px}.sxLvI b{font-size:17px}\n.sxLvT{flex:1}.sxLvT b{font-size:16px;display:block;line-height:1.25}.sxLvT b small{display:block;font-size:11px;color:#8A7A65;font-weight:700}.sxLvT .sxBar2{height:9px;margin-top:4px}.sxLvH{display:flex;align-items:center;gap:3px;font-size:11px;color:#8A7A65;font-weight:900;margin-top:3px}.sxLvH svg{width:14px;height:14px;flex:none}\n.sxLvP{text-align:right;font-size:11px;color:#8A7A65}.sxLvP svg{width:22px;height:22px}\n.tab .sxLvT b{font-size:20px}.tab .sxLvT b small{font-size:13px;display:inline;margin-left:6px}\n.sxQN{display:flex;align-items:center;gap:8px;margin:2px 12px;flex-wrap:wrap}.sxQN>span:first-child{font-size:13px;font-weight:900}.sxQT{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:12px;color:#8A7A65;font-weight:900}.sxQT svg{width:24px;height:17px}\n.tab .sxQN{margin:0}\n.sxMain.qsel>.sxBtn.big,.sxMain.qsel .sxBtn.big{background:var(--bc,#F2A33A);margin:4px 12px 0;width:calc(100% - 24px)}.tab .sxMain.qsel .sxBtn.big{margin:4px 0 0;width:100%}\n/* ---- もんだい：出題 ---- */\n.sxQTop{display:flex;align-items:center;gap:8px;padding:2px 14px}.sxQTop .sxBar2{flex:1;height:14px}.sxQTop b{font-size:14px}\n.sxLvTag{display:inline-block;color:#fff;border-radius:99px;padding:1px 12px;font-size:13px;font-weight:900;white-space:nowrap;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.2)}\n.sxTimer{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;font-weight:900}.sxTimer .sxBar2{flex:1;height:11px}.sxTimer b{font-size:18px;color:#E8414B}\n.sxMain.quiz,.sxMain.exp{padding-top:2px}\n.sxFig{margin:6px 14px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;height:150px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px}.sxFig svg{max-height:100%;max-width:100%;width:auto;height:100%}\n.sxFig.z{background-size:cover;padding:0;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2)}\n.sxQBox{margin:6px 14px;padding:10px 14px;font-size:16.5px;line-height:1.65;font-weight:800;position:relative}.sxQBox p{margin:0}\n.sxQZ{position:absolute;left:12px;top:-10px;color:#fff;border-radius:99px;padding:0 10px;font-size:11px;font-weight:900}\n.sxChG{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:6px 14px}\n.sxCh{position:relative;background:#fff;border:3px solid #F1D9AA;border-radius:18px;padding:10px 8px;font-weight:900;font-size:15px;line-height:1.35;box-shadow:0 4px 0 #EADCC4;min-height:54px;display:flex;align-items:center;justify-content:center;text-align:center}\n.sxCh svg{position:absolute;right:6px;top:6px;width:22px;height:22px}\n.sxCh.ok{background:#E8FAE0;border-color:#4CB84C;box-shadow:0 4px 0 #2F8A2F}.sxCh.ng{background:#FFE6E6;border-color:#E8414B;box-shadow:0 4px 0 #A82A33}.sxCh.dim{opacity:.5}.sxCh.hid{opacity:.22}\n.sxCh.sw i{display:block;width:46px;height:46px;border-radius:50%;border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}\n.sxChG.sw{grid-template-columns:repeat(4,1fr)}\n.sxFb{margin:6px 14px;border-radius:18px;padding:8px 14px;font-size:14px;line-height:1.55}.sxFb b{display:block;font-size:17px}.sxFb span{display:block;font-weight:900}.sxFb p{margin:2px 0 0;font-weight:700}\n.sxFb.ok{background:#E8FAE0;border:3px solid #4CB84C}.sxFb.ng{background:#FFF0E0;border:3px solid #F2A33A}.sxFb.ok b{color:#2F8A2F}.sxFb.ng b{color:#C2541F}\n.sxQAct{display:flex;gap:10px;padding:4px 14px}.sxQAct .sxBtn{flex:1}\n.sxMain.quiz>.sxBtn.big,.sxMain.exp>.sxBtn.big{margin:6px 14px;width:calc(100% - 28px)}\n.sxMas{display:flex;align-items:flex-end;gap:8px;padding:4px 14px}.sxMas img{width:70px;height:84px;object-fit:contain;flex:none}.sxMas .sxBub2{margin-bottom:14px}\n.tab .sxQG{display:grid;grid-template-columns:40% 60%;gap:12px;padding:6px 18px;height:calc(100% - 70px)}.tab .sxQL{display:flex;flex-direction:column;justify-content:space-between;min-height:0}.tab .sxQL .sxFig{margin:0;height:auto;flex:1;min-height:0}.tab .sxQL .sxMas{padding:6px 0 0}.tab .sxQL .sxMas img{width:110px;height:140px}\n.tab .sxQR{overflow-y:auto;display:flex;flex-direction:column;gap:6px}.tab .sxQBox{margin:8px 0 6px;font-size:22px}.tab .sxChG{padding:4px 0}.tab .sxCh{font-size:20px;min-height:76px}.tab .sxFb{margin:4px 0}.tab .sxQAct{padding:4px 0}.tab .sxMain.quiz .sxQR>.sxBtn.big{margin:4px 0}\n.tab .sxQTop{padding:4px 18px}.tab .sxTimer{padding:2px 18px}\n/* ---- けっか ---- */\n.sxResH{text-align:center;padding:10px 14px 2px}.sxRibbon{display:inline-block;background:linear-gradient(#FF8E8E,#E8414B);color:#fff;font-size:21px;font-weight:900;padding:5px 26px;border-radius:12px;border:3px solid #fff;box-shadow:0 4px 0 #A82A33}.sxResS{font-size:15px;font-weight:900;margin-top:8px}\n.sxResT{padding:6px 14px}.sxResRow{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:5px 0;border-bottom:2px dashed #F1D9AA}.sxResRow b{color:#C27A1C;white-space:nowrap}\n.sxResTot{display:flex;justify-content:space-between;align-items:center;padding-top:6px;font-weight:900}.sxResTot .sxPtT{font-size:26px;color:#E8414B}.sxResTot .sxCoin{width:26px;height:26px;font-size:14px}\n.sxResCard{display:flex;align-items:center;gap:12px;background:#FFF8DD;border-color:#F2A33A;cursor:pointer}.sxResCard .sxCdI.big{width:90px;flex:none;border:4px solid #F2B33D}.sxResCard small{font-size:12px;color:#8A7A65;display:block}.sxResCard b{font-size:19px;display:block}.sxResCard em{font-style:normal;font-size:12px;color:#8A7A65}\n.sxNewT{position:absolute;left:-2px;top:-2px;background:#E8414B;color:#fff;font-size:11px;font-weight:900;border-radius:8px;padding:0 6px;z-index:2}\n.sxBadgeN{background:#FFF8DD;font-weight:900;font-size:14px}.sxRankUp{display:flex;align-items:center;gap:10px;background:#EAF6FF;border-color:#3C93DC}.sxRankUp small{font-size:12px;color:#3C93DC;font-weight:900;display:block}.sxRankUp b{font-size:19px;display:block}.sxRankUp em{font-style:normal;font-size:12px;color:#6B5A44}\n.sxInfo{background:rgba(60,147,220,.92);color:#fff;border-radius:16px;padding:8px 14px;font-size:13px;line-height:1.55;border:3px solid #fff}\n.sxResB{display:flex;gap:8px}.sxResB .sxBtn{flex:1;padding:10px 4px;font-size:15px}\n.sxResArt{display:flex;align-items:flex-end;gap:8px}.sxResArt img{width:74px;height:90px;object-fit:contain}.sxResArt .sxBub2{margin-bottom:18px}\n.tab .sxMain.res .sxTabL.resL{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:linear-gradient(#DDF1FF,#FFF8E8)}.tab .sxResH{padding-top:0}.tab .sxRibbon{font-size:34px;padding:8px 36px}.tab .sxResS{font-size:22px}.tab .sxResArt img{width:200px;height:250px}.tab .sxResRow{font-size:17px}.tab .sxResTot .sxPtT{font-size:34px}\n/* ---- モーダル ---- */\n#sxModal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(74,63,53,.5);padding:14px}\n#sxModal.on{display:flex}\n.sxMCard{background:#FFFDF8;border:4px solid #F1D9AA;border-radius:26px;padding:16px 16px 14px;width:min(440px,100%);max-height:100%;overflow-y:auto;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}\n.sxMod.gold .sxMCard{border-color:#F2B33D;background:linear-gradient(#FFF8DD,#fff)}\n.sxMT{font-size:20px;margin:6px 0}.sxMP{font-size:14.5px;line-height:1.65;margin:4px 0 8px}.sxMS{font-size:12px;color:#8A7A65;margin:2px 0}\n.sxMArt{margin:0 auto 4px;width:150px;height:130px;display:flex;align-items:center;justify-content:center;position:relative}.sxMArt img{max-width:100%;max-height:100%;object-fit:contain}\n.sxMArt.xcard{width:170px;height:170px;border-radius:24px;background:radial-gradient(#fff,#EAF6FF);border:5px solid var(--zc);box-shadow:0 4px 10px rgba(0,0,0,.25)}.sxMArt.xcard.rare{border-color:#F2B33D;background:radial-gradient(#fff,#FFF1B8)}.sxMArt.xcard img{padding:10px}.sxMArt em{position:absolute;font-size:60px;font-style:normal;font-weight:900;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4)}\n.sxRare{background:#F2B33D;color:#fff;border-radius:8px;padding:0 8px;font-size:13px}\n.sxMBtns{display:flex;gap:10px;justify-content:center;margin-top:8px}.sxMBtns .sxBtn{flex:1;max-width:210px}\n.sxPickH{display:flex;align-items:center;gap:10px;text-align:left}.sxPickH img{width:64px;height:64px;object-fit:contain;flex:none}.sxPickH b{font-size:18px;display:block}.sxPickH small{font-size:12px;color:#8A7A65;font-weight:700;display:block}\n.sxPick{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;margin:6px 0}\n.sxPickB{border-radius:18px;background:#fff;border:3px solid #F2A33A;box-shadow:0 4px 0 #C27A1C;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:1px}.sxPickB b{font-size:19px;color:#E0A000}.sxPickB small{font-size:11px}.sxPickB.xLk{border-color:#EADFCF;box-shadow:0 4px 0 #CFC3AE;opacity:.6}.sxPickB.xLk b{color:#8A7A65}\n/* ---- 実験 ---- */\n.sxExTop{display:flex;align-items:center;gap:8px;padding:2px 14px 4px}.sxExTop b{font-size:16px}\n.sxStage{margin:4px 14px;background:transparent;border:0;border-radius:22px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;flex-direction:column}\n.sxStage .sxSvg{width:100%;max-height:300px;height:auto}\n.sxGs{width:100%;padding:4px 6px 2px;display:flex;flex-direction:column;gap:4px}.sxG{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:900}.sxG span{width:130px;flex:none}.sxG .sxBar2{flex:1}\n.sxGg{font-size:12.5px;font-weight:800;line-height:1.5}.sxLeft{font-size:12px;font-weight:800;color:#6B5A44}\n.sxMis{margin:4px 14px;padding:8px 12px;background:#FFF3D6;border-radius:16px;font-size:14.5px;line-height:1.6;font-weight:800}.sxMis p{margin:2px 0 0}.sxMisN{display:inline-block;background:#F2A33A;color:#fff;border-radius:99px;padding:0 10px;font-size:11px;font-weight:900}\n.sxCtl{display:flex;flex-direction:column;gap:8px;padding:4px 14px}\n.sxSl{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:900}.sxSl>span{width:44%;flex:none;line-height:1.3}.sxSl b{width:62px;text-align:right;flex:none;font-size:14px;color:#C27A1C}.sxSl.big{padding:4px 14px}\n.sxSl input[type=range]{flex:1;height:34px;accent-color:var(--zc);-webkit-appearance:none;appearance:none;background:transparent}\n.sxSl input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:99px;background:#E6D9C2}.sxSl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;border-radius:50%;background:#fff;border:5px solid var(--zc);margin-top:-10px;box-shadow:0 2px 5px rgba(0,0,0,.35)}\n.sxSl input[type=range]:disabled{opacity:.5}\n.sxTg{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:900;padding:2px 14px}.sxTg>span{width:30%;flex:none}.sxTg .sxSeg{display:flex;gap:6px;flex:1;flex-wrap:wrap}.sxCtl .sxTg{padding:0}.sxCtl .sxSl{padding:0}\n.sxMain.exp>.sxBtn,.sxMain.exp .sxBtn.v.sm{margin:4px 14px}.sxMain.exp>.sxChG,.sxMain.exp>.sxFb,.sxMain.exp>.sxTray,.sxMain.exp>.sxAsmOpt,.sxMain.exp>.sxNotes{margin-left:14px;margin-right:14px}\n.tab .sxLabG{display:grid;grid-template-columns:50% 50%;gap:14px;padding:6px 18px;height:calc(100% - 44px)}.tab .sxLabL{display:flex;flex-direction:column;min-height:0}.tab .sxLabL .sxStage{margin:0;flex:1;min-height:0}.tab .sxLabR{overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0;padding-bottom:10px}\n.tab .sxLabR .sxMis,.tab .sxLabR .sxChG,.tab .sxLabR .sxFb,.tab .sxLabR .sxCtl,.tab .sxLabR .sxTg,.tab .sxLabR .sxTray,.tab .sxLabR .sxAsmOpt,.tab .sxLabR .sxNotes,.tab .sxLabR .sxSl.big{margin-left:0;margin-right:0;padding-left:0;padding-right:0}\n.tab .sxLabR .sxMis{padding:10px 14px;font-size:18px}.tab .sxLabR .sxBtn.v.sm,.tab .sxLabR .sxBtn.big{margin:0;width:100%}.tab .sxSl,.tab .sxTg{font-size:16px}.tab .sxG,.tab .sxGg{font-size:15px}.tab .sxSl b{font-size:17px;width:84px}\n.tab .sxStage .sxSvg{max-height:none;height:100%}.tab .sxExTop{padding:4px 18px}.tab .sxExTop b{font-size:20px}\n.tab .sxMain.exp .sxLabR .sxFb{margin:0}\n.sxMain.exp .sxTimer{padding:2px 14px}\n/* 炎色反応 */\n.sxStage.fl{background:linear-gradient(#1B1F3A,#2D2250);border:3px solid #5B4B8A;padding:6px}\n.sxFlW{position:relative;display:flex;flex-direction:column;align-items:center}.sxBurner{filter:drop-shadow(0 0 16px rgba(255,255,255,.12))}.sxFl{transform-origin:50% 90%;animation:sxFlick .5s ease-in-out infinite alternate}\n@keyframes sxFlick{from{transform:scale(1,1)}to{transform:scale(.96,1.05)}}\n.sxFlD{position:absolute;left:-6px;top:56px;text-align:center;color:#fff;font-size:12px;font-weight:900;display:flex;flex-direction:column;align-items:center}\n.sxStage.fl .sxBtn.go{margin-top:8px;width:auto}\n.sxNotes{background:#fff;border:3px solid #F1D9AA;border-radius:18px;padding:6px 10px;font-size:12.5px;font-weight:800}.sxNotes>div{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}\n.sxNt{display:inline-flex;align-items:center;gap:4px;background:#F4F0E6;border-radius:99px;padding:2px 8px 2px 2px;font-size:11px;color:#8A7A65}.sxNt i{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#D9D0BE;color:#fff;font-style:normal;font-weight:900;align-items:center;justify-content:center;font-size:11px}.sxNt.on{background:#fff;color:#4A3420;box-shadow:inset 0 0 0 2px var(--fc)}.sxNt.on i{background:var(--fc);text-shadow:0 1px 2px rgba(0,0,0,.5)}\n/* 車 */\n.sxStage.asm{background:linear-gradient(#DDF1FF,#EEF6FA);border:3px solid #fff;padding:6px}.sxAsmW{position:relative;display:flex;justify-content:center;width:100%}.sxAsmW.shake{animation:sxShk .3s}@keyframes sxShk{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}\n.sxAsm{width:100%;max-width:640px;height:auto}.sxGhost{position:absolute;right:6px;top:2px;background:#fff;border:3px solid #F2A33A;border-radius:99px;padding:1px 12px;font-size:13px;font-weight:900}\n.sxAsmMeta{font-size:13px;font-weight:900;color:#6B5A44;margin-top:2px}\n.sxTray{display:grid;grid-template-columns:repeat(auto-fit,minmax(60px,1fr));gap:7px;padding:4px 14px}\n.sxPart{background:#fff;border:3px solid #F1D9AA;border-radius:16px;box-shadow:0 3px 0 #EADCC4;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:2px}.sxPart span{width:44px;height:40px;display:flex;align-items:center;justify-content:center}.sxPart img{max-width:100%;max-height:100%;object-fit:contain}.sxPart b{font-size:11px;white-space:nowrap}\n.sxPart.hint{border-color:#F2A33A;background:#FFF3C8;animation:sxGlow .8s infinite alternate}@keyframes sxGlow{to{box-shadow:0 0 0 4px rgba(242,163,58,.45)}}\n.sxBody{display:block;width:44px;height:26px;border-radius:12px 12px 6px 6px;border:3px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}.sxSeat{display:block;width:30px;height:34px;border-radius:10px;background:#B9773A;border:3px solid #7A4A1E}\n.sxAsmOpt{display:flex;flex-direction:column;gap:6px;padding:2px 14px;font-size:13px;font-weight:900}.sxAsmOpt>div{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.sxAsmOpt>div>span{width:78px;flex:none}\n.sxAsmOpt>div.sxPerf{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:4px}.sxPerf .sxG{width:100%}\n.sxSw{width:30px;height:30px;border-radius:50%;border:3px solid rgba(255,255,255,.8);box-shadow:0 2px 4px rgba(0,0,0,.35)}.sxSw.on{border-color:#4A3420}\n.sxPerf{display:flex;flex-direction:column;gap:3px;margin-top:2px}.sxPerf .sxG span{width:64px}\n.sxInspG{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 14px}.sxInsp{position:relative;background:#E6EEF3;border:4px solid #fff;border-radius:18px;padding:4px;box-shadow:0 3px 0 #BFD0DA}.sxInsp.sel{border-color:#E8414B;background:#FFE6E6}.sxInsp svg{width:100%;height:auto}.sxInsp i{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:13px;color:#E8414B;font-style:normal;font-weight:900}\n/* エンジン */\n.sxStage.eng{background:linear-gradient(#10162E,#1F2A50);border:3px solid #3A4780;padding:6px}.sxStage.eng svg{max-height:380px;width:100%;height:auto}.tab .sxStage.eng svg{max-height:none;height:100%;width:100%}\n/* ---- 画面の 演出 ---- */\n.sxFx{position:fixed;inset:0;z-index:92}\n.sxFx.fw{pointer-events:none;background:transparent}\n#sxFw{background:rgba(10,14,40,.0)}\n.sxRkSky{position:absolute;inset:0;background:linear-gradient(#0E1530,#4A7BD6 70%,#BFE5FA);overflow:hidden;display:flex;justify-content:center}.sxRkCount{position:absolute;top:18%;left:0;right:0;text-align:center;color:#fff;font-size:44px;font-weight:900;text-shadow:0 3px 8px rgba(0,0,0,.5);z-index:2}\n.sxRkImg{position:absolute;bottom:-20%;height:38%;animation:sxUp 3.8s 1.5s ease-in forwards}.sxRkSm{position:absolute;bottom:-4%;width:160px;height:120px;border-radius:50%;background:radial-gradient(#fff,rgba(255,255,255,0) 70%);animation:sxSm 4s 1.4s ease-out forwards;opacity:0}\n@keyframes sxUp{to{bottom:130%}}@keyframes sxSm{20%{opacity:1}to{opacity:0;transform:scale(3)}}\n.sxMtSky{position:absolute;inset:0;background:linear-gradient(#050A24,#1B2A6B);color:#fff;padding-top:calc(24px + env(safe-area-inset-top));text-align:center}.sxMtSky b{font-size:22px;display:block}.sxMtSky span{font-size:30px;font-weight:900;color:#FFD84A}\n.sxMtS{position:absolute;right:-90px;width:80px;height:80px;animation:sxFly 5.2s linear both;z-index:3}.sxMtS img{width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}.sxMtS.got{animation-play-state:paused;opacity:0;transform:scale(2);transition:.4s}\n@keyframes sxFly{from{right:-90px;transform:translateY(0)}to{right:110%;transform:translateY(120px)}}\n@media (prefers-reduced-motion:reduce){.sxFl,.sxMtS{animation:none}}\n#sc700 .sxPh>*,#sc700 .sxTabR>*,#sc700 .sxExL>*,#sc700 .sxLvG>*,#sc700 .sxLabR>*,#sc700 .sxQR>*,#sc700 .sxRkL>*,#sc700 .sxCtl>*{flex-shrink:0}\n";
 document.head.appendChild(css);
+{ const css2 = document.createElement('style'); css2.id = 'sc700css2'; css2.textContent = "\n/* v6.71 からだの しくみ */\n.sxBoW{position:relative;width:100%;max-width:380px;aspect-ratio:1/1.02;margin:0 auto;background:linear-gradient(#FFF8E8,#EAF6FF);border-radius:18px;overflow:hidden}\n.sxBoSvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}\n.sxBoCap{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:12px;font-weight:900;color:#8A7A65;z-index:2;pointer-events:none}\n.sxBo{position:absolute;transform:translate(-50%,-50%);background:#fff;border:3px solid #F2A33A;border-radius:99px;padding:5px 12px;font-weight:900;font-size:14px;white-space:nowrap;box-shadow:0 3px 0 #C27A1C;z-index:3;display:flex;align-items:center;gap:4px}\n.sxBo.on{background:#E8FAE0;border-color:#4CB84C;box-shadow:0 3px 0 #2F8A2F}\n.sxBo i{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#4CB84C;color:#fff;font-style:normal;font-size:12px;align-items:center;justify-content:center}\n.sxBoQ{display:flex;align-items:center;justify-content:center;padding:16px}.sxBoQ img{width:150px;height:150px;object-fit:contain}\n.tab .sxBo{font-size:17px;padding:7px 16px}.tab .sxBoQ img{width:220px;height:220px}\n"; document.head.appendChild(css2); }
 })();
