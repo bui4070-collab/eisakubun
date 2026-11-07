@@ -13433,7 +13433,7 @@ window.addEventListener('click', e => {
   e.stopImmediatePropagation(); e.preventDefault(); open(s.k);
 }, true);
 try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
-window.__yu659 = {open, close, YS, QS, RIDES, NAZO, TK, render, newQuiz, finish, parade, tankenClear, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }};
+window.__yu659 = {open, close, YS, QS, RIDES, NAZO, TK, hardWord, plain, render, newQuiz, finish, parade, tankenClear, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }};
 
 /* ---------- BGM：アトラクション中は 小さめ・考える ときは さらに 小さく・パレードは 少し 大きく ---------- */
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#yu659') || v === 0) return v;
@@ -13769,4 +13769,958 @@ function keep(fn){ return function(){
   return o; }; }
 try{ renderTown = keep(renderTown); renderMap = keep(renderMap); if(typeof renderTray === 'function') renderTray = keep(renderTray); }catch(e){ console.warn('v6.61 keep', e); }
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+})();
+
+
+/* =====================================================================
+   まなびタウン v6.62：くうこう（仕様書 v0.1\u3000STEP1〜STEP6）
+   ・町の「くうこう」を タッチ → 町の 前面に くうこうターミナルが 開く（スマホ縦／iPad横）
+   ・チェックイン（搭乗券）／かんせいとう（空港クイズ ★1〜3）／いきさき えらび
+   ・搭乗 → フライト（機内クイズ）→ 訪問先の まち（おみやげ ショップ）→ 帰りの 便 → おかえり
+   ・パスポート（スタンプ・ランクバッジ・おみやげ ずかん）／ともだちのまち（QR）は 準備中
+   ・画像は すべて ./assets/images/airport/
+   ===================================================================== */
+(function(){
+'use strict';
+const VER = '6.62.0', IMG = './assets/images/airport/';
+const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const pick = a => a[Math.random() * a.length | 0];
+const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const today = () => (typeof dayKey === 'function' ? dayKey() : new Date().toISOString().slice(0, 10));
+const dayNo = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 6e4) / 864e5);
+const snd = t => { try{ sound(t); }catch(e){} };
+const hash = s => { let h = 2166136261; for(const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h; };
+const art = k => { try{ return artSrc(k) || ''; }catch(e){ return ''; } };
+
+/* ---------- 数値（すべて 暫定。調整は ここだけ） ---------- */
+const CFG = {
+  ciN:3, ciOk:2,            /* チェックイン：3問・2問 正解で 搭乗券 */
+  earnDay:10,               /* 搭乗券を もらえる 回数（1日） */
+  tixMax:5,                 /* 搭乗券の もてる 数（シルバーで +1） */
+  stay:600,                 /* 訪問先の 滞在（秒） */
+  maxBuy:5,                 /* 1回の 旅で 買える おみやげ */
+  twN:5,                    /* かんせいとう 1セットの 問題数 */
+  skyDay:3,                 /* まち画面の 飛行機クイズ（1日） */
+  firstTix:1                /* はじめに もらえる 搭乗券 */
+};
+const MILE = {1:5, 2:10, 3:20}, PTS = {1:2, 2:4, 3:8};
+const RANKS = [
+  {n:'ブロンズ',  m:0,    img:'badge_bronze',   open:'モデルの まち 4つ'},
+  {n:'シルバー',  m:300,  img:'badge_silver',   open:'とうじょうけんを 1まい おおく もてる（6まい）'},
+  {n:'ゴールド',  m:1000, img:'badge_gold',     open:'きんの バッジ'},
+  {n:'プラチナ',  m:3000, img:'badge_platinum', open:'プラチナの バッジ・ペリカンの とくべつな えんしゅつ'}
+];
+const rankNo = m => m >= 3000 ? 4 : m >= 1000 ? 3 : m >= 300 ? 2 : 1;
+
+/* ---------- 行き先 ---------- */
+const TOWNS = [
+  {id:'south',  n:'みなみの しま', sub:'あたたかい うみと きれいな すなが まってるよ', img:'town_south',  stamp:'stamp_south',  c:'#F08A3A', pin:[19,51], sv:['sv01','sv02','sv03','sv04'],
+   say:['うみが キラキラ！','ココナッツジュース、おいしそう！','サーフィンの おみせが あるよ','ヤシの 木の かげで ひとやすみ']},
+  {id:'snow',   n:'ゆきの まち',   sub:'まっしろな せかいで たのしく あそぼう',       img:'town_snow',   stamp:'stamp_snow',   c:'#3E86C8', pin:[42,22], sv:['sv05','sv06','sv07','sv08'],
+   say:['さむいけど あったかい まちだね','ゆきだるまを みつけた！','こおりの うえで スケートできそう','おしろが みえるよ']},
+  {id:'forest', n:'もりの まち',   sub:'みどりが いっぱい しぜんの まち',             img:'town_forest', stamp:'stamp_forest', c:'#2E9B5B', pin:[73,36], sv:['sv09','sv10','sv11','sv12'],
+   say:['ツリーハウスが あるよ','きのこの おうち、かわいい！','かわの おとが きこえるね','どんぐり、ひろったよ']},
+  {id:'candy',  n:'おかしの まち', sub:'あまくて たのしい おかしの まち',             img:'town_candy',  stamp:'stamp_candy',  c:'#E8608A', pin:[72,77], sv:['sv13','sv14','sv15','sv16'],
+   say:['いい においが するね','チョコレートの かわが ある！','ドーナツの たてものが あるよ','かんらんしゃに のってみたい']}
+];
+const TN = id => TOWNS.find(t => t.id === id);
+/* ---------- おみやげ ---------- */
+const SVS = [
+  ['sv01','ココナッツ',120,'south'],['sv02','かいがらの ネックレス',200,'south'],['sv03','トロピカル フルーツ',150,'south'],['sv04','サーフィンの キーホルダー',300,'south'],
+  ['sv05','スノードーム',300,'snow'],['sv06','ゆきの けっしょう',200,'snow'],['sv07','ゆきだるま',150,'snow'],['sv08','あみの てぶくろ',120,'snow'],
+  ['sv09','どんぐり',120,'forest'],['sv10','木の実の かご',200,'forest'],['sv11','まつぼっくり',150,'forest'],['sv12','きのこの ランプ',300,'forest'],
+  ['sv13','ペロペロ キャンディ',120,'candy'],['sv14','カップケーキ',150,'candy'],['sv15','キャンディの びん',200,'candy'],['sv16','おかしの いえ',300,'candy']
+].map(a => ({id:a[0], n:a[1], cost:a[2], town:a[3], img:IMG + 'sv_' + a[0].slice(2) + '.webp'}));
+const SV = id => SVS.find(s => s.id === id);
+/* 「わたしの家」の 家具に する（ゆうえんちと おなじ しくみ） */
+try{ SVS.forEach(s => { const id = 'ap_' + s.id; DEFAULT_ART[id] = s.img;
+  if(!FURNITURE.some(f => f.id === id)) FURNITURE.push({id, name:'くうこうの ' + s.n, art:id, type:'fur', price:0, lv:1, sty:3, special:true, ev:'airport'}); }); }catch(e){ console.warn('airport fur', e); }
+
+/* ---------- ピクトグラム（SVG） ---------- */
+const PICS = {
+  bag:`<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="14" fill="#1F5FAE"/><rect x="30" y="26" width="40" height="28" rx="5" fill="#fff"/><path d="M41 26v-7h18v7" fill="none" stroke="#fff" stroke-width="4"/><rect x="12" y="60" width="76" height="14" rx="7" fill="#fff"/><g fill="#1F5FAE"><circle cx="26" cy="67" r="3"/><circle cx="42" cy="67" r="3"/><circle cx="58" cy="67" r="3"/><circle cx="74" cy="67" r="3"/></g></svg>`,
+  toilet:`<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="14" fill="#1F5FAE"/><g fill="#fff"><circle cx="29" cy="24" r="8"/><rect x="17" y="35" width="24" height="30" rx="6"/><rect x="20" y="63" width="7" height="22" rx="3"/><rect x="31" y="63" width="7" height="22" rx="3"/><circle cx="71" cy="24" r="8"/><path d="M71 35l15 34H56z"/><rect x="62" y="67" width="6" height="18" rx="3"/><rect x="74" y="67" width="6" height="18" rx="3"/></g><rect x="49" y="15" width="2.5" height="72" fill="#fff"/></svg>`,
+  info:`<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="14" fill="#1F5FAE"/><circle cx="50" cy="50" r="34" fill="#fff"/><circle cx="50" cy="31" r="6" fill="#1F5FAE"/><rect x="43" y="42" width="14" height="30" rx="3" fill="#1F5FAE"/></svg>`,
+  aid:`<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="14" fill="#1E9B58"/><path d="M38 16h24v22h22v24H62v22H38V62H16V38h22z" fill="#fff"/></svg>`,
+  lift:`<svg viewBox="0 0 100 100"><rect width="100" height="100" rx="14" fill="#1F5FAE"/><rect x="18" y="16" width="64" height="68" rx="6" fill="none" stroke="#fff" stroke-width="5"/><path d="M50 22l-9 11h18zM50 78l-9-11h18z" fill="#fff"/><circle cx="34" cy="45" r="4.5" fill="#fff"/><rect x="29" y="50" width="10" height="15" rx="3" fill="#fff"/><circle cx="66" cy="45" r="4.5" fill="#fff"/><rect x="61" y="50" width="10" height="15" rx="3" fill="#fff"/></svg>`
+};
+const PICN = {bag:'にもつ うけとり', toilet:'トイレ', info:'あんない じょ', aid:'きゅうごしょ', lift:'エレベーター'};
+
+/* ---------- 問題データ ---------- */
+const CAT = {code:'空港コード', cap:'国と 首都', read:'難読 空港名', time:'時差', mech:'ひこうき', rwy:'滑走路', pic:'マーク', hello:'世界の あいさつ', bag:'手荷物', work:'空港の しごと'};
+const QS = [];
+const mk = (k, c, s, t, a, w, e, pic) => QS.push({k, c, s, t, a, w, e: e || '', pic: pic || ''});
+const mkp = (k, c, s, t, a, pool, e) => QS.push({k, c, s, t, a, pool, e: e || '', pic: ''});
+
+/* 1) 空港コード ［コード, 名前(ルビ), 国内?, ★］ */
+const APT = [
+  ['HND','{羽田|はねだ}',1,1],['NRT','{成田|なりた}',1,1],['KIX','{関西|かんさい}',1,1],['ITM','{伊丹|いたみ}',1,2],['UKB','{神戸|こうべ}',1,2],['NGO','{中部|ちゅうぶ}',1,2],
+  ['CTS','{新千歳|しんちとせ}',1,1],['FUK','{福岡|ふくおか}',1,1],['OKA','{那覇|なは}',1,1],['ISG','{石垣|いしがき}',1,2],['SDJ','{仙台|せんだい}',1,2],['HIJ','{広島|ひろしま}',1,2],
+  ['KMJ','{熊本|くまもと}',1,2],['KOJ','{鹿児島|かごしま}',1,2],['NGS','{長崎|ながさき}',1,2],['MYJ','{松山|まつやま}',1,2],['TAK','{高松|たかまつ}',1,2],['KCZ','{高知|こうち}',1,2],
+  ['TOY','{富山|とやま}',1,3],['KMQ','{小松|こまつ}',1,3],['AOJ','{青森|あおもり}',1,2],['AKJ','{旭川|あさひかわ}',1,2],['KUH','{釧路|くしろ}',1,3],['MMB','{女満別|めまんべつ}',1,3],
+  ['WKJ','{稚内|わっかない}',1,3],['HKD','{函館|はこだて}',1,2],['AXT','{秋田|あきた}',1,3],['OIT','{大分|おおいた}',1,3],['KMI','{宮崎|みやざき}',1,2],['UBJ','{山口宇部|やまぐちうべ}',1,3],
+  ['IZO','{出雲|いずも}',1,3],['YGJ','{米子|よなご}',1,3],
+  ['JFK','ニューヨーク',0,1],['LAX','ロサンゼルス',0,1],['LHR','ロンドン',0,1],['CDG','パリ',0,1],['ICN','ソウル',0,1],['SIN','シンガポール',0,1],['BKK','バンコク',0,2],
+  ['SYD','シドニー',0,2],['DXB','ドバイ',0,2],['HNL','ホノルル',0,1],['PEK','{北京|ペキン}',0,2],['FRA','フランクフルト',0,3],['HKG','{香港|ホンコン}',0,2],['AMS','アムステルダム',0,3],
+  ['SFO','サンフランシスコ',0,2],['ORD','シカゴ',0,3]
+];
+const plainT = t => String(t).replace(/\{([^|{}]+)\|[^{}]+\}/g, '$1');
+const aptNames = {1:APT.filter(a => a[2]).map(a => a[1]), 0:APT.filter(a => !a[2]).map(a => a[1])};
+const aptCodes = {1:APT.filter(a => a[2]).map(a => a[0]), 0:APT.filter(a => !a[2]).map(a => a[0])};
+APT.forEach(a => {
+  mkp('cd1_' + a[0], 'code', a[3], `「${a[0]}」は どこの {空港|くうこう}？`, a[1], aptNames[a[2]], `${a[0]}は ${plainT(a[1])}{空港|くうこう}の コードだよ。`);
+  mkp('cd2_' + a[0], 'code', a[3], `${a[1]}の {空港|くうこう}コードは？`, a[0], aptCodes[a[2]], `${plainT(a[1])}は「${a[0]}」。`);
+});
+/* 2) 難読 空港名 ［かんじ, よみ, ★］ */
+const READ = [
+  ['女満別','めまんべつ',3],['稚内','わっかない',3],['釧路','くしろ',2],['紋別','もんべつ',3],['中標津','なかしべつ',3],['帯広','おびひろ',2],['大館能代','おおだてのしろ',3],
+  ['南紀白浜','なんきしらはま',3],['但馬','たじま',3],['隠岐','おき',3],['壱岐','いき',3],['対馬','つしま',2],['五島福江','ごとうふくえ',3],['種子島','たねがしま',2],
+  ['屋久島','やくしま',2],['与那国','よなぐに',3],['石垣','いしがき',2],['宮古','みやこ',2],['久米島','くめじま',3],['奄美','あまみ',2],['徳之島','とくのしま',3],
+  ['喜界','きかい',3],['沖永良部','おきのえらぶ',3],['与論','よろん',3],['能登','のと',2],['庄内','しょうない',3],['天草','あまくさ',2],['八丈島','はちじょうじま',3],
+  ['利尻','りしり',3],['奥尻','おくしり',3],['三宅島','みやけじま',3],['小松','こまつ',2],['米子','よなご',2],['出雲','いずも',2],['岩国','いわくに',2],['函館','はこだて',1],
+  ['神戸','こうべ',1],['松山','まつやま',1]
+];
+READ.forEach(r => {
+  const near = READ.map(x => x[1]).filter(y => y !== r[1] && Math.abs(y.length - r[1].length) <= 1);
+  mkp('rd1_' + r[0], 'read', r[2], `{空港|くうこう}の なまえ「${r[0]}」は、なんと よむ？`, r[1], near, `${r[0]}（${r[1]}）{空港|くうこう}。`);
+  mkp('rd2_' + r[0], 'read', Math.min(3, r[2] + (r[2] < 3 ? 1 : 0)), `「${r[1]}」{空港|くうこう}を かんじで かくと？`, r[0], READ.map(x => x[0]), `${r[0]}（${r[1]}）{空港|くうこう}。`);
+});
+/* 3) 国と 首都 ［国, 首都, ★］ */
+const CAPS = [
+  ['アメリカ','ワシントンD.C.',2],['{中国|ちゅうごく}','{北京|ペキン}',1],['{韓国|かんこく}','ソウル',1],['フランス','パリ',1],['イギリス','ロンドン',1],['ドイツ','ベルリン',1],['イタリア','ローマ',1],
+  ['スペイン','マドリード',2],['ポルトガル','リスボン',2],['オランダ','アムステルダム',2],['ロシア','モスクワ',1],['インド','ニューデリー',2],['タイ','バンコク',1],['ベトナム','ハノイ',2],
+  ['インドネシア','ジャカルタ',2],['フィリピン','マニラ',2],['オーストラリア','キャンベラ',3],['ニュージーランド','ウェリントン',3],['カナダ','オタワ',3],['ブラジル','ブラジリア',3],
+  ['アルゼンチン','ブエノスアイレス',3],['エジプト','カイロ',2],['ケニア','ナイロビ',3],['トルコ','アンカラ',3],['ギリシャ','アテネ',2],['スイス','ベルン',3],['スウェーデン','ストックホルム',2],
+  ['ノルウェー','オスロ',2],['フィンランド','ヘルシンキ',2],['デンマーク','コペンハーゲン',2],['オーストリア','ウィーン',2],['ベルギー','ブリュッセル',3],['ポーランド','ワルシャワ',3],
+  ['メキシコ','メキシコシティ',2],['ペルー','リマ',3],['チリ','サンティアゴ',3],['サウジアラビア','リヤド',3],['アラブしゅちょうこくれんぽう','アブダビ',3],['モンゴル','ウランバートル',3],
+  ['ネパール','カトマンズ',3],['モロッコ','ラバト',3],['ハンガリー','ブダペスト',3],['チェコ','プラハ',3],['アイスランド','レイキャビク',3],['キューバ','ハバナ',3]
+];
+CAPS.forEach(c => {
+  mkp('cp1_' + plainT(c[0]), 'cap', c[2], `${c[0]}の {首都|しゅと}は？`, c[1], CAPS.map(x => x[1]), `${plainT(c[0])}の {首都|しゅと}は ${plainT(c[1])}だよ。`);
+  mkp('cp2_' + plainT(c[0]), 'cap', c[2], `${c[1]}は どこの くにの {首都|しゅと}？`, c[0], CAPS.map(x => x[0]), `${plainT(c[1])}は ${plainT(c[0])}の {首都|しゅと}だよ。`);
+});
+/* 4) 世界の あいさつ ［ことば, こんにちは, ありがとう］ */
+const HEL = [
+  ['フランスご','ボンジュール','メルシー'],['スペインご','オラ','グラシアス'],['イタリアご','チャオ','グラッツェ'],['ドイツご','グーテンターク','ダンケ'],['えいご','ハロー','サンキュー'],
+  ['ちゅうごくご','ニーハオ','シェイシェイ'],['かんこくご','アンニョンハセヨ','カムサハムニダ'],['タイご','サワッディー','コープクン'],['ベトナムご','シンチャオ','カムオン'],
+  ['ハワイご','アロハ','マハロ'],['トルコご','メルハバ','テシェッキュルレル'],['アラビアご','マルハバ','シュクラン'],['ヒンディーご','ナマステ','ダンニャワード'],['ギリシャご','ヤッス','エフハリスト'],
+  ['スワヒリご','ジャンボ','アサンテ'],['ロシアご','ズドラーストヴィチェ','スパシーバ']
+];
+HEL.forEach((h, i) => {
+  const st = i < 5 ? 1 : i < 10 ? 2 : 3;
+  mkp('hl1_' + i, 'hello', st, `${h[0]}で「こんにちは」は？`, h[1], HEL.map(x => x[1]), `${h[0]}：こんにちは＝${h[1]}／ありがとう＝${h[2]}`);
+  mkp('hl2_' + i, 'hello', st, `「${h[1]}」は どこの ことば？`, h[0], HEL.map(x => x[0]), `${h[0]}：こんにちは＝${h[1]}／ありがとう＝${h[2]}`);
+  mkp('hl3_' + i, 'hello', Math.min(3, st + 1), `${h[0]}で「ありがとう」は？`, h[2], HEL.map(x => x[2]), `${h[0]}：こんにちは＝${h[1]}／ありがとう＝${h[2]}`);
+  mkp('hl4_' + i, 'hello', Math.min(3, st + 1), `「${h[2]}」は どこの ことばの「ありがとう」？`, h[0], HEL.map(x => x[0]), `${h[0]}：こんにちは＝${h[1]}／ありがとう＝${h[2]}`);
+});
+/* 5) 時差（ひょうじゅんじ） */
+const TZ = [
+  ['ペキン','{北京|ペキン}','ごぜん 11じ',-1,2],['バンコク','バンコク','ごぜん 10じ',-2,2],['ソウル','ソウル','ひるの 12じ（おなじ じかん）',0,1],['ドバイ','ドバイ','ごぜん 7じ',-5,3],
+  ['ロンドン','ロンドン','ごぜん 3じ',-9,3],['パリ','パリ','ごぜん 4じ',-8,3],['シドニー','シドニー','ごご 1じ',1,3],['ニューデリー','ニューデリー','ごぜん 8じ 30ぷん',-3.5,3]
+];
+const TZW = ['ごぜん 11じ','ごぜん 10じ','ごご 1じ','ごぜん 9じ','ごぜん 7じ','ごぜん 3じ','ごぜん 4じ','ごご 3じ','ごぜん 8じ'];
+TZ.forEach(z => {
+  const w = TZW.filter(x => x !== z[2]); const a = z[2];
+  mk('tz_' + z[0], 'time', z[4], `{日本|にほん}が ひるの 12じの とき、${z[1]}は なんじ？（ひょうじゅんじ）`, a, shuf(w).slice(0, 3),
+    z[3] === 0 ? `${z[0]}は {日本|にほん}と おなじ じかんだよ。` : `${z[0]}は {日本|にほん}より ${Math.abs(z[3])}じかん ${z[3] < 0 ? 'おそい' : 'はやい'}よ。（サマータイムは かんがえないよ）`);
+});
+mk('tz_ny', 'time', 3, '{日本|にほん}が ひるの 12じの とき、ニューヨークは？（ひょうじゅんじ）', 'まえの ひの ごご 10じ', ['ごぜん 10じ','まえの ひの ごご 5じ','つぎの ひの ごぜん 2じ'], 'ニューヨークは {日本|にほん}より 14じかん おそいよ。');
+mk('tz_hn', 'time', 3, '{日本|にほん}が ひるの 12じの とき、ホノルルは？', 'まえの ひの ごご 5じ', ['まえの ひの ごご 10じ','ごご 5じ','つぎの ひの ごぜん 5じ'], 'ホノルルは {日本|にほん}より 19じかん おそいよ。');
+mk('tz_la', 'time', 3, '{日本|にほん}が ひるの 12じの とき、ロサンゼルスは？（ひょうじゅんじ）', 'まえの ひの ごご 7じ', ['まえの ひの ごご 10じ','ごご 7じ','つぎの ひの ごぜん 7じ'], 'ロサンゼルスは {日本|にほん}より 17じかん おそいよ。');
+mk('tz_r1', 'time', 3, 'ロンドンが ひるの 12じの とき、{日本|にほん}は なんじ？（ひょうじゅんじ）', 'ごご 9じ', ['ごぜん 3じ','ごご 3じ','ごご 12じ'], '{日本|にほん}は ロンドンより 9じかん はやいよ。');
+mk('tz_r2', 'time', 2, 'ペキンが ひるの 12じの とき、{日本|にほん}は なんじ？', 'ごご 1じ', ['ごぜん 11じ','ごご 2じ','ひるの 12じ'], '{日本|にほん}は ペキンより 1じかん はやいよ。');
+mk('tz_r3', 'time', 3, 'ニューヨークが ひるの 12じの とき、{日本|にほん}は？（ひょうじゅんじ）', 'つぎの ひの ごぜん 2じ', ['ごご 2じ','まえの ひの ごご 10じ','つぎの ひの ごぜん 12じ'], '{日本|にほん}は ニューヨークより 14じかん はやいよ。');
+/* 6) 滑走路の 番号 */
+[['09','{東|ひがし}','90ど'],['18','{南|みなみ}','180ど'],['27','{西|にし}','270ど'],['36','{北|きた}','360ど（0ど）']].forEach(r => {
+  const o = [['{東|ひがし}'],['{南|みなみ}'],['{西|にし}'],['{北|きた}']].map(x => x[0]);
+  mk('rw1_' + r[0], 'rwy', 3, `{滑走路|かっそうろ}の ばんごう「${r[0]}」は、どの ほうがくを むいている？`, r[1], o.filter(x => x !== r[1]), `ばんごうは ほうい（${r[2]}）の ひとけた め を とった かず。${r[0]}は ${plainT(r[1])}だよ。`);
+  mk('rw2_' + r[0], 'rwy', 3, `${r[1]}を むいた {滑走路|かっそうろ}の ばんごうは？`, r[0], ['09','18','27','36'].filter(x => x !== r[0]), `${plainT(r[1])}は ${r[2]}。ばんごうは「${r[0]}」だよ。`);
+});
+/* 7) 手書き：ひこうき・手荷物・空港の しごと */
+[
+ ['mech',2,'ひこうきを {空|そら}に うかせる ちからを なんと いう？','{揚力|ようりょく}',['{重力|じゅうりょく}','{圧力|あつりょく}','{磁力|じりょく}'],'つばさに かぜが あたって、うえに もちあげる ちからが {揚力|ようりょく}だよ。'],
+ ['mech',2,'ひこうきは ふつう、どの むきで {離陸|りりく}する？','かぜに むかって',['かぜと おなじ ほうこうへ','かぜの ない ほうへ','かぜに せなかを むけて'],'むかいかぜの ほうが、はやく うきあがれるよ。'],
+ ['mech',2,'ジェットきが ふつうに とぶ たかさは、およそ どのくらい？','1まん メートル',['100 メートル','1000 メートル','10まん メートル'],'{旅客機|りょかっき}は およそ 1まん メートルの たかさを とぶよ。'],
+ ['mech',3,'ひこうきの「ブラックボックス」。ほんとうの いろは？','オレンジいろ',['まっくろ','あお','みどり'],'さがしやすい ように、めだつ オレンジいろに なっているよ。'],
+ ['work',1,'{管制塔|かんせいとう}の しごとは どれ？','ひこうきに じゅんばんや ほうこうを おしえる',['ひこうきを あらう','{荷物|にもつ}を はこぶ','きっぷを うる'],'ひこうきが ぶつからないように、{無線|むせん}で しじを だすよ。'],
+ ['mech',2,'かぜの むきを おしえて くれる、くうこうの ふくろは？','{吹|ふ}き{流|なが}し',['ふうりん','せんぷうき','ほうき'],'ふきながしの ふくろが ながれる ほうこうが、かぜの むきだよ。'],
+ ['mech',2,'エンジンで とぶ ひこうきで、はじめて 人が とぶ ことに せいこうした ライトきょうだいは、どこの くに？','アメリカ',['フランス','ドイツ','{日本|にほん}'],'1903ねんに アメリカで せいこうしたよ。'],
+ ['mech',1,'ヘリコプターは なにを まわして とぶ？','ローター（うえの ながい はね）',['タイヤ','ハンドル','アンテナ'],'うえの ローターが まわって、{浮|う}かびあがるよ。'],
+ ['mech',1,'ひこうきが {着陸|ちゃくりく}する ときに だす ものは？','{車輪|しゃりん}',['かさ','ボート','はしご'],'しゃりんで {滑走路|かっそうろ}を はしって、とまるよ。'],
+ ['mech',3,'{飛行機|ひこうき}の {窓|まど}は、どうして かどが まるい？','ちからが かかっても われにくいから',['かっこいいから','ほしが よく みえるから','むかしから まるかったから'],'かどが とがっていると、そこに ちからが あつまって われやすいんだよ。'],
+ ['bag',2,'{国際線|こくさいせん}で {機内|きない}に もちこむ {液体|えきたい}は、1つの いれものが なんミリリットル まで？','100ミリリットル',['500ミリリットル','1リットル','10ミリリットル'],'100ml いかの いれものを、あわせて 1リットルの ふくろに いれるよ（こくさいせん）。'],
+ ['bag',2,'モバイルバッテリーは どこに いれる？','きないに もちこむ てにもつ',['あずける スーツケース','どちらでも よい','くうこうに おいて いく'],'リチウムイオンの {電池|でんち}は、あずけにもつに いれられないよ。'],
+ ['mech',1,'ひこうきが {離陸|りりく}と {着陸|ちゃくりく}を する ときは、なにを しめる？','シートベルト',['まど','ふた','マスク'],'あんぜんの ために、シートベルトを しっかり しめようね。'],
+ ['work',2,'くうこうで、ひこうきを ひっぱる くるまの なまえは？','トーイングカー',['パトカー','ショベルカー','ごみしゅうしゅうしゃ'],'ひこうきを ゲートから おしだしたり ひっぱったり するよ。'],
+ ['work',1,'ひこうきに のる まえに、カウンターで する てつづきは？','チェックイン',['にゅうこく しんさ','にもつ うけとり','ぜいかん'],'チェックインで、とうじょうけんを もらい、にもつを あずけるよ。'],
+ ['work',1,'ひこうきの せきを もらう カードの なまえは？','とうじょうけん（ボーディングパス）',['しんかんせんの きっぷ','バスの ていきけん','としょカード'],'ひこうきに のる ときに ひつような カードだよ。'],
+ ['mech',3,'ひこうきの {右|みぎ}の つばさの さきの ライトは なにいろ？','みどり',['あか','あお','きいろ'],'{右|みぎ}は みどり、{左|ひだり}は あか。ふねと おなじ きまりだよ。'],
+ ['mech',3,'ひこうきぐもが できる わけは？','エンジンから でた {水蒸気|すいじょうき}が、ひえて こおるから',['ひこうきが くもを つくる きかいを つんでいるから','ひこうきが ねつを だして、みずを わかすから','ひこうきの ペンキが とけるから'],'{高|たか}い そらは とても さむいから、すいじょうきが こおって くもに なるよ。'],
+ ['mech',2,'{音|おと}の はやさの ことを なんと いう？','マッハ',['ノット','ヘルツ','ワット'],'マッハ1が、おとの はやさ（{音速|おんそく}）だよ。'],
+ ['work',1,'{機長|きちょう}の しごとは どれ？','ひこうきを うんてんして、みんなの あんぜんを まもる',['きっぷを うる','ひこうきを あらう','{荷物|にもつ}を かぞえる'],'パイロットの いちばん えらい ひとが {機長|きちょう}だよ。'],
+ ['mech',2,'ひこうきの そうじゅうしつを なんと いう？','コックピット',['ギャレー','ラウンジ','ハンガー'],'パイロットが ひこうきを うんてん する ばしょだよ。'],
+ ['mech',3,'ひこうきの なかの だいどころを なんと いう？','ギャレー',['コックピット','カーゴ','キャビン'],'キャビンは おきゃくさんの いる ばしょ、ギャレーは だいどころだよ。'],
+ ['work',3,'{空港|くうこう}で にもつを うけとる ばしょを、えいごで なんと いう？','バゲージクレーム',['チェックイン','ゲート','ターミナル'],'ベルトコンベヤーで にもつが まわって でてくる ばしょだよ。'],
+ ['work',2,'{外国|がいこく}から かえって きたとき、{税関|ぜいかん}では なにを しらべる？','もちこんだ ものの ルールや ぜいきん',['ひこうきの エンジン','くつの サイズ','てんきよほう'],'{外国|がいこく}から もちこむ ものを しらべるのが {税関|ぜいかん}だよ。'],
+ ['work',2,'{入国審査|にゅうこくしんさ}で、{見|み}せる ものは どれ？','パスポート',['ひこうきの せき','おべんとう','かさ'],'パスポートで、だれか、どこの くにの ひとかを たしかめるよ。'],
+ ['mech',1,'ひこうきが はしって、とびたったり おりたり する ばしょは？','{滑走路|かっそうろ}',['{駐車場|ちゅうしゃじょう}','{横断歩道|おうだんほどう}','{線路|せんろ}'],'ながい {道|みち}の ような ばしょだよ。'],
+ ['mech',2,'ひこうきの いちばん おおきい {部分|ぶぶん}（からだ）を なんと いう？','{胴体|どうたい}',['{尾翼|びよく}','{翼|つばさ}','{脚|あし}'],'おきゃくさんや にもつが のる ところだよ。'],
+ ['mech',3,'ひこうきの うしろに ある たての はね（{尾翼|びよく}）の やくわりは？','まっすぐ とぶように ととのえる',['ひかりを だす','{荷物|にもつ}を いれる','おとを だす'],'{尾翼|びよく}が、ひこうきの むきが ふらふら しないように ささえて いるよ。'],
+ ['work',2,'{空港|くうこう}の {消防車|しょうぼうしゃ}が、ふだんから そなえて いる ことは？','ひこうきの じこが おきた とき、すぐ たすける',['ひこうきを あらう','きっぷを うる','ひこうきを とめる'],'{空港|くうこう}には、すぐ しゅつどう できる {消防車|しょうぼうしゃ}が いるよ。'],
+ ['mech',1,'ひこうきの うしろから でてくる しろい すじを なんと いう？','ひこうきぐも',['にじ','かすみ','かみなり'],'たかい そらを とぶと、できる ことが あるよ。'],
+ ['work',1,'くうこうで、パスポートを みせる のは どこ？','{入国審査|にゅうこくしんさ}',['ほけんしつ','バゲージクレーム','おみやげや'],'{外国|がいこく}に つくと、さいしょに {入国審査|にゅうこくしんさ}を うけるよ。']
+].forEach((h, i) => mk('hw_' + i, h[0], h[1], h[2], h[3], h[4], h[5]));
+/* 8) マーク（ピクトグラム） */
+[['bag',1],['toilet',1],['info',2],['aid',2],['lift',1]].forEach(p => {
+  mk('pc_' + p[0], 'pic', p[1], 'この マークは なに？', PICN[p[0]], Object.keys(PICN).filter(k => k !== p[0]).map(k => PICN[k]),
+    `この マークは「${PICN[p[0]]}」を あらわすよ。`, p[0]);
+});
+
+/* ---------- ふりがな ---------- */
+function hardW(k){ try{ const w = window.__yu659; return w && w.hardWord ? w.hardWord(k) : true; }catch(e){ return true; } }
+function R(t){
+  const mode = AS().settings.ruby;
+  return X(t).replace(/\{([^|{}]+)\|([^{}]+)\}/g, (m, k, r) => {
+    if(mode === 'none') return k;
+    if(mode === 'all' || hardW(k)) return `<ruby>${k}<rt>${r}</rt></ruby>`;
+    return k;
+  });
+}
+
+/* ---------- セーブ（save.town.airport） ---------- */
+function AS(){
+  const t = save.town || (save.town = {}); let fresh = false;
+  if(!t.airport){ t.airport = {}; fresh = true; }
+  const a = t.airport;
+  if(fresh) a.tix = CFG.firstTix;
+  a.tix = a.tix || 0; a.miles = a.miles || 0; a.stamps = a.stamps || {}; a.visits = a.visits || {}; a.sv = a.sv || {};
+  a.seen = a.seen || {}; a.miss = a.miss || {}; a.right = a.right || 0; a.trips = a.trips || 0; a.settings = a.settings || {ruby:'hard'};
+  a.rankShown = a.rankShown || rankNo(a.miles); a.homeGot = a.homeGot || {};
+  if(!a.daily || a.daily.d !== today()) a.daily = {d:today(), earn:0, sky:0, tower:0};
+  try{ const nw = Object.keys(a.sv).filter(k => a.sv[k] && !a.homeGot[k] && FUR('ap_' + k));
+    if(nw.length){ const H = ensureHome(); nw.forEach(k => { H.inv['ap_' + k] = (H.inv['ap_' + k] || 0) + 1; a.homeGot[k] = 1; }); } }catch(e){}
+  return a;
+}
+const tixCap = () => CFG.tixMax + (rankNo(AS().miles) >= 2 ? 1 : 0);
+const lastPt = () => (save.points && save.points.bal) || 0;
+function addMiles(n){ if(!n) return; const A = AS(); A.miles = Math.max(0, A.miles + n); persist(); }
+
+/* ---------- 画面の しくみ ---------- */
+const isTab = () => innerWidth >= 900 && innerWidth >= innerHeight;
+let ROOT = null, KEY = null, V = {s:'top'}, LAY = 'ph', Q = null, FX = [], TKI = 0, RK = false;
+function root(){ if(ROOT && document.body.contains(ROOT)) return ROOT; ROOT = document.createElement('div'); ROOT.id = 'ap662'; document.body.appendChild(ROOT); return ROOT; }
+function open(key, o){
+  o = o || {}; KEY = key; Q = null; V = {s:'top'}; const A = AS();
+  root(); document.body.classList.add('ap662on'); requestAnimationFrame(() => ROOT && ROOT.classList.add('show'));
+  if(o.sky){ if(A.daily.sky >= CFG.skyDay){ close(); return; } A.daily.sky++; persist(); startQuiz('sky'); V = {s:'quiz', sky:1}; }
+  else if(A.trip){ const t = A.trip; if(t.ph === 'back') { startQuiz('back'); V = {s:'quiz'}; } else if(t.ph === 'visit' || t.ph === 'fly'){ if(t.ph === 'fly'){ t.ph = 'visit'; t.t0 = Date.now(); persist(); } V = {s:'visit'}; } }
+  render(); try{ persist(); }catch(e){}
+}
+function close(){
+  FX.forEach(clearTimeout); FX = []; clearInterval(TKI); TKI = 0; if(!ROOT) return;
+  const r = ROOT; ROOT = null; Q = null; r.classList.remove('show'); document.body.classList.remove('ap662on'); setTimeout(() => r.remove(), 250); try{ persist(); }catch(e){}
+}
+function go(s, o){ FX.forEach(clearTimeout); FX = []; if(s !== 'visit'){ clearInterval(TKI); TKI = 0; } V = Object.assign({}, V, o || {}, {s}); snd('tap'); render(); }
+function render(){
+  if(!ROOT) return; LAY = isTab() ? 'tab' : 'ph';
+  ROOT.className = `show ${LAY} ${innerWidth >= 600 && LAY === 'ph' ? 'wide' : ''}`;
+  const f = {top, tower, dest, pass, quiz, qres, gate, fly, visit, result}[V.s] || top;
+  ROOT.innerHTML = `<div class="apw">${f()}</div>`; after(); checkRank();
+}
+let rtm = 0; addEventListener('resize', () => { if(!ROOT) return; clearTimeout(rtm); rtm = setTimeout(() => { if(ROOT && (isTab() ? 'tab' : 'ph') !== LAY && V.s !== 'fly') render(); }, 150); });
+
+/* ---------- パーツ ---------- */
+const coinI = () => `<img src="${X(art('hd_coin'))}" alt="" onerror="this.remove()">`;
+const chips = () => { const A = AS(); return `<div class="apchips"><span>${coinI()}<b>${lastPt()}</b></span><span class="mi"><img src="${IMG}plane.webp" alt=""><b>${A.miles}</b><small>マイル</small></span><span class="tk"><img src="${IMG}ic_ticket.webp" alt=""><b>${A.tix}</b></span></div>`; };
+const homeBtn = () => `<button type="button" class="aphm" data-a="town"><svg viewBox="0 0 24 24"><path d="M3 11L12 4l9 7v9h-6v-6H9v6H3z" fill="currentColor"/></svg><b>${LAY === 'tab' ? 'まちに もどる' : 'まち'}</b></button>`;
+const back = (to, l = 'もどる') => `<button type="button" class="apbk" data-a="${to}"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>${l}</b></button>`;
+const head = (title, to = 'top', l) => `<header class="aphd">${back(to, l)}<h2>${title}</h2>${chips()}${LAY === 'tab' ? homeBtn() : ''}</header>`;
+const rubyBtn = () => { const m = AS().settings.ruby; return `<button type="button" class="aprb" data-a="ruby"><span>ふりがな</span><b>${m === 'all' ? 'ぜんぶ' : m === 'none' ? 'なし' : 'むずかしい字'}</b></button>`; };
+function rankBar(){
+  const A = AS(), r = rankNo(A.miles), R0 = RANKS[r - 1], N = RANKS[r];
+  const pct = N ? Math.min(1, (A.miles - R0.m) / (N.m - R0.m)) : 1;
+  return `<div class="aprk"><img src="${IMG}${R0.img}.webp" alt=""><div><b>${R0.n}ランク</b><span class="br"><i style="width:${Math.round(pct * 100)}%"></i></span><small>${N ? `つぎの「${N.n}」まで あと ${N.m - A.miles} マイル` : 'さいこうの ランクだよ！'}</small></div></div>`;
+}
+const MI = `<img class="mii" src="${IMG}plane.webp" alt="">`, TKI2 = `<img class="mii tkk" src="${IMG}ic_ticket.webp" alt="">`;
+const PP = n => `<span class="ppt">+${n}<small>pt</small></span>`;
+const LOCK = '<svg class="lck" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5" fill="#8A94A3"/><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="#8A94A3" stroke-width="2.6"/></svg>';
+const stampN = () => TOWNS.filter(t => AS().stamps[t.id]).length;
+const hanaImg = (k = 'res_girl') => { const s = art(k); return s ? `<img src="${X(s)}" alt="" onerror="this.remove()">` : ''; };
+const chr = (k, cls, a) => `<button type="button" class="apc ${cls}" ${a ? `data-a="${a}"` : `data-say="${cls}"`}><img src="${IMG}ch_${k}.webp" alt=""></button>`;
+const hanaWalk = (cls = '') => `<button type="button" class="aphw ${cls}" data-say="hana"><span class="aphi">${hanaImg()}</span></button>`;
+const SAY = {
+  hana:['いってきます！','どこの まちに いこうかな？','ひこうき、たのしみ！','おみやげ、なにに しよう？'],
+  spar:['こちら かんせいとう！','いろんな まちに いこう！','きょうは いい てんきだよ','かぜの むきも チェック！'],
+  slo:['ゆっくり かんがえてね','まってるよ〜','チェックイン、ゆっくりで いいよ'],
+  peli:['ナイスフライト！','おみやげを はこぶよ','しゅっぱつ しんこう！','ひこうきは そらの のりものだよ']
+};
+function bubble(el, txt){
+  const box = el.closest('.apsc, .apvs'), b = box && box.querySelector('.apbb'); if(!b) return;
+  b.textContent = txt; b.classList.remove('hidden', 'pop'); void b.offsetWidth; b.classList.add('pop');
+  const bx = box.getBoundingClientRect(), r = el.getBoundingClientRect();
+  b.style.left = Math.max(4, Math.min(bx.width - 174, r.left - bx.left + r.width / 2 - 85)) + 'px';
+  b.style.top = Math.max(4, r.top - bx.top - 44) + 'px';
+  clearTimeout(bubble.tm); bubble.tm = setTimeout(() => b.classList.add('hidden'), 2600);
+}
+const recTown = () => TOWNS[hash(today()) % TOWNS.length].id;
+
+/* ---------- ① トップ ---------- */
+function menuList(){
+  const A = AS(), left = Math.max(0, CFG.earnDay - A.daily.earn);
+  return [
+    {a:'checkin', n:'チェックイン', s:`きょう あと ${left}かい`, img:'ic_checkin', c:'pk'},
+    {a:'tower',   n:'かんせいとう', s:'くうこうクイズ', img:'ic_tower', c:'bl'},
+    {a:'dest',    n:'いきさき',     s:`とうじょうけん ${A.tix}まい`, img:'ic_dest', c:'gr'},
+    {a:'pass',    n:'パスポート',   s:`スタンプ ${stampN()}/${TOWNS.length}`, img:'ic_passport', c:'or'}
+  ];
+}
+const menuBtn = m => `<button type="button" class="apmb ${m.c}" data-a="${m.a}"><img class="ic" src="${IMG}${m.img}.webp" alt=""><span><b>${m.n}</b><small>${m.s}</small></span></button>`;
+function sceneTop(extra = '', nav = true){
+  return `<div class="apsc top ${extra}"><img class="bg" src="${IMG}top.webp" alt="">
+    <div class="apsg"><small>まなびタウン</small><b>くうこう</b></div>
+    <img class="apfp" src="${IMG}plane.webp" alt="">
+    ${chr('sparrow', 'spar')}${chr('sloth', 'slo', nav ? 'checkin' : '')}${hanaWalk()}${chr('pelican', 'peli', nav ? 'dest' : '')}
+    <span class="apbb hidden"></span></div>`;
+}
+function top(){
+  const ms = menuList();
+  if(LAY === 'ph') return `<div class="apt ph">
+    <header class="aphd tp">${homeBtn()}${chips()}</header>
+    ${sceneTop()}
+    <div class="apbt">${rankBar()}<div class="apm4">${ms.map(menuBtn).join('')}</div><div class="apsub">${rubyBtn()}</div></div></div>`;
+  return `<div class="apt tab"><section class="apsw">${sceneTop('big')}</section>
+    <aside class="aprp"><header class="aphd tb">${chips()}${homeBtn()}</header>${rankBar()}<div class="apm4">${ms.map(menuBtn).join('')}</div>${rubyBtn()}
+    <div class="aptip"><img src="${IMG}ch_sparrow.webp" alt=""><span class="apbq" data-say="spar">いろんな まちに いこう！</span></div></aside></div>`;
+}
+
+/* ---------- ③ かんせいとう（むずかしさ えらび） ---------- */
+function tower(){
+  const A = AS();
+  const L = [[1, 'ふつう', 'n', 'ようこそ！ まずは ここから'], [2, 'むずかしい', 'h', 'ちょっと ちょうせん'], [3, 'ちょうむずかしい', 's', 'ぜんぶ とけたら ひこうし はかせ！']];
+  const btns = L.map(l => `<button type="button" class="apdf ${l[2]}" data-a="tw" data-s="${l[0]}"><b>★${'★'.repeat(l[0] - 1)}${'☆'.repeat(3 - l[0])}　${l[1]}</b><small>${l[3]}　＋${MILE[l[0]]}マイル／もんだい</small></button>`).join('');
+  const scene = `<div class="apsc qs"><img class="bg" src="${IMG}tower.webp" alt="">${chr('sparrow', 'spar2')}<span class="apbq in" data-say="spar">こちら かんせいとう！<br>ちょうせん する むずかしさを えらんでね</span><span class="apbb hidden"></span></div>`;
+  return `<div class="aptw ${LAY}">${head('かんせいとう')}
+    <div class="apbody">${scene}<div class="apcol"><h4>${CFG.twN}もん チャレンジ</h4>${btns}<p class="aphl">せいかいすると マイルと ポイントが もらえるよ。ふりがなは ここで かえられるよ。</p>${rubyBtn()}</div></div></div>`;
+}
+
+/* ---------- ④ いきさき えらび ---------- */
+function townCard(t, sel, rec){
+  const A = AS(), seen = A.stamps[t.id];
+  return `<button type="button" class="aptc ${sel === t.id ? 'on' : ''}" data-a="sel" data-t="${t.id}" style="--c:${t.c}">
+    <span class="th"><img src="${IMG}${t.img}.webp" alt="">${rec === t.id ? '<i class="rb">おすすめ</i>' : ''}</span>
+    <span class="tx"><b>${t.n}</b><small>${t.sub}</small><span class="sv">${t.sv.map(id => `<img class="${A.sv[id] ? '' : 'no'}" src="${SV(id).img}" alt="">`).join('')}</span></span>
+    ${seen ? `<img class="st" src="${IMG}${t.stamp}.webp" alt="">` : ''}<i class="ar">›</i></button>`;
+}
+function dest(){
+  const A = AS(), rec = recTown(), sel = V.sel || rec, T = TN(sel);
+  const pins = TOWNS.map(t => `<button type="button" class="appin ${sel === t.id ? 'on' : ''}" data-a="sel" data-t="${t.id}" style="left:${t.pin[0]}%;top:${t.pin[1]}%;--c:${t.c}"><img src="${IMG}${t.stamp}.webp" alt=""><span>${t.n}</span>${A.stamps[t.id] ? '<i>✔</i>' : ''}</button>`).join('');
+  const map = `<div class="apmap"><img class="bg" src="${IMG}map.webp" alt="">${pins}<span class="apmh" style="left:45%;top:57%"><img src="${IMG}plane.webp" alt=""></span>${chr('pelican', 'peli3')}${chr('sloth', 'slo3')}<span class="apbb hidden"></span></div>`;
+  const qr = `<button type="button" class="aptc lk" data-a="qrsoon"><span class="th qrth"><svg viewBox="0 0 40 40"><path d="M4 4h12v12H4zM24 4h12v12H24zM4 24h12v12H4zM24 24h5v5h-5zM31 24h5v5h-5zM24 31h5v5h-5zM31 31h5v5h-5z" fill="#fff"/></svg></span><span class="tx"><b>ともだちの まち</b><small>QRで ともだちの まちへ（じゅんびちゅう）</small></span><i class="ar">${LOCK}</i></button>`;
+  const go1 = A.tix > 0
+    ? `<button type="button" class="apgo" data-a="depart"><b>とうじょう！</b><small>${T.n}へ（とうじょうけん 1まい）</small></button>`
+    : `<button type="button" class="apgo sub" data-a="checkin"><b>チェックインへ</b><small>とうじょうけんが ないよ</small></button>`;
+  const bar = `<div class="apdb"><span class="tkn"><img src="${IMG}ic_ticket.webp" alt=""><b>${A.tix}</b>まい</span>${go1}</div>`;
+  const list = `<div class="aptl">${TOWNS.map(t => townCard(t, sel, rec)).join('')}${qr}</div>`;
+  if(LAY === 'ph') return `<div class="apds ph">${head(LAY === 'ph' ? 'いきさき' : 'いきさき えらび')}<div class="apbody">${map}${list}</div>${bar}</div>`;
+  return `<div class="apds tab">${head('いきさき えらび')}<div class="apbody"><div class="apl">${map}${bar}</div><div class="apr">${list}</div></div></div>`;
+}
+
+/* ---------- 質問の えらび方 ---------- */
+function draw(n, ok){
+  const A = AS(), dn = dayNo(), used = new Set(), cats = new Set(), out = [];
+  const pool = QS.filter(ok);
+  while(out.length < n){
+    let L = pool.filter(q => !used.has(q.k)); if(!L.length) break;
+    const diff = L.filter(q => !cats.has(q.c)); if(diff.length >= 3) L = diff;
+    const again = L.filter(q => A.miss[q.k] && dn - A.miss[q.k] >= 2), fresh = L.filter(q => !A.seen[q.k]);
+    const q = again.length && Math.random() < .5 ? pick(again) : fresh.length ? pick(fresh) : pick(L.slice().sort((a, b) => (A.seen[a.k] || 0) - (A.seen[b.k] || 0)).slice(0, Math.max(3, L.length / 3 | 0)));
+    used.add(q.k); cats.add(q.c); out.push(q);
+  }
+  return out;
+}
+const cur = () => Q.qs[Q.n];
+function newOrder(){
+  const q = cur(), wr = q.w ? shuf(q.w) : shuf(Array.from(new Set(q.pool)).filter(x => x !== q.a));
+  Q.ord = shuf([q.a].concat(wr.slice(0, 3))); Q.hint = false; Q.cut = null; Q.ans = null;
+}
+function startQuiz(mode, o){
+  o = o || {}; let qs;
+  if(mode === 'checkin') qs = draw(CFG.ciN, q => q.s <= 2 && q.c !== 'time' && q.c !== 'rwy');
+  else if(mode === 'tower') qs = draw(CFG.twN, q => q.s === o.star);
+  else qs = draw(1, q => q.s === 1);
+  Q = {mode, star:o.star || 0, qs, n:0, ok:0, firstOk:0, tries:0, pts:0, miles:0, ans:null, ord:null, hint:false, cut:null, log:[], res:null};
+  newOrder();
+}
+
+/* ---------- クイズ画面（チェックイン・かんせいとう・機内・かえりの便 共通） ---------- */
+const SCN = {
+  checkin:{img:'checkin', t:'チェックイン', who:'sloth', say:'ゆっくり かんがえてね'},
+  tower:{img:'tower', t:'かんせいとう', who:'sparrow', say:'こちら かんせいとう！'},
+  sky:{img:'tower', t:'ひこうきクイズ', who:'sparrow', say:'ひこうきを タッチしたね！'},
+  back:{img:'top', t:'かえりの びん', who:'pelican', say:'おうちに かえろう！'}
+};
+function quizScene(){
+  const s = SCN[Q.mode], q = cur(), done = Q.ans !== null, right = done && Q.ans === q.a;
+  return `<div class="apsc qs ${Q.mode}"><img class="bg" src="${IMG}${s.img}.webp" alt="">
+    <div class="apwho ${s.who}"><img src="${IMG}ch_${s.who}.webp" alt=""></div>
+    <div class="aphero ${done ? (right ? 'joy' : 'think') : ''}">${hanaImg(done && right ? 'res_girl_party' : 'res_girl')}</div>
+    <span class="apbq in">${done ? (right ? pick(['せいかい！ すごいね！', 'その ちょうし！', 'ばっちり！']) : 'だいじょうぶ！ いっしょに おぼえよう') : s.say}</span></div>`;
+}
+function quiz(){
+  const q = cur(), done = Q.ans !== null, right = done && Q.ans === q.a, tot = Q.qs.length, S = SCN[Q.mode];
+  const opts = Q.ord.map((o, i) => { let c = ''; if(done){ c = o === q.a ? 'ok' : o === Q.ans ? 'ng' : 'dim'; } else if(Q.cut === o) c = 'cut';
+    return `<button type="button" class="apop ${c}" data-a="ans" data-o="${X(o)}" ${done || Q.cut === o ? 'disabled' : ''}><i>${'ABCD'[i]}</i><span>${R(o)}</span></button>`; }).join('');
+  const title = Q.mode === 'tower' ? `かんせいとう ${'★'.repeat(Q.star)}` : S.t;
+  const prog = tot > 1 ? `<div class="appg"><span class="bar"><i style="width:${(Q.n + (done ? 1 : 0)) / tot * 100}%"></i></span><b>${Q.n + 1}<small>/${tot}</small></b></div>` : '';
+  const qbox = `<div class="apqb"><div class="qh"><span class="qn">もんだい</span><span class="cat">${CAT[q.c]}</span><span class="stars">${'★'.repeat(q.s)}<i>${'★'.repeat(3 - q.s)}</i></span></div>
+    ${q.pic ? `<div class="appic">${PICS[q.pic]}</div>` : ''}<p class="qt">${R(q.t)}</p></div>`;
+  const hint = done ? '' : `<button type="button" class="aphn ${Q.hint ? 'used' : ''}" data-a="hint" ${Q.hint ? 'disabled' : ''}><img src="${IMG}ch_${S.who}.webp" alt=""><span><b>${Q.hint ? 'ヒントを つかったよ' : 'ヒント'}</b><small>${Q.hint ? 'ひとつ きえたよ' : 'まちがいを ひとつ けす（ポイント はんぶん）'}</small></span></button>`;
+  let fb = '';
+  if(done){
+    const last = Q.n + 1 >= tot;
+    const btn = Q.mode === 'back' ? (right ? `<button type="button" class="apnx" data-a="landing">おうちに ついた！ ›</button>` : `<button type="button" class="apnx ng" data-a="retry">もういちど ちょうせん ›</button>`)
+      : Q.mode === 'sky' ? `<button type="button" class="apnx" data-a="skyend">${right ? 'やったね！ とじる' : 'わかった！ とじる'} ›</button>`
+      : `<button type="button" class="apnx ${right ? '' : 'ng'}" data-a="next">${last ? 'けっかを みる' : 'つぎへ'} ›</button>`;
+    const gain = right && Q.last ? `<p class="gt"><span>${MI}+${Q.last.m}</span>${PP(Q.last.p)}</p>` : '';
+    fb = right ? `<div class="apfb ok">${hanaImg('res_girl_party')}<div><b class="hd">せいかい！</b>${gain}<p class="ex">${R(q.e || '')}</p></div>${btn}</div>`
+      : `<div class="apfb ng"><img src="${IMG}ch_${S.who}.webp" alt=""><div><b class="hd">${Q.mode === 'back' ? 'おしい！ もういちど！' : 'おしい！'} せいかいは「${R(q.a)}」</b><p class="ex">${R(q.e || '')}</p></div>${btn}</div>`;
+  }
+  const bk = Q.mode === 'back' ? '<span class="apsp0"></span>' : back('quit', 'やめる');
+  if(LAY === 'ph') return `<div class="apq ph"><header class="aphd">${bk}<h2>${title}</h2>${prog}</header>${quizScene()}<div class="apqa">${qbox}<div class="apops">${opts}</div>${hint}</div>${fb}</div>`;
+  return `<div class="apq tab"><header class="aphd">${bk}<h2>${title}</h2>${prog}${chips()}</header><div class="apqm"><div class="apql">${quizScene()}${hint}</div><div class="apqr">${qbox}<div class="apops">${opts}</div>${fb}</div></div></div>`;
+}
+function answer(o){
+  if(!Q || Q.ans !== null) return; const q = cur(), A = AS(); Q.ans = o; Q.tries++; const right = o === q.a;
+  A.seen[q.k] = (A.seen[q.k] || 0) + 1; Q.last = null;
+  if(right){
+    delete A.miss[q.k]; A.right++; if(Q.tries === 1 && Q.mode !== 'back') Q.firstOk++;
+    if(Q.mode === 'back'){ Q.firstOkBack = Q.tries === 1; const m = Q.tries === 1 ? 10 : 3, p = Q.tries === 1 ? 3 : 1; Q.last = {m, p}; gain(m, p, 'くうこう かえりの びん'); }
+    else {
+      const m = Q.mode === 'checkin' ? 5 : Q.mode === 'sky' ? 5 : MILE[q.s], p = Math.max(1, Math.ceil((Q.mode === 'checkin' ? 2 : Q.mode === 'sky' ? 2 : PTS[q.s]) * (Q.hint ? .5 : 1)));
+      Q.ok++; Q.pts += p; Q.miles += m; Q.last = {m, p}; gain(m, p, `くうこう ${SCN[Q.mode].t}`);
+    }
+    Q.log[Q.n] = true; snd('ok');
+  } else { A.miss[q.k] = dayNo(); Q.log[Q.n] = false; snd('ng'); }
+  persist(); render();
+}
+function gain(m, p, why){ addMiles(m); try{ addPoints(p, why, true); }catch(e){} }
+
+function finishQuiz(){
+  const A = AS(), tot = Q.qs.length; const R0 = {tot, ok:Q.ok, miles:Q.miles, pts:Q.pts, perfect:Q.ok === tot, got:false, bonus:0};
+  if(Q.mode === 'checkin'){
+    if(Q.ok >= CFG.ciOk && A.daily.earn < CFG.earnDay && A.tix < tixCap()){ A.tix++; A.daily.earn++; R0.got = true; }
+    if(R0.perfect){ R0.bonus = 10; addMiles(10); R0.miles += 10; }
+  } else if(Q.mode === 'tower'){
+    A.daily.tower++; if(R0.perfect){ R0.bonus = 10; addMiles(10); R0.miles += 10; try{ addPoints(10, 'くうこう パーフェクト', true); }catch(e){} R0.pts += 10; }
+  }
+  Q.res = R0; persist(); snd('fan'); try{ confetti(R0.perfect ? 2200 : R0.ok ? 1000 : 300); }catch(e){}
+  go('qres');
+}
+function qres(){
+  const R0 = Q.res, A = AS(), ci = Q.mode === 'checkin';
+  const stars = ci ? '' : `<div class="apst">${[1, 2, 3].map(i => `<i class="${R0.ok >= Math.ceil(R0.tot * i / 3) && R0.ok > 0 ? 'on' : ''}">★</i>`).join('')}</div>`;
+  const big = ci ? (R0.got ? `<div class="apbig"><img class="tk" src="${IMG}ic_ticket.webp" alt=""><b>とうじょうけん ゲット！</b></div>`
+      : `<div class="apbig no"><img class="tk" src="${IMG}ic_ticket.webp" alt=""><b>${R0.ok < CFG.ciOk ? `${CFG.ciOk}もん せいかいで もらえるよ` : A.daily.earn >= CFG.earnDay ? 'きょうの ぶんは ぜんぶ もらったよ' : 'もう いっぱい もっているよ'}</b></div>`) : stars;
+  const head1 = R0.perfect ? 'パーフェクト！' : R0.ok >= Math.ceil(R0.tot / 2) ? 'やったね！' : 'おつかれさま！';
+  const who = ci ? 'sloth' : 'sparrow';
+  const log = `<ul class="aplog">${Q.qs.map((q, i) => `<li class="${Q.log[i] ? 'o' : 'x'}"><i>${Q.log[i] ? '○' : '△'}</i><span>${R(q.t)}</span><b>${R(q.a)}</b></li>`).join('')}</ul>`;
+  const again = ci ? (A.tix < tixCap() && A.daily.earn < CFG.earnDay ? `<button type="button" class="apgo sub" data-a="checkin"><b>もういちど</b></button>` : '')
+    : `<button type="button" class="apgo sub" data-a="tw" data-s="${Q.star}"><b>もういちど</b><small>★${Q.star}</small></button>`;
+  const next = ci ? `<button type="button" class="apgo" data-a="dest"><b>いきさきへ</b><small>とうじょうけん ${A.tix}まい</small></button>` : `<button type="button" class="apgo" data-a="tower"><b>むずかしさを えらぶ</b></button>`;
+  return `<div class="aprs ${LAY} ${R0.perfect ? 'pf' : ''}"><div class="apbox"><div class="rib">${head1}</div>${big}
+    <p class="aprow"><span>${R0.ok}/${R0.tot} せいかい</span><span class="mi">${MI}+${R0.miles}</span><span>${PP(R0.pts)}</span></p>
+    ${R0.bonus ? '<p class="aphl">パーフェクト ボーナス ＋10 マイル！</p>' : ''}
+    <div class="apwh"><img src="${IMG}ch_${who}.webp" alt=""><span class="apbq">${ci ? (R0.got ? 'いってらっしゃい！ いきさきを えらぼう' : 'ゆっくりで いいよ。また ちょうせん しようね') : 'つぎは もっと むずかしいのも いけるかな？'}</span></div>
+    <div class="apbt2">${next}${again}<button type="button" class="apgo sub" data-a="top"><b>くうこうトップへ</b></button></div>${log}</div>
+    ${R0.perfect ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</div>`;
+}
+
+/* ---------- 搭乗 ---------- */
+function depart(){
+  const A = AS(); if(A.tix < 1){ return go('top'); }
+  const T = TN(V.sel || recTown()); A.tix--; A.trip = {town:T.id, ph:'fly', bought:[], t0:0, inOk:false, inDone:false, backFirst:false, miles:0, pts:0};
+  persist(); snd('ok'); V.fq = null; go('gate', {town:T.id});
+}
+function gate(){
+  return `<div class="apgt ${LAY}">${LAY === 'ph' ? `<header class="aphd tp"><span class="apsp"></span>${chips()}</header>` : ''}
+    ${sceneTop('gate ' + (LAY === 'tab' ? 'big' : ''), false)}
+    <div class="apgb"><b>しゅっぱつ！</b><small>とうじょうけんを みせて ひこうきに のるよ…</small><button type="button" class="apskip" data-a="skipgate">スキップ ›</button></div></div>`;
+}
+function flyPlane(){ return `<img class="apfl" src="${IMG}plane.webp" alt="">`; }
+function fly(){
+  const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = TN(tp.town), H = [45, 57];
+  if(!V.fq){ const q = draw(1, q => q.s <= 2 && ['hello', 'cap', 'mech', 'code', 'pic'].includes(q.c))[0]; V.fq = {q, ord:null, ans:null}; V.fq.ord = shuf([q.a].concat(shuf(q.w ? q.w : Array.from(new Set(q.pool)).filter(x => x !== q.a)).slice(0, 3))); }
+  const dx = (T.pin[0] - H[0]) * 1.5, dy = T.pin[1] - H[1]; let ang = Math.atan2(dy, dx) * 180 / Math.PI, flip = false;
+  if(dx < 0){ flip = true; ang = Math.atan2(-dy, -dx) * 180 / Math.PI; }
+  V.fl = {H, T, ang, flip};
+  const route = `<svg class="aprt" viewBox="0 0 150 100" preserveAspectRatio="none"><line x1="${H[0] * 1.5}" y1="${H[1]}" x2="${T.pin[0] * 1.5}" y2="${T.pin[1]}" stroke="#fff" stroke-width="2.4" stroke-dasharray="3 3" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+  const mapv = `<div class="apmap fl"><img class="bg" src="${IMG}map.webp" alt="">${route}
+    <span class="appin dst" style="left:${T.pin[0]}%;top:${T.pin[1]}%;--c:${T.c}"><img src="${IMG}${T.stamp}.webp" alt=""><span>${T.n}</span></span>
+    <span class="apmh" style="left:${H[0]}%;top:${H[1]}%"><img src="${IMG}ic_ticket.webp" alt=""></span>
+    <span class="apfly" id="apfly" style="left:${H[0]}%;top:${H[1]}%;--a:${ang}deg;--f:${flip ? -1 : 1}"><img src="${IMG}plane_sparrow.webp" alt=""></span>
+    ${chr('pelican', 'peli3')}<span class="apbq in cap">ただいま ひこうちゅう！<br>${T.n}へ むかっているよ</span></div>`;
+  const body = `<div class="apfq" id="apfq">${flyCard()}</div>`;
+  const land = `<button type="button" class="apland" data-a="land"><b>${T.n}に とうちゃく！</b><small>タッチして おりよう ›</small></button>`;
+  return `<div class="apfy ${LAY}">${LAY === 'ph' ? `<header class="aphd tp"><span class="apsp"></span>${chips()}</header>` : ''}${mapv}<div class="apfy-b">${body}${land}</div></div>`;
+}
+function flyCard(){
+  const f = V.fq; if(!f || !f.q) return ''; const q = f.q; const done = f.ans !== null, right = done && f.ans === q.a;
+  if(f.skip) return `<div class="apfc"><p class="aphl">きない クイズは おやすみ。とうちゃくまで ゆっくり まってね</p></div>`;
+  const opts = f.ord.map((o, i) => `<button type="button" class="apop ${done ? (o === q.a ? 'ok' : o === f.ans ? 'ng' : 'dim') : ''}" data-a="fans" data-o="${X(o)}" ${done ? 'disabled' : ''}><i>${'ABCD'[i]}</i><span>${R(o)}</span></button>`).join('');
+  return `<div class="apfc"><div class="qh"><span class="qn">きない クイズ</span><span class="cat">${CAT[q.c]}</span>${done ? '' : '<button type="button" class="apsk2" data-a="fskip">スキップ</button>'}</div>
+    ${q.pic ? `<div class="appic sm">${PICS[q.pic]}</div>` : ''}<p class="qt">${R(q.t)}</p><div class="apops">${opts}</div>
+    ${done ? `<p class="apex ${right ? 'ok' : 'ng'}">${right ? 'せいかい！ +10 マイル' : `おしい！ せいかいは「${R(q.a)}」`}<br><small>${R(q.e || '')}</small></p>` : ''}</div>`;
+}
+
+/* ---------- ⑦ 訪問先の まち ---------- */
+function remain(){ const t = AS().trip; return t ? Math.max(0, CFG.stay - Math.floor((Date.now() - t.t0) / 1000)) : 0; }
+const fmtT = s => s >= 60 ? `あと ${Math.ceil(s / 60)}ふん` : `あと ${s}びょう`;
+function visit(){
+  const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = TN(tp.town);
+  clearInterval(TKI); TKI = setInterval(tick, 1000);
+  const cards = T.sv.map(id => { const s = SV(id), own = A.sv[id], can = lastPt() >= s.cost && !own && tp.bought.length < CFG.maxBuy;
+    return `<button type="button" class="apit ${own ? 'own' : ''}" data-a="buy" data-id="${id}" ${own || !can ? 'disabled' : ''}><span class="im"><img src="${s.img}" alt=""></span><b>${s.n}</b><small>${own ? '✔ もっているよ' : `${coinI()}${s.cost}`}</small><em>${own ? (tp.bought.includes(id) ? 'かった！' : 'もってる') : 'かう'}</em></button>`; }).join('');
+  const shop = `<div class="apshop"><div class="sh"><b>おみやげ ショップ</b><span class="bk">かご ${tp.bought.length}/${CFG.maxBuy}</span></div><div class="apig">${cards}</div>
+    <p class="aphl sm">ポイントで じゆうに かいものできるよ。かった おみやげは「わたしの家」にも かざれるよ。</p></div>`;
+  const vs = `<div class="apvs"><img class="bg" src="${IMG}${T.img}.webp" alt="">
+    <div class="apvh"><button type="button" class="apbk" data-a="leave"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>かえる</b></button><h2>${T.n}</h2><span class="aptm" id="aptm">${fmtT(remain())}</span></div>
+    ${chr('pelican', 'peli4', '')}${chr('sparrow', 'spar4', '')}<button type="button" class="aphw v" data-say="hana"><span class="aphi">${hanaImg('res_girl_explore') || hanaImg()}</span></button>
+    <span class="apbb hidden"></span></div>`;
+  if(LAY === 'ph') return `<div class="apv ph">${vs}<div class="apvb">${chips()}${shop}</div></div>`;
+  return `<div class="apv tab">${vs}<aside class="apvr"><header class="aphd tb">${chips()}</header>${shop}</aside></div>`;
+}
+function tick(){
+  if(!ROOT || V.s !== 'visit'){ clearInterval(TKI); TKI = 0; return; }
+  const s = remain(), el = ROOT.querySelector('#aptm'); if(el) el.textContent = fmtT(s);
+  if(s <= 0){ clearInterval(TKI); TKI = 0; timeUp(); }
+}
+async function timeUp(){
+  await dialog(`<div class="apdl"><img src="${IMG}ch_pelican.webp" alt=""></div><h2 class="dlgT">じかんだよ！</h2><p class="dlgP">かえりの びんに のろう。<br>おみやげは ちゃんと もちかえれるよ。</p>`, [{label:'かえる', cls:'gold', v:1}]);
+  if(ROOT && V.s === 'visit') toBack();
+}
+function toBack(){ const A = AS(); if(!A.trip) return; A.trip.ph = 'back'; persist(); startQuiz('back'); go('quiz'); }
+async function leave(){
+  const A = AS(), tp = A.trip; if(!tp) return;
+  if(!tp.bought.length){ const v = await dialog(`<h2 class="dlgT">もう かえる？</h2><p class="dlgP">おみやげを まだ かって いないよ。</p>`, [{label:'もうすこし いる', cls:'white', v:false}, {label:'かえる', cls:'', v:true}]); if(!v) return; }
+  toBack();
+}
+
+/* ---------- 帰り・結果 ---------- */
+function landing(){
+  const A = AS(), tp = A.trip; if(!tp) return go('top');
+  const first = !A.stamps[tp.town]; const stars = 1 + (tp.inOk ? 1 : 0) + (Q && Q.firstOkBack ? 1 : 0);
+  let mm = 0; if(first){ mm += 30; } if(stars === 3) mm += 10;
+  addMiles(mm); A.stamps[tp.town] = A.stamps[tp.town] || today(); A.visits[tp.town] = (A.visits[tp.town] || 0) + 1; A.trips++;
+  const res = {town:tp.town, first, stars, bought:tp.bought.slice(), bonus:mm, inOk:tp.inOk, back:Q && Q.firstOkBack};
+  A.trip = null; Q = null; persist(); snd('fan'); try{ confetti(stars === 3 ? 3000 : 1600); }catch(e){}
+  V.res = res; go('result');
+}
+function result(){
+  const R0 = V.res || {}, T = TN(R0.town) || TOWNS[0], A = AS();
+  const items = R0.bought.length ? `<div class="apsvr">${R0.bought.map(id => `<span><img src="${SV(id).img}" alt=""><b>${SV(id).n}</b></span>`).join('')}</div>` : '<p class="aphl">こんどは おみやげも かってみよう！</p>';
+  return `<div class="aprs ${LAY} trip ${R0.stars === 3 ? 'pf' : ''}"><div class="apbox"><div class="rib">おかえり！</div>
+    <div class="apst">${[1, 2, 3].map(i => `<i class="${i <= R0.stars ? 'on' : ''}">★</i>`).join('')}</div>
+    <div class="apstamp ${R0.first ? 'new' : ''}"><img src="${IMG}${T.stamp}.webp" alt=""><small>${R0.first ? 'はじめての スタンプ！' : `${T.n} ${A.visits[T.id]}かいめ`}</small></div>
+    <h3>${T.n}への たび</h3>${items}
+    <p class="aprow">${R0.first ? `<span class="mi">${MI}はじめての まち +30</span>` : ''}${R0.stars === 3 ? `<span class="mi">${MI}3つ★ +10</span>` : ''}<span class="mi">${MI}${A.miles} マイル</span></p>
+    ${rankBar()}
+    <div class="apwh"><img src="${IMG}ch_pelican.webp" alt=""><span class="apbq">ナイスフライト！ おみやげ、たいせつにね</span>${hanaImg('res_girl_party')}</div>
+    <div class="apbt2"><button type="button" class="apgo" data-a="town"><b>まちに もどる</b></button><button type="button" class="apgo sub" data-a="${A.tix > 0 ? 'dest' : 'top'}"><b>${A.tix > 0 ? 'また たびに でる' : 'くうこうトップへ'}</b>${A.tix > 0 ? `<small>とうじょうけん ${A.tix}まい</small>` : ''}</button><button type="button" class="apgo sub" data-a="pass"><b>パスポートを みる</b></button></div></div>
+    ${R0.stars === 3 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</div>`;
+}
+
+/* ---------- ⑧ パスポート ---------- */
+function pass(){
+  const A = AS(), r = rankNo(A.miles);
+  const stamps = TOWNS.map(t => { const d = A.stamps[t.id]; return `<div class="apsp1 ${d ? 'on' : ''}">${d ? `<img src="${IMG}${t.stamp}.webp" alt="">` : '<i>？</i>'}<b>${t.n}</b><small>${d ? `${A.visits[t.id] || 1}かい` : 'まだ'}</small></div>`; }).join('')
+    + [1, 2].map(() => `<div class="apsp1 lk"><i>${LOCK}</i><b>ともだち</b><small>じゅんびちゅう</small></div>`).join('');
+  const badges = RANKS.map((b, i) => `<div class="apbd ${r > i ? 'on' : ''} ${r === i + 1 ? 'now' : ''}"><img src="${IMG}${b.img}.webp" alt=""><b>${b.n}</b><small>${b.m}マイル〜</small></div>`).join('');
+  const sv = TOWNS.map(t => `<div class="apsv"><h5>${t.n}</h5><div>${t.sv.map(id => { const s = SV(id), o = A.sv[id]; return `<span class="${o ? 'on' : ''}"><img src="${s.img}" alt=""><small>${o ? s.n : '？？？'}</small></span>`; }).join('')}</div></div>`).join('');
+  const nSv = SVS.filter(s => A.sv[s.id]).length;
+  const body = `<div class="apbook"><div class="bh"><img src="${IMG}ch_pelican.webp" alt=""><span class="apbq">${stampN() >= TOWNS.length ? 'ぜんぶの スタンプが そろったね！' : 'スタンプを おしに いこう！'}</span></div>
+      <h4>スタンプ <small>${stampN()} / ${TOWNS.length}</small></h4><div class="apsps">${stamps}</div>
+      <h4>バッジ</h4><div class="apbds">${badges}</div>${rankBar()}</div>
+    <div class="apbook"><h4>おみやげ ずかん <small>${nSv} / ${SVS.length}</small></h4>${sv}<p class="aphl sm">かった おみやげは「わたしの家」の もようがえで かざれるよ</p>${rubyBtn()}</div>`;
+  return `<div class="app ${LAY}">${head('パスポート')}<div class="apbody">${body}</div></div>`;
+}
+
+function after(){
+  if(!ROOT) return;
+  if(V.s === 'gate') FX.push(setTimeout(() => { if(ROOT && V.s === 'gate') go('fly'); }, 2800));
+  if(V.s === 'fly') FX.push(setTimeout(() => {
+    const p = ROOT && ROOT.querySelector('#apfly'); if(!p || !V.fl) return;
+    requestAnimationFrame(() => { p.style.transition = 'left 5s linear, top 5s linear'; p.style.left = V.fl.T.pin[0] + '%'; p.style.top = V.fl.T.pin[1] + '%'; });
+  }, 350));
+  if(V.s === 'top' && LAY === 'tab') FX.push(setTimeout(() => { const z = ROOT && ROOT.querySelector('.apc.spar'); if(z && V.s === 'top') bubble(z, 'いろんな まちに いこう！'); }, 700));
+  if(V.s === 'visit'){ FX.push(setTimeout(() => { const z = ROOT && ROOT.querySelector('.apc.peli4'); if(z && V.s === 'visit') bubble(z, 'おみやげを えらんでね'); }, 600)); }
+}
+async function checkRank(){
+  if(RK || !ROOT) return; const A = AS(), r = rankNo(A.miles);
+  if(r > A.rankShown){ RK = true; A.rankShown = r; persist(); const R0 = RANKS[r - 1]; snd('fan'); try{ confetti(2400); }catch(e){}
+    await dialog(`<div class="apdl"><img class="bdg" src="${IMG}${R0.img}.webp" alt=""><img src="${IMG}ch_sparrow.webp" alt=""></div><h2 class="dlgT">ランク アップ！</h2><p class="dlgP">「<b>${R0.n}</b>」に なったよ！<br>${R0.open}</p>`, [{label:'やったー！', cls:'gold', v:1}]);
+    RK = false; if(ROOT) render(); }
+  else if(r < A.rankShown) A.rankShown = r;
+}
+
+/* ---------- タッチ ---------- */
+async function say(img, title, msg){ await dialog(`<div class="apdl"><img src="${IMG}ch_${img}.webp" alt=""></div><h2 class="dlgT">${title}</h2><p class="dlgP">${msg}</p>`, [{label:'OK', cls:'', v:1}]); }
+function keepScroll(fn){
+  const sel = '.apbody, .apr, .apqa, .apvb, .apvr, .aprp, .aprs'; const y = ROOT ? Array.from(ROOT.querySelectorAll(sel)).map(e => e.scrollTop) : [];
+  fn(); if(ROOT) Array.from(ROOT.querySelectorAll(sel)).forEach((e, i) => { if(y[i]) e.scrollTop = y[i]; });
+}
+async function leaveQuiz(){
+  if(Q && V.s === 'quiz' && Q.mode !== 'back' && Q.mode !== 'sky' && (Q.n > 0 || Q.ans !== null)){
+    const v = await dialog('<h2 class="dlgT">とちゅうで やめる？</h2><p class="dlgP">ここまでの マイルと ポイントは もらえるよ。</p>', [{label:'つづける', cls:'white', v:false}, {label:'やめる', cls:'', v:true}]);
+    return !!v;
+  }
+  return true;
+}
+document.addEventListener('click', async e => {
+  if(!ROOT || !ROOT.contains(e.target)) return;
+  const sy = e.target.closest('[data-say]');
+  if(sy && !e.target.closest('[data-a]')){
+    const key = String(sy.dataset.say).replace(/\d$/, ''); const A = AS();
+    const L = (V.s === 'visit' && A.trip && TN(A.trip.town) && TN(A.trip.town).say) || SAY[key] || SAY.spar; snd('tap');
+    if(sy.classList.contains('apbq')){ sy.textContent = pick(L); sy.classList.remove('pop'); void sy.offsetWidth; sy.classList.add('pop'); } else bubble(sy, pick(L)); return;
+  }
+  const t = e.target.closest('[data-a]'); if(!t || t.disabled) return; const a = t.dataset.a, A = AS();
+  if(a === 'town'){ if(!(await leaveQuiz())) return; return close(); }
+  if(a === 'top' || a === 'pass'){ Q = null; return go(a); }
+  if(a === 'tower'){ Q = null; return go('tower'); }
+  if(a === 'dest'){ Q = null; return go('dest'); }
+  if(a === 'quit'){ if(!(await leaveQuiz())) return; const m = Q && Q.mode; Q = null; if(m === 'sky') return close(); return go(m === 'tower' ? 'tower' : 'top'); }
+  if(a === 'checkin'){
+    if(A.daily.earn >= CFG.earnDay) return say('sloth', 'きょうは おしまい', 'とうじょうけんは きょう もう いっぱい もらったよ。<br>また あした きてね！');
+    if(A.tix >= tixCap()) return say('sloth', 'もう いっぱい！', `とうじょうけんを ${A.tix}まい もっているよ。<br>まず ひこうきに のって つかおう！`);
+    startQuiz('checkin'); return go('quiz');
+  }
+  if(a === 'tw'){ startQuiz('tower', {star:+t.dataset.s}); return go('quiz'); }
+  if(a === 'sel'){ V.sel = t.dataset.t; snd('tap'); return keepScroll(render); }
+  if(a === 'qrsoon'){ snd('ng'); return toast('ともだちの まちは じゅんびちゅう！ もうすこし まっててね'); }
+  if(a === 'ruby'){ const m = A.settings.ruby; A.settings.ruby = m === 'hard' ? 'all' : m === 'all' ? 'none' : 'hard'; persist(); snd('tap'); return keepScroll(render); }
+  if(a === 'ans') return answer(t.dataset.o);
+  if(a === 'hint'){ if(!Q || Q.hint || Q.ans !== null) return; const q = cur(); Q.hint = true; Q.cut = pick(Q.ord.filter(o => o !== q.a)); snd('tap'); return render(); }
+  if(a === 'retry'){ if(!Q) return; const prev = Q.ans; Q.ans = null; Q.hint = true; Q.cut = prev; snd('tap'); return render(); }
+  if(a === 'next'){ if(!Q) return; if(Q.n + 1 < Q.qs.length){ Q.n++; newOrder(); snd('tap'); return render(); } return finishQuiz(); }
+  if(a === 'skyend'){ return close(); }
+  if(a === 'depart') return depart();
+  if(a === 'skipgate'){ return go('fly'); }
+  if(a === 'fans'){
+    const f = V.fq; if(!f || f.ans !== null) return; f.ans = t.dataset.o; const ok = f.ans === f.q.a; AS().seen[f.q.k] = (AS().seen[f.q.k] || 0) + 1;
+    if(ok){ if(AS().trip){ AS().trip.inOk = true; } gain(10, 3, 'くうこう きない クイズ'); snd('ok'); delete AS().miss[f.q.k]; } else { AS().miss[f.q.k] = dayNo(); snd('ng'); }
+    persist(); const el = ROOT.querySelector('#apfq'); if(el) el.innerHTML = flyCard(); ROOT.querySelectorAll('.apchips').forEach(c => c.outerHTML = chips()); return checkRank();
+  }
+  if(a === 'fskip'){ if(V.fq){ V.fq.skip = true; } const el = ROOT.querySelector('#apfq'); if(el) el.innerHTML = flyCard(); return; }
+  if(a === 'land'){ const tp = A.trip; if(!tp) return go('top'); tp.ph = 'visit'; tp.t0 = Date.now(); persist(); snd('ok'); return go('visit'); }
+  if(a === 'buy'){
+    const tp = A.trip, s = SV(t.dataset.id); if(!tp || !s || A.sv[s.id]) return;
+    if(tp.bought.length >= CFG.maxBuy) return toast(`1かいの たびで ${CFG.maxBuy}こ までだよ`);
+    if(lastPt() < s.cost){ snd('ng'); return toast('ポイントが たりないよ'); }
+    try{ addPoints(-s.cost, `くうこう おみやげ：${s.n}`, true); }catch(e){}
+    A.sv[s.id] = 1; tp.bought.push(s.id); AS(); persist(); snd('fan'); try{ confetti(900); }catch(e){}
+    toast(`「${s.n}」を ゲット！ わたしの家にも かざれるよ`); return keepScroll(render);
+  }
+  if(a === 'leave') return leave();
+  if(a === 'landing') return landing();
+}, true);
+
+/* ---------- 町の「くうこう」に つなぐ ---------- */
+let swap = null;
+const restore = () => { if(swap && save.town && save.town.cells[swap.k] === '__ap662') save.town.cells[swap.k] = swap.id; swap = null; };
+window.addEventListener('pointerup', e => {
+  if(typeof curScreen === 'undefined' || curScreen !== 'town' || townEdit || !save.town) return;
+  if(e.target.closest('#townMap .walker,.car2')) return;
+  const c = e.target.closest('#townMap .cell'); if(!c) return;
+  const k = `${c.dataset.x},${c.dataset.y}`; if(save.town.cells[k] !== 'airport') return;
+  restore(); swap = {k, id:'airport'}; save.town.cells[k] = '__ap662'; setTimeout(restore, 600);
+}, true);
+window.addEventListener('click', e => {
+  if(!swap) return; const c = e.target.closest && e.target.closest('#townMap .cell'); const s = swap; restore();
+  if(!c || `${c.dataset.x},${c.dataset.y}` !== s.k) return;
+  e.stopImmediatePropagation(); e.preventDefault(); snd('fan'); open(s.k);
+}, true);
+try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
+
+/* ---------- まちの 空を とぶ ひこうき（タッチ → スズメの ミニクイズ） ---------- */
+const placed = () => { try{ return !!(save.town && save.town.cells && Object.values(save.town.cells).includes('airport')); }catch(e){ return false; } };
+let lastFly = Date.now() - 38000;
+function dropFly(){ const f = document.getElementById('ap662fly'); if(f) f.remove(); }
+function spawnFly(){
+  const A = AS(); lastFly = Date.now();
+  const f = document.createElement('div'); f.id = 'ap662fly';
+  f.innerHTML = `<button type="button" class="apfb2"><img src="${IMG}plane_sparrow.webp" alt="">${A.planeHint ? '' : '<span class="apbb2">ひこうきを タッチ！</span>'}</button>`;
+  f.addEventListener('animationend', ev => { if(ev.animationName === 'apcross') dropFly(); });
+  f.querySelector('button').addEventListener('click', ev => { ev.stopPropagation(); dropFly(); snd('fan'); A.planeHint = 1; persist(); open(null, {sky:true}); });
+  document.body.appendChild(f); if(!A.planeHint){ A.planeHint = 1; persist(); }
+}
+setInterval(() => {
+  try{
+    const onTown = typeof curScreen !== 'undefined' && curScreen === 'town' && !townEdit && !ROOT;
+    if(!onTown){ dropFly(); return; }
+    if(document.getElementById('ap662fly') || !placed()) return;
+    const A = AS(); if(A.daily.sky >= CFG.skyDay) return;
+    if(document.querySelector('#dlg.show')) return;
+    if(Date.now() - lastFly < 48000) return;
+    spawnFly();
+  }catch(e){}
+}, 2500);
+
+/* ---------- BGM：くうこうの なかは 小さめ ---------- */
+try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#ap662') || v === 0) return v;
+  if(Q && V.s === 'quiz') return Q.ans === null ? Math.min(v, .06) : Math.min(v, .09); return Math.min(v, .12); }; } }catch(e){}
+try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
+window.__ap662 = {open, close, AS, QS, TOWNS, SVS, RANKS, CFG, render, startQuiz, go, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }, depart, landing, spawnFly};
+
+/* ---------- CSS ---------- */
+const css = document.createElement('style');
+css.textContent = `#ap662{position:fixed;inset:0;z-index:66;opacity:0;transition:opacity .22s;background:linear-gradient(180deg,#BFE5FA,#F6EFD9);overflow:hidden;color:#3A2E22;touch-action:manipulation}
+#ap662.show{opacity:1}
+body.ap662on{overflow:hidden}
+#ap662 button{font:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer}
+#ap662 .hidden{display:none!important}
+#ap662 ruby{ruby-position:over}#ap662 rt{font-size:.5em;font-weight:800;line-height:1;letter-spacing:0}
+#ap662 img{-webkit-user-drag:none;user-select:none}
+.apw{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.apw>div{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+#ap662.ph.wide .apw{max-width:520px;margin:0 auto;box-shadow:0 0 30px rgba(0,0,0,.15)}
+/* ヘッダー */
+.aphd{position:relative;z-index:5;display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 10px 6px;flex:none}
+.aphd h2{flex:1;min-width:0;margin:0;text-align:center;font-size:clamp(15px,4.6vw,20px);color:#1F3F7A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
+.aphd.tp{justify-content:space-between}.apsp{flex:1}
+.aphd.tb{padding:calc(8px + env(safe-area-inset-top)) 0 4px;justify-content:flex-end}
+.aphm,.apbk{display:flex;align-items:center;gap:3px;border:3px solid #fff;background:rgba(255,255,255,.95);border-radius:999px;padding:5px 11px 5px 7px;color:#2E6FB5;box-shadow:0 2px 6px rgba(0,0,0,.15);white-space:nowrap;flex:none}
+.aphm svg,.apbk svg{width:20px;height:20px}.aphm b,.apbk b{font-size:13px}
+.apchips{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.95);border-radius:999px;padding:3px 10px;box-shadow:0 2px 6px rgba(0,0,0,.15);flex:none}
+.apchips span{display:flex;align-items:center;gap:2px}.apchips img{width:20px;height:20px;object-fit:contain}.apchips b{font-size:13px;color:#5A3A1A}
+.apchips .mi img{width:32px;height:auto}.apchips small{font-size:10px;color:#7A6A55;font-weight:800}
+.apchips .tk img{width:26px}.apchips .tk b{color:#2E6FB5}
+.apbq{position:relative;display:inline-block;background:#fff;border:3px solid #9FC3E8;border-radius:18px;padding:6px 12px;font-size:14px;font-weight:900;color:#2A3A5A;box-shadow:0 3px 8px rgba(0,0,0,.12);line-height:1.5;cursor:pointer}
+.apbq.pop,.apbb.pop{animation:appop .35s}@keyframes appop{from{transform:scale(.6)}to{transform:scale(1)}}
+.apbb{position:absolute;z-index:8;width:170px;background:#fff;border:3px solid #6B4A2A;border-radius:16px;padding:5px 8px;font-size:13px;font-weight:900;color:#4A3420;text-align:center;pointer-events:none}
+/* シーン（イラスト） */
+.apsc{position:relative;overflow:hidden;background:#BFE3F7}
+.apsc>img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.apc{position:absolute;border:none;background:none;padding:0;transform:translate(-50%,-100%);z-index:3;filter:drop-shadow(0 3px 3px rgba(0,0,0,.28));animation:apbob 2.6s ease-in-out infinite alternate}
+.apc img{display:block;width:100%;height:auto;pointer-events:none}
+@keyframes apbob{from{margin-top:0}to{margin-top:-5px}}
+.apc.spar{animation-duration:1.8s}
+.aphw{position:absolute;bottom:1%;left:30%;display:flex;align-items:flex-end;height:27%;border:0;background:none;padding:0;z-index:3;animation:apwalk 11s linear infinite alternate;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
+@keyframes apwalk{from{left:24%}to{left:58%}}
+.aphi{display:block;height:100%;animation:apflp 22s linear infinite}
+.aphi img{display:block;height:100%;width:auto;animation:apstep .45s ease-in-out infinite alternate}
+@keyframes apflp{0%,49.9%{transform:scaleX(1)}50%,100%{transform:scaleX(-1)}}
+@keyframes apstep{from{transform:translateY(0)}to{transform:translateY(-4%)}}
+.apsg{white-space:nowrap;position:absolute;left:50%;top:3%;transform:translateX(-50%);z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;padding:2px 24px 5px;background:linear-gradient(180deg,#FFFBEF,#FFEFC8);border:3px solid #E8B04A;border-radius:16px;box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.apsg small{font-size:clamp(9px,2.6vw,12px);font-weight:900;color:#E8608A;letter-spacing:2px}
+.apsg b{font-size:clamp(22px,7vw,34px);font-weight:900;color:#2E6FB5;letter-spacing:4px;line-height:1.1}
+.apfp{position:absolute;top:9%;left:-30%;width:26%;pointer-events:none;z-index:2;animation:apdrift 28s linear infinite;opacity:.95}
+@keyframes apdrift{from{left:-30%}to{left:110%}}
+/* トップ スマホ */
+.apt.ph{background:linear-gradient(180deg,#A9D8F5,#F1E7D2)}
+.apt.ph .apsc.top{flex:none;width:min(100%,calc((100dvh - 296px) * .8));aspect-ratio:4/5;margin:0 auto;border-radius:0 0 24px 24px;border:4px solid #fff;border-top:0;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.apt.ph .apsc.top>img.bg{object-position:60.6% 50%}
+.apt.ph .apc.spar{left:74%;top:17%;width:12%}
+.apt.ph .apc.slo{left:15%;top:99%;width:17%}
+.apt.ph .apc.peli{left:85%;top:99%;width:19%}
+.apt.ph .apsg{top:2%}
+.apbt{display:flex;flex-direction:column;gap:7px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));flex:1;min-height:0;justify-content:flex-start;overflow-y:auto}
+.apm4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.apmb{border:4px solid #fff;border-radius:22px;display:flex;align-items:center;gap:8px;color:#fff;padding:4px 8px 4px 4px;min-height:66px;background:linear-gradient(180deg,var(--a),var(--b));box-shadow:0 5px 0 var(--d),0 7px 12px rgba(0,0,0,.18);text-align:left;text-shadow:0 2px 0 rgba(0,0,0,.18)}
+.apmb:active{transform:translateY(3px);box-shadow:0 2px 0 var(--d)}
+.apmb .ic{flex:none;width:52px;height:52px;border-radius:50%;border:3px solid #fff;background:#fff;object-fit:cover;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.apmb span{display:flex;flex-direction:column;min-width:0}.apmb b{font-size:clamp(13.5px,3.9vw,17px);line-height:1.25}.apmb small{font-size:10.5px;font-weight:800;opacity:.97;line-height:1.3}
+.apmb.pk{--a:#FF8FB0;--b:#EE5D88;--d:#C23E68}.apmb.bl{--a:#5FB4F5;--b:#2E86E0;--d:#1C62B0}.apmb.gr{--a:#6FD07A;--b:#33AE4C;--d:#1F8436}.apmb.or{--a:#FFB04A;--b:#F2861E;--d:#C2620C}
+.apsub{display:flex;justify-content:center;gap:6px}
+.aprb{border:2.5px solid #fff;background:#fff;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:900;color:#5A4430;box-shadow:0 2px 4px rgba(0,0,0,.12);white-space:nowrap}.aprb b{color:#2E6FB5}.aprb span::after{content:"："}
+.aprk{display:flex;align-items:center;gap:8px;background:#fff;border-radius:16px;padding:4px 10px 4px 6px;box-shadow:0 2px 4px rgba(0,0,0,.08)}
+.aprk img{width:42px;flex:none}.aprk>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.aprk b{font-size:13px;color:#6B3A12}.aprk small{font-size:11px;color:#7A6A55;font-weight:800}
+.aprk .br{display:block;height:9px;border-radius:99px;background:#EEE6DA;overflow:hidden}.aprk .br i{display:block;height:100%;background:linear-gradient(90deg,#7FD0F5,#2E86E0)}
+/* トップ iPad */
+.apt.tab{flex-direction:row;background:linear-gradient(180deg,#BFE5FA,#F2EAD6)}
+.apsw{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;padding:calc(10px + env(safe-area-inset-top)) 0 calc(10px + env(safe-area-inset-bottom)) 12px}
+.apsc.big{width:min(100%,calc((100dvh - 24px) * 1.5));aspect-ratio:3/2;border-radius:22px;border:4px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.apt.tab .apc.spar{left:68%;top:17%;width:6%}.apt.tab .apc.slo{left:10%;top:97%;width:9.5%}.apt.tab .apc.peli{left:91%;top:97%;width:10%}
+.apt.tab .aphw{height:25%;animation-name:apwalk2}@keyframes apwalk2{from{left:22%}to{left:62%}}
+.apt.tab .apsg{top:3%;left:30%}
+.aprp{flex:none;width:330px;display:flex;flex-direction:column;gap:10px;padding:0 12px calc(12px + env(safe-area-inset-bottom));overflow-y:auto}
+.aprp .apm4{grid-template-columns:1fr}
+.aprp .apmb{min-height:78px}.aprp .apmb .ic{width:60px;height:60px}.aprp .apmb b{font-size:19px}.aprp .apmb small{font-size:12px}
+.aptip{display:flex;align-items:flex-end;gap:4px;margin-top:auto}.aptip img{width:64px}.aptip .apbq{font-size:12.5px}
+/* かんせいとう えらび */
+.aptw{background:linear-gradient(180deg,#DDF1FF,#FFF6E6)}
+.apbody{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:0 12px calc(12px + env(safe-area-inset-bottom))}
+.aptw.tab .apbody,.app.tab .apbody{flex-direction:row;align-items:flex-start}
+.apsc.qs{border-radius:18px;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15);aspect-ratio:3/2;flex:none}
+.aptw.ph .apsc.qs{width:100%}.aptw.tab .apsc.qs{width:55%}
+.apsc .apbq.in{position:absolute;left:8px;top:8px;max-width:62%;font-size:12.5px;z-index:6;cursor:default}
+.apc.spar2{left:50%;top:78%;width:17%}
+.apcol{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}.apcol h4{margin:0;text-align:center;color:#2E6FB5;font-size:17px}
+.apdf{border:4px solid #fff;border-radius:18px;min-height:62px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(0,0,0,.2);text-shadow:0 1px 0 rgba(0,0,0,.25);padding:4px 8px}
+.apdf b{font-size:18px}.apdf small{font-size:11.5px;font-weight:800}
+.apdf.n{background:linear-gradient(180deg,#6FD07A,#33AE4C)}.apdf.h{background:linear-gradient(180deg,#FFB04A,#F2861E)}.apdf.s{background:linear-gradient(180deg,#FF7A8A,#D8304A)}
+.aphl{margin:0;background:#fff;border-radius:14px;padding:8px 10px;font-size:13px;font-weight:800;line-height:1.7;color:#5A4430}.aphl.sm{font-size:11.5px;color:#7A8AA5}
+.apcol .aprb{align-self:center}
+/* クイズ */
+.apq{background:linear-gradient(180deg,#DDF1FF,#FFF4F7)}
+.appg{display:flex;align-items:center;gap:6px;flex:none}.appg .bar{width:84px;height:10px;border-radius:99px;background:#fff;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.15)}.appg .bar i{display:block;height:100%;background:linear-gradient(90deg,#7FD0F5,#2E86E0);transition:width .4s}
+.appg b{font-size:18px;color:#2E6FB5}.appg small{font-size:12px;color:#7A8AA5}
+.apq.ph .apsc.qs{margin:0 10px;aspect-ratio:16/8.6}
+.apwho{position:absolute;z-index:3;transform:translate(-50%,-100%);filter:drop-shadow(0 3px 3px rgba(0,0,0,.28));animation:apbob 2.2s ease-in-out infinite alternate}
+.apwho img{display:block;width:100%;height:auto}
+.apsc.qs.checkin .apwho{left:47%;top:74%;width:15%}
+.apsc.qs.tower .apwho,.apsc.qs.sky .apwho{left:50%;top:66%;width:14%}
+.apsc.qs.back .apwho{left:82%;top:100%;width:17%}
+.aphero{position:absolute;left:11%;bottom:0;height:64%;z-index:4;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
+.aphero img{display:block;height:100%;width:auto}
+.aphero.joy img{animation:apjoy .5s ease-in-out 3}.aphero.think img{animation:apthink 1s ease-in-out infinite alternate}
+@keyframes apjoy{0%,100%{transform:translateY(0)}50%{transform:translateY(-12%)}}@keyframes apthink{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+.apsc.qs.back .aphero{left:40%}
+.apqa{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 10px calc(10px + env(safe-area-inset-bottom))}
+.apqb{background:#fff;border:3px solid #CFE0F2;border-radius:18px;padding:8px 12px}
+.apqb .qh,.apfc .qh{display:flex;align-items:center;gap:6px}
+.qn{background:#2E86E0;color:#fff;border-radius:8px;padding:0 8px;font-size:12px;font-weight:900}.cat{background:#EAF3FC;color:#2E6FB5;border-radius:99px;padding:0 8px;font-size:11px;font-weight:900}
+.qh .stars{margin-left:auto;color:#F2A33A;font-size:14px;letter-spacing:-1px}.qh .stars i{font-style:normal;color:#E0E4EA}
+.qt{margin:4px 0 0;font-size:clamp(16px,4.6vw,20px);font-weight:900;line-height:1.8;color:#2A3A5A}
+.appic{width:86px;height:86px;margin:6px auto 0;border-radius:14px;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.2)}.appic svg{display:block;width:100%;height:100%}.appic.sm{width:64px;height:64px}
+.apops{display:flex;flex-direction:column;gap:7px}
+.apop{display:flex;align-items:center;gap:8px;min-height:54px;border:3px solid #CFE0F2;background:#fff;border-radius:16px;padding:6px 10px;text-align:left;box-shadow:0 3px 0 #CFE0F2;font-size:16px;font-weight:900;color:#2A3A5A;line-height:1.6}
+.apop i{flex:none;width:26px;height:26px;border-radius:50%;background:#3BAF6A;color:#fff;font-style:normal;font-size:14px;line-height:26px;text-align:center}
+.apop:nth-child(2) i{background:#2E86E0}.apop:nth-child(3) i{background:#F2A33A}.apop:nth-child(4) i{background:#E8608A}
+.apop span{flex:1;min-width:0;overflow-wrap:anywhere}.apop:active{transform:translateY(2px)}
+.apop.ok{background:#E3F7E8;border-color:#3BAF6A;box-shadow:0 3px 0 #3BAF6A}.apop.ng{background:#FFF0DD;border-color:#F2A33A;box-shadow:0 3px 0 #F2A33A}.apop.dim{opacity:.45}.apop.cut{opacity:.2;text-decoration:line-through}
+.aphn{display:flex;align-items:center;gap:8px;border:3px solid #F5B5C6;background:#FFF1F5;border-radius:16px;padding:4px 10px;text-align:left}
+.aphn img{width:44px}.aphn b{font-size:15px;color:#D04A75;display:block}.aphn small{font-size:11px;color:#A07080;font-weight:800}.aphn.used{opacity:.6}
+.apfb{position:absolute;left:0;right:0;bottom:0;z-index:10;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;background:#fff;border-radius:22px 22px 0 0;padding:10px 12px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -6px 18px rgba(0,0,0,.2);border-top:5px solid #3BAF6A;animation:apup .25s}
+@keyframes apup{from{transform:translateY(100%)}}
+.apfb.ng{border-top-color:#F2A33A}
+.apfb>img{width:64px;grid-row:1}.apfb .hd{font-size:18px;color:#E8414B;display:block}.apfb.ng .hd{color:#C0702A;font-size:15.5px;line-height:1.5}
+.apfb .gt{margin:2px 0;font-weight:900;color:#B5701C;display:flex;gap:10px}.apfb .ex{margin:0;font-size:13.5px;font-weight:800;line-height:1.75;color:#3A2E22}
+.apfb .hana img,.apfb>img{max-height:88px;width:auto;max-width:90px;object-fit:contain}
+.apnx{grid-column:1 / -1;min-height:54px;border:4px solid #fff;border-radius:20px;background:linear-gradient(180deg,#5FB4F5,#2E86E0);color:#fff;font-size:19px;font-weight:900;box-shadow:0 4px 0 #1C62B0}
+.apnx.ng{background:linear-gradient(180deg,#FFB04A,#F2861E);box-shadow:0 4px 0 #C2620C}
+.apq.tab .apqm{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;padding:0 16px calc(12px + env(safe-area-inset-bottom))}
+.apq.tab .apql{display:flex;flex-direction:column;gap:10px;justify-content:center}.apq.tab .apql .apsc.qs{width:100%}
+.apq.tab .apqr{display:flex;flex-direction:column;gap:10px;justify-content:center;overflow-y:auto;position:relative}
+.apq.tab .qt{font-size:22px}.apq.tab .apops{display:grid;grid-template-columns:1fr 1fr}.apq.tab .apop{min-height:70px;font-size:19px}
+.apq.tab .apfb{position:relative;border-radius:20px;border:5px solid #3BAF6A;animation:appop .3s;padding:10px 12px}.apq.tab .apfb.ng{border-color:#F2A33A}
+/* 結果 */
+.aprs{background:radial-gradient(circle at 50% 30%,#FFF6D6,#BFE5FA);align-items:center;justify-content:flex-start;overflow-y:auto}
+.apbox{position:relative;width:min(560px,calc(100% - 20px));margin:calc(24px + env(safe-area-inset-top)) auto calc(14px + env(safe-area-inset-bottom));background:#fff;border-radius:26px;border:5px solid #FFD24A;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:26px 14px 14px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.aprs.tab .apbox{width:min(720px,calc(100% - 40px))}
+.apbox .rib{position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#FF6B8A,#E8414B);color:#fff;font-size:24px;font-weight:900;padding:4px 30px;border-radius:12px;white-space:nowrap}
+.apbox h3{margin:0;font-size:20px;color:#2E6FB5}
+.apst{display:flex;gap:6px;justify-content:center;font-style:normal}.apst i{font-style:normal;font-size:46px;color:#DDE3EA;text-shadow:0 2px 0 #fff}.apst i.on{color:#FFC93A;text-shadow:0 3px 0 #C98A00;animation:apstp .5s cubic-bezier(.2,1.6,.4,1) both}.apst i:nth-child(2).on{animation-delay:.15s}.apst i:nth-child(3).on{animation-delay:.3s}
+@keyframes apstp{from{transform:scale(2.4);opacity:0}to{transform:scale(1);opacity:1}}
+.apbig{display:flex;flex-direction:column;align-items:center;gap:4px}.apbig .tk{width:min(50vw,200px);animation:apstp .6s cubic-bezier(.2,1.6,.4,1) both}.apbig b{font-size:20px;color:#2E6FB5}.apbig.no .tk{filter:grayscale(.8);opacity:.6;animation:none}.apbig.no b{color:#B5701C;font-size:15px}
+.aprow{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0}.aprow span{background:#EAF3FC;border-radius:99px;padding:3px 12px;font-weight:900;color:#2E6FB5;font-size:14px}.aprow .mi{background:#FFF6DC;color:#B5701C}
+.apwh{display:flex;align-items:flex-end;gap:6px}.apwh>img{width:76px}.apwh .apbq{font-size:13px}.apwh>span+img{width:72px;max-height:100px;object-fit:contain}
+.apbt2{display:grid;grid-template-columns:1fr;gap:8px;width:100%}.aprs.tab .apbt2{grid-template-columns:1fr 1fr 1fr}
+.apstamp{display:flex;flex-direction:column;align-items:center}.apstamp img{width:min(40vw,150px);transform:rotate(-8deg);animation:apstp .7s cubic-bezier(.2,1.6,.4,1) .3s both}.apstamp small{font-weight:900;color:#B5701C}.apstamp.new small{color:#E8414B}
+.apsvr{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.apsvr span{display:flex;flex-direction:column;align-items:center;background:#FFF6E6;border-radius:14px;padding:4px 8px;width:92px}.apsvr img{width:56px;height:56px;object-fit:contain}.apsvr b{font-size:11px;text-align:center;line-height:1.3}
+.aplog{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:4px}
+.aplog li{display:flex;align-items:center;gap:6px;background:#F6FAFF;border-radius:10px;padding:4px 8px;font-size:12px;font-weight:800;line-height:1.7}.aplog li i{font-style:normal;font-size:16px;color:#3BAF6A}.aplog li.x i{color:#F2A33A}.aplog li span{flex:1}.aplog li b{color:#2E6FB5;max-width:40%}
+.fw{position:absolute;width:120px;height:120px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#fff 0 6%,transparent 7%),repeating-conic-gradient(#FFD24A 0 6deg,transparent 6deg 24deg);animation:apfw 1.6s ease-out infinite}
+.fw.a{left:6%;top:10%}.fw.b{right:6%;top:18%;animation-delay:.5s;filter:hue-rotate(120deg)}.fw.c{left:40%;top:4%;animation-delay:1s;filter:hue-rotate(250deg)}
+@keyframes apfw{from{transform:scale(.2);opacity:1}to{transform:scale(1.5);opacity:0}}
+.apgo{min-height:56px;border:4px solid #fff;border-radius:22px;background:linear-gradient(180deg,#6FD07A,#33AE4C);color:#fff;font-size:19px;font-weight:900;box-shadow:0 5px 0 #1F8436,0 7px 12px rgba(0,0,0,.15);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 16px;text-shadow:0 2px 0 rgba(0,0,0,.2)}
+.apgo small{font-size:11.5px;font-weight:800;opacity:.95}.apgo.sub{background:linear-gradient(180deg,#5FB4F5,#2E86E0);box-shadow:0 5px 0 #1C62B0,0 7px 12px rgba(0,0,0,.15)}
+.apgo:active{transform:translateY(3px)}
+/* いきさき */
+.apds{background:linear-gradient(180deg,#BFE5FA,#F2EAD6)}
+.apmap{position:relative;aspect-ratio:3/2;flex:none;border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.18);background:#7FC4F0}
+.apmap>img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.appin{position:absolute;transform:translate(-50%,-50%);border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:1px;z-index:3}
+.appin img{width:clamp(36px,11vw,58px);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));transition:transform .2s}
+.appin span{background:#fff;border:2px solid var(--c);color:var(--c);border-radius:99px;padding:0 8px;font-size:clamp(10px,2.8vw,13px);font-weight:900;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.appin.on img{transform:scale(1.25);filter:drop-shadow(0 0 6px #FFD24A) drop-shadow(0 2px 3px rgba(0,0,0,.35))}.appin.on span{background:var(--c);color:#fff}
+.appin i{position:absolute;right:-4px;top:-4px;background:#3BAF6A;color:#fff;font-style:normal;font-size:11px;font-weight:900;width:18px;height:18px;border-radius:50%;line-height:18px;text-align:center;border:2px solid #fff}
+.apmh{position:absolute;transform:translate(-50%,-50%);z-index:2;pointer-events:none}.apmh img{width:clamp(30px,8vw,46px);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.apc.peli3{left:93%;top:20%;width:9%}.apc.slo3{left:7%;top:24%;width:7.5%}
+.aptl{display:flex;flex-direction:column;gap:8px}
+.aptc{position:relative;display:flex;align-items:center;gap:8px;border:4px solid #fff;background:#fff;border-radius:20px;padding:5px 8px 5px 5px;text-align:left;box-shadow:0 3px 8px rgba(0,0,0,.1)}
+.aptc.on{border-color:var(--c,#2E86E0);box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#2E86E0) 35%,transparent),0 3px 8px rgba(0,0,0,.12)}
+.aptc .th{position:relative;flex:none;width:108px;aspect-ratio:3/2;border-radius:12px;overflow:hidden}.aptc .th img{width:100%;height:100%;object-fit:cover}
+.aptc .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.aptc .tx b{font-size:17px;color:var(--c,#2E6FB5)}.aptc .tx small{font-size:11.5px;font-weight:800;color:#5A6A80;line-height:1.4}
+.aptc .sv{display:flex;gap:3px;margin-top:2px}.aptc .sv img{width:24px;height:24px;object-fit:contain}.aptc .sv img.no{filter:brightness(0) opacity(.22)}
+.aptc .st{position:absolute;right:38px;top:2px;width:32px;height:32px}
+.aptc .ar{flex:none;width:30px;height:30px;border-radius:50%;background:var(--c,#2E86E0);color:#fff;font-style:normal;font-weight:900;font-size:22px;line-height:28px;text-align:center}
+.aptc .rb{position:absolute;left:3px;top:3px;font-style:normal;font-size:10.5px;font-weight:900;background:#FFD24A;color:#8A4A00;border-radius:99px;padding:0 7px;border:2px solid #fff}
+.aptc.lk{filter:grayscale(.85);opacity:.75}.aptc.lk .ar{background:none;font-size:16px}.qrth{display:flex;align-items:center;justify-content:center;background:#9AA5B5}.qrth svg{width:60%}
+.apdb{flex:none;display:flex;align-items:center;gap:10px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);box-shadow:0 -3px 10px rgba(0,0,0,.1)}
+.apdb .tkn{display:flex;align-items:center;gap:4px;font-weight:900;color:#5A4430;flex:none}.apdb .tkn img{width:40px}.apdb .tkn b{font-size:24px;color:#2E6FB5}
+.apdb .apgo{flex:1}
+.apds.tab .apbody{flex-direction:row;align-items:stretch}.apds.tab .apl{flex:1.25;min-width:0;display:flex;flex-direction:column;gap:10px}.apds.tab .apr{flex:1;min-width:0;overflow-y:auto}
+.apds.tab .apdb{border-radius:18px;box-shadow:0 3px 8px rgba(0,0,0,.1)}
+/* 搭乗・フライト */
+.apgt .apsc.top{flex:none;margin:calc(8px + env(safe-area-inset-top)) auto 0;width:min(100%,calc((100dvh - 230px) * .8));aspect-ratio:4/5;border-radius:24px;border:4px solid #fff}
+.apgt.tab .apsc.big{margin:calc(10px + env(safe-area-inset-top)) auto 0;width:min(calc(100% - 24px),calc((100dvh - 130px) * 1.5))}
+.apgt .apsc.top>img.bg{object-position:60.6% 50%}.apgt.tab .apsc.top>img.bg{object-position:50% 50%}
+.apgt .apfp{animation:aptake 2.6s ease-in forwards;left:70%;top:46%;width:28%;opacity:1}
+@keyframes aptake{from{left:62%;top:52%;transform:rotate(0)}to{left:120%;top:-10%;transform:rotate(-18deg)}}
+.apgt .aphw{animation:apboard 2.6s linear forwards}@keyframes apboard{from{left:6%}to{left:62%}}
+.apgt .apgb{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;text-align:center;flex:1;justify-content:center}.apgb b{font-size:30px;color:#2E6FB5;text-shadow:0 2px 0 #fff;letter-spacing:3px}.apgb small{font-size:13px;font-weight:800;color:#5A6A80}
+.apskip{margin-top:6px;border:3px solid #fff;background:#fff;border-radius:99px;padding:3px 16px;font-weight:900;color:#2E6FB5;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+.apfy{background:linear-gradient(180deg,#8FD0F4,#E6F4FA)}
+.apfy .apmap.fl{margin:6px 10px 0;box-shadow:0 6px 16px rgba(0,0,0,.2)}.apfy.tab .apmap.fl{margin:calc(12px + env(safe-area-inset-top)) auto 0;width:min(calc(100% - 24px),calc((100dvh - 330px) * 1.5))}
+.aprt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.apfly{position:absolute;z-index:5;width:22%;transform:translate(-50%,-62%) rotate(var(--a,0deg)) scaleX(var(--f,1));filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}.apfly img{display:block;width:100%}
+.apmap .apbq.cap{position:absolute;left:50%;transform:translateX(-50%);top:auto;bottom:8px;left:auto;right:8px;transform:none;text-align:center;max-width:55%;font-size:12px}
+.apc.peli3{z-index:6}
+.apfy-b{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px 10px calc(10px + env(safe-area-inset-bottom))}
+.apfy.tab .apfy-b{max-width:760px;width:100%;margin:0 auto}
+.apfc{background:#fff;border:3px solid #CFE0F2;border-radius:18px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.apsk2{margin-left:auto;border:2px solid #CFE0F2;background:#F4F8FD;border-radius:99px;padding:0 12px;font-size:12px;font-weight:900;color:#5A6A80}
+.apfc .qt{font-size:clamp(15px,4.2vw,18px)}.apfc .apop{min-height:46px;font-size:15px}.apfy.tab .apops{display:grid;grid-template-columns:1fr 1fr}
+.apex{margin:0;font-size:13px;font-weight:900;line-height:1.7;border-radius:12px;padding:6px 10px}.apex.ok{background:#E3F7E8;color:#1F8436}.apex.ng{background:#FFF0DD;color:#B5701C}.apex small{font-weight:800;color:#3A2E22;font-size:12px}
+.apland{min-height:62px;border:4px solid #fff;border-radius:22px;background:linear-gradient(180deg,#FFB04A,#F2861E);color:#fff;font-size:20px;font-weight:900;box-shadow:0 5px 0 #C2620C,0 7px 12px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;animation:aplandin .4s 5.4s forwards;text-shadow:0 2px 0 rgba(0,0,0,.2)}
+.apland small{font-size:12px;font-weight:800}@keyframes aplandin{to{opacity:1;pointer-events:auto}}
+/* 訪問先 */
+.apv{background:linear-gradient(180deg,#BFE5FA,#F6EFD9)}
+.apvs{position:relative;flex:none;aspect-ratio:1/1;overflow:hidden;background:#BFE3F7}.apv.ph .apvs{width:min(100%,calc(100dvh - 330px));margin:0 auto;border-radius:0 0 24px 24px;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.apvs>img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.apvh{position:absolute;left:0;right:0;top:0;z-index:5;display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 10px 14px;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,0))}
+.apvh h2{flex:1;margin:0;text-align:center;font-size:clamp(16px,5vw,22px);color:#1F3F7A;text-shadow:0 0 6px #fff}
+.aptm{flex:none;background:#FFE680;border:3px solid #fff;border-radius:99px;padding:2px 12px;font-weight:900;color:#8A4A00;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.apc.peli4{left:14%;top:99%;width:19%}.apc.spar4{left:86%;top:34%;width:11%;animation-duration:1.4s}
+.aphw.v{animation:none;left:55%;bottom:1%;height:32%;transform:translateX(-50%)}
+.apv.ph .apvb{flex:1;min-height:0;overflow-y:auto;padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}.apvb>.apchips{align-self:center}
+.apshop{background:#fff;border:3px solid #FFE08A;border-radius:20px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.apshop .sh{display:flex;align-items:center;justify-content:space-between}.apshop .sh b{font-size:16px;color:#B5701C}.apshop .bk{background:#FFF1C2;color:#B5701C;font-weight:900;font-size:12px;border-radius:99px;padding:1px 10px}
+.apig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.apit{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;border:3px solid #FFE3A8;background:#FFF9EA;border-radius:16px;padding:6px 4px 4px;box-shadow:0 3px 0 #F1D9AA}
+.apit .im{width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:14px}.apit .im img{width:90%;height:90%;object-fit:contain}
+.apit b{font-size:12.5px;color:#5A3A1A;text-align:center;line-height:1.35;min-height:2.7em;display:flex;align-items:center}
+.apit small{display:flex;align-items:center;gap:2px;font-size:14px;font-weight:900;color:#B5701C}.apit small img{width:18px;height:18px}
+.apit em{font-style:normal;font-weight:900;font-size:14px;background:linear-gradient(180deg,#FFB04A,#F2861E);color:#fff;border-radius:99px;padding:1px 20px;margin-top:2px}
+.apit.own{background:#E9F8EE;border-color:#B6E3C3;box-shadow:0 3px 0 #B6E3C3}.apit.own em{background:#3BAF6A}.apit:disabled:not(.own){opacity:.5}
+.apv.tab{flex-direction:row;padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom)) 12px;gap:12px}
+.apv.tab .apvs{height:100%;border-radius:22px;border:4px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.apvr{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto}.apv.tab .apig{grid-template-columns:1fr 1fr}.apv.tab .apit .im{width:90px;height:90px}
+/* パスポート */
+.app{background:linear-gradient(180deg,#FFF3E0,#EAF4FF)}
+.apbook{flex:1;background:#FFFBF0;border:4px solid #E8D3B0;border-radius:22px;padding:10px;display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);min-width:0}
+.apbook h4{margin:2px 0 0;color:#B5701C;font-size:16px}.apbook h4 small{color:#8A7A65}
+.apbook .bh{display:flex;align-items:flex-end;gap:6px}.apbook .bh img{width:70px}
+.apsps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.apsp1{display:flex;flex-direction:column;align-items:center;gap:1px}.apsp1 img,.apsp1 i{width:min(100%,74px);aspect-ratio:1/1;border-radius:50%}.apsp1 i{display:flex;align-items:center;justify-content:center;background:#EEF1F5;border:2px dashed #CFD6E0;color:#B8C0CC;font-style:normal;font-weight:900;font-size:22px}
+.apsp1 b{font-size:11.5px;color:#5A3A1A;text-align:center}.apsp1 small{font-size:10.5px;color:#8A7A65;font-weight:800}.apsp1 img{animation:apstp .5s}.apsp1.lk{opacity:.5}
+.apbds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.apbd{display:flex;flex-direction:column;align-items:center;filter:grayscale(1) opacity(.45)}.apbd.on{filter:none}.apbd.now img{animation:apbob 1s ease-in-out infinite alternate}
+.apbd img{width:100%}.apbd b{font-size:11px;color:#5A3A1A}.apbd small{font-size:10px;color:#8A7A65;font-weight:800}
+.apsv h5{margin:0 0 3px;font-size:13px;color:#5A3A1A}.apsv>div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.apsv span{display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:12px;padding:3px 2px}.apsv img{width:min(100%,56px);aspect-ratio:1/1;object-fit:contain}.apsv span:not(.on) img{filter:brightness(0) opacity(.2)}
+.apsv small{font-size:10px;font-weight:800;color:#5A3A1A;text-align:center;line-height:1.3;min-height:2.6em;display:flex;align-items:center}
+.app.tab .apbook:last-child{flex:1.1}
+/* まちの 空を とぶ ひこうき */
+#ap662fly{position:fixed;left:0;top:19%;width:100%;height:0;z-index:30;pointer-events:none}
+.apfb2{position:absolute;left:-150px;top:0;width:128px;border:0;background:none;padding:0;pointer-events:auto;animation:apcross 17s linear forwards;filter:drop-shadow(0 5px 4px rgba(0,0,0,.3))}
+.apfb2 img{display:block;width:100%;animation:apbob2 1.1s ease-in-out infinite alternate}
+@keyframes apcross{from{transform:translateX(0)}to{transform:translateX(calc(100vw + 320px))}}@keyframes apbob2{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-8px) rotate(2deg)}}
+.apbb2{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);white-space:nowrap;background:#fff;border:3px solid #E8B04A;border-radius:14px;padding:2px 10px;font-size:13px;font-weight:900;color:#4A3420;animation:appop .4s}
+/* ダイアログ（まちの 前面） */
+.mii{height:.95em;width:auto;vertical-align:-.12em;margin-right:2px}.mii.tkk{height:1.1em}.ppt{font-weight:900}.ppt small{font-size:.75em;margin-left:1px}.lck{width:1em;height:1em;vertical-align:middle}.apsp1 i .lck,.aptc .ar .lck{width:60%;height:60%}
+.apdl{display:flex;justify-content:center;align-items:flex-end;gap:10px}.apdl img{height:92px;width:auto}.apdl img.bdg{height:108px}
+@media (max-height:700px){.apt.ph .apm4 .apmb{min-height:58px}.apmb .ic{width:44px;height:44px}}
+`;
+document.head.appendChild(css);
 })();
