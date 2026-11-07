@@ -13773,7 +13773,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 
 
 /* =====================================================================
-   まなびタウンv6.63：空港（友だちの町・ゴールド／プラチナ・イラストアイコン）
+   まなびタウンv6.65：空港（友だちの町を まちづくりの絵のまま再現・iPad横の絵）
    ・町の「空港」をタッチ → 町の前面に空港ターミナルが開く（スマホ縦／iPad横）
    ・チェックイン（搭乗券）／管制塔（空港クイズ ★1〜3）／行き先選び
    ・搭乗 → フライト（機内クイズ）→ 訪問先の町（お土産ショップ）→ 帰りの便 → お帰り
@@ -13782,7 +13782,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.64.0', IMG = './assets/images/airport/';
+const VER = '6.65.0', IMG = './assets/images/airport/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -14155,16 +14155,20 @@ function menuList(){
 const menuBtn = m => `<button type="button" class="apmb2 ${m.c}" data-a="${m.a}"><img class="ic" src="${IC(m.img)}" alt=""><b>${m.n}</b>${m.badge ? `<small>${m.badge}</small>` : ''}</button>`;
 function top(){
   const ms = menuList(), tab = LAY === 'tab';
-  const stage = `<div class="apstage" data-iw="1024" data-ih="1536" data-mode="${tab ? 'contain' : 'cover'}" data-fx=".6" data-fy=".5"><img class="bg" src="${IC('top')}" alt="">
-    <button type="button" class="aphs hs-spar" data-say="spar" style="left:25%;top:3.2%;width:14%;height:9%" aria-label="スズメ"></button>
-    <button type="button" class="aphs hs-slo fn" data-a="checkin" style="left:29%;top:38%;width:17%;height:14%" aria-label="ナマケモノ"><i class="sp"><img src="${IC('fx_spark')}" alt=""></i></button>
-    <button type="button" class="aphs hs-peli fn" data-a="dest" style="left:72%;top:34%;width:19%;height:14%" aria-label="ペリカン"><i class="sp"><img src="${IC('fx_spark')}" alt=""></i></button>
+  const H = tab
+    ? {img:'top_l', iw:1536, ih:1024, fx:.5, sp:[35.5, 5.5, 7.5, 9], sl:[16.5, 52, 8.5, 16], pe:[65.5, 48, 11, 17]}
+    : {img:'top', iw:1024, ih:1536, fx:.6, sp:[25, 3.2, 14, 9], sl:[29, 38, 17, 14], pe:[72, 34, 19, 14]};
+  const box = a => `left:${a[0]}%;top:${a[1]}%;width:${a[2]}%;height:${a[3]}%`;
+  const stage = `<div class="apstage" data-iw="${H.iw}" data-ih="${H.ih}" data-mode="cover" data-fx="${H.fx}" data-fy=".5"><img class="bg" src="${IC(H.img)}" alt="">
+    <button type="button" class="aphs hs-spar" data-say="spar" style="${box(H.sp)}" aria-label="スズメ"></button>
+    <button type="button" class="aphs hs-slo fn" data-a="checkin" style="${box(H.sl)}" aria-label="ナマケモノ"><i class="sp"><img src="${IC('fx_spark')}" alt=""></i></button>
+    <button type="button" class="aphs hs-peli fn" data-a="dest" style="${box(H.pe)}" aria-label="ペリカン"><i class="sp"><img src="${IC('fx_spark')}" alt=""></i></button>
     <span class="apbb hidden"></span></div>`;
   const sign = `<div class="apsg"><small>まなびタウン</small><b>空港</b></div>`;
   const pills = `<div class="aptp-pills">${rankBar()}${rubyBtn()}</div>`;
   const menu = `<nav class="aptp-menu">${ms.map(menuBtn).join('')}</nav>`;
-  return `<div class="aptp ${LAY}">${tab ? `<div class="aptp-bgb"><img src="${IC('top')}" alt=""></div>` : ''}<div class="aptp-box">${stage}</div>
-    <header class="aphd tp ov">${homeBtn()}${chips()}</header>${sign}${tab ? `<div class="aptp-side">${pills}${menu}</div>` : `${hanaWalk('top')}<div class="aptp-bot">${pills}${menu}</div>`}</div>`;
+  return `<div class="aptp ${LAY}"><div class="aptp-box">${stage}</div>
+    <header class="aphd tp ov">${homeBtn()}${chips()}</header>${sign}${hanaWalk('top')}<div class="aptp-bot">${pills}${menu}</div></div>`;
 }
 
 /* ---------- ③ 管制塔（難しさ選び） ---------- */
@@ -14186,8 +14190,8 @@ function quizScene(){
 
 /* ---------- 搭乗ゲート ---------- */
 function gate(){
-  const tab = LAY === 'tab', plat = rankNo(AS().miles) >= 4;
-  return `<div class="aptp gt ${LAY}">${tab ? `<div class="aptp-bgb"><img src="${IC('top2')}" alt=""></div>` : ''}<div class="aptp-box"><div class="apstage" data-iw="1024" data-ih="1536" data-mode="${tab ? 'contain' : 'cover'}" data-fx=".5" data-fy=".5"><img class="bg" src="${IC('top2')}" alt=""><img class="apfp go" src="${IC('plane')}" alt=""></div></div>
+  const tab = LAY === 'tab', plat = rankNo(AS().miles) >= 4, img = tab ? 'gate_l' : 'top2';
+  return `<div class="aptp gt ${LAY}"><div class="aptp-box"><div class="apstage" data-iw="${tab ? 1536 : 1024}" data-ih="${tab ? 1024 : 1536}" data-mode="cover" data-fx=".5" data-fy=".5"><img class="bg" src="${IC(img)}" alt="">${tab ? '' : `<img class="apfp go" src="${IC('plane')}" alt="">`}</div></div>
     <header class="aphd tp ov"><span class="apsp"></span>${chips()}</header>${hanaWalk('gate')}
     <div class="apgb ov"><b>${plat ? 'プラチナ特別便、出発！' : '出発！'}</b><small>${plat ? 'ペリカン機長が特別なフライトで案内するよ' : '搭乗券を見せて飛行機に乗るよ'}</small><button type="button" class="apskip" data-a="skipgate"><b>スキップ</b>${ARW}</button></div></div>`;
 }
@@ -14196,14 +14200,14 @@ function gate(){
 function visit(){
   const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = tOf(tp), fr = tp.town === 'friend';
   clearInterval(TKI); TKI = setInterval(tick, 1000);
-  const mode = V.zoom || 'fill';
-  const stage = fr ? `<div class="apfmb"><div class="apfmw" id="apfmw">${friendMapHTML(tp.fr)}</div><span class="apbb hidden"></span></div>`
+  const mode = fr ? (V.fz || 'fit') : (V.zoom || 'fill');
+  const stage = fr ? `<div class="apfmb" id="apfmb"><div class="apfmin" id="apfmin"><div class="apfmw" id="apfmw"></div></div><span class="apbb hidden"></span></div>`
     : `<div class="appan" id="appan"><div class="apstage" data-iw="${T.iw}" data-ih="${T.ih}" data-mode="${mode === 'fit' ? 'contain' : 'cover'}"><img class="bg" src="${IC(T.img)}" alt="">${T.hs.map(hsBtn).join('')}<span class="apbb hidden"></span></div></div>`;
   const nb = Object.values(A.bag).reduce((a, b) => a + b, 0);
   const fab = `<div class="apfab">
       <button type="button" class="apfb3 ${V.shop ? 'on' : ''}" data-a="shop"><img src="${IC('ui2_bag')}" alt=""><b>お店</b></button>
       <button type="button" class="apfb3" data-a="bag"><img src="${IC('ui2_cookie')}" alt=""><b>お土産袋</b>${nb ? `<i class="n">${nb}</i>` : ''}</button>
-      ${fr ? '' : `<button type="button" class="apfb3" data-a="zoom"><img src="${IC('ui2_zoom')}" alt=""><b>${mode === 'fit' ? '大きく' : '全体'}</b></button>`}</div>`;
+      <button type="button" class="apfb3" data-a="zoom"><img src="${IC('ui2_zoom')}" alt=""><b>${fr ? (mode === 'big' ? '全体' : '大きく') : (mode === 'fit' ? '大きく' : '全体')}</b></button></div>`;
   const head = `<div class="apvh ov"><button type="button" class="apbk" data-a="leave"><img src="${IC('ui_back')}" alt=""><b>帰る</b></button><h2>${X(T.n)}</h2><span class="aptm" id="aptm">${fmtT(remain())}</span></div>`;
   return `<div class="apv ${LAY} ${V.shop ? 'sh' : ''}"><div class="apvw">${stage}</div>${head}<div class="apvchip ov">${chips()}</div>${fab}${V.shop ? shopSheet(tp, T, fr) : ''}</div>`;
 }
@@ -14439,7 +14443,7 @@ function landing(){
   else { A.stamps[tp.town] = A.stamps[tp.town] || today(); A.visits[tp.town] = (A.visits[tp.town] || 0) + 1; }
   A.trips++;
   const res = {town:tp.town, fr:F ? {id:F.id, n:F.n} : null, first, stars, bought:tp.bought.slice(), bonus:mm, inOk:tp.inOk, back:Q && Q.firstOkBack};
-  A.trip = null; Q = null; persist(); snd('fan'); try{ confetti(stars === 3 ? 3000 : 1600); }catch(e){}
+  A.trip = null; Q = null; FRC = null; clearInterval(FRM); persist(); snd('fan'); try{ confetti(stars === 3 ? 3000 : 1600); }catch(e){}
   V.res = res; go('result');
 }
 const starRow = n => `<div class="apst">${[1, 2, 3].map(i => `<img class="${i <= n ? 'on' : ''}" src="${IC(i <= n ? 'ui_star' : 'ui_star0')}" alt="">`).join('')}</div>`;
@@ -14739,57 +14743,160 @@ const NAMEA = ['日だまり', '虹色', '星空', 'そよ風', 'わくわく', 
 const NAMEB = ['町', '村', '島', '森'];
 const GREET = ['ようこそ！', 'いらっしゃい！', 'ゆっくりしていってね', '楽しんで行ってね！', '遊びに来てくれてありがとう', 'また来てね！'];
 const myName = m => `${NAMEA[m.a % 16]}の${NAMEB[m.b % 4]}`;
-const MAXC = 430;                       /* コードのもじ数の上限（QRを読み取りやすくする） */
+const MAXC = 760;                       /* コードの文字数の上限（QRを読み取りやすくする）。これをこえたら、かんたんな飾りから少し減らす */
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 const toB64 = bytes => { let s = ''; for(let i = 0; i < bytes.length; i += 3){ const n = (bytes[i] << 16) | ((bytes[i + 1] || 0) << 8) | (bytes[i + 2] || 0); s += B64[n >> 18 & 63] + B64[n >> 12 & 63] + (i + 1 < bytes.length ? B64[n >> 6 & 63] : '') + (i + 2 < bytes.length ? B64[n & 63] : ''); } return s; };
 const fromB64 = str => { const out = []; let acc = 0, bits = 0; for(const ch of str){ const v = B64.indexOf(ch); if(v < 0) return null; acc = (acc << 6) | v; bits += 6; if(bits >= 8){ bits -= 8; out.push((acc >> bits) & 255); acc &= (1 << bits) - 1; } } return out; };
 const sum16 = b => { let a = 1, c = 0; b.forEach(x => { a = (a + x) % 251; c = (c + a) % 251; }); return [a, c]; };
-function packTown(m, cols, rows, list){
-  const bits = []; const put = (v, n) => { for(let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
-  put(1, 4); put(cols, 6); put(rows, 6); put(m.a & 15, 4); put(m.b & 3, 2); put(m.g & 7, 3);
-  const g = {}; list.forEach(c => { (g[c.ix] = g[c.ix] || []).push(c); });
-  const keys = Object.keys(g).map(Number).sort((a, b) => a - b); put(keys.length, 8);
-  keys.forEach(k => { const a = g[k].sort((p, q) => p.y - q.y || p.x - q.x); put(k, 8); put(a.length, 10); a.forEach(c => { put(c.x, 5); put(c.y, 5); }); });
-  while(bits.length % 8) bits.push(0);
-  const bytes = []; for(let i = 0; i < bits.length; i += 8){ let b = 0; for(let j = 0; j < 8; j++) b = b << 1 | bits[i + j]; bytes.push(b); }
-  return 'MT1' + toB64(bytes.concat(sum16(bytes)));
+const bitLen = v => Math.max(1, 32 - Math.clz32(v));
+const findLv = (cols, rows, fb) => { try{ const i = TOWN_LEVELS.findIndex(l => l.cols === cols && l.rows === rows); if(i >= 0) return i; const j = TOWN_LEVELS.findIndex(l => l.cols >= cols && l.rows >= rows); if(j >= 0) return j; }catch(e){} return fb || 0; };
+/* ---------- コード MT2：パレット＋ランレングス（畑・道・海・川・線路・信号まで ぜんぶ 入る） ---------- */
+function packTown2(m, d){
+  const B = []; const put = (v, n) => { for(let i = n - 1; i >= 0; i--) B.push((v >>> i) & 1); };
+  const gam = v => { const n = bitLen(v); for(let i = 1; i < n; i++) B.push(0); put(v, n); };
+  const cols = d.cols, rows = d.rows, N = cols * rows;
+  put(2, 4); put(d.lv & 31, 5); put(cols, 6); put(rows, 6); put(m.a & 15, 4); put(m.b & 3, 2); put(m.g & 7, 3);
+  const used = Array.from(new Set(Array.from(d.grid).filter(v => v))).sort((a, b) => a - b);
+  put(used.length, 8); used.forEach(v => put(v - 1, 8));
+  const pm = new Map(used.map((v, i) => [v, i + 1])), k = bitLen(used.length), P = new Array(N);
+  for(let i = 0; i < N; i++) P[i] = d.grid[i] ? pm.get(d.grid[i]) : 0;
+  for(let i = 0; i < N;){
+    const p = P[i]; let ru = 0; if(i >= cols) while(i + ru < N && P[i + ru] === P[i + ru - cols]) ru++;
+    let rs = 1; while(i + rs < N && P[i + rs] === p) rs++;
+    if(ru > 0 && ru >= rs){ put(1, 1); gam(ru); i += ru; } else { put(0, 1); put(p, k); gam(rs); i += rs; }
+  }
+  const ov0 = (d.over || []).slice().sort((a, b) => a[0] - b[0]), oid = Array.from(new Set(ov0.map(o => o[1]))).slice(0, 31), ov = ov0.filter(o => oid.includes(o[1]));
+  gam(ov.length + 1);
+  if(ov.length){
+    put(oid.length, 5); oid.forEach(v => put(v, 8));
+    const ko = bitLen(oid.length - 1); let prev = -1;
+    ov.forEach(o => { gam(o[0] - prev); prev = o[0]; put(oid.indexOf(o[1]), ko); });
+  }
+  const tr = (d.trains || []).slice(0, 7); put(tr.length, 3); tr.forEach(v => put(v, 8));
+  while(B.length % 8) B.push(0);
+  const bytes = []; for(let i = 0; i < B.length; i += 8){ let b = 0; for(let j = 0; j < 8; j++) b = b << 1 | B[i + j]; bytes.push(b); }
+  return 'MT2' + toB64(bytes.concat(sum16(bytes)));
 }
-function encodeTown(m, srcCells, dims){
-  let cols = 12, rows = 9; try{ const L = townCalc().L; cols = L.cols; rows = L.rows; }catch(e){}
-  if(dims){ cols = dims[0]; rows = dims[1]; }
-  const cells = srcCells || (save.town && save.town.cells) || {}; let list = [];
-  Object.entries(cells).forEach(([k, id]) => { const ix = ID_TABLE.indexOf(id); if(ix < 0) return; const [x, y] = k.split(',').map(Number); if(!(x >= 0 && y >= 0 && x < 32 && y < 32)) return; list.push({x, y, ix, id}); });
-  const total = list.length;
-  const pri = c => { if(c.id === 'road') return 1000; let it = null; try{ it = ITEM(c.id); }catch(e){} return (it && (it.dev || it.price / 50)) || 0; };
-  list.sort((a, b) => pri(a) - pri(b)); let code = packTown(m, cols, rows, list), trimmed = false;
-  while(code.length > MAXC && list.length){ list = list.slice(Math.max(4, Math.ceil(list.length * 0.04))); trimmed = true; code = packTown(m, cols, rows, list); }
-  return {code, n:list.length, total, trimmed};
+const KEEPIDS = new Set(['sea', 'river', 'road_bridge', 'harbor', 'road_crossing', 'platform', 'station', 'bigstation', 'field', 'd_signal']);
+function encodeTown(m, srcCells, dims, extra){
+  extra = extra || {};
+  let L = null; try{ L = townCalc().L; }catch(e){}
+  let cols = L ? L.cols : 12, rows = L ? L.rows : 9, lv = (save.town && save.town.lv) | 0;
+  if(dims){ cols = dims[0]; rows = dims[1]; lv = findLv(cols, rows); }
+  if(extra.lv != null) lv = extra.lv;
+  cols = Math.min(cols, 40); rows = Math.min(rows, 40);
+  const cells = srcCells || (save.town && save.town.cells) || {}, over = extra.over || (srcCells ? {} : (save.town && save.town.over) || {}), trains = extra.trains || (srcCells ? [] : (save.town && save.town.trains) || []);
+  const grid = new Array(cols * rows).fill(0); let total = 0;
+  Object.entries(cells).forEach(([k, id]) => { const ix = ID_TABLE.indexOf(id); if(ix < 0) return; const [x, y] = k.split(',').map(Number); if(!(x >= 0 && y >= 0 && x < cols && y < rows)) return; grid[y * cols + x] = ix + 1; total++; });
+  const ovl = []; Object.entries(over).forEach(([k, id]) => { const ix = ID_TABLE.indexOf(id); if(ix < 0) return; const [x, y] = k.split(',').map(Number); if(!(x >= 0 && y >= 0 && x < cols && y < rows)) return; ovl.push([y * cols + x, ix]); });
+  const trl = trains.map(id => ID_TABLE.indexOf(id)).filter(i => i >= 0);
+  const pri = v => { const id = ID_TABLE[v - 1]; if(KEEPIDS.has(id) || isRoadId(id)) return 1e9; let it = null; try{ it = ITEM(id); }catch(e){} return (it && (it.dev || it.price / 50)) || 0; };
+  const d = {lv, cols, rows, grid, over:ovl, trains:trl};
+  let code = packTown2(m, d), trimmed = false;
+  while(code.length > MAXC){
+    const cand = []; grid.forEach((v, i) => { if(v && pri(v) < 1e9) cand.push(i); });
+    if(!cand.length){ if(d.over.length){ d.over = []; code = packTown2(m, d); trimmed = true; continue; } break; }
+    cand.sort((a, b) => pri(grid[a]) - pri(grid[b]));
+    cand.slice(0, Math.max(4, Math.ceil(cand.length * 0.06))).forEach(i => { grid[i] = 0; });
+    trimmed = true; code = packTown2(m, d);
+  }
+  return {code, n:grid.filter(v => v).length, total, trimmed};
+}
+function decodeTown1(text){
+  const bytes = fromB64(text.slice(3)); if(!bytes || bytes.length < 8) return null;
+  const body = bytes.slice(0, -2), ck = sum16(body); if(ck[0] !== bytes[bytes.length - 2] || ck[1] !== bytes[bytes.length - 1]) return null;
+  const bits = []; body.forEach(c => { for(let i = 7; i >= 0; i--) bits.push((c >>> i) & 1); }); let p = 0; const rd = n => { let x = 0; for(let i = 0; i < n; i++) x = x << 1 | (bits[p++] || 0); return x; };
+  if(rd(4) !== 1) return null; const cols = rd(6), rows = rd(6), a = rd(4), b = rd(2), g = rd(3);
+  if(cols < 3 || rows < 3 || cols > 32 || rows > 32 || g >= GREET.length) return null;
+  const ng = rd(8), cells = [];
+  for(let i = 0; i < ng; i++){ const ix = rd(8), cn = rd(10); if(ix >= ID_TABLE.length || cn > 700) return null; for(let j = 0; j < cn; j++){ const x = rd(5), y = rd(5); if(x < cols && y < rows) cells.push([x, y, ix]); } }
+  if(p > bits.length || cells.length > 700) return null;
+  return {id:'f' + (hash(text) % 1e9).toString(36), n:myName({a, b}), a, b, g, cols, rows, lv:findLv(cols, rows), cells, over:[], trains:[]};
+}
+function decodeTown2(text){
+  const bytes = fromB64(text.slice(3)); if(!bytes || bytes.length < 8) return null;
+  const body = bytes.slice(0, -2), ck = sum16(body); if(ck[0] !== bytes[bytes.length - 2] || ck[1] !== bytes[bytes.length - 1]) return null;
+  const bits = []; body.forEach(c => { for(let i = 7; i >= 0; i--) bits.push((c >>> i) & 1); }); let p = 0, bad = false;
+  const rd = n => { let x = 0; for(let i = 0; i < n; i++){ if(p >= bits.length){ bad = true; return 0; } x = x << 1 | bits[p++]; } return x; };
+  const gam = () => { let z = 0; while(rd(1) === 0){ if(bad || ++z > 24) { bad = true; return 1; } } let v = 1; for(let i = 0; i < z; i++) v = v << 1 | rd(1); return v; };
+  if(rd(4) !== 2) return null;
+  const lv = rd(5), cols = rd(6), rows = rd(6), a = rd(4), b = rd(2), g = rd(3);
+  if(cols < 3 || rows < 3 || cols > 40 || rows > 40 || g >= GREET.length) return null;
+  const np = rd(8), pal = []; for(let i = 0; i < np; i++){ const v = rd(8); if(v >= ID_TABLE.length) return null; pal.push(v); }
+  const N = cols * rows, k = bitLen(np), P = new Array(N).fill(0);
+  for(let i = 0; i < N && !bad;){
+    if(rd(1)){ const n = gam(); if(i < cols || i + n > N) return null; for(let j = 0; j < n; j++, i++) P[i] = P[i - cols]; }
+    else { const v = rd(k), n = gam(); if(v > np || i + n > N) return null; for(let j = 0; j < n; j++, i++) P[i] = v; }
+  }
+  const cells = []; P.forEach((v, i) => { if(v) cells.push([i % cols, Math.floor(i / cols), pal[v - 1]]); });
+  const over = [], no = gam() - 1;
+  if(no > 0){
+    const nid = rd(5), oid = []; for(let i = 0; i < nid; i++){ const v = rd(8); if(v >= ID_TABLE.length) return null; oid.push(v); }
+    const ko = bitLen(nid - 1); let prev = -1;
+    for(let i = 0; i < no && !bad; i++){ prev += gam(); const j = rd(ko); if(prev >= N || j >= nid) return null; over.push([prev % cols, Math.floor(prev / cols), oid[j]]); }
+  }
+  const nt = rd(3), trains = []; for(let i = 0; i < nt; i++){ const v = rd(8); if(v < ID_TABLE.length) trains.push(v); }
+  if(bad || cells.length > 1200) return null;
+  return {id:'f' + (hash(text) % 1e9).toString(36), n:myName({a, b}), a, b, g, cols, rows, lv:Math.min(lv, TOWN_LEVELS.length - 1), cells, over, trains};
 }
 function decodeTown(text){
   try{
-    text = String(text || '').replace(/\s+/g, ''); if(text.slice(0, 3) !== 'MT1' || text.length < 12 || text.length > 1200) return null;
-    const bytes = fromB64(text.slice(3)); if(!bytes || bytes.length < 8) return null;
-    const body = bytes.slice(0, -2), ck = sum16(body); if(ck[0] !== bytes[bytes.length - 2] || ck[1] !== bytes[bytes.length - 1]) return null;
-    const bits = []; body.forEach(c => { for(let i = 7; i >= 0; i--) bits.push((c >>> i) & 1); }); let p = 0; const rd = n => { let x = 0; for(let i = 0; i < n; i++) x = x << 1 | (bits[p++] || 0); return x; };
-    if(rd(4) !== 1) return null; const cols = rd(6), rows = rd(6), a = rd(4), b = rd(2), g = rd(3);
-    if(cols < 3 || rows < 3 || cols > 32 || rows > 32 || g >= GREET.length) return null;
-    const ng = rd(8), cells = [];
-    for(let i = 0; i < ng; i++){ const ix = rd(8), cn = rd(10); if(ix >= ID_TABLE.length || cn > 700) return null; for(let j = 0; j < cn; j++){ const x = rd(5), y = rd(5); if(x < cols && y < rows) cells.push([x, y, ix]); } }
-    if(p > bits.length || cells.length > 700) return null;
-    return {id:'f' + (hash(text) % 1e9).toString(36), n:myName({a, b}), a, b, g, cols, rows, cells};
+    text = String(text || '').replace(/\s+/g, ''); if(text.length < 12 || text.length > 2400) return null;
+    const h = text.slice(0, 3); return h === 'MT2' ? decodeTown2(text) : h === 'MT1' ? decodeTown1(text) : null;
   }catch(e){ return null; }
 }
-/* 見本の町（試しに行ける） */
+/* 見本の町（試しに行ける）：道・畑・海・川・線路・信号まで入った小さな町 */
 function sampleCode(){
   const ok = id => { try{ return !!ITEM(id); }catch(e){ return false; } };
   const cells = {}; const P = (x, y, id) => { if(ok(id) && ID_TABLE.includes(id)) cells[`${x},${y}`] = id; };
   for(let x = 0; x < 10; x++) P(x, 3, 'road'); for(let y = 0; y < 8; y++) P(4, y, 'road');
-  ['house', 'birdhouse', 'logcabin'].forEach((id, i) => P(1 + i * 1, 1, id));
-  P(6, 1, 'bakery'); P(7, 5, 'park'); P(2, 5, 'supermarket'); P(6, 5, 'school'); P(8, 1, 'hospital'); P(0, 6, 'tree'); P(3, 6, 'tree'); P(9, 6, 'tree'); P(5, 0, 'tree'); P(9, 0, 'tree'); P(0, 0, 'tree');
-  const e = encodeTown({a:0, b:0, g:1}, cells, [10, 8]); return e.code;
+  for(let y = 4; y < 8; y++) P(7, y, 'road_stone');
+  ['house', 'birdhouse', 'logcabin'].forEach((id, i) => P(1 + i, 1, id));
+  P(6, 1, 'bakery'); P(8, 1, 'hospital'); P(5, 5, 'park'); P(2, 5, 'supermarket'); P(5, 6, 'school'); P(1, 6, 'field'); P(2, 6, 'field'); P(3, 6, 'field');
+  P(0, 5, 'tree'); P(3, 4, 'tree'); P(9, 0, 'tree'); P(5, 0, 'tree'); P(0, 0, 'tree'); P(9, 2, 'tree');
+  P(9, 5, 'sea'); P(9, 6, 'sea'); P(9, 7, 'sea'); P(8, 6, 'sea'); P(8, 7, 'sea');
+  const e = encodeTown({a:0, b:0, g:1}, cells, [10, 8], {over:{'4,3':'d_signal'}, trains:['local']}); return e.code;
 }
-/* ---------- 見せる（もうひとつの町） ---------- */
-function friendMapHTML(F){
+
+/* ---------- 見せる（もうひとつの町）：まちづくりの絵を そのまま つかう ---------- */
+/* 友だちの町のデータを、まちづくりの「ほんものの 描画」に一度だけ流して、その絵（畑・道・海・川・線路・信号 ぜんぶ）を写しとる。
+   そのあいだだけ save を コピーに入れかえるので、じぶんの町には なにも のこらない。 */
+let FRC = null, FRM = 0;
+const FRC_STRIP = '.walker,.car2,.ship65,.air65,.mover.car,.facOv,.ov61,.glvBadge,.homeTag,.lotCar,.reqMark,.lonely,.kidMark';
+function buildFriendMap(F){
+  if(FRC && FRC.id === F.id && FRC.el) return FRC.el;
+  const map = document.getElementById('townMap');
+  if(!map || typeof curScreen === 'undefined' || curScreen !== 'town' || !save || !save.town) return null;
+  const realSave = save, realP = persist; let out = null;
+  try{
+    const fc = {}; F.cells.forEach(([x, y, ix]) => { fc[`${x},${y}`] = ID_TABLE[ix]; });
+    const ov = {}; (F.over || []).forEach(([x, y, ix]) => { ov[`${x},${y}`] = ID_TABLE[ix]; });
+    save = JSON.parse(JSON.stringify(realSave));
+    const t = save.town;
+    Object.assign(t, {cells:fc, over:ov, inv:{}, res:[], veh:[], garage:[], glv:{}, glvKeep:{}, workers:{}, zoom:1,
+      trains:(F.trains || []).map(i => ID_TABLE[i]).filter(Boolean), lv:Math.min(F.lv != null ? F.lv : findLv(F.cols, F.rows), TOWN_LEVELS.length - 1)});
+    save.fac = {}; save.prod61 = {}; save.mall613 = {};
+    persist = function(){};
+    renderMap();
+    const cl = map.cloneNode(true), cvO = map.querySelectorAll('canvas'), cvC = cl.querySelectorAll('canvas');
+    cvO.forEach((c, i) => { const d = cvC[i]; if(d){ d.width = c.width; d.height = c.height; try{ d.getContext('2d').drawImage(c, 0, 0); }catch(e){} } });
+    cl.querySelectorAll(FRC_STRIP).forEach(e => e.remove());
+    cl.classList.remove('edit'); cl.classList.add('apfm');
+    cl.querySelectorAll('.cell').forEach(c => {
+      const x = c.dataset.x, y = c.dataset.y; if(x === undefined) return;
+      const id = fc[`${x},${y}`]; c.removeAttribute('data-x'); c.removeAttribute('data-y');
+      if(!id || isRoadId(id) || id === 'sea' || id === 'river') return;
+      c.dataset.fid = id;
+      if(FUNC.has(id) && !c.classList.contains('cov64') && x === c.style.getPropertyValue('--cx').trim() && y === c.style.getPropertyValue('--cy').trim()){
+        c.classList.add('fcl'); c.insertAdjacentHTML('beforeend', `<i class="fsp"><img src="${IC('fx_spark')}" alt=""></i>`); }
+    });
+    out = cl;
+  }catch(e){ console.warn('friend map', e); out = null; }
+  finally{ save = realSave; persist = realP; try{ renderMap(); }catch(e){ console.warn(e); } }
+  if(out) FRC = {id:F.id, el:out};
+  return out;
+}
+function friendMapHTMLSimple(F){
   const sz = (window.__big64 && window.__big64.sz) || (() => null), fc = {}; F.cells.forEach(([x, y, ix]) => { fc[`${x},${y}`] = ID_TABLE[ix]; });
   const bak = save.town.cells; let h = '';
   save.town.cells = fc;
@@ -14806,9 +14913,20 @@ function friendMapHTML(F){
 }
 function fitFriendMap(){
   const w = ROOT && ROOT.querySelector('#apfmw'); if(!w || V.s !== 'visit') return; const tp = AS().trip; if(!tp || !tp.fr) return;
-  const box = w.parentElement, cw = box.clientWidth, ch = box.clientHeight; if(!cw || !ch) return;
-  const W = tp.fr.cols * 64, H = (tp.fr.rows + 0.7) * 64, k = Math.min(cw / W, ch / H, 2.4);
-  w.style.width = W + 'px'; w.style.height = H + 'px'; w.style.transform = `scale(${k})`; w.style.left = ((cw - W * k) / 2) + 'px'; w.style.top = Math.max(0, (ch - H * k) / 2 + 24) + 'px';
+  if(!w.firstElementChild){
+    let el = null; try{ el = buildFriendMap(tp.fr); }catch(e){ console.warn(e); }
+    if(el) w.appendChild(el); else w.innerHTML = friendMapHTMLSimple(tp.fr);
+  }
+  const box = ROOT.querySelector('#apfmb'), inn = ROOT.querySelector('#apfmin'), m = w.firstElementChild, cw = box.clientWidth, ch = box.clientHeight; if(!cw || !ch || !m) return;
+  w.style.transform = 'none'; w.style.width = 'max-content'; w.style.height = 'auto';
+  const W = m.offsetWidth || 1, H = m.offsetHeight || 1, fit = Math.min(cw / W, ch / H, 2.4), big = (V.fz === 'big'), k = big ? Math.min(2.4, fit * 2) : fit;
+  const iw = Math.max(cw, W * k), ih = Math.max(ch, H * k); box.style.overflow = big ? 'auto' : 'hidden';
+  inn.style.width = iw + 'px'; inn.style.height = ih + 'px';
+  w.style.width = W + 'px'; w.style.height = H + 'px'; w.style.transform = `scale(${k})`; w.style.left = ((iw - W * k) / 2) + 'px'; w.style.top = Math.max(0, Math.min((ih - H * k) / 2 + (big ? 0 : 16), ih - H * k)) + 'px';
+  if(big){ box.scrollLeft = (iw - cw) / 2; box.scrollTop = (ih - ch) / 2; }
+  clearInterval(FRM); FRM = setInterval(() => { try{
+    const real = document.getElementById('townMap'); if(!real || !m.isConnected){ clearInterval(FRM); return; }
+    ['data-sv', 'data-sh'].forEach(a => { const v = real.getAttribute(a); if(v !== null) m.setAttribute(a, v); }); }catch(e){} }, 800);
 }
 function friendItemObj(id){
   let it = null; try{ it = ITEM(id); }catch(e){} if(!it) return null;
@@ -14854,7 +14972,9 @@ try{
   const _dlg = dialog;
   dialog = function(html, buttons, cls){
     if(FAC){ try{ if(Array.isArray(buttons)) buttons = buttons.filter(b => !/グレードアップ/.test(b.label)); html = String(html).replace(/<div class="skillBox">[\s\S]*?<\/div><\/div>/g, '').replace(/<div class="skillBox">[\s\S]*?<\/div>/g, ''); }catch(e){} }
-    return _dlg.call(this, html, buttons, cls);
+    const r = _dlg.call(this, html, buttons, cls);
+    if(!FAC && ROOT){ try{ rubifyDOM(document.getElementById('dlgBody')); rubifyDOM(document.getElementById('dlgBtns')); }catch(e){} }
+    return r;
   };
 }catch(e){ console.warn('dialog wrap', e); }
 function infoOf(id){ try{ const it = ITEM(id); return it ? `${it.name}：${itemEffect(it)}` : ''; }catch(e){ return ''; } }
@@ -14885,7 +15005,7 @@ function qrMine(){
   const A = AS(), m = A.my, e = encodeTown(m);
   V.qrE = e;
   const pk = (k, label, val, n) => `<div class="appk"><span class="lb">${label}</span><button type="button" class="pb" data-a="my" data-k="${k}" data-d="-1" aria-label="前"><img src="${IC('ui_back')}" alt=""></button><b class="vl">${X(val)}</b><button type="button" class="pb r" data-a="my" data-k="${k}" data-d="1" aria-label="次"><img src="${IC('ui_back')}" alt=""></button></div>`;
-  return `<div class="apqcard"><canvas id="apqrc" width="520" height="700"></canvas><p class="apqi">建物 ${e.n}こ${e.trimmed ? `（大きな町なので ${e.total - e.n}こ減らしたよ）` : ''}</p></div>
+  return `<div class="apqcard"><canvas id="apqrc" width="520" height="700"></canvas><p class="apqi">町のようす ${e.n}マス分${e.trimmed ? `（大きな町なので かざりを ${e.total - e.n}マス分 へらしたよ）` : '（畑・道・川・海・線路も入っているよ）'}</p></div>
     <div class="apcol2">
       ${pk('a', '名前', m.a < 16 ? NAMEA[m.a] : '', 16)}${pk('b', '種類', NAMEB[m.b], 4)}${pk('g', '挨拶', GREET[m.g], GREET.length)}
       <button type="button" class="apbtn pr" data-a="showqr"><img src="${IC('ui_qr')}" alt=""><span><b>QRを見せる</b><small>大きく表示する</small></span></button>
@@ -14941,7 +15061,7 @@ async function gotCode(text, fromCam){
 async function previewFriend(F){
   const A = AS(), can = A.tix > 0, known = A.friends[F.id];
   const ok = await dialog(`<div class="apfpv"><img class="th" src="${IC('th_friend')}" alt=""><h2 class="dlgT">${X(F.n)}</h2><div class="apdl"><img src="${IC('ch_sparrow')}" alt=""><span class="apbq">${X(GREET[F.g])}</span></div>
-    <p class="dlgP">建物 ${F.cells.length}この町。${known ? `<br>${known.v}回行ったことがあるよ。` : '<br>初めての友だちの町！'}<br>${can ? '搭乗券1枚で行けるよ。' : '搭乗券がないよ。チェックインでもらおう！'}</p></div>`,
+    <p class="dlgP">建物 ${F.cells.filter(c => { const id = ID_TABLE[c[2]]; return !isRoadId(id) && !KEEPIDS.has(id) && id !== 'tree' && id !== 'flower'; }).length}この町。${known ? `<br>${known.v}回行ったことがあるよ。` : '<br>初めての友だちの町！'}<br>${can ? '搭乗券1枚で行けるよ。' : '搭乗券がないよ。チェックインでもらおう！'}</p></div>`,
     [{label:'やめる', cls:'white', v:false}, {label:can ? '行く！' : 'チェックインへ', cls:'gold', v:true}], 'wide');
   if(!ok){ if(ROOT && V.s === 'qr') render(); return; }
   if(!can){ if(ROOT){ Q = null; go('top'); } return; }
@@ -15070,7 +15190,7 @@ document.addEventListener('click', async e => {
   if(a === 'eat') return eatSv(t.dataset.id);
   if(a === 'deco') return decoSv(t.dataset.id);
   if(a === 'shop'){ V.shop = !V.shop; snd('tap'); return visitSheet(); }
-  if(a === 'zoom'){ V.zoom = V.zoom === 'fit' ? 'fill' : 'fit'; snd('tap'); return render(); }
+  if(a === 'zoom'){ if(A.trip && A.trip.town === 'friend') V.fz = V.fz === 'big' ? 'fit' : 'big'; else V.zoom = V.zoom === 'fit' ? 'fill' : 'fit'; snd('tap'); return render(); }
   if(a === 'hs'){
     const tp = A.trip; if(!tp) return; const T = tOf(tp), h = (T.hs || [])[+t.dataset.i]; if(!h) return; snd('tap');
     if(h[0] === 'air') return leave();
@@ -15102,7 +15222,7 @@ try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#ap662') || v === 0) return v;
   if(Q && V.s === 'quiz') return Q.ans === null ? Math.min(v, .06) : Math.min(v, .09); return Math.min(v, .12); }; } }catch(e){}
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウンv${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
-window.__ap662 = {open, close, AS, QS, TOWNS, SVS, RANKS, CFG, render, startQuiz, go, QRK, encodeTown, decodeTown, sampleCode, fitAll, gotCode, previewFriend, drawQR, myName, GREET, ID_TABLE, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }, depart, landing, useFacility, FUNC, rbText, rubifyDOM, RBD, TOWNS, SVS, shopSheet, bag, eatSv, decoSv, fitAllStages, get FAC(){ return FAC; }};
+window.__ap662 = {open, close, AS, QS, TOWNS, SVS, RANKS, CFG, render, startQuiz, go, QRK, encodeTown, decodeTown, packTown2, findLv, buildFriendMap, sampleCode, fitAll, gotCode, previewFriend, drawQR, myName, GREET, ID_TABLE, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }, depart, landing, useFacility, FUNC, rbText, rubifyDOM, RBD, TOWNS, SVS, shopSheet, bag, eatSv, decoSv, fitAllStages, get FAC(){ return FAC; }};
 
 /* ---------- CSS ---------- */
 const css = document.createElement('style');
@@ -15427,8 +15547,6 @@ body.ap662on #toast{z-index:90}
 #ap662 .apvs.fr{background:linear-gradient(180deg,#8FD07A,#5FAE55)}
 .apfmb{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#7CC26A,#5FAE55)}
 .apfmw{position:absolute;left:0;top:0;transform-origin:0 0}
-#townMap.apfm{display:grid;position:relative;width:100%;height:100%;pointer-events:none}
-#townMap.apfm .cell{position:relative;width:64px;height:64px;outline:none!important}
 #ap662 .apvs.fr .aphw.v{height:20%}#ap662 .apvs.fr .apc.peli4{width:12%}#ap662 .apvs.fr .apc.spar4{width:8%;top:94%;left:90%}
 /* QR画面 */
 .apqr{background:linear-gradient(180deg,#DDF1FF,#FFF6E6)}
@@ -15545,11 +15663,6 @@ css.textContent += `
 #ap662 .apit small{flex-wrap:wrap;justify-content:center;text-align:center;line-height:1.4}
 #ap662 .inl{width:20px;height:20px;vertical-align:-5px;object-fit:contain}
 #ap662 .apfmb{position:absolute;inset:0}
-#townMap.apfm .cell{pointer-events:auto}
-#townMap.apfm .cell:not([data-fid]){pointer-events:none}
-#townMap.apfm .cell .fsp{position:absolute;left:50%;top:-4px;width:30px;height:30px;transform:translateX(-50%);z-index:30;pointer-events:none;animation:aphp 1.7s ease-in-out infinite}
-#townMap.apfm .cell .fsp img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 4px #fff)}
-#townMap.apfm{pointer-events:auto}
 /* おみやげぶくろ */
 #ap662 .apbgs{background:linear-gradient(180deg,#FFF3E0,#EAF4FF)}
 #ap662 .apbggrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -15581,6 +15694,27 @@ css.textContent += `
 #ap662 .aphd h2{font-size:clamp(14px,4.4vw,20px)}
 /* ペリカン（プラチナ）は 専用の 絵なので ぼうし 重ねは なし */
 .pelw .cap,.apc .cap{display:none}
+`;
+css.textContent += `
+/* ===== v6.65：iPad横 専用の絵・友だちの町の再現 ===== */
+#ap662 .aptp.tab .aptp-bot{left:50%;right:auto;transform:translateX(-50%);width:min(940px,calc(100% - 32px));padding:0 0 calc(12px + env(safe-area-inset-bottom))}
+#ap662 .aptp.tab .aptp-pills{flex-direction:row;align-items:center;justify-content:center;gap:10px}
+#ap662 .aptp.tab .aptp-pills .aprk{flex:0 1 460px}
+#ap662 .aptp.tab .aptp-menu{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#ap662 .aptp.tab .apmb2{min-height:84px;padding:8px 12px}
+#ap662 .aptp.tab .aphw.top{display:flex;bottom:calc(170px + env(safe-area-inset-bottom));height:20%;left:30%;z-index:5;animation-name:apwalk2}
+#ap662 .aptp.tab .aphw.gate{bottom:calc(130px + env(safe-area-inset-bottom));height:22%;z-index:5}
+#ap662 .aptp.tab .apsg{left:54%;top:calc(58px + env(safe-area-inset-top))}
+#ap662 .aptp.gt.tab .apgb.ov{background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.9) 45%)}
+#ap662 .aptp.tab .aptp-side{display:none}
+#ap662 .apfmb{overflow:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}#ap662 .apfmb::-webkit-scrollbar{display:none}#ap662 .apfmin{position:relative}
+#townMap.apfm{display:grid;position:relative;margin:0;width:max-content;pointer-events:auto}
+#townMap.apfm .cell:not([data-fid]){pointer-events:none}
+#townMap.apfm .cell[data-fid]{cursor:pointer}
+#townMap.apfm .cell.fcl .fsp{position:absolute;left:50%;top:-4px;width:30px;height:30px;transform:translateX(-50%);z-index:300;pointer-events:none;animation:aphp 1.7s ease-in-out infinite}
+#townMap.apfm .cell.fcl .fsp img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 4px #fff)}
+#townMap.apfm .sig49,#townMap.apfm .seaCv67,#townMap.apfm .deck65{pointer-events:none}
+#townMap.apfm .cell{outline:none!important}
 `;
 document.head.appendChild(css);
 })();
