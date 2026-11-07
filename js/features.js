@@ -13772,8 +13772,10 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 })();
 
 
+
+
 /* =====================================================================
-   まなびタウン v6.62：くうこう（仕様書 v0.1\u3000STEP1〜STEP6）
+   まなびタウン v6.63：くうこう（ともだちの まち・ゴールド／プラチナ・イラストアイコン）
    ・町の「くうこう」を タッチ → 町の 前面に くうこうターミナルが 開く（スマホ縦／iPad横）
    ・チェックイン（搭乗券）／かんせいとう（空港クイズ ★1〜3）／いきさき えらび
    ・搭乗 → フライト（機内クイズ）→ 訪問先の まち（おみやげ ショップ）→ 帰りの 便 → おかえり
@@ -13782,7 +13784,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.62.0', IMG = './assets/images/airport/';
+const VER = '6.63.0', IMG = './assets/images/airport/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -13790,6 +13792,9 @@ const today = () => (typeof dayKey === 'function' ? dayKey() : new Date().toISOS
 const dayNo = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 6e4) / 864e5);
 const snd = t => { try{ sound(t); }catch(e){} };
 const hash = s => { let h = 2166136261; for(const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h; };
+const IC = n => `${IMG}${n}.webp`;
+const starsHTML = (n, tot = 3) => `<span class="stars">${Array.from({length:tot}, (_, i) => `<img src="${IC(i < n ? 'ui_star' : 'ui_star0')}" alt="">`).join('')}</span>`;
+const LOCK = `<img class="lck" src="${IC('ui_lock')}" alt="">`, CHK = `<img class="chk" src="${IC('ui_check')}" alt="">`, ARW = `<img class="arw" src="${IC('ui_back')}" alt="">`;
 const art = k => { try{ return artSrc(k) || ''; }catch(e){ return ''; } };
 
 /* ---------- 数値（すべて 暫定。調整は ここだけ） ---------- */
@@ -13807,34 +13812,39 @@ const MILE = {1:5, 2:10, 3:20}, PTS = {1:2, 2:4, 3:8};
 const RANKS = [
   {n:'ブロンズ',  m:0,    img:'badge_bronze',   open:'モデルの まち 4つ'},
   {n:'シルバー',  m:300,  img:'badge_silver',   open:'とうじょうけんを 1まい おおく もてる（6まい）'},
-  {n:'ゴールド',  m:1000, img:'badge_gold',     open:'きんの バッジ'},
-  {n:'プラチナ',  m:3000, img:'badge_platinum', open:'プラチナの バッジ・ペリカンの とくべつな えんしゅつ'}
+  {n:'ゴールド',  m:1000, img:'badge_gold',     open:'きんの とくべつな おみやげが かえるよ。パスポートも きんいろに！'},
+  {n:'プラチナ',  m:3000, img:'badge_platinum', open:'「くもの うえの まち」に いけるよ。ペリカンが とくべつな ぼうしで むかえて くれるよ！'}
 ];
+const lockedT = t => !!(t && t.rank && rankNo(AS().miles) < t.rank);
 const rankNo = m => m >= 3000 ? 4 : m >= 1000 ? 3 : m >= 300 ? 2 : 1;
 
 /* ---------- 行き先 ---------- */
 const TOWNS = [
-  {id:'south',  n:'みなみの しま', sub:'あたたかい うみと きれいな すなが まってるよ', img:'town_south',  stamp:'stamp_south',  c:'#F08A3A', pin:[19,51], sv:['sv01','sv02','sv03','sv04'],
+  {id:'south',  n:'みなみの しま', sub:'あたたかい うみと きれいな すなが まってるよ', img:'town_south',  stamp:'stamp_south',  c:'#F08A3A', pin:[19,51], sv:['sv01','sv02','sv03','sv04','sv21'],
    say:['うみが キラキラ！','ココナッツジュース、おいしそう！','サーフィンの おみせが あるよ','ヤシの 木の かげで ひとやすみ']},
-  {id:'snow',   n:'ゆきの まち',   sub:'まっしろな せかいで たのしく あそぼう',       img:'town_snow',   stamp:'stamp_snow',   c:'#3E86C8', pin:[42,22], sv:['sv05','sv06','sv07','sv08'],
+  {id:'snow',   n:'ゆきの まち',   sub:'まっしろな せかいで たのしく あそぼう',       img:'town_snow',   stamp:'stamp_snow',   c:'#3E86C8', pin:[42,22], sv:['sv05','sv06','sv07','sv08','sv22'],
    say:['さむいけど あったかい まちだね','ゆきだるまを みつけた！','こおりの うえで スケートできそう','おしろが みえるよ']},
-  {id:'forest', n:'もりの まち',   sub:'みどりが いっぱい しぜんの まち',             img:'town_forest', stamp:'stamp_forest', c:'#2E9B5B', pin:[73,36], sv:['sv09','sv10','sv11','sv12'],
+  {id:'forest', n:'もりの まち',   sub:'みどりが いっぱい しぜんの まち',             img:'town_forest', stamp:'stamp_forest', c:'#2E9B5B', pin:[73,36], sv:['sv09','sv10','sv11','sv12','sv23'],
    say:['ツリーハウスが あるよ','きのこの おうち、かわいい！','かわの おとが きこえるね','どんぐり、ひろったよ']},
-  {id:'candy',  n:'おかしの まち', sub:'あまくて たのしい おかしの まち',             img:'town_candy',  stamp:'stamp_candy',  c:'#E8608A', pin:[72,77], sv:['sv13','sv14','sv15','sv16'],
+  {id:'candy',  n:'おかしの まち', sub:'あまくて たのしい おかしの まち',             img:'town_candy',  stamp:'stamp_candy',  c:'#E8608A', pin:[72,77], sv:['sv13','sv14','sv15','sv16','sv24'],
    say:['いい においが するね','チョコレートの かわが ある！','ドーナツの たてものが あるよ','かんらんしゃに のってみたい']}
 ];
+TOWNS.push({id:'cloud', n:'くもの うえの まち', sub:'くもの うえに ういている ふしぎな まち。プラチナの ごほうび！', img:'town_cloud', stamp:'stamp_cloud', c:'#8A6FE0', pin:[17,17], rank:4, sv:['sv17','sv18','sv19','sv20'],
+   say:['くもの うえに まちが ある！','にじが すぐ そこに みえるよ','ほしの ランプが きれいだね','ふわふわで きもちいい！']});
 const TN = id => TOWNS.find(t => t.id === id);
 /* ---------- おみやげ ---------- */
 const SVS = [
-  ['sv01','ココナッツ',120,'south'],['sv02','かいがらの ネックレス',200,'south'],['sv03','トロピカル フルーツ',150,'south'],['sv04','サーフィンの キーホルダー',300,'south'],
-  ['sv05','スノードーム',300,'snow'],['sv06','ゆきの けっしょう',200,'snow'],['sv07','ゆきだるま',150,'snow'],['sv08','あみの てぶくろ',120,'snow'],
-  ['sv09','どんぐり',120,'forest'],['sv10','木の実の かご',200,'forest'],['sv11','まつぼっくり',150,'forest'],['sv12','きのこの ランプ',300,'forest'],
-  ['sv13','ペロペロ キャンディ',120,'candy'],['sv14','カップケーキ',150,'candy'],['sv15','キャンディの びん',200,'candy'],['sv16','おかしの いえ',300,'candy']
-].map(a => ({id:a[0], n:a[1], cost:a[2], town:a[3], img:IMG + 'sv_' + a[0].slice(2) + '.webp'}));
+  ['sv01','ココナッツ',120,'south','sv_01'],['sv02','かいがらの ネックレス',200,'south','sv_02'],['sv03','トロピカル フルーツ',150,'south','sv_03'],['sv04','サーフィンの キーホルダー',300,'south','sv_04'],
+  ['sv05','スノードーム',300,'snow','sv_05'],['sv06','ゆきの けっしょう',200,'snow','sv_06'],['sv07','ゆきだるま',150,'snow','sv_07'],['sv08','あみの てぶくろ',120,'snow','sv_08'],
+  ['sv09','どんぐり',120,'forest','sv_09'],['sv10','木の実の かご',200,'forest','sv_10'],['sv11','まつぼっくり',150,'forest','sv_11'],['sv12','きのこの ランプ',300,'forest','sv_12'],
+  ['sv13','ペロペロ キャンディ',120,'candy','sv_13'],['sv14','カップケーキ',150,'candy','sv_14'],['sv15','キャンディの びん',200,'candy','sv_15'],['sv16','おかしの いえ',300,'candy','sv_16'],
+  ['sv17','にじの びん',250,'cloud','svc_1'],['sv18','くもの ぬいぐるみ',300,'cloud','svc_2'],['sv19','ほしの ランプ',350,'cloud','svc_3'],['sv20','てんしの はねの チャーム',400,'cloud','svc_4'],
+  ['sv21','きんの ココナッツ',500,'south','svg_south',1],['sv22','きんの スノードーム',500,'snow','svg_snow',1],['sv23','きんの どんぐり',500,'forest','svg_forest',1],['sv24','きんの キャンディ',500,'candy','svg_candy',1]
+].map(a => ({id:a[0], n:a[1], cost:a[2], town:a[3], img:IMG + a[4] + '.webp', gold:!!a[5]}));
 const SV = id => SVS.find(s => s.id === id);
 /* 「わたしの家」の 家具に する（ゆうえんちと おなじ しくみ） */
 try{ SVS.forEach(s => { const id = 'ap_' + s.id; DEFAULT_ART[id] = s.img;
-  if(!FURNITURE.some(f => f.id === id)) FURNITURE.push({id, name:'くうこうの ' + s.n, art:id, type:'fur', price:0, lv:1, sty:3, special:true, ev:'airport'}); }); }catch(e){ console.warn('airport fur', e); }
+  if(!FURNITURE.some(f => f.id === id)) FURNITURE.push({id, name:'くうこうの ' + s.n, art:id, type:'fur', price:0, lv:1, sty:s.gold ? 6 : 3, special:true, ev:'airport'}); }); }catch(e){ console.warn('airport fur', e); }
 
 /* ---------- ピクトグラム（SVG） ---------- */
 const PICS = {
@@ -13995,12 +14005,14 @@ function AS(){
   if(fresh) a.tix = CFG.firstTix;
   a.tix = a.tix || 0; a.miles = a.miles || 0; a.stamps = a.stamps || {}; a.visits = a.visits || {}; a.sv = a.sv || {};
   a.seen = a.seen || {}; a.miss = a.miss || {}; a.right = a.right || 0; a.trips = a.trips || 0; a.settings = a.settings || {ruby:'hard'};
-  a.rankShown = a.rankShown || rankNo(a.miles); a.homeGot = a.homeGot || {};
+  a.rankShown = a.rankShown || rankNo(a.miles); a.homeGot = a.homeGot || {}; a.friends = a.friends || {}; a.my = a.my || {a:0, b:0, g:0};
+  try{ Object.keys(a.sv).forEach(k => { if(String(k).startsWith('fr_') && !FUR('ap_' + k)){ const it = ITEM(k.slice(3)); if(it) FURNITURE.push({id:'ap_' + k, name:'ミニ' + it.name, art:it.art, type:'fur', price:0, lv:1, sty:3, special:true, ev:'airport'}); } }); }catch(e){}
   if(!a.daily || a.daily.d !== today()) a.daily = {d:today(), earn:0, sky:0, tower:0};
   try{ const nw = Object.keys(a.sv).filter(k => a.sv[k] && !a.homeGot[k] && FUR('ap_' + k));
     if(nw.length){ const H = ensureHome(); nw.forEach(k => { H.inv['ap_' + k] = (H.inv['ap_' + k] || 0) + 1; a.homeGot[k] = 1; }); } }catch(e){}
   return a;
 }
+const ID_TABLE = ["house","birdhouse","logcabin","waterhouse","treehouse","bamboo","apartment","road","road_dirt","road_brick","road_stone","road_pastel","tree","flower","bench","lamp","well","pond","fountain","field","bakery","market","windmill","park","post","library","school","parking","clinic","office","dept","hotel","museum","cityhall","tower","stadium","harbor","ferris","airport","heliport","observatory","zoo","aquarium","landmark","castle","space","station","bigstation","letter","goldletter","ticket","rankbook","bicycle","scooter","kei","sedan","crossover","taxi","tractor","bus","mail","garbage","truck","icecream","foodtruck","fire","ambulance","police","schoolbus","camper","ev","mixer","crane","excavator","rally","sports","doubledecker","limo","steam","local","tram","freight","express","shinkansen","linear","d_sakura","d_maple","d_pine","d_palm","d_bamboo","d_sunflower","d_rosearch","d_tulip","d_hedge","d_mushroom","d_rocks","d_bridge","d_fence","d_stonelamp","d_torii","d_birdbath","d_flowercart","d_scarecrow","d_signpost","d_catstatue","d_clocktower","d_pennant","d_mailbox","d_phonebooth","d_vending","d_busstop","d_bikerack","d_recycle","d_hydrant","d_picnic","d_parasol","d_swing","d_slide","d_sandbox","d_seesaw","d_junglegym","d_trampoline","d_carousel","d_balloon","d_springhorse","d_snowman","d_xmasout","d_pumpkins","d_tanabata","d_koinobori","d_kadomatsu","d_campfire","d_tent","d_onsen","d_gazebo","d_totem","d_bigpot","d_topiary","d_waterfall","d_koipond","d_duckpond","d_rainbow","d_hotair","d_lighthouse","d_beehive","d_coop","d_doghouse","d_vegstand","d_icestand","d_takoyaki","d_crepe","d_omikuji","d_hokora","d_jizo","d_daruma","d_manekineko","d_shimastatue","d_trophystat","d_stardeck","d_flowerclock","d_mushhouse","d_crystaltower","d_rainbowfount","d_minicastle","d_bellarch","evi_halloween_0","evi_halloween_1","evi_halloween_2","evi_halloween_3","evi_christmas_0","evi_christmas_1","evi_christmas_2","evi_christmas_3","evi_newyear_0","evi_newyear_1","evi_newyear_2","evi_newyear_3","evi_summer_0","evi_summer_1","evi_summer_2","evi_summer_3","gasstation","koban","firestation","dealer","whitebike","ladder","tow","compactor","vanblue","minivan","convert","pickup","wagon","jeep","kart","trolley","luxvan","dump","tanker","beetle","retroscoot","camperbus","blacktaxi","sightbus","snowplow","shuttle","forklift","baketrike","roller","sweeper","rescue","command","carriage","partybus","platform","ud_flag","ud_podium","ud_ball","ud_pompom","ud_rope","road_crossing","takoyaki","crepe","ramen","d_signal","konbini","ranch","train3","river","road_bridge","d_appletree","d_bananatree","bg_hospital","bg_university","bg_science","bg_botanical","bg_onsen","bg_mall","bg_concert","bg_plaza","sea","heli","plane","yacht","fishboat","ferry","hp_house"];
 const tixCap = () => CFG.tixMax + (rankNo(AS().miles) >= 2 ? 1 : 0);
 const lastPt = () => (save.points && save.points.bal) || 0;
 function addMiles(n){ if(!n) return; const A = AS(); A.miles = Math.max(0, A.miles + n); persist(); }
@@ -14017,23 +14029,23 @@ function open(key, o){
   render(); try{ persist(); }catch(e){}
 }
 function close(){
-  FX.forEach(clearTimeout); FX = []; clearInterval(TKI); TKI = 0; if(!ROOT) return;
+  stopCam(); FX.forEach(clearTimeout); FX = []; clearInterval(TKI); TKI = 0; if(!ROOT) return;
   const r = ROOT; ROOT = null; Q = null; r.classList.remove('show'); document.body.classList.remove('ap662on'); setTimeout(() => r.remove(), 250); try{ persist(); }catch(e){}
 }
-function go(s, o){ FX.forEach(clearTimeout); FX = []; if(s !== 'visit'){ clearInterval(TKI); TKI = 0; } V = Object.assign({}, V, o || {}, {s}); snd('tap'); render(); }
+function go(s, o){ FX.forEach(clearTimeout); FX = []; if(s !== 'qr') stopCam(); if(s !== 'visit'){ clearInterval(TKI); TKI = 0; } V = Object.assign({}, V, o || {}, {s}); snd('tap'); render(); }
 function render(){
   if(!ROOT) return; LAY = isTab() ? 'tab' : 'ph';
   ROOT.className = `show ${LAY} ${innerWidth >= 600 && LAY === 'ph' ? 'wide' : ''}`;
-  const f = {top, tower, dest, pass, quiz, qres, gate, fly, visit, result}[V.s] || top;
-  ROOT.innerHTML = `<div class="apw">${f()}</div>`; after(); checkRank();
+  const f = {top, tower, dest, pass, quiz, qres, gate, fly, visit, result, qr}[V.s] || top;
+  ROOT.innerHTML = `<div class="apw">${f()}</div>`; if(!(V.s === 'qr' && (V.qt || 'scan') === 'scan')) stopCam(); if(V.s === 'qr' && (V.qt || 'scan') === 'mine') drawQR(ROOT.querySelector('#apqrc'), V.qrE, myName(AS().my), GREET[AS().my.g]); fitAll(); fitFriendMap(); after(); checkRank();
 }
-let rtm = 0; addEventListener('resize', () => { if(!ROOT) return; clearTimeout(rtm); rtm = setTimeout(() => { if(ROOT && (isTab() ? 'tab' : 'ph') !== LAY && V.s !== 'fly') render(); }, 150); });
+let rtm = 0; addEventListener('resize', () => { if(!ROOT) return; clearTimeout(rtm); rtm = setTimeout(() => { if(ROOT && (isTab() ? 'tab' : 'ph') !== LAY && V.s !== 'fly' && !(V.s === 'qr' && (V.qt || 'scan') === 'scan' && CAM)) render(); }, 150); });
 
 /* ---------- パーツ ---------- */
 const coinI = () => `<img src="${X(art('hd_coin'))}" alt="" onerror="this.remove()">`;
 const chips = () => { const A = AS(); return `<div class="apchips"><span>${coinI()}<b>${lastPt()}</b></span><span class="mi"><img src="${IMG}plane.webp" alt=""><b>${A.miles}</b><small>マイル</small></span><span class="tk"><img src="${IMG}ic_ticket.webp" alt=""><b>${A.tix}</b></span></div>`; };
-const homeBtn = () => `<button type="button" class="aphm" data-a="town"><svg viewBox="0 0 24 24"><path d="M3 11L12 4l9 7v9h-6v-6H9v6H3z" fill="currentColor"/></svg><b>${LAY === 'tab' ? 'まちに もどる' : 'まち'}</b></button>`;
-const back = (to, l = 'もどる') => `<button type="button" class="apbk" data-a="${to}"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>${l}</b></button>`;
+const homeBtn = () => `<button type="button" class="aphm" data-a="town"><img src="${IC('ui_home')}" alt=""><b>${LAY === 'tab' ? 'まちに もどる' : 'まち'}</b></button>`;
+const back = (to, l = 'もどる') => `<button type="button" class="apbk" data-a="${to}"><img src="${IC('ui_back')}" alt=""><b>${l}</b></button>`;
 const head = (title, to = 'top', l) => `<header class="aphd">${back(to, l)}<h2>${title}</h2>${chips()}${LAY === 'tab' ? homeBtn() : ''}</header>`;
 const rubyBtn = () => { const m = AS().settings.ruby; return `<button type="button" class="aprb" data-a="ruby"><span>ふりがな</span><b>${m === 'all' ? 'ぜんぶ' : m === 'none' ? 'なし' : 'むずかしい字'}</b></button>`; };
 function rankBar(){
@@ -14043,10 +14055,10 @@ function rankBar(){
 }
 const MI = `<img class="mii" src="${IMG}plane.webp" alt="">`, TKI2 = `<img class="mii tkk" src="${IMG}ic_ticket.webp" alt="">`;
 const PP = n => `<span class="ppt">+${n}<small>pt</small></span>`;
-const LOCK = '<svg class="lck" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5" fill="#8A94A3"/><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="#8A94A3" stroke-width="2.6"/></svg>';
+
 const stampN = () => TOWNS.filter(t => AS().stamps[t.id]).length;
 const hanaImg = (k = 'res_girl') => { const s = art(k); return s ? `<img src="${X(s)}" alt="" onerror="this.remove()">` : ''; };
-const chr = (k, cls, a) => `<button type="button" class="apc ${cls}" ${a ? `data-a="${a}"` : `data-say="${cls}"`}><img src="${IMG}ch_${k}.webp" alt=""></button>`;
+const chr = (k, cls, a) => `<button type="button" class="apc ${cls}" ${a ? `data-a="${a}"` : `data-say="${cls}"`}><img src="${IMG}ch_${k}.webp" alt="">${k === 'pelican' && rankNo(AS().miles) >= 4 ? `<img class="cap" src="${IC('fx_cap')}" alt="">` : ''}</button>`;
 const hanaWalk = (cls = '') => `<button type="button" class="aphw ${cls}" data-say="hana"><span class="aphi">${hanaImg()}</span></button>`;
 const SAY = {
   hana:['いってきます！','どこの まちに いこうかな？','ひこうき、たのしみ！','おみやげ、なにに しよう？'],
@@ -14062,7 +14074,7 @@ function bubble(el, txt){
   b.style.top = Math.max(4, r.top - bx.top - 44) + 'px';
   clearTimeout(bubble.tm); bubble.tm = setTimeout(() => b.classList.add('hidden'), 2600);
 }
-const recTown = () => TOWNS[hash(today()) % TOWNS.length].id;
+const recTown = () => { const L = TOWNS.filter(t => !lockedT(t)); return L[hash(today()) % L.length].id; };
 
 /* ---------- ① トップ ---------- */
 function menuList(){
@@ -14097,7 +14109,7 @@ function top(){
 function tower(){
   const A = AS();
   const L = [[1, 'ふつう', 'n', 'ようこそ！ まずは ここから'], [2, 'むずかしい', 'h', 'ちょっと ちょうせん'], [3, 'ちょうむずかしい', 's', 'ぜんぶ とけたら ひこうし はかせ！']];
-  const btns = L.map(l => `<button type="button" class="apdf ${l[2]}" data-a="tw" data-s="${l[0]}"><b>★${'★'.repeat(l[0] - 1)}${'☆'.repeat(3 - l[0])}　${l[1]}</b><small>${l[3]}　＋${MILE[l[0]]}マイル／もんだい</small></button>`).join('');
+  const btns = L.map(l => `<button type="button" class="apdf ${l[2]}" data-a="tw" data-s="${l[0]}"><b>${starsHTML(l[0])}<span>${l[1]}</span></b><small>${l[3]}　＋${MILE[l[0]]}マイル／もんだい</small></button>`).join('');
   const scene = `<div class="apsc qs"><img class="bg" src="${IMG}tower.webp" alt="">${chr('sparrow', 'spar2')}<span class="apbq in" data-say="spar">こちら かんせいとう！<br>ちょうせん する むずかしさを えらんでね</span><span class="apbb hidden"></span></div>`;
   return `<div class="aptw ${LAY}">${head('かんせいとう')}
     <div class="apbody">${scene}<div class="apcol"><h4>${CFG.twN}もん チャレンジ</h4>${btns}<p class="aphl">せいかいすると マイルと ポイントが もらえるよ。ふりがなは ここで かえられるよ。</p>${rubyBtn()}</div></div></div>`;
@@ -14106,21 +14118,24 @@ function tower(){
 /* ---------- ④ いきさき えらび ---------- */
 function townCard(t, sel, rec){
   const A = AS(), seen = A.stamps[t.id];
+  if(lockedT(t)) return `<button type="button" class="aptc lk" data-a="locked" style="--c:${t.c}"><span class="th"><img src="${IC(t.img)}" alt=""></span><span class="tx"><b>${X(t.n)}</b><small>プラチナランクで ひらくよ</small></span><i class="ar">${LOCK}</i></button>`;
   return `<button type="button" class="aptc ${sel === t.id ? 'on' : ''}" data-a="sel" data-t="${t.id}" style="--c:${t.c}">
-    <span class="th"><img src="${IMG}${t.img}.webp" alt="">${rec === t.id ? '<i class="rb">おすすめ</i>' : ''}</span>
-    <span class="tx"><b>${t.n}</b><small>${t.sub}</small><span class="sv">${t.sv.map(id => `<img class="${A.sv[id] ? '' : 'no'}" src="${SV(id).img}" alt="">`).join('')}</span></span>
-    ${seen ? `<img class="st" src="${IMG}${t.stamp}.webp" alt="">` : ''}<i class="ar">›</i></button>`;
+    <span class="th"><img src="${IC(t.img)}" alt="">${rec === t.id ? '<i class="rb">おすすめ</i>' : ''}</span>
+    <span class="tx"><b>${X(t.n)}</b><small>${X(t.sub)}</small><span class="sv">${t.sv.map(id => { const s = SV(id), lk = s.gold && rankNo(A.miles) < 3; return `<img class="${A.sv[id] ? '' : 'no'}" src="${s.img}" alt="">`; }).join('')}</span></span>
+    ${seen ? `<img class="st" src="${IC(t.stamp)}" alt="">` : ''}<i class="ar">${ARW}</i></button>`;
 }
 function dest(){
-  const A = AS(), rec = recTown(), sel = V.sel || rec, T = TN(sel);
-  const pins = TOWNS.map(t => `<button type="button" class="appin ${sel === t.id ? 'on' : ''}" data-a="sel" data-t="${t.id}" style="left:${t.pin[0]}%;top:${t.pin[1]}%;--c:${t.c}"><img src="${IMG}${t.stamp}.webp" alt=""><span>${t.n}</span>${A.stamps[t.id] ? '<i>✔</i>' : ''}</button>`).join('');
+  const A = AS(), rec = recTown(), sel = (V.sel && TN(V.sel) && !lockedT(TN(V.sel))) ? V.sel : rec, T = TN(sel), nFr = Object.keys(A.friends).length;
+  const pins = TOWNS.map(t => { const lk = lockedT(t);
+    if(lk) return `<button type="button" class="appin lk" data-a="locked" style="left:${t.pin[0]}%;top:${t.pin[1]}%;--c:#8A94A3"><img class="sil" src="${IC(t.stamp)}" alt=""><span>？？？</span><i class="lkb">${LOCK}</i></button>`;
+    return `<button type="button" class="appin ${sel === t.id ? 'on' : ''}" data-a="sel" data-t="${t.id}" style="left:${t.pin[0]}%;top:${t.pin[1]}%;--c:${t.c}"><img src="${IC(t.stamp)}" alt=""><span>${X(t.n)}</span>${A.stamps[t.id] ? `<i>${CHK}</i>` : ''}</button>`; }).join('');
   const map = `<div class="apmap"><img class="bg" src="${IMG}map.webp" alt="">${pins}<span class="apmh" style="left:45%;top:57%"><img src="${IMG}plane.webp" alt=""></span>${chr('pelican', 'peli3')}${chr('sloth', 'slo3')}<span class="apbb hidden"></span></div>`;
-  const qr = `<button type="button" class="aptc lk" data-a="qrsoon"><span class="th qrth"><svg viewBox="0 0 40 40"><path d="M4 4h12v12H4zM24 4h12v12H24zM4 24h12v12H4zM24 24h5v5h-5zM31 24h5v5h-5zM24 31h5v5h-5zM31 31h5v5h-5z" fill="#fff"/></svg></span><span class="tx"><b>ともだちの まち</b><small>QRで ともだちの まちへ（じゅんびちゅう）</small></span><i class="ar">${LOCK}</i></button>`;
+  const qrc = `<button type="button" class="aptc fr" data-a="qr" style="--c:#E8A33A"><span class="th"><img src="${IC('th_friend')}" alt=""></span><span class="tx"><b>ともだちの まち</b><small>QRで ともだちの まちへ あそびに いこう</small><span class="sv"><img src="${IC('ui_stampf')}" alt=""><em>${nFr}にん いったよ</em></span></span><i class="ar">${ARW}</i></button>`;
   const go1 = A.tix > 0
-    ? `<button type="button" class="apgo" data-a="depart"><b>とうじょう！</b><small>${T.n}へ（とうじょうけん 1まい）</small></button>`
+    ? `<button type="button" class="apgo" data-a="depart"><b>とうじょう！</b><small>${X(T.n)}へ（とうじょうけん 1まい）</small></button>`
     : `<button type="button" class="apgo sub" data-a="checkin"><b>チェックインへ</b><small>とうじょうけんが ないよ</small></button>`;
-  const bar = `<div class="apdb"><span class="tkn"><img src="${IMG}ic_ticket.webp" alt=""><b>${A.tix}</b>まい</span>${go1}</div>`;
-  const list = `<div class="aptl">${TOWNS.map(t => townCard(t, sel, rec)).join('')}${qr}</div>`;
+  const bar = `<div class="apdb"><span class="tkn"><img src="${IC('ic_ticket')}" alt=""><b>${A.tix}</b><em>まい</em></span>${go1}</div>`;
+  const list = `<div class="aptl">${TOWNS.map(t => townCard(t, sel, rec)).join('')}${qrc}</div>`;
   if(LAY === 'ph') return `<div class="apds ph">${head(LAY === 'ph' ? 'いきさき' : 'いきさき えらび')}<div class="apbody">${map}${list}</div>${bar}</div>`;
   return `<div class="apds tab">${head('いきさき えらび')}<div class="apbody"><div class="apl">${map}${bar}</div><div class="apr">${list}</div></div></div>`;
 }
@@ -14162,7 +14177,7 @@ const SCN = {
 function quizScene(){
   const s = SCN[Q.mode], q = cur(), done = Q.ans !== null, right = done && Q.ans === q.a;
   return `<div class="apsc qs ${Q.mode}"><img class="bg" src="${IMG}${s.img}.webp" alt="">
-    <div class="apwho ${s.who}"><img src="${IMG}ch_${s.who}.webp" alt=""></div>
+    <div class="apwho ${s.who}">${s.who === 'pelican' ? pelImg() : `<img src="${IMG}ch_${s.who}.webp" alt="">`}</div>
     <div class="aphero ${done ? (right ? 'joy' : 'think') : ''}">${hanaImg(done && right ? 'res_girl_party' : 'res_girl')}</div>
     <span class="apbq in">${done ? (right ? pick(['せいかい！ すごいね！', 'その ちょうし！', 'ばっちり！']) : 'だいじょうぶ！ いっしょに おぼえよう') : s.say}</span></div>`;
 }
@@ -14170,17 +14185,17 @@ function quiz(){
   const q = cur(), done = Q.ans !== null, right = done && Q.ans === q.a, tot = Q.qs.length, S = SCN[Q.mode];
   const opts = Q.ord.map((o, i) => { let c = ''; if(done){ c = o === q.a ? 'ok' : o === Q.ans ? 'ng' : 'dim'; } else if(Q.cut === o) c = 'cut';
     return `<button type="button" class="apop ${c}" data-a="ans" data-o="${X(o)}" ${done || Q.cut === o ? 'disabled' : ''}><i>${'ABCD'[i]}</i><span>${R(o)}</span></button>`; }).join('');
-  const title = Q.mode === 'tower' ? `かんせいとう ${'★'.repeat(Q.star)}` : S.t;
+  const title = Q.mode === 'tower' ? `かんせいとう${starsHTML(Q.star, Q.star)}` : S.t;
   const prog = tot > 1 ? `<div class="appg"><span class="bar"><i style="width:${(Q.n + (done ? 1 : 0)) / tot * 100}%"></i></span><b>${Q.n + 1}<small>/${tot}</small></b></div>` : '';
-  const qbox = `<div class="apqb"><div class="qh"><span class="qn">もんだい</span><span class="cat">${CAT[q.c]}</span><span class="stars">${'★'.repeat(q.s)}<i>${'★'.repeat(3 - q.s)}</i></span></div>
+  const qbox = `<div class="apqb"><div class="qh"><span class="qn">もんだい</span><span class="cat">${CAT[q.c]}</span>${starsHTML(q.s)}</div>
     ${q.pic ? `<div class="appic">${PICS[q.pic]}</div>` : ''}<p class="qt">${R(q.t)}</p></div>`;
-  const hint = done ? '' : `<button type="button" class="aphn ${Q.hint ? 'used' : ''}" data-a="hint" ${Q.hint ? 'disabled' : ''}><img src="${IMG}ch_${S.who}.webp" alt=""><span><b>${Q.hint ? 'ヒントを つかったよ' : 'ヒント'}</b><small>${Q.hint ? 'ひとつ きえたよ' : 'まちがいを ひとつ けす（ポイント はんぶん）'}</small></span></button>`;
+  const hint = done ? '' : `<button type="button" class="aphn ${Q.hint ? 'used' : ''}" data-a="hint" ${Q.hint ? 'disabled' : ''}><img src="${IC('ui_bulb')}" alt=""><span><b>${Q.hint ? 'ヒントを つかったよ' : 'ヒント'}</b><small>${Q.hint ? 'ひとつ きえたよ' : 'まちがいを ひとつ けす（ポイント はんぶん）'}</small></span></button>`;
   let fb = '';
   if(done){
     const last = Q.n + 1 >= tot;
-    const btn = Q.mode === 'back' ? (right ? `<button type="button" class="apnx" data-a="landing">おうちに ついた！ ›</button>` : `<button type="button" class="apnx ng" data-a="retry">もういちど ちょうせん ›</button>`)
-      : Q.mode === 'sky' ? `<button type="button" class="apnx" data-a="skyend">${right ? 'やったね！ とじる' : 'わかった！ とじる'} ›</button>`
-      : `<button type="button" class="apnx ${right ? '' : 'ng'}" data-a="next">${last ? 'けっかを みる' : 'つぎへ'} ›</button>`;
+    const btn = Q.mode === 'back' ? (right ? `<button type="button" class="apnx" data-a="landing">おうちに ついた！</button>` : `<button type="button" class="apnx ng" data-a="retry">もういちど ちょうせん</button>`)
+      : Q.mode === 'sky' ? `<button type="button" class="apnx" data-a="skyend">${right ? 'やったね！ とじる' : 'わかった！ とじる'}</button>`
+      : `<button type="button" class="apnx ${right ? '' : 'ng'}" data-a="next">${last ? 'けっかを みる' : 'つぎへ'}</button>`;
     const gain = right && Q.last ? `<p class="gt"><span>${MI}+${Q.last.m}</span>${PP(Q.last.p)}</p>` : '';
     fb = right ? `<div class="apfb ok">${hanaImg('res_girl_party')}<div><b class="hd">せいかい！</b>${gain}<p class="ex">${R(q.e || '')}</p></div>${btn}</div>`
       : `<div class="apfb ng"><img src="${IMG}ch_${S.who}.webp" alt=""><div><b class="hd">${Q.mode === 'back' ? 'おしい！ もういちど！' : 'おしい！'} せいかいは「${R(q.a)}」</b><p class="ex">${R(q.e || '')}</p></div>${btn}</div>`;
@@ -14218,14 +14233,14 @@ function finishQuiz(){
 }
 function qres(){
   const R0 = Q.res, A = AS(), ci = Q.mode === 'checkin';
-  const stars = ci ? '' : `<div class="apst">${[1, 2, 3].map(i => `<i class="${R0.ok >= Math.ceil(R0.tot * i / 3) && R0.ok > 0 ? 'on' : ''}">★</i>`).join('')}</div>`;
+  const stars = ci ? '' : starRow([1, 2, 3].filter(i => R0.ok >= Math.ceil(R0.tot * i / 3) && R0.ok > 0).length);
   const big = ci ? (R0.got ? `<div class="apbig"><img class="tk" src="${IMG}ic_ticket.webp" alt=""><b>とうじょうけん ゲット！</b></div>`
       : `<div class="apbig no"><img class="tk" src="${IMG}ic_ticket.webp" alt=""><b>${R0.ok < CFG.ciOk ? `${CFG.ciOk}もん せいかいで もらえるよ` : A.daily.earn >= CFG.earnDay ? 'きょうの ぶんは ぜんぶ もらったよ' : 'もう いっぱい もっているよ'}</b></div>`) : stars;
   const head1 = R0.perfect ? 'パーフェクト！' : R0.ok >= Math.ceil(R0.tot / 2) ? 'やったね！' : 'おつかれさま！';
   const who = ci ? 'sloth' : 'sparrow';
-  const log = `<ul class="aplog">${Q.qs.map((q, i) => `<li class="${Q.log[i] ? 'o' : 'x'}"><i>${Q.log[i] ? '○' : '△'}</i><span>${R(q.t)}</span><b>${R(q.a)}</b></li>`).join('')}</ul>`;
+  const log = `<ul class="aplog">${Q.qs.map((q, i) => `<li class="${Q.log[i] ? 'o' : 'x'}"><i><img src="${IC(Q.log[i] ? 'ui_check' : 'ui_bulb')}" alt=""></i><span>${R(q.t)}</span><b>${R(q.a)}</b></li>`).join('')}</ul>`;
   const again = ci ? (A.tix < tixCap() && A.daily.earn < CFG.earnDay ? `<button type="button" class="apgo sub" data-a="checkin"><b>もういちど</b></button>` : '')
-    : `<button type="button" class="apgo sub" data-a="tw" data-s="${Q.star}"><b>もういちど</b><small>★${Q.star}</small></button>`;
+    : `<button type="button" class="apgo sub" data-a="tw" data-s="${Q.star}"><b>もういちど</b><small>${starsHTML(Q.star, Q.star)}</small></button>`;
   const next = ci ? `<button type="button" class="apgo" data-a="dest"><b>いきさきへ</b><small>とうじょうけん ${A.tix}まい</small></button>` : `<button type="button" class="apgo" data-a="tower"><b>むずかしさを えらぶ</b></button>`;
   return `<div class="aprs ${LAY} ${R0.perfect ? 'pf' : ''}"><div class="apbox"><div class="rib">${head1}</div>${big}
     <p class="aprow"><span>${R0.ok}/${R0.tot} せいかい</span><span class="mi">${MI}+${R0.miles}</span><span>${PP(R0.pts)}</span></p>
@@ -14236,31 +14251,34 @@ function qres(){
 }
 
 /* ---------- 搭乗 ---------- */
+const tOf = tp => tp.town === 'friend' && tp.fr ? friendTown(tp.fr) : (TN(tp.town) || TOWNS[0]);
+function friendTown(F){ return {id:'friend', n:F.n, img:null, stamp:'ui_stampf', c:'#E8A33A', pin:[50, 87], sv:[], say:[GREET[F.g] || 'ようこそ！', 'いい まちだね！', 'どうぶつたちが あそんでる', 'ともだちの まち、たのしいな']}; }
 function depart(){
   const A = AS(); if(A.tix < 1){ return go('top'); }
-  const T = TN(V.sel || recTown()); A.tix--; A.trip = {town:T.id, ph:'fly', bought:[], t0:0, inOk:false, inDone:false, backFirst:false, miles:0, pts:0};
-  persist(); snd('ok'); V.fq = null; go('gate', {town:T.id});
+  const F = V.friend || null, T = F ? friendTown(F) : TN(V.sel || recTown());
+  if(!F && lockedT(T)) return go('dest');
+  A.tix--; A.trip = {town:T.id, fr:F, ph:'fly', bought:[], t0:0, inOk:false, inDone:false, backFirst:false, miles:0, pts:0};
+  persist(); snd('ok'); V.fq = null; V.friend = null; go('gate', {town:T.id});
 }
 function gate(){
   return `<div class="apgt ${LAY}">${LAY === 'ph' ? `<header class="aphd tp"><span class="apsp"></span>${chips()}</header>` : ''}
     ${sceneTop('gate ' + (LAY === 'tab' ? 'big' : ''), false)}
-    <div class="apgb"><b>しゅっぱつ！</b><small>とうじょうけんを みせて ひこうきに のるよ…</small><button type="button" class="apskip" data-a="skipgate">スキップ ›</button></div></div>`;
+    <div class="apgb"><b>${rankNo(AS().miles) >= 4 ? 'プラチナ きちょう、しゅっぱつ！' : 'しゅっぱつ！'}</b><small>${rankNo(AS().miles) >= 4 ? 'ペリカンが とくべつな フライトで あんない するよ' : 'とうじょうけんを みせて ひこうきに のるよ'}</small><button type="button" class="apskip" data-a="skipgate"><b>スキップ</b>${ARW}</button></div></div>`;
 }
-function flyPlane(){ return `<img class="apfl" src="${IMG}plane.webp" alt="">`; }
 function fly(){
-  const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = TN(tp.town), H = [45, 57];
+  const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = tOf(tp), H = [45, 57], plat = rankNo(A.miles) >= 4;
   if(!V.fq){ const q = draw(1, q => q.s <= 2 && ['hello', 'cap', 'mech', 'code', 'pic'].includes(q.c))[0]; V.fq = {q, ord:null, ans:null}; V.fq.ord = shuf([q.a].concat(shuf(q.w ? q.w : Array.from(new Set(q.pool)).filter(x => x !== q.a)).slice(0, 3))); }
   const dx = (T.pin[0] - H[0]) * 1.5, dy = T.pin[1] - H[1]; let ang = Math.atan2(dy, dx) * 180 / Math.PI, flip = false;
   if(dx < 0){ flip = true; ang = Math.atan2(-dy, -dx) * 180 / Math.PI; }
   V.fl = {H, T, ang, flip};
-  const route = `<svg class="aprt" viewBox="0 0 150 100" preserveAspectRatio="none"><line x1="${H[0] * 1.5}" y1="${H[1]}" x2="${T.pin[0] * 1.5}" y2="${T.pin[1]}" stroke="#fff" stroke-width="2.4" stroke-dasharray="3 3" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+  const route = `<svg class="aprt ${plat ? 'rb' : ''}" viewBox="0 0 150 100" preserveAspectRatio="none"><defs><linearGradient id="aprg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF7A9A"/><stop offset=".35" stop-color="#FFD24A"/><stop offset=".7" stop-color="#5FD08A"/><stop offset="1" stop-color="#5FB4F5"/></linearGradient></defs><line x1="${H[0] * 1.5}" y1="${H[1]}" x2="${T.pin[0] * 1.5}" y2="${T.pin[1]}" stroke="${plat ? 'url(#aprg)' : '#fff'}" stroke-width="${plat ? 4 : 2.4}" stroke-dasharray="${plat ? '0' : '3 3'}" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
   const mapv = `<div class="apmap fl"><img class="bg" src="${IMG}map.webp" alt="">${route}
-    <span class="appin dst" style="left:${T.pin[0]}%;top:${T.pin[1]}%;--c:${T.c}"><img src="${IMG}${T.stamp}.webp" alt=""><span>${T.n}</span></span>
-    <span class="apmh" style="left:${H[0]}%;top:${H[1]}%"><img src="${IMG}ic_ticket.webp" alt=""></span>
-    <span class="apfly" id="apfly" style="left:${H[0]}%;top:${H[1]}%;--a:${ang}deg;--f:${flip ? -1 : 1}"><img src="${IMG}plane_sparrow.webp" alt=""></span>
-    ${chr('pelican', 'peli3')}<span class="apbq in cap">ただいま ひこうちゅう！<br>${T.n}へ むかっているよ</span></div>`;
+    <span class="appin dst" style="left:${T.pin[0]}%;top:${T.pin[1]}%;--c:${T.c}"><img src="${IC(T.stamp)}" alt=""><span>${X(T.n)}</span></span>
+    <span class="apmh" style="left:${H[0]}%;top:${H[1]}%"><img src="${IC('ic_ticket')}" alt=""></span>
+    <span class="apfly ${plat ? 'gl' : ''}" id="apfly" style="left:${H[0]}%;top:${H[1]}%;--a:${ang}deg;--f:${flip ? -1 : 1}"><img src="${IC(plat ? 'fx_goldplane' : 'plane_sparrow')}" alt=""></span>
+    ${chr('pelican', 'peli3')}<span class="apbq in cap">ただいま ひこうちゅう！<br>${X(T.n)}へ むかっているよ</span></div>`;
   const body = `<div class="apfq" id="apfq">${flyCard()}</div>`;
-  const land = `<button type="button" class="apland" data-a="land"><b>${T.n}に とうちゃく！</b><small>タッチして おりよう ›</small></button>`;
+  const land = `<button type="button" class="apland" data-a="land"><b>${X(T.n)}に とうちゃく！</b><small>タッチして おりよう</small></button>`;
   return `<div class="apfy ${LAY}">${LAY === 'ph' ? `<header class="aphd tp"><span class="apsp"></span>${chips()}</header>` : ''}${mapv}<div class="apfy-b">${body}${land}</div></div>`;
 }
 function flyCard(){
@@ -14275,15 +14293,23 @@ function flyCard(){
 /* ---------- ⑦ 訪問先の まち ---------- */
 function remain(){ const t = AS().trip; return t ? Math.max(0, CFG.stay - Math.floor((Date.now() - t.t0) / 1000)) : 0; }
 const fmtT = s => s >= 60 ? `あと ${Math.ceil(s / 60)}ふん` : `あと ${s}びょう`;
+function shopList(tp){
+  const rk = rankNo(AS().miles);
+  if(tp.town === 'friend') return friendItems(tp.fr);
+  return TN(tp.town).sv.map(id => { const s = SV(id); return Object.assign({}, s, {lock:!!(s.gold && rk < 3)}); });
+}
 function visit(){
-  const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = TN(tp.town);
+  const A = AS(), tp = A.trip; if(!tp){ return top(); } const T = tOf(tp), fr = tp.town === 'friend';
   clearInterval(TKI); TKI = setInterval(tick, 1000);
-  const cards = T.sv.map(id => { const s = SV(id), own = A.sv[id], can = lastPt() >= s.cost && !own && tp.bought.length < CFG.maxBuy;
-    return `<button type="button" class="apit ${own ? 'own' : ''}" data-a="buy" data-id="${id}" ${own || !can ? 'disabled' : ''}><span class="im"><img src="${s.img}" alt=""></span><b>${s.n}</b><small>${own ? '✔ もっているよ' : `${coinI()}${s.cost}`}</small><em>${own ? (tp.bought.includes(id) ? 'かった！' : 'もってる') : 'かう'}</em></button>`; }).join('');
-  const shop = `<div class="apshop"><div class="sh"><b>おみやげ ショップ</b><span class="bk">かご ${tp.bought.length}/${CFG.maxBuy}</span></div><div class="apig">${cards}</div>
-    <p class="aphl sm">ポイントで じゆうに かいものできるよ。かった おみやげは「わたしの家」にも かざれるよ。</p></div>`;
-  const vs = `<div class="apvs"><img class="bg" src="${IMG}${T.img}.webp" alt="">
-    <div class="apvh"><button type="button" class="apbk" data-a="leave"><svg viewBox="0 0 24 24"><path d="M14 5L7 12L14 19" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>かえる</b></button><h2>${T.n}</h2><span class="aptm" id="aptm">${fmtT(remain())}</span></div>
+  const list = shopList(tp);
+  const cards = list.map(s => { const id = s.id, own = A.sv[id], can = lastPt() >= s.cost && !own && tp.bought.length < CFG.maxBuy;
+    if(s.lock) return `<div class="apit lockd"><span class="im"><img class="sil" src="${s.img}" alt=""><img class="lk" src="${IC('ui_lock')}" alt=""></span><b>${X(s.n)}</b><small>ゴールドで ゲット</small></div>`;
+    return `<button type="button" class="apit ${own ? 'own' : ''} ${s.gold ? 'gold' : ''}" data-a="buy" data-id="${id}" ${own || !can ? 'disabled' : ''}><span class="im"><img src="${s.img}" alt=""></span><b>${X(s.n)}</b><small>${own ? `${CHK}もっているよ` : `${coinI()}${s.cost}`}</small><em>${own ? (tp.bought.includes(id) ? 'かった！' : 'もってる') : 'かう'}</em></button>`; }).join('');
+  const shop = `<div class="apshop"><div class="sh"><b>おみやげ ショップ</b><span class="bk">かご ${tp.bought.length}/${CFG.maxBuy}</span></div>${list.length ? `<div class="apig">${cards}</div>` : '<p class="aphl">この まちには おみやげが ないよ。まちを みて まわろう！</p>'}
+    <p class="aphl sm">${fr ? 'ともだちの まちの たてものが ミニの おみやげに なるよ。' : ''}ポイントで じゆうに かいものできるよ。かった おみやげは「わたしの家」にも かざれるよ。</p></div>`;
+  const bgm = fr ? `<div class="apfmb"><div class="apfmw" id="apfmw">${friendMapHTML(tp.fr)}</div></div>` : `<img class="bg" src="${IC(T.img)}" alt="">`;
+  const vs = `<div class="apvs ${fr ? 'fr' : ''}">${bgm}
+    <div class="apvh"><button type="button" class="apbk" data-a="leave"><img src="${IC('ui_back')}" alt=""><b>かえる</b></button><h2>${X(T.n)}</h2><span class="aptm" id="aptm">${fmtT(remain())}</span></div>
     ${chr('pelican', 'peli4', '')}${chr('sparrow', 'spar4', '')}<button type="button" class="aphw v" data-say="hana"><span class="aphi">${hanaImg('res_girl_explore') || hanaImg()}</span></button>
     <span class="apbb hidden"></span></div>`;
   if(LAY === 'ph') return `<div class="apv ph">${vs}<div class="apvb">${chips()}${shop}</div></div>`;
@@ -14295,7 +14321,7 @@ function tick(){
   if(s <= 0){ clearInterval(TKI); TKI = 0; timeUp(); }
 }
 async function timeUp(){
-  await dialog(`<div class="apdl"><img src="${IMG}ch_pelican.webp" alt=""></div><h2 class="dlgT">じかんだよ！</h2><p class="dlgP">かえりの びんに のろう。<br>おみやげは ちゃんと もちかえれるよ。</p>`, [{label:'かえる', cls:'gold', v:1}]);
+  await dialog(`<div class="apdl">${pelImg()}</div><h2 class="dlgT">じかんだよ！</h2><p class="dlgP">かえりの びんに のろう。<br>おみやげは ちゃんと もちかえれるよ。</p>`, [{label:'かえる', cls:'gold', v:1}]);
   if(ROOT && V.s === 'visit') toBack();
 }
 function toBack(){ const A = AS(); if(!A.trip) return; A.trip.ph = 'back'; persist(); startQuiz('back'); go('quiz'); }
@@ -14308,39 +14334,55 @@ async function leave(){
 /* ---------- 帰り・結果 ---------- */
 function landing(){
   const A = AS(), tp = A.trip; if(!tp) return go('top');
-  const first = !A.stamps[tp.town]; const stars = 1 + (tp.inOk ? 1 : 0) + (Q && Q.firstOkBack ? 1 : 0);
+  const F = tp.town === 'friend' ? tp.fr : null;
+  const first = F ? !A.friends[F.id] : !A.stamps[tp.town]; const stars = 1 + (tp.inOk ? 1 : 0) + (Q && Q.firstOkBack ? 1 : 0);
   let mm = 0; if(first){ mm += 30; } if(stars === 3) mm += 10;
-  addMiles(mm); A.stamps[tp.town] = A.stamps[tp.town] || today(); A.visits[tp.town] = (A.visits[tp.town] || 0) + 1; A.trips++;
-  const res = {town:tp.town, first, stars, bought:tp.bought.slice(), bonus:mm, inOk:tp.inOk, back:Q && Q.firstOkBack};
+  addMiles(mm);
+  if(F){ const f = A.friends[F.id] || (A.friends[F.id] = {n:F.n, d:today(), v:0}); f.v++; f.n = F.n; }
+  else { A.stamps[tp.town] = A.stamps[tp.town] || today(); A.visits[tp.town] = (A.visits[tp.town] || 0) + 1; }
+  A.trips++;
+  const res = {town:tp.town, fr:F ? {id:F.id, n:F.n} : null, first, stars, bought:tp.bought.slice(), bonus:mm, inOk:tp.inOk, back:Q && Q.firstOkBack};
   A.trip = null; Q = null; persist(); snd('fan'); try{ confetti(stars === 3 ? 3000 : 1600); }catch(e){}
   V.res = res; go('result');
 }
+const starRow = n => `<div class="apst">${[1, 2, 3].map(i => `<img class="${i <= n ? 'on' : ''}" src="${IC(i <= n ? 'ui_star' : 'ui_star0')}" alt="">`).join('')}</div>`;
 function result(){
-  const R0 = V.res || {}, T = TN(R0.town) || TOWNS[0], A = AS();
-  const items = R0.bought.length ? `<div class="apsvr">${R0.bought.map(id => `<span><img src="${SV(id).img}" alt=""><b>${SV(id).n}</b></span>`).join('')}</div>` : '<p class="aphl">こんどは おみやげも かってみよう！</p>';
-  return `<div class="aprs ${LAY} trip ${R0.stars === 3 ? 'pf' : ''}"><div class="apbox"><div class="rib">おかえり！</div>
-    <div class="apst">${[1, 2, 3].map(i => `<i class="${i <= R0.stars ? 'on' : ''}">★</i>`).join('')}</div>
-    <div class="apstamp ${R0.first ? 'new' : ''}"><img src="${IMG}${T.stamp}.webp" alt=""><small>${R0.first ? 'はじめての スタンプ！' : `${T.n} ${A.visits[T.id]}かいめ`}</small></div>
-    <h3>${T.n}への たび</h3>${items}
-    <p class="aprow">${R0.first ? `<span class="mi">${MI}はじめての まち +30</span>` : ''}${R0.stars === 3 ? `<span class="mi">${MI}3つ★ +10</span>` : ''}<span class="mi">${MI}${A.miles} マイル</span></p>
+  const R0 = V.res || {}, A = AS(), fr = R0.fr, T = fr ? friendTown({n:fr.n, g:0}) : (TN(R0.town) || TOWNS[0]), plat = rankNo(A.miles) >= 4;
+  const its = R0.bought.map(ITX).filter(Boolean);
+  const items = its.length ? `<div class="apsvr">${its.map(s => `<span><img src="${s.img}" alt=""><b>${X(s.n)}</b></span>`).join('')}</div>` : '<p class="aphl">こんどは おみやげも かってみよう！</p>';
+  const cnt = fr ? (A.friends[fr.id] ? A.friends[fr.id].v : 1) : A.visits[T.id];
+  return `<div class="aprs ${LAY} trip ${R0.stars === 3 ? 'pf' : ''}"><div class="apbox">${plat ? `<img class="rbw" src="${IC('fx_rainbow')}" alt=""><img class="spk a" src="${IC('fx_spark')}" alt=""><img class="spk b" src="${IC('fx_spark')}" alt="">` : ''}<div class="rib">おかえり！</div>
+    ${starRow(R0.stars)}
+    <div class="apstamp ${R0.first ? 'new' : ''}"><img src="${IC(T.stamp)}" alt=""><small>${R0.first ? 'はじめての スタンプ！' : `${X(T.n)} ${cnt}かいめ`}</small></div>
+    <h3>${X(T.n)}への たび</h3>${items}
+    <p class="aprow">${R0.first ? `<span class="mi">${MI}はじめての まち +30</span>` : ''}${R0.stars === 3 ? `<span class="mi">${MI}ほし 3つ +10</span>` : ''}<span class="mi">${MI}${A.miles} マイル</span></p>
     ${rankBar()}
-    <div class="apwh"><img src="${IMG}ch_pelican.webp" alt=""><span class="apbq">ナイスフライト！ おみやげ、たいせつにね</span>${hanaImg('res_girl_party')}</div>
+    <div class="apwh">${pelImg()}<span class="apbq">${plat ? 'プラチナ きちょうの とくべつ フライトだったよ！' : 'ナイスフライト！ おみやげ、たいせつにね'}</span>${hanaImg('res_girl_party')}</div>
     <div class="apbt2"><button type="button" class="apgo" data-a="town"><b>まちに もどる</b></button><button type="button" class="apgo sub" data-a="${A.tix > 0 ? 'dest' : 'top'}"><b>${A.tix > 0 ? 'また たびに でる' : 'くうこうトップへ'}</b>${A.tix > 0 ? `<small>とうじょうけん ${A.tix}まい</small>` : ''}</button><button type="button" class="apgo sub" data-a="pass"><b>パスポートを みる</b></button></div></div>
     ${R0.stars === 3 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</div>`;
 }
 
 /* ---------- ⑧ パスポート ---------- */
+function stampSlot(img, name, sub, o){
+  o = o || {}; return `<div class="apsp1 ${o.on ? 'on' : ''} ${o.lk ? 'lk' : ''}">${o.on ? `<img src="${IC(img)}" alt="">` : `<span class="emp"><img class="sil" src="${IC(img)}" alt="">${o.lk ? LOCK : ''}</span>`}<b>${X(name)}</b><small>${X(sub)}</small></div>`;
+}
 function pass(){
-  const A = AS(), r = rankNo(A.miles);
-  const stamps = TOWNS.map(t => { const d = A.stamps[t.id]; return `<div class="apsp1 ${d ? 'on' : ''}">${d ? `<img src="${IMG}${t.stamp}.webp" alt="">` : '<i>？</i>'}<b>${t.n}</b><small>${d ? `${A.visits[t.id] || 1}かい` : 'まだ'}</small></div>`; }).join('')
-    + [1, 2].map(() => `<div class="apsp1 lk"><i>${LOCK}</i><b>ともだち</b><small>じゅんびちゅう</small></div>`).join('');
-  const badges = RANKS.map((b, i) => `<div class="apbd ${r > i ? 'on' : ''} ${r === i + 1 ? 'now' : ''}"><img src="${IMG}${b.img}.webp" alt=""><b>${b.n}</b><small>${b.m}マイル〜</small></div>`).join('');
-  const sv = TOWNS.map(t => `<div class="apsv"><h5>${t.n}</h5><div>${t.sv.map(id => { const s = SV(id), o = A.sv[id]; return `<span class="${o ? 'on' : ''}"><img src="${s.img}" alt=""><small>${o ? s.n : '？？？'}</small></span>`; }).join('')}</div></div>`).join('');
-  const nSv = SVS.filter(s => A.sv[s.id]).length;
-  const body = `<div class="apbook"><div class="bh"><img src="${IMG}ch_pelican.webp" alt=""><span class="apbq">${stampN() >= TOWNS.length ? 'ぜんぶの スタンプが そろったね！' : 'スタンプを おしに いこう！'}</span></div>
-      <h4>スタンプ <small>${stampN()} / ${TOWNS.length}</small></h4><div class="apsps">${stamps}</div>
+  const A = AS(), r = rankNo(A.miles), gold = r >= 3;
+  const nFr = Object.keys(A.friends).length;
+  const stamps = TOWNS.map(t => { const d = A.stamps[t.id], lk = lockedT(t); return stampSlot(t.stamp, lk ? '？？？' : t.n, d ? `${A.visits[t.id] || 1}かい` : lk ? 'プラチナで ひらく' : 'まだ', {on:!!d, lk}); }).join('');
+  const frs = Object.entries(A.friends).slice(0, 11).map(([id, f]) => stampSlot('ui_stampf', f.n, `${f.v}かい`, {on:true})).join('') + stampSlot('ui_stampf', 'ともだち', 'まだ', {});
+  const badges = RANKS.map((b, i) => `<div class="apbd ${r > i ? 'on' : ''} ${r === i + 1 ? 'now' : ''}"><img src="${IC(b.img)}" alt=""><b>${b.n}</b><small>${b.m}マイル〜</small></div>`).join('');
+  const svOne = s => { const o = A.sv[s.id], lk = s.gold && !gold; return `<span class="${o ? 'on' : ''} ${lk ? 'lk' : ''}"><img src="${s.img}" alt="">${lk ? `<i>${LOCK}</i>` : ''}<small>${o ? X(s.n) : lk ? 'ゴールドで' : '？？？'}</small></span>`; };
+  const sv = TOWNS.map(t => { const lk = lockedT(t); return `<div class="apsv"><h5>${lk ? '？？？' : X(t.n)}</h5><div>${t.sv.map(id => svOne(SV(id))).join('')}</div></div>`; }).join('');
+  const frIt = Object.keys(A.sv).filter(k => String(k).startsWith('fr_')).map(ITX).filter(Boolean);
+  const frSv = frIt.length ? `<div class="apsv"><h5>ともだちの まち</h5><div>${frIt.map(s => `<span class="on"><img src="${s.img}" alt=""><small>${X(s.n)}</small></span>`).join('')}</div></div>` : '';
+  const nSv = SVS.filter(s => A.sv[s.id]).length + frIt.length;
+  const cover = `<div class="apcover ${gold ? 'gold' : ''}"><img class="bk" src="${IC(gold ? 'fx_goldpass' : 'ic_passport')}" alt=""><div><b>${gold ? 'ゴールドの パスポート' : 'パスポート'}</b><small>${stampTowns()}この まち・ともだち ${nFr}にん</small></div>${r >= 4 ? `<img class="tro" src="${IC('fx_trophy')}" alt="">` : ''}</div>`;
+  const body = `<div class="apbook">${cover}<div class="bh">${pelImg()}<span class="apbq">${stampTowns() >= TOWNS.length ? 'ぜんぶの スタンプが そろったね！' : 'スタンプを おしに いこう！'}</span></div>
+      <h4>スタンプ <small>${stampTowns()} / ${TOWNS.length}</small></h4><div class="apsps">${stamps}</div>
+      <h4>ともだちの まち <small>${nFr}にん</small></h4><div class="apsps">${frs}</div>
       <h4>バッジ</h4><div class="apbds">${badges}</div>${rankBar()}</div>
-    <div class="apbook"><h4>おみやげ ずかん <small>${nSv} / ${SVS.length}</small></h4>${sv}<p class="aphl sm">かった おみやげは「わたしの家」の もようがえで かざれるよ</p>${rubyBtn()}</div>`;
+    <div class="apbook"><h4>おみやげ ずかん <small>${nSv} / ${SVS.length}</small></h4>${sv}${frSv}<p class="aphl sm">かった おみやげは「わたしの家」の もようがえで かざれるよ</p>${rubyBtn()}</div>`;
   return `<div class="app ${LAY}">${head('パスポート')}<div class="apbody">${body}</div></div>`;
 }
 
@@ -14362,6 +14404,456 @@ async function checkRank(){
   else if(r < A.rankShown) A.rankShown = r;
 }
 
+/* =====================================================================
+   ともだちの まち（QR）：サーバーなし・まちの「コピー」を 見学する
+   ・QRに 入れるのは「たてものの 配置・なまえ（えらぶ ことば）・あいさつ」だけ
+   ・本名／写真／いち情報は 入れない。なまえは えらぶ ことばだけ（じゆうにゅうりょく なし）
+   ===================================================================== */
+
+/* ===== QR：作る（byteモード）・よみとる（自作・外部ライブラリ なし） ===== */
+const QRK = (function(){
+'use strict';
+const EC_PB=[[0,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],[0,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],[0,13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],[0,17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]],NUM_BL=[[0,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],[0,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],[0,1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],[0,1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]];
+const ECOR = {L:0, M:1, Q:2, H:3}, FBITS = [1, 0, 3, 2];
+const rawMod = v => { let r = (16*v + 128)*v + 64; if(v >= 2){ const n = Math.floor(v/7) + 2; r -= (25*n - 10)*n - 55; if(v >= 7) r -= 36; } return r; };
+const rawCW = v => Math.floor(rawMod(v) / 8);
+const dataCW = (v, o) => rawCW(v) - EC_PB[o][v] * NUM_BL[o][v];
+const alignPos = v => { if(v === 1) return []; const n = Math.floor(v/7) + 2, st = v === 32 ? 26 : Math.ceil((v*4 + 4) / (n*2 - 2)) * 2, r = [6]; for(let p = v*4 + 10; r.length < n; p -= st) r.splice(1, 0, p); return r; };
+/* GF(256) */
+const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+(function(){ let x = 1; for(let i = 0; i < 255; i++){ EXP[i] = x; LOG[x] = i; x <<= 1; if(x & 256) x ^= 0x11D; } for(let i = 255; i < 512; i++) EXP[i] = EXP[i - 255]; })();
+const gmul = (a, b) => a && b ? EXP[LOG[a] + LOG[b]] : 0;
+function rsGen(d){ let r = [1]; for(let i = 0; i < d; i++){ const n = new Array(r.length + 1).fill(0); for(let j = 0; j < r.length; j++){ n[j] ^= r[j]; n[j + 1] ^= gmul(r[j], EXP[i]); } r = n; } return r; }
+function rsRem(data, d){ const g = rsGen(d), res = new Array(d).fill(0); for(const b of data){ const f = b ^ res.shift(); res.push(0); if(f) for(let i = 0; i < d; i++) res[i] ^= gmul(g[i + 1], f); } return res; }
+/* 機能パターン */
+function template(v){
+  const size = v*4 + 17, fn = new Uint8Array(size*size), mod = new Uint8Array(size*size);
+  const set = (x, y, d) => { if(x < 0 || y < 0 || x >= size || y >= size) return; fn[y*size + x] = 1; mod[y*size + x] = d ? 1 : 0; };
+  for(let i = 0; i < size; i++){ set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const finder = (cx, cy) => { for(let dy = -4; dy <= 4; dy++) for(let dx = -4; dx <= 4; dx++){ const d = Math.max(Math.abs(dx), Math.abs(dy)); set(cx + dx, cy + dy, d !== 2 && d !== 4); } };
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  const ap = alignPos(v), n = ap.length;
+  for(let i = 0; i < n; i++) for(let j = 0; j < n; j++){ if((i === 0 && j === 0) || (i === 0 && j === n - 1) || (i === n - 1 && j === 0)) continue;
+    for(let dy = -2; dy <= 2; dy++) for(let dx = -2; dx <= 2; dx++) set(ap[i] + dx, ap[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1); }
+  for(let i = 0; i < 9; i++){ fn[8*size + i] = 1; fn[i*size + 8] = 1; }
+  for(let i = 0; i < 8; i++){ fn[8*size + size - 1 - i] = 1; fn[(size - 1 - i)*size + 8] = 1; }
+  if(v >= 7){ let rem = v; for(let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25); const bits = v << 12 | rem;
+    for(let i = 0; i < 18; i++){ const a = size - 11 + i % 3, b = Math.floor(i/3), c = (bits >>> i) & 1; set(a, b, c); set(b, a, c); } }
+  return {size, fn, mod};
+}
+const MASKS = [(x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x, y) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+  (x, y) => (Math.floor(x/3) + Math.floor(y/2)) % 2 === 0, (x, y) => x*y % 2 + x*y % 3 === 0, (x, y) => (x*y % 2 + x*y % 3) % 2 === 0, (x, y) => ((x + y) % 2 + x*y % 3) % 2 === 0];
+const fmtWord = (o, mask) => { const d = FBITS[o] << 3 | mask; let r = d; for(let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537); return (d << 10 | r) ^ 0x5412; };
+function putFormat(m, size, o, mask){
+  const bits = fmtWord(o, mask), s = (x, y, i) => { m[y*size + x] = (bits >>> i) & 1; };
+  for(let i = 0; i <= 5; i++) s(8, i, i); s(8, 7, 6); s(8, 8, 7); s(7, 8, 8); for(let i = 9; i < 15; i++) s(14 - i, 8, i);
+  for(let i = 0; i < 8; i++) s(size - 1 - i, 8, i); for(let i = 8; i < 15; i++) s(8, size - 15 + i, i); m[(size - 8)*size + 8] = 1;
+}
+function penalty(m, size){
+  let p = 0;
+  for(let pass = 0; pass < 2; pass++){ for(let a = 0; a < size; a++){ let run = 1, last = -1, str = '';
+    for(let b = 0; b < size; b++){ const c = pass ? m[b*size + a] : m[a*size + b]; str += c; if(c === last){ run++; if(run === 5) p += 3; else if(run > 5) p++; } else { run = 1; last = c; } }
+    let i = -1; while((i = str.indexOf('10111010000', i + 1)) >= 0) p += 40; i = -1; while((i = str.indexOf('00001011101', i + 1)) >= 0) p += 40; } }
+  for(let y = 0; y < size - 1; y++) for(let x = 0; x < size - 1; x++){ const c = m[y*size + x]; if(c === m[y*size + x + 1] && c === m[(y + 1)*size + x] && c === m[(y + 1)*size + x + 1]) p += 3; }
+  let dark = 0; for(let i = 0; i < m.length; i++) dark += m[i]; p += Math.floor(Math.abs(dark * 20 - size*size*10) / (size*size)) * 10;
+  return p;
+}
+function encode(text, ecl){
+  const o = ECOR[ecl || 'L'], bytes = []; for(let i = 0; i < text.length; i++) bytes.push(text.charCodeAt(i) & 255);
+  let v = 1; for(; v <= 40; v++){ const cb = v < 10 ? 8 : 16; if(4 + cb + bytes.length*8 <= dataCW(v, o)*8) break; } if(v > 40) return null;
+  const bits = []; const put = (val, n) => { for(let i = n - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  put(4, 4); put(bytes.length, v < 10 ? 8 : 16); bytes.forEach(b => put(b, 8));
+  const cap = dataCW(v, o)*8; put(0, Math.min(4, cap - bits.length)); while(bits.length % 8) bits.push(0);
+  const cw = []; for(let i = 0; i < bits.length; i += 8){ let b = 0; for(let j = 0; j < 8; j++) b = b << 1 | bits[i + j]; cw.push(b); }
+  for(let pad = 0xEC; cw.length < dataCW(v, o); pad ^= 0xEC ^ 0x11) cw.push(pad);
+  const nb = NUM_BL[o][v], ec = EC_PB[o][v], raw = rawCW(v), ns = nb - raw % nb, sl = Math.floor(raw / nb), blocks = [];
+  for(let i = 0, k = 0; i < nb; i++){ const dl = sl - ec + (i < ns ? 0 : 1), d = cw.slice(k, k + dl); k += dl; const e = rsRem(d, ec); if(i < ns) d.push(0); blocks.push(d.concat(e)); }
+  const out = []; for(let i = 0; i < blocks[0].length; i++) for(let j = 0; j < nb; j++) if(i !== sl - ec || j >= ns) out.push(blocks[j][i]);
+  const T = template(v), size = T.size, m = new Uint8Array(T.mod);
+  let bi = 0; for(let right = size - 1; right >= 1; right -= 2){ if(right === 6) right = 5;
+    for(let vert = 0; vert < size; vert++) for(let j = 0; j < 2; j++){ const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+      if(!T.fn[y*size + x] && bi < out.length*8){ m[y*size + x] = (out[bi >> 3] >>> (7 - (bi & 7))) & 1; bi++; } } }
+  let best = 0, bp = 1e9;
+  for(let k = 0; k < 8; k++){ const t = new Uint8Array(m); for(let y = 0; y < size; y++) for(let x = 0; x < size; x++) if(!T.fn[y*size + x] && MASKS[k](x, y)) t[y*size + x] ^= 1;
+    putFormat(t, size, o, k); const pn = penalty(t, size); if(pn < bp){ bp = pn; best = k; } }
+  for(let y = 0; y < size; y++) for(let x = 0; x < size; x++) if(!T.fn[y*size + x] && MASKS[best](x, y)) m[y*size + x] ^= 1;
+  putFormat(m, size, o, best);
+  return {size, version:v, mod:m};
+}
+/* ---------- RS 誤り訂正（デコード） ---------- */
+function rsCorrect(blk, nec){
+  const n = blk.length, S = []; let any = false;
+  for(let i = 0; i < nec; i++){ let s = 0; for(let j = 0; j < n; j++) s = gmul(s, EXP[i]) ^ blk[j]; S.push(s); if(s) any = true; }
+  if(!any) return blk;
+  let C = [1], B = [1], L = 0, m = 1, b = 1;
+  for(let i = 0; i < nec; i++){ let d = S[i]; for(let j = 1; j <= L; j++) d ^= gmul(C[j] || 0, S[i - j]);
+    if(d === 0){ m++; continue; }
+    const T = C.slice(), coef = gmul(d, EXP[255 - LOG[b]]); while(C.length < B.length + m) C.push(0);
+    for(let j = 0; j < B.length; j++) C[j + m] ^= gmul(coef, B[j]);
+    if(2*L <= i){ L = i + 1 - L; B = T; b = d; m = 1; } else m++; }
+  if(L > nec/2) return null;
+  const pos = []; for(let p = 0; p < n; p++){ let s = 0; const xinv = EXP[(255 - (n - 1 - p)) % 255]; for(let j = 0; j <= L; j++) s ^= gmul(C[j] || 0, EXP[(LOG[xinv] * j) % 255]); if(s === 0) pos.push(p); }
+  if(pos.length !== L) return null;
+  const out = blk.slice();
+  for(const p of pos){ const X = EXP[n - 1 - p], Xi = EXP[(255 - (n - 1 - p)) % 255];
+    let omega = []; for(let i = 0; i < L; i++){ let acc = 0; for(let j = 0; j <= i; j++) acc ^= gmul(C[j] || 0, S[i - j]); omega.push(acc); }
+    let ov = 0; for(let i = 0; i < omega.length; i++) ov ^= gmul(omega[i], EXP[(LOG[Xi] * i) % 255]);
+    let dv = 0; for(let i = 1; i <= L; i += 2) dv ^= gmul(C[i] || 0, EXP[(LOG[Xi] * (i - 1)) % 255]);
+    if(!dv) return null; out[p] ^= gmul(X, gmul(ov, EXP[255 - LOG[dv]])); }
+  for(let i = 0; i < nec; i++){ let s = 0; for(let j = 0; j < n; j++) s = gmul(s, EXP[i]) ^ out[j]; if(s) return null; }
+  return out;
+}
+/* ---------- マトリクス → 文字 ---------- */
+const FMT = []; for(let o = 0; o < 4; o++) for(let k = 0; k < 8; k++) FMT.push({w:fmtWord(o, k), o, k});
+const pop = x => { let c = 0; while(x){ c += x & 1; x >>>= 1; } return c; };
+function readFormat(get, size){
+  const a = [], b = [];
+  let w1 = 0; for(let i = 0; i <= 5; i++) w1 |= get(8, i) << i; w1 |= get(8, 7) << 6; w1 |= get(8, 8) << 7; w1 |= get(7, 8) << 8; for(let i = 9; i < 15; i++) w1 |= get(14 - i, 8) << i;
+  let w2 = 0; for(let i = 0; i < 8; i++) w2 |= get(size - 1 - i, 8) << i; for(let i = 8; i < 15; i++) w2 |= get(8, size - 15 + i) << i;
+  let best = null, bd = 99; for(const f of FMT){ const d = Math.min(pop(f.w ^ w1), pop(f.w ^ w2)); if(d < bd){ bd = d; best = f; } }
+  return bd <= 3 ? best : null;
+}
+function decodeMatrix(m, size){
+  const v = (size - 17) / 4; if(v < 1 || v > 40 || v !== Math.floor(v)) return null;
+  const get = (x, y) => m[y*size + x];
+  const fmt = readFormat(get, size); if(!fmt) return null;
+  const T = template(v), bitsArr = [];
+  for(let right = size - 1; right >= 1; right -= 2){ if(right === 6) right = 5;
+    for(let vert = 0; vert < size; vert++) for(let j = 0; j < 2; j++){ const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+      if(!T.fn[y*size + x]){ let b = m[y*size + x]; if(MASKS[fmt.k](x, y)) b ^= 1; bitsArr.push(b); } } }
+  const raw = rawCW(v), cws = []; for(let i = 0; i < raw; i++){ let b = 0; for(let j = 0; j < 8; j++) b = b << 1 | (bitsArr[i*8 + j] || 0); cws.push(b); }
+  const o = fmt.o, nb = NUM_BL[o][v], ec = EC_PB[o][v], ns = nb - raw % nb, sl = Math.floor(raw / nb);
+  const dl = []; for(let j = 0; j < nb; j++) dl.push(sl - ec + (j < ns ? 0 : 1));
+  const blocks = dl.map(() => ({d:[], e:[]})); let idx = 0;
+  for(let i = 0; i < sl - ec + 1; i++) for(let j = 0; j < nb; j++) if(i < dl[j]) blocks[j].d.push(cws[idx++]);
+  for(let i = 0; i < ec; i++) for(let j = 0; j < nb; j++) blocks[j].e.push(cws[idx++]);
+  const data = [];
+  for(const b of blocks){ const r = rsCorrect(b.d.concat(b.e), ec); if(!r) return null; for(let i = 0; i < b.d.length; i++) data.push(r[i]); }
+  const bits = []; data.forEach(c => { for(let i = 7; i >= 0; i--) bits.push((c >>> i) & 1); });
+  let p = 0; const rd = n => { let x = 0; for(let i = 0; i < n; i++) x = x << 1 | (bits[p++] || 0); return x; };
+  let out = '';
+  while(p + 4 <= bits.length){ const mode = rd(4); if(mode === 0) break;
+    if(mode === 4){ const cnt = rd(v < 10 ? 8 : 16); for(let i = 0; i < cnt; i++) out += String.fromCharCode(rd(8)); }
+    else if(mode === 7){ rd(8); }
+    else if(mode === 2){ const A = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:', cnt = rd(v < 10 ? 9 : v < 27 ? 11 : 13); for(let i = 0; i + 1 < cnt; i += 2){ const x = rd(11); out += A[Math.floor(x/45)] + A[x % 45]; } if(cnt % 2) out += A[rd(6)]; }
+    else if(mode === 1){ let cnt = rd(v < 10 ? 10 : v < 27 ? 12 : 14); while(cnt >= 3){ out += String(rd(10)).padStart(3, '0'); cnt -= 3; } if(cnt === 2) out += String(rd(7)).padStart(2, '0'); else if(cnt === 1) out += String(rd(4)); }
+    else return null; }
+  return out;
+}
+/* ---------- 画像 → 2値化 → 位置 ---------- */
+function binarize(gray, w, h){
+  const B = 8, bw = Math.ceil(w/B), bh = Math.ceil(h/B), thr = new Float32Array(bw*bh).fill(-1);
+  for(let by = 0; by < bh; by++) for(let bx = 0; bx < bw; bx++){ let mn = 255, mx = 0; const x0 = bx*B, y0 = by*B, x1 = Math.min(w, x0 + B), y1 = Math.min(h, y0 + B);
+    for(let y = y0; y < y1; y++) for(let x = x0; x < x1; x++){ const g = gray[y*w + x]; if(g < mn) mn = g; if(g > mx) mx = g; }
+    if(mx - mn >= 28) thr[by*bw + bx] = (mn + mx) / 2; }
+  const t2 = new Float32Array(bw*bh);
+  for(let by = 0; by < bh; by++) for(let bx = 0; bx < bw; bx++){ let s = 0, n = 0;
+    for(let r = 1; r < 6 && !n; r++){ for(let dy = -r; dy <= r; dy++) for(let dx = -r; dx <= r; dx++){ const yy = by + dy, xx = bx + dx; if(yy < 0 || xx < 0 || yy >= bh || xx >= bw) continue; const t = thr[yy*bw + xx]; if(t >= 0 && (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 || r > 1)){ s += t; n++; } } if(r >= 1 && n) break; }
+    t2[by*bw + bx] = n ? s/n : 0; }
+  const bin = new Uint8Array(w*h);
+  for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){ const bx = Math.floor(x/B), by = Math.floor(y/B); let s = 0, n = 0;
+    for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++){ const yy = Math.min(bh - 1, Math.max(0, by + dy)), xx = Math.min(bw - 1, Math.max(0, bx + dx)); s += t2[yy*bw + xx]; n++; }
+    bin[y*w + x] = gray[y*w + x] < s/n ? 1 : 0; }
+  return bin;
+}
+function runsOn(line){ const r = []; let c = line[0], n = 1; for(let i = 1; i < line.length; i++){ if(line[i] === c) n++; else { r.push([c, n]); c = line[i]; n = 1; } } r.push([c, n]); return r; }
+function ratioOK(c, tot){ if(tot < 7) return false; const m = tot / 7, mv = m * 0.6; return Math.abs(m - c[0]) < mv && Math.abs(m - c[1]) < mv && Math.abs(3*m - c[2]) < 3*mv && Math.abs(m - c[3]) < mv && Math.abs(m - c[4]) < mv; }
+function crossLine(bin, w, h, cx, cy, dx, dy, maxMod){
+  const c = [0, 0, 0, 0, 0]; let x = Math.round(cx), y = Math.round(cy);
+  if(!bin[y*w + x]) return null;
+  let k = 2; c[2]++; let px = x - dx, py = y - dy;
+  while(px >= 0 && py >= 0 && px < w && py < h && bin[py*w + px] === 1){ c[2]++; px -= dx; py -= dy; }
+  while(px >= 0 && py >= 0 && px < w && py < h && bin[py*w + px] === 0 && c[1] <= maxMod){ c[1]++; px -= dx; py -= dy; }
+  while(px >= 0 && py >= 0 && px < w && py < h && bin[py*w + px] === 1 && c[0] <= maxMod){ c[0]++; px -= dx; py -= dy; }
+  px = x + dx; py = y + dy;
+  while(px >= 0 && py >= 0 && px < w && py < h && bin[py*w + px] === 1){ c[2]++; px += dx; py += dy; }
+  while(px >= 0 && py >= 0 && px < w && py < h && bin[py*w + px] === 0 && c[3] <= maxMod){ c[3]++; px += dx; py += dy; }
+  while(px >= 0 && py >= 0 && px < w && py < h && bin[py*w + px] === 1 && c[4] <= maxMod){ c[4]++; px += dx; py += dy; }
+  const tot = c[0] + c[1] + c[2] + c[3] + c[4]; if(!ratioOK(c, tot)) return null;
+  return {tot, off:(c[4] + c[3] + c[2] / 2) - (c[0] + c[1] + c[2] / 2) };
+}
+function findFinders(bin, w, h){
+  const cand = [];
+  for(let y = 0; y < h; y += (h > 600 ? 2 : 1)){ const line = bin.subarray(y*w, y*w + w); const runs = runsOn(line); let x = 0; const starts = []; for(const r of runs){ starts.push(x); x += r[1]; }
+    for(let i = 0; i + 4 < runs.length; i++){ if(runs[i][0] !== 1) continue; const c = [runs[i][1], runs[i + 1][1], runs[i + 2][1], runs[i + 3][1], runs[i + 4][1]]; const tot = c[0] + c[1] + c[2] + c[3] + c[4]; if(!ratioOK(c, tot)) continue;
+      const cx = starts[i] + c[0] + c[1] + c[2] / 2; const vc = crossLine(bin, w, h, cx, y, 0, 1, tot); if(!vc) continue;
+      const cy = (function(){ let yy = y, dn = y; const xr = Math.round(cx); while(yy > 0 && bin[(yy - 1)*w + xr] === 1) yy--; while(dn < h - 1 && bin[(dn + 1)*w + xr] === 1) dn++; return (yy + dn) / 2; })();
+      const hc = crossLine(bin, w, h, cx, cy, 1, 0, tot); if(!hc) continue;
+      const ms = (tot + vc.tot + hc.tot) / 21;
+      let f = cand.find(o => Math.abs(o.x - cx) < ms * 1.5 && Math.abs(o.y - cy) < ms * 1.5 && Math.abs(o.ms - ms) < ms * 0.5);
+      if(f){ f.x = (f.x*f.n + cx) / (f.n + 1); f.y = (f.y*f.n + cy) / (f.n + 1); f.ms = (f.ms*f.n + ms) / (f.n + 1); f.n++; } else cand.push({x:cx, y:cy, ms, n:1}); } }
+  return cand.filter(c => c.n >= 2).sort((a, b) => b.n - a.n).slice(0, 10);
+}
+function homography(src, dst){
+  const A = [], bb = []; for(let i = 0; i < 4; i++){ const [x, y] = src[i], [u, v] = dst[i]; A.push([x, y, 1, 0, 0, 0, -u*x, -u*y]); bb.push(u); A.push([0, 0, 0, x, y, 1, -v*x, -v*y]); bb.push(v); }
+  for(let i = 0; i < 8; i++){ let p = i; for(let r = i + 1; r < 8; r++) if(Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r; [A[i], A[p]] = [A[p], A[i]]; [bb[i], bb[p]] = [bb[p], bb[i]];
+    if(Math.abs(A[i][i]) < 1e-12) return null; for(let r = i + 1; r < 8; r++){ const f = A[r][i] / A[i][i]; for(let c = i; c < 8; c++) A[r][c] -= f*A[i][c]; bb[r] -= f*bb[i]; } }
+  const x = new Array(8).fill(0); for(let i = 7; i >= 0; i--){ let s = bb[i]; for(let c = i + 1; c < 8; c++) s -= A[i][c]*x[c]; x[i] = s / A[i][i]; }
+  return x;
+}
+const hmap = (H, x, y) => { const d = H[6]*x + H[7]*y + 1; return [(H[0]*x + H[1]*y + H[2]) / d, (H[3]*x + H[4]*y + H[5]) / d]; };
+function tryTriple(bin, w, h, TL, TR, BL){
+  const ms = (TL.ms + TR.ms + BL.ms) / 3, D = Math.hypot(TR.x - TL.x, TR.y - TL.y), D2 = Math.hypot(BL.x - TL.x, BL.y - TL.y);
+  const dimF = (D + D2) / 2 / ms + 7; let ver = Math.round((dimF - 17) / 4); if(ver < 1) ver = 1; if(ver > 40) return null; const dim = ver*4 + 17;
+  const aff = (u, v) => [TL.x + (u - 3.5) / (dim - 7) * (TR.x - TL.x) + (v - 3.5) / (dim - 7) * (BL.x - TL.x), TL.y + (u - 3.5) / (dim - 7) * (TR.y - TL.y) + (v - 3.5) / (dim - 7) * (BL.y - TL.y)];
+  const variants = [[[TR.x + BL.x - TL.x, TR.y + BL.y - TL.y], dim - 3.5]];
+  if(ver >= 2){
+    const [px, py] = aff(dim - 6.5, dim - 6.5), mpx = ms * 5, step = Math.max(1, ms / 3); let best = -1, bx = px, by = py;
+    const ux = (TR.x - TL.x) / (dim - 7), uy = (TR.y - TL.y) / (dim - 7), vx = (BL.x - TL.x) / (dim - 7), vy = (BL.y - TL.y) / (dim - 7);
+    const samp = (x, y) => { x = Math.round(x); y = Math.round(y); return x < 0 || y < 0 || x >= w || y >= h ? 0 : bin[y*w + x]; };
+    for(let oy = -mpx; oy <= mpx; oy += step) for(let ox = -mpx; ox <= mpx; ox += step){ let s = 0; const cx = px + ox, cy = py + oy;
+      for(let j = -2; j <= 2; j++) for(let i = -2; i <= 2; i++){ const want = Math.max(Math.abs(i), Math.abs(j)) !== 1 ? 1 : 0; const b = samp(cx + i*ux + j*vx, cy + i*uy + j*vy); if(b === want) s++; }
+      if(s > best){ best = s; bx = cx; by = cy; } }
+    if(best >= 21) variants.unshift([[bx, by], dim - 6.5]);
+  }
+  for(const [br, bu] of variants){
+    const H = homography([[3.5, 3.5], [dim - 3.5, 3.5], [3.5, dim - 3.5], [bu, bu]], [[TL.x, TL.y], [TR.x, TR.y], [BL.x, BL.y], br]); if(!H) continue;
+    const m = new Uint8Array(dim*dim), q = ms * 0.22;
+    for(let r = 0; r < dim; r++) for(let c = 0; c < dim; c++){ const [x, y] = hmap(H, c + 0.5, r + 0.5); let s = 0;
+      for(const [ox, oy] of [[0, 0], [q, 0], [-q, 0], [0, q], [0, -q]]){ const xx = Math.round(x + ox), yy = Math.round(y + oy); if(xx >= 0 && yy >= 0 && xx < w && yy < h) s += bin[yy*w + xx]; }
+      m[r*dim + c] = s >= 3 ? 1 : 0; }
+    const res = decodeMatrix(m, dim); if(res !== null) return res;
+  }
+  return null;
+}
+function decode(rgba, w, h){
+  const gray = new Uint8Array(w*h); for(let i = 0, j = 0; i < w*h; i++, j += 4) gray[i] = (rgba[j]*77 + rgba[j + 1]*150 + rgba[j + 2]*29) >> 8;
+  for(const inv of [0, 1]){
+    if(inv) for(let i = 0; i < gray.length; i++) gray[i] = 255 - gray[i];
+    const bin = binarize(gray, w, h), F = findFinders(bin, w, h); if(F.length < 3) continue;
+    const trip = [];
+    for(let i = 0; i < F.length; i++) for(let j = i + 1; j < F.length; j++) for(let k = j + 1; k < F.length; k++){ const P = [F[i], F[j], F[k]];
+      const ds = [Math.hypot(P[1].x - P[2].x, P[1].y - P[2].y), Math.hypot(P[0].x - P[2].x, P[0].y - P[2].y), Math.hypot(P[0].x - P[1].x, P[0].y - P[1].y)];
+      const ci = ds.indexOf(Math.max(...ds)), s = ds.filter((_, n) => n !== ci), avg = (s[0] + s[1]) / 2;
+      if(Math.abs(s[0] - s[1]) / avg > 0.25 || Math.abs(ds[ci] - avg*Math.SQRT2) / ds[ci] > 0.2) continue;
+      const ms = P.map(p => p.ms); if(Math.max(...ms) / Math.min(...ms) > 1.6) continue;
+      trip.push({P, ci, score:Math.abs(s[0] - s[1]) / avg + Math.abs(ds[ci] - avg*Math.SQRT2) / ds[ci] - 0.02 * (P[0].n + P[1].n + P[2].n)}); }
+    trip.sort((a, b) => a.score - b.score);
+    for(const t of trip.slice(0, 6)){ const TL = t.P[t.ci]; let [B, C] = t.P.filter((_, n) => n !== t.ci);
+      const cr = (B.x - TL.x)*(C.y - TL.y) - (B.y - TL.y)*(C.x - TL.x); if(cr < 0) [B, C] = [C, B];
+      try{ const r = tryTriple(bin, w, h, TL, B, C); if(r) return r; }catch(e){} }
+  }
+  return null;
+}
+return {encode, decode, decodeMatrix, rawCW, dataCW};
+})();
+
+const NAMEA = ['ひだまり', 'にじいろ', 'ほしぞら', 'そよかぜ', 'わくわく', 'きらきら', 'のんびり', 'ぽかぽか', 'ふわふわ', 'もくもく', 'うみべ', 'おひさま', 'ゆめ', 'ことり', 'はなまる', 'ひこうき'];
+const NAMEB = ['まち', 'むら', 'しま', 'もり'];
+const GREET = ['ようこそ！', 'いらっしゃい！', 'ゆっくり していってね', 'たのしんで いってね！', 'あそびに きてくれて ありがとう', 'また きてね！'];
+const myName = m => `${NAMEA[m.a % 16]}の${NAMEB[m.b % 4]}`;
+const MAXC = 430;                       /* コードの もじ数の じょうげん（QRを よみとりやすく する） */
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const toB64 = bytes => { let s = ''; for(let i = 0; i < bytes.length; i += 3){ const n = (bytes[i] << 16) | ((bytes[i + 1] || 0) << 8) | (bytes[i + 2] || 0); s += B64[n >> 18 & 63] + B64[n >> 12 & 63] + (i + 1 < bytes.length ? B64[n >> 6 & 63] : '') + (i + 2 < bytes.length ? B64[n & 63] : ''); } return s; };
+const fromB64 = str => { const out = []; let acc = 0, bits = 0; for(const ch of str){ const v = B64.indexOf(ch); if(v < 0) return null; acc = (acc << 6) | v; bits += 6; if(bits >= 8){ bits -= 8; out.push((acc >> bits) & 255); acc &= (1 << bits) - 1; } } return out; };
+const sum16 = b => { let a = 1, c = 0; b.forEach(x => { a = (a + x) % 251; c = (c + a) % 251; }); return [a, c]; };
+function packTown(m, cols, rows, list){
+  const bits = []; const put = (v, n) => { for(let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+  put(1, 4); put(cols, 6); put(rows, 6); put(m.a & 15, 4); put(m.b & 3, 2); put(m.g & 7, 3);
+  const g = {}; list.forEach(c => { (g[c.ix] = g[c.ix] || []).push(c); });
+  const keys = Object.keys(g).map(Number).sort((a, b) => a - b); put(keys.length, 8);
+  keys.forEach(k => { const a = g[k].sort((p, q) => p.y - q.y || p.x - q.x); put(k, 8); put(a.length, 10); a.forEach(c => { put(c.x, 5); put(c.y, 5); }); });
+  while(bits.length % 8) bits.push(0);
+  const bytes = []; for(let i = 0; i < bits.length; i += 8){ let b = 0; for(let j = 0; j < 8; j++) b = b << 1 | bits[i + j]; bytes.push(b); }
+  return 'MT1' + toB64(bytes.concat(sum16(bytes)));
+}
+function encodeTown(m, srcCells, dims){
+  let cols = 12, rows = 9; try{ const L = townCalc().L; cols = L.cols; rows = L.rows; }catch(e){}
+  if(dims){ cols = dims[0]; rows = dims[1]; }
+  const cells = srcCells || (save.town && save.town.cells) || {}; let list = [];
+  Object.entries(cells).forEach(([k, id]) => { const ix = ID_TABLE.indexOf(id); if(ix < 0) return; const [x, y] = k.split(',').map(Number); if(!(x >= 0 && y >= 0 && x < 32 && y < 32)) return; list.push({x, y, ix, id}); });
+  const total = list.length;
+  const pri = c => { if(c.id === 'road') return 1000; let it = null; try{ it = ITEM(c.id); }catch(e){} return (it && (it.dev || it.price / 50)) || 0; };
+  list.sort((a, b) => pri(a) - pri(b)); let code = packTown(m, cols, rows, list), trimmed = false;
+  while(code.length > MAXC && list.length){ list = list.slice(Math.max(4, Math.ceil(list.length * 0.04))); trimmed = true; code = packTown(m, cols, rows, list); }
+  return {code, n:list.length, total, trimmed};
+}
+function decodeTown(text){
+  try{
+    text = String(text || '').replace(/\s+/g, ''); if(text.slice(0, 3) !== 'MT1' || text.length < 12 || text.length > 1200) return null;
+    const bytes = fromB64(text.slice(3)); if(!bytes || bytes.length < 8) return null;
+    const body = bytes.slice(0, -2), ck = sum16(body); if(ck[0] !== bytes[bytes.length - 2] || ck[1] !== bytes[bytes.length - 1]) return null;
+    const bits = []; body.forEach(c => { for(let i = 7; i >= 0; i--) bits.push((c >>> i) & 1); }); let p = 0; const rd = n => { let x = 0; for(let i = 0; i < n; i++) x = x << 1 | (bits[p++] || 0); return x; };
+    if(rd(4) !== 1) return null; const cols = rd(6), rows = rd(6), a = rd(4), b = rd(2), g = rd(3);
+    if(cols < 3 || rows < 3 || cols > 32 || rows > 32 || g >= GREET.length) return null;
+    const ng = rd(8), cells = [];
+    for(let i = 0; i < ng; i++){ const ix = rd(8), cn = rd(10); if(ix >= ID_TABLE.length || cn > 700) return null; for(let j = 0; j < cn; j++){ const x = rd(5), y = rd(5); if(x < cols && y < rows) cells.push([x, y, ix]); } }
+    if(p > bits.length || cells.length > 700) return null;
+    return {id:'f' + (hash(text) % 1e9).toString(36), n:myName({a, b}), a, b, g, cols, rows, cells};
+  }catch(e){ return null; }
+}
+/* 見本の まち（ためしに いける） */
+function sampleCode(){
+  const ok = id => { try{ return !!ITEM(id); }catch(e){ return false; } };
+  const cells = {}; const P = (x, y, id) => { if(ok(id) && ID_TABLE.includes(id)) cells[`${x},${y}`] = id; };
+  for(let x = 0; x < 10; x++) P(x, 3, 'road'); for(let y = 0; y < 8; y++) P(4, y, 'road');
+  ['house', 'birdhouse', 'logcabin'].forEach((id, i) => P(1 + i * 1, 1, id));
+  P(6, 1, 'bakery'); P(7, 5, 'park'); P(2, 5, 'supermarket'); P(6, 5, 'school'); P(8, 1, 'hospital'); P(0, 6, 'tree'); P(3, 6, 'tree'); P(9, 6, 'tree'); P(5, 0, 'tree'); P(9, 0, 'tree'); P(0, 0, 'tree');
+  const e = encodeTown({a:0, b:0, g:1}, cells, [10, 8]); return e.code;
+}
+/* ---------- みせる（もうひとつの まち） ---------- */
+function friendMapHTML(F){
+  const sz = (window.__big64 && window.__big64.sz) || (() => null), fc = {}; F.cells.forEach(([x, y, ix]) => { fc[`${x},${y}`] = ID_TABLE[ix]; });
+  const bak = save.town.cells; let h = '';
+  save.town.cells = fc;
+  try{
+    for(let y = 0; y < F.rows; y++) for(let x = 0; x < F.cols; x++){
+      const key = `${x},${y}`, id = fc[key]; let it = null; try{ it = id && ITEM(id); }catch(e){}
+      const road = isRoadId(id); let inner = '', st = `--cx:${x};--cy:${y};z-index:${road ? 1 : y * 10 + 2}`, cls = '';
+      if(it){ try{ inner = road ? roadHTML(x, y) : picHTML(it, 'bimg'); }catch(e){} const s = !road && sz(id); if(s){ cls = 'big64'; st += `;--bw:${s[0]};--bh:${s[1]};z-index:${(y + s[1] - 1) * 10 + 3}`; } }
+      h += `<div class="cell ${it ? 'has' : ''} ${road ? 'road' : ''} ${cls}" style="${st}">${inner}</div>`;
+    }
+  } finally { save.town.cells = bak; }
+  return `<div id="townMap" class="apfm" style="--cell:64px;grid-template-columns:repeat(${F.cols},64px);grid-template-rows:repeat(${F.rows},64px)">${h}</div>`;
+}
+function fitFriendMap(){
+  const w = ROOT && ROOT.querySelector('#apfmw'); if(!w || V.s !== 'visit') return; const tp = AS().trip; if(!tp || !tp.fr) return;
+  const box = w.parentElement, cw = box.clientWidth, ch = box.clientHeight; if(!cw || !ch) return;
+  const W = tp.fr.cols * 64, H = (tp.fr.rows + 0.7) * 64, k = Math.min(cw / W, ch / H, 1.5);
+  w.style.width = W + 'px'; w.style.height = H + 'px'; w.style.transform = `scale(${k})`; w.style.left = ((cw - W * k) / 2) + 'px'; w.style.top = Math.max(0, (ch - H * k) / 2 + 12) + 'px';
+}
+function friendItemObj(id){
+  let it = null; try{ it = ITEM(id); }catch(e){} if(!it) return null;
+  return {id:'fr_' + id, n:'ミニ' + it.name, cost:Math.max(100, Math.min(400, Math.round((it.price || 0) / 300) * 10)), img:it.img || art(it.art), fr:1};
+}
+function friendItems(F){
+  const seen = new Set(), arr = [];
+  F.cells.forEach(([x, y, ix]) => { const id = ID_TABLE[ix]; if(seen.has(id)) return; seen.add(id); let it = null; try{ it = ITEM(id); }catch(e){} if(!it || isRoadId(id) || it.type !== 'bld' || (it.price || 0) < 150 || !(it.img || art(it.art))) return; arr.push(id); });
+  arr.sort((a, b) => hash(F.id + a) - hash(F.id + b)); return arr.slice(0, 4).map(friendItemObj).filter(Boolean);
+}
+const ITX = id => SV(id) || (String(id).startsWith('fr_') ? friendItemObj(String(id).slice(3)) : null);
+const stampTowns = () => TOWNS.filter(t => AS().stamps[t.id]).length;
+const pelImg = (cls = '') => `<span class="pelw ${cls}"><img src="${IC('ch_pelican')}" alt="">${rankNo(AS().miles) >= 4 ? `<img class="cap" src="${IC('fx_cap')}" alt="">` : ''}</span>`;
+
+/* ---------- QR画面 ---------- */
+let CAM = null;
+function stopCam(){ if(!CAM) return; clearInterval(CAM.tm); try{ CAM.st && CAM.st.getTracks().forEach(t => t.stop()); }catch(e){} try{ CAM.v && (CAM.v.srcObject = null); }catch(e){} CAM = null; }
+document.addEventListener('visibilitychange', () => { if(document.hidden) stopCam(); });
+const camMsg = t => { const e = ROOT && ROOT.querySelector('#apcmsg'); if(e){ e.textContent = t; fitAll(e.parentElement); } };
+function qr(){
+  const A = AS(), tab = V.qt || 'scan';
+  const tabs = `<div class="aptabs"><button type="button" class="${tab === 'scan' ? 'on' : ''}" data-a="qtab" data-t="scan"><img src="${IC('ui_camera')}" alt=""><b>よみとる</b></button><button type="button" class="${tab === 'mine' ? 'on' : ''}" data-a="qtab" data-t="mine"><img src="${IC('ui_qr')}" alt=""><b>わたしの QR</b></button></div>`;
+  const body = tab === 'scan' ? qrScan() : qrMine();
+  return `<div class="apqr ${LAY}">${head('ともだちの まち', 'dest')}${tabs}<div class="apbody qrb">${body}</div></div>`;
+}
+function qrScan(){
+  const A = AS();
+  return `<div class="apcamw"><video id="apcam" playsinline muted></video><i class="cn a"></i><i class="cn b"></i><i class="cn c"></i><i class="cn d"></i>
+      <span class="apcs"><img src="${IC('ch_sparrow')}" alt=""></span><div class="apcmsg" id="apcmsg">${CAM ? 'QRを わくに あわせてね' : 'ともだちの「わたしの QR」を よみとろう'}</div></div>
+    <div class="apcol2">
+      <button type="button" class="apbtn pr" data-a="camon"><img src="${IC('ui_camera')}" alt=""><span><b>カメラを ひらく</b><small>QRを わくに あわせるよ</small></span></button>
+      <label class="apbtn" for="apfile"><img src="${IC('ui_save')}" alt=""><span><b>しゃしんから よみとる</b><small>QRの がぞうを えらぶ</small></span></label><input type="file" id="apfile" accept="image/*" class="apfile">
+      <button type="button" class="apbtn" data-a="codein"><img src="${IC('ui_paste')}" alt=""><span><b>コードを いれる</b><small>もらった コードを はりつける</small></span></button>
+      <button type="button" class="apbtn" data-a="sample"><img src="${IC('th_friend')}" alt=""><span><b>みほんの まち</b><small>ためしに いってみる</small></span></button>
+      <p class="aphl sm">ともだちの まちは「コピー」を みるだけ。ともだちの まちは かわらないし、ともだちに ポイントも はいらないよ。<br>とうじょうけん 1まいで いけるよ（いま ${A.tix}まい）。</p></div>`;
+}
+function qrMine(){
+  const A = AS(), m = A.my, e = encodeTown(m);
+  V.qrE = e;
+  const pk = (k, label, val, n) => `<div class="appk"><span class="lb">${label}</span><button type="button" class="pb" data-a="my" data-k="${k}" data-d="-1" aria-label="まえ"><img src="${IC('ui_back')}" alt=""></button><b class="vl">${X(val)}</b><button type="button" class="pb r" data-a="my" data-k="${k}" data-d="1" aria-label="つぎ"><img src="${IC('ui_back')}" alt=""></button></div>`;
+  return `<div class="apqcard"><canvas id="apqrc" width="520" height="700"></canvas><p class="apqi">たてもの ${e.n}こ${e.trimmed ? `（おおきな まちなので ${e.total - e.n}こ へらしたよ）` : ''}</p></div>
+    <div class="apcol2">
+      ${pk('a', 'なまえ', m.a < 16 ? NAMEA[m.a] : '', 16)}${pk('b', 'しゅるい', NAMEB[m.b], 4)}${pk('g', 'あいさつ', GREET[m.g], GREET.length)}
+      <button type="button" class="apbtn pr" data-a="showqr"><img src="${IC('ui_qr')}" alt=""><span><b>QRを みせる</b><small>おおきく ひょうじ する</small></span></button>
+      <button type="button" class="apbtn" data-a="saveqr"><img src="${IC('ui_save')}" alt=""><span><b>ほぞんする</b><small>がぞうとして ほぞん</small></span></button>
+      <button type="button" class="apbtn" data-a="copyqr"><img src="${IC('ui_paste')}" alt=""><span><b>コードを コピー</b><small>もじで おくる とき</small></span></button>
+      <p class="aphl sm">QRには「たてものの ならべかた・まちの なまえ・あいさつ」だけ。ほんみょう・しゃしん・いちじょうほうは はいらないよ。</p></div>`;
+}
+function drawQR(cv, e, name, greet){
+  if(!cv) return; const g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, '#FFF3C9'); grd.addColorStop(1, '#FFE0A6');
+  rr(4, 4, W - 8, H - 8, 40); g.fillStyle = grd; g.fill(); g.lineWidth = 8; g.strokeStyle = '#E8A33A'; g.stroke();
+  const fit = (t, max, px, bold) => { let s = px; g.font = `${bold ? '900' : '700'} ${s}px "Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif`; while(g.measureText(t).width > max && s > 14){ s -= 2; g.font = `${bold ? '900' : '700'} ${s}px "Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif`; } };
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#7A3E00'; fit('まなびタウン', W - 120, 30, 1); g.fillText('まなびタウン', W / 2, 46);
+  g.fillStyle = '#2E6FB5'; fit(name, W - 100, 52, 1); g.fillText(name, W / 2, 100);
+  const q = QRK.encode(e.code, 'L'); const N = q ? q.size : 21, quiet = 4, avail = W - 110, px = Math.floor(avail / (N + quiet * 2)), side = px * (N + quiet * 2), ox = Math.round((W - side) / 2), oy = 140;
+  rr(ox - 14, oy - 14, side + 28, side + 28, 24); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#F3D9A0'; g.stroke();
+  g.fillStyle = '#fff'; g.fillRect(ox, oy, side, side); g.fillStyle = '#111';
+  if(q) for(let y = 0; y < N; y++) for(let x = 0; x < N; x++) if(q.mod[y * N + x]) g.fillRect(ox + (x + quiet) * px, oy + (y + quiet) * px, px, px);
+  g.fillStyle = '#7A3E00'; fit(greet, W - 100, 34, 1); g.fillText(greet, W / 2, oy + side + 54);
+  g.fillStyle = '#A87A3A'; g.font = '700 22px sans-serif'; g.fillText('QRを よみとって あそびに きてね', W / 2, H - 34);
+}
+async function camTick(){
+  if(!CAM || !ROOT || V.s !== 'qr'){ return stopCam(); }
+  const v = CAM.v; if(!v || v.readyState < 2 || CAM.busy) return; CAM.busy = 1;
+  try{
+    const sc = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); const w = Math.round(v.videoWidth * sc), h = Math.round(v.videoHeight * sc);
+    const cv = CAM.cv || (CAM.cv = document.createElement('canvas')); cv.width = w; cv.height = h; const g = cv.getContext('2d', {willReadFrequently:true}); g.drawImage(v, 0, 0, w, h);
+    const txt = await readQR(cv, g, w, h); if(txt) await gotCode(txt, true);
+  }catch(e){}
+  if(CAM) CAM.busy = 0;
+}
+let BD = undefined;
+async function readQR(cv, g, w, h){
+  try{ if(BD === undefined){ BD = ('BarcodeDetector' in window) ? new BarcodeDetector({formats:['qr_code']}) : null; } if(BD){ const r = await BD.detect(cv); if(r && r[0] && r[0].rawValue) return r[0].rawValue; } }catch(e){ BD = null; }
+  try{ const d = g.getImageData(0, 0, w, h); return QRK.decode(d.data, w, h); }catch(e){ return null; }
+}
+async function startCam(){
+  stopCam(); const v = ROOT && ROOT.querySelector('#apcam'); if(!v) return;
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ camMsg('カメラが つかえないよ。「しゃしん」か「コード」を つかってね'); return; }
+  try{
+    const st = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:1280}}, audio:false});
+    if(!ROOT || V.s !== 'qr'){ st.getTracks().forEach(t => t.stop()); return; }
+    CAM = {st, v, busy:0, tm:0}; v.srcObject = st; v.setAttribute('playsinline', ''); await v.play(); v.classList.add('on'); camMsg('QRを わくに あわせてね'); CAM.tm = setInterval(camTick, 240);
+  }catch(e){ CAM = null; camMsg('カメラが つかえないよ。「しゃしん」か「コード」を つかってね'); }
+}
+async function gotCode(text, fromCam){
+  const F = decodeTown(text);
+  if(!F){ if(!fromCam || !gotCode.t || Date.now() - gotCode.t > 4000){ gotCode.t = Date.now(); camMsg('これは まなびタウンの QRじゃないみたい'); if(!fromCam) toast('まなびタウンの QRじゃないみたい'); } return false; }
+  stopCam(); snd('fan'); await previewFriend(F); return true;
+}
+async function previewFriend(F){
+  const A = AS(), can = A.tix > 0, known = A.friends[F.id];
+  const ok = await dialog(`<div class="apfpv"><img class="th" src="${IC('th_friend')}" alt=""><h2 class="dlgT">${X(F.n)}</h2><div class="apdl"><img src="${IC('ch_sparrow')}" alt=""><span class="apbq">${X(GREET[F.g])}</span></div>
+    <p class="dlgP">たてもの ${F.cells.length}こ の まち。${known ? `<br>${known.v}かい いった ことが あるよ。` : '<br>はじめての ともだちの まち！'}<br>${can ? 'とうじょうけん 1まい で いけるよ。' : 'とうじょうけんが ないよ。チェックインで もらおう！'}</p></div>`,
+    [{label:'やめる', cls:'white', v:false}, {label:can ? 'いく！' : 'チェックインへ', cls:'gold', v:true}], 'wide');
+  if(!ok){ if(ROOT && V.s === 'qr') render(); return; }
+  if(!can){ if(ROOT){ Q = null; go('top'); } return; }
+  V.friend = F; depart();
+}
+async function pickFile(file){
+  if(!file) return; const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    for(const maxw of [1000, 1600, 600]){ const sc = Math.min(1, maxw / Math.max(img.naturalWidth, img.naturalHeight)), w = Math.round(img.naturalWidth * sc), h = Math.round(img.naturalHeight * sc);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d', {willReadFrequently:true}); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+      const txt = await readQR(cv, g, w, h); if(txt){ URL.revokeObjectURL(url); return gotCode(txt, false); } }
+    toast('QRが みつからなかったよ。もういちど ためしてね');
+  }catch(e){ toast('がぞうが ひらけなかったよ'); }
+  URL.revokeObjectURL(url);
+}
+async function codeIn(){
+  await dialog(`<h2 class="dlgT">コードを いれる</h2><p class="dlgP">ともだちから もらった コードを はりつけてね。</p><textarea id="apcode" class="apta" rows="4" placeholder="MT1..." autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>`, [{label:'やめる', cls:'white', v:false}, {label:'いれた！', cls:'gold', v:true}]).then(async v => {
+    if(!v) return; const el = document.getElementById('apcode'); const t = el ? el.value : ''; if(!t.trim()) return; await gotCode(t, false); });
+}
+async function copyCode(){
+  const e = V.qrE || encodeTown(AS().my);
+  try{ await navigator.clipboard.writeText(e.code); toast('コードを コピーしたよ'); return; }catch(err){}
+  await dialog(`<h2 class="dlgT">コードを コピー</h2><p class="dlgP">ぜんぶ えらんで コピーしてね。</p><textarea id="apcode" class="apta" rows="5" readonly>${X(e.code)}</textarea>`, [{label:'とじる', cls:'', v:1}]);
+}
+function qrCanvasNow(){ const m = AS().my, e = V.qrE || encodeTown(m); const cv = document.createElement('canvas'); cv.width = 520; cv.height = 700; drawQR(cv, e, myName(m), GREET[m.g]); return cv; }
+async function showQR(){
+  const cv = qrCanvasNow(); const url = cv.toDataURL('image/png');
+  await dialog(`<div class="apbigqr"><img src="${url}" alt=""></div>`, [{label:'とじる', cls:'', v:1}], 'wide');
+}
+function saveQR(){
+  const cv = qrCanvasNow(); const name = 'manabitown-qr.png';
+  cv.toBlob(b => { if(!b){ toast('ほぞんできなかったよ'); return; } const url = URL.createObjectURL(b), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 3000); toast('QRの がぞうを ほぞんしたよ'); }, 'image/png');
+}
+/* ---------- もじが ワクから はみださないように ちいさく する ---------- */
+function fitAll(root){
+  const R = root || ROOT; if(!R) return;
+  R.querySelectorAll('b,small,span,p,h2,h3,h4,h5,em,button,label,li,div,i').forEach(el => {
+    if(el.dataset && el.dataset.nofit !== undefined) return;
+    let own = false; for(const n of el.childNodes){ if(n.nodeType === 3 && n.nodeValue.trim()){ own = true; break; } if(n.nodeType === 1 && n.tagName === 'RUBY'){ own = true; break; } }
+    if(!own) return; const cs = getComputedStyle(el); if(cs.display === 'inline' || cs.display === 'contents' || cs.display === 'none') return;
+    let fs = parseFloat(cs.fontSize), n = 0;
+    while(fs > 9 && n < 16 && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)){ fs -= 1; el.style.fontSize = fs + 'px'; n++; }
+  });
+}
+
 /* ---------- タッチ ---------- */
 async function say(img, title, msg){ await dialog(`<div class="apdl"><img src="${IMG}ch_${img}.webp" alt=""></div><h2 class="dlgT">${title}</h2><p class="dlgP">${msg}</p>`, [{label:'OK', cls:'', v:1}]); }
 function keepScroll(fn){
@@ -14375,6 +14867,7 @@ async function leaveQuiz(){
   }
   return true;
 }
+document.addEventListener('change', e => { const f = e.target; if(f && f.id === 'apfile' && ROOT && ROOT.contains(f)){ const file = f.files && f.files[0]; f.value = ''; pickFile(file); } }, true);
 document.addEventListener('click', async e => {
   if(!ROOT || !ROOT.contains(e.target)) return;
   const sy = e.target.closest('[data-say]');
@@ -14396,7 +14889,16 @@ document.addEventListener('click', async e => {
   }
   if(a === 'tw'){ startQuiz('tower', {star:+t.dataset.s}); return go('quiz'); }
   if(a === 'sel'){ V.sel = t.dataset.t; snd('tap'); return keepScroll(render); }
-  if(a === 'qrsoon'){ snd('ng'); return toast('ともだちの まちは じゅんびちゅう！ もうすこし まっててね'); }
+  if(a === 'locked'){ snd('ng'); return toast('プラチナランクに なると いけるよ！'); }
+  if(a === 'qr'){ Q = null; V.qt = 'scan'; return go('qr'); }
+  if(a === 'qtab'){ V.qt = t.dataset.t; snd('tap'); stopCam(); return render(); }
+  if(a === 'camon') return startCam();
+  if(a === 'codein') return codeIn();
+  if(a === 'sample'){ return gotCode(sampleCode(), false); }
+  if(a === 'my'){ const k = t.dataset.k, d = +t.dataset.d, n = k === 'a' ? 16 : k === 'b' ? 4 : GREET.length; A.my[k] = (A.my[k] + d + n) % n; persist(); snd('tap'); return render(); }
+  if(a === 'showqr') return showQR();
+  if(a === 'saveqr') return saveQR();
+  if(a === 'copyqr') return copyCode();
   if(a === 'ruby'){ const m = A.settings.ruby; A.settings.ruby = m === 'hard' ? 'all' : m === 'all' ? 'none' : 'hard'; persist(); snd('tap'); return keepScroll(render); }
   if(a === 'ans') return answer(t.dataset.o);
   if(a === 'hint'){ if(!Q || Q.hint || Q.ans !== null) return; const q = cur(); Q.hint = true; Q.cut = pick(Q.ord.filter(o => o !== q.a)); snd('tap'); return render(); }
@@ -14413,7 +14915,7 @@ document.addEventListener('click', async e => {
   if(a === 'fskip'){ if(V.fq){ V.fq.skip = true; } const el = ROOT.querySelector('#apfq'); if(el) el.innerHTML = flyCard(); return; }
   if(a === 'land'){ const tp = A.trip; if(!tp) return go('top'); tp.ph = 'visit'; tp.t0 = Date.now(); persist(); snd('ok'); return go('visit'); }
   if(a === 'buy'){
-    const tp = A.trip, s = SV(t.dataset.id); if(!tp || !s || A.sv[s.id]) return;
+    const tp = A.trip, s = ITX(t.dataset.id); if(!tp || !s || A.sv[s.id]) return;
     if(tp.bought.length >= CFG.maxBuy) return toast(`1かいの たびで ${CFG.maxBuy}こ までだよ`);
     if(lastPt() < s.cost){ snd('ng'); return toast('ポイントが たりないよ'); }
     try{ addPoints(-s.cost, `くうこう おみやげ：${s.n}`, true); }catch(e){}
@@ -14469,7 +14971,7 @@ setInterval(() => {
 try{ const B = window.__bgm643; if(B){ const t0 = B.target; B.target = () => { const v = t0(); if(!document.querySelector('#ap662') || v === 0) return v;
   if(Q && V.s === 'quiz') return Q.ans === null ? Math.min(v, .06) : Math.min(v, .09); return Math.min(v, .12); }; } }catch(e){}
 try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ const v = $('#verNote'); if(v) v.textContent = `まなびタウン v${VER}`; }catch(e){} return o; })(renderSettings); }catch(e){}
-window.__ap662 = {open, close, AS, QS, TOWNS, SVS, RANKS, CFG, render, startQuiz, go, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }, depart, landing, spawnFly};
+window.__ap662 = {open, close, AS, QS, TOWNS, SVS, RANKS, CFG, render, startQuiz, go, QRK, encodeTown, decodeTown, sampleCode, fitAll, gotCode, previewFriend, drawQR, myName, GREET, ID_TABLE, get V(){ return V; }, set V(v){ V = v; }, get Q(){ return Q; }, depart, landing, spawnFly};
 
 /* ---------- CSS ---------- */
 const css = document.createElement('style');
@@ -14720,7 +15222,119 @@ body.ap662on{overflow:hidden}
 /* ダイアログ（まちの 前面） */
 .mii{height:.95em;width:auto;vertical-align:-.12em;margin-right:2px}.mii.tkk{height:1.1em}.ppt{font-weight:900}.ppt small{font-size:.75em;margin-left:1px}.lck{width:1em;height:1em;vertical-align:middle}.apsp1 i .lck,.aptc .ar .lck{width:60%;height:60%}
 .apdl{display:flex;justify-content:center;align-items:flex-end;gap:10px}.apdl img{height:92px;width:auto}.apdl img.bdg{height:108px}
-@media (max-height:700px){.apt.ph .apm4 .apmb{min-height:58px}.apmb .ic{width:44px;height:44px}}
+@media (max-width:430px){#ap662 .apchips small{display:none}#ap662 .apchips{gap:5px;padding:3px 8px}#ap662 .aphd{gap:4px;padding-left:6px;padding-right:6px}}\n@media (max-height:700px){.apt.ph .apm4 .apmb{min-height:58px}.apmb .ic{width:44px;height:44px}}
+`;
+css.textContent += `
+/* ===== v6.63：イラストアイコン・ともだちの まち・ゴールド／プラチナ ===== */
+body.ap662on #toast{z-index:90}
+#ap662 *{min-width:0}
+#ap662 .aphm img,#ap662 .apbk img{width:30px;height:30px;flex:none;object-fit:contain;display:block}
+#ap662 .aphm,#ap662 .apbk{padding:3px 12px 3px 4px;color:#2E6FB5}
+#ap662 .stars{display:inline-flex;align-items:center;gap:1px;vertical-align:middle;margin-left:auto}
+#ap662 .stars img{width:19px;height:19px;object-fit:contain;display:block}
+#ap662 .aphd h2 .stars{margin-left:6px}#ap662 .aphd h2 .stars img{width:18px;height:18px}
+#ap662 .apdf b{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+#ap662 .apdf .stars{margin-left:0}#ap662 .apdf .stars img{width:24px;height:24px}
+#ap662 .apgo .stars{margin-left:4px}#ap662 .apgo .stars img{width:14px;height:14px}
+#ap662 .apst{display:flex;gap:8px;justify-content:center}
+#ap662 .apst img{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+#ap662 .apst img.on{animation:apstp .5s cubic-bezier(.2,1.6,.4,1) both}#ap662 .apst img.on:nth-child(2){animation-delay:.15s}#ap662 .apst img.on:nth-child(3){animation-delay:.3s}
+#ap662 .lck,#dlg .lck{width:1.1em;height:1.1em;vertical-align:-.2em;object-fit:contain}
+#ap662 .chk{width:1.15em;height:1.15em;vertical-align:-.2em;object-fit:contain;margin-right:2px}
+#ap662 .arw{width:100%;height:100%;object-fit:contain;transform:scaleX(-1);display:block}
+#ap662 .aptc .ar{background:none;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:0;line-height:0;padding:0}
+#ap662 .aptc .ar .lck{width:80%;height:80%}
+#ap662 .aptc.lk .th img{filter:grayscale(1) brightness(.9)}
+#ap662 .aptc .tx b,#ap662 .aptc .tx small{overflow-wrap:anywhere}
+#ap662 .aptc.fr .sv{align-items:center;gap:4px}#ap662 .aptc.fr .sv img{width:26px;height:26px}#ap662 .aptc.fr .sv em{font-style:normal;font-size:11.5px;font-weight:900;color:#8A5A10}
+#ap662 .apskip{display:flex;align-items:center;gap:4px;padding:2px 12px 2px 16px}#ap662 .apskip .arw{width:18px;height:18px}
+#ap662 .apnx{display:flex;align-items:center;justify-content:center;gap:6px}
+#ap662 .aprb{white-space:normal;text-align:center}
+#ap662 .appin span{white-space:normal;max-width:104px;text-align:center;line-height:1.25}
+#ap662 .appin i{background:none;border:0;width:22px;height:22px;right:-6px;top:-6px}
+#ap662 .appin i img{width:100%;height:100%;object-fit:contain;display:block;margin:0}
+#ap662 .appin.lk img.sil{filter:brightness(0) opacity(.28)}#ap662 .appin.lk span{background:#fff;border-color:#9AA5B5;color:#6A7585}
+#ap662 .appin .lkb{position:absolute;left:50%;top:6px;transform:translateX(-50%);width:26px;height:26px;right:auto}
+#ap662 .tkn em{font-style:normal;font-size:14px;font-weight:900}
+#ap662 .apit small img.chk{width:16px;height:16px}
+#ap662 .apit.gold{border-color:#F2C230;background:linear-gradient(180deg,#FFF6CF,#FFE39A);box-shadow:0 3px 0 #E8B53A}
+#ap662 .apit.lockd{border-color:#D5DBE5;background:#F2F4F8;box-shadow:0 3px 0 #D5DBE5}#ap662 .apit.lockd .im{position:relative}
+#ap662 .apit.lockd .sil{filter:brightness(0) opacity(.18)}#ap662 .apit.lockd .lk{position:absolute;width:40%;height:40%;left:30%;top:30%;object-fit:contain}
+#ap662 .apit.lockd small{color:#7A8595;font-size:12px}
+#ap662 .apit b,#ap662 .apit small{max-width:100%;text-align:center}
+#ap662 .apsp1 .emp{position:relative;display:flex;width:min(100%,74px);aspect-ratio:1/1;align-items:center;justify-content:center}
+#ap662 .apsp1 .emp img.sil{width:100%;height:100%;filter:brightness(0) opacity(.16);border-radius:50%;animation:none}
+#ap662 .apsp1 .emp .lck{position:absolute;width:36%;height:36%;border-radius:0}
+#ap662 .apsp1 b{overflow-wrap:anywhere;line-height:1.3}
+#ap662 .apsv span{position:relative}#ap662 .apsv span.lk img{filter:brightness(0) opacity(.2)}
+#ap662 .apsv span i{position:absolute;left:50%;top:14%;transform:translateX(-50%);width:34%;height:34%}#ap662 .apsv span i img{width:100%;height:100%;filter:none!important}
+#ap662 .apsv>div{grid-template-columns:repeat(5,minmax(0,1fr))}
+#ap662 .apcover{display:flex;align-items:center;gap:10px;border-radius:18px;padding:6px 10px;background:linear-gradient(180deg,#FFE9E4,#FFD5CC);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+#ap662 .apcover.gold{background:linear-gradient(180deg,#FFF3BE,#F5CE5A);box-shadow:0 0 0 2px #F2C230,0 3px 8px rgba(160,110,0,.3)}
+#ap662 .apcover .bk{width:58px;height:58px;object-fit:contain;flex:none}#ap662 .apcover .tro{width:52px;height:52px;object-fit:contain;flex:none;margin-left:auto}
+#ap662 .apcover>div{display:flex;flex-direction:column;min-width:0;flex:1}#ap662 .apcover b{font-size:16px;color:#7A3E00;overflow-wrap:anywhere}#ap662 .apcover small{font-size:12px;font-weight:800;color:#8A5A10;overflow-wrap:anywhere}
+/* ペリカン（プラチナの ぼうし） */
+.pelw{position:relative;display:inline-block;line-height:0}.pelw>img:first-child{display:block;width:100%;height:auto}
+.pelw .cap,.apc .cap{position:absolute;left:25%;top:-13%;width:44%;height:auto;transform:rotate(9deg);pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.apdl .pelw{width:auto}.apdl .pelw>img:first-child{height:92px;width:auto}
+#ap662 .apwh .pelw{width:78px;flex:none}#ap662 .apbook .bh .pelw{width:70px;flex:none}
+#ap662 .apwho .pelw{display:block;width:100%}
+#ap662 .apbox .rbw{position:absolute;left:50%;top:-86px;transform:translateX(-50%);width:58%;pointer-events:none;opacity:.95}
+#ap662 .apbox .spk{position:absolute;width:52px;pointer-events:none;animation:aptw 1.6s ease-in-out infinite}#ap662 .apbox .spk.a{left:4%;top:-20px}#ap662 .apbox .spk.b{right:4%;top:40px;animation-delay:.7s}
+@keyframes aptw{0%,100%{transform:scale(.7) rotate(0);opacity:.6}50%{transform:scale(1.15) rotate(20deg);opacity:1}}
+#ap662 .apfly.gl{width:20%}#ap662 .apfly.gl img{filter:drop-shadow(0 0 8px #FFD24A) drop-shadow(0 0 14px #fff)}
+#ap662 .aplog li i{display:flex;width:22px;height:22px;flex:none}#ap662 .aplog li i img{width:100%;height:100%;object-fit:contain}
+#ap662 .aprt.rb{filter:drop-shadow(0 0 4px rgba(255,255,255,.9))}
+#ap662 .apc.slo3{left:8%;top:99%}
+#ap662 .apgt.tab .apsc.top.big{aspect-ratio:3/2;width:min(calc(100% - 24px),calc((100dvh - 170px) * 1.5));margin:calc(10px + env(safe-area-inset-top)) auto 0;border-radius:22px}
+#ap662 .aphd.tb{flex-wrap:wrap;gap:6px}
+#ap662 .aphd h2{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25;overflow-wrap:anywhere}
+#ap662 .apsp1 .emp img.sil{filter:grayscale(1) opacity(.28)}
+
+
+/* ともだちの まち：みせる まち */
+#ap662 .apvs.fr{background:linear-gradient(180deg,#8FD07A,#5FAE55)}
+.apfmb{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#7CC26A,#5FAE55)}
+.apfmw{position:absolute;left:0;top:0;transform-origin:0 0}
+#townMap.apfm{display:grid;position:relative;width:100%;height:100%;pointer-events:none}
+#townMap.apfm .cell{position:relative;width:64px;height:64px;outline:none!important}
+#ap662 .apvs.fr .aphw.v{height:20%}#ap662 .apvs.fr .apc.peli4{width:12%}#ap662 .apvs.fr .apc.spar4{width:8%;top:94%;left:90%}
+/* QR画面 */
+.apqr{background:linear-gradient(180deg,#DDF1FF,#FFF6E6)}
+#ap662 .aptabs{display:flex;gap:8px;padding:0 10px 8px;flex:none}
+#ap662 .aptabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:3px solid #fff;background:#fff;border-radius:18px;min-height:54px;color:#5A6A80;box-shadow:0 3px 0 #D5DEEA;padding:2px 8px}
+#ap662 .aptabs button.on{background:linear-gradient(180deg,#FFF1BF,#FFD97A);color:#7A3E00;box-shadow:0 3px 0 #E8B04A}
+#ap662 .aptabs img{width:36px;height:36px;object-fit:contain;flex:none}#ap662 .aptabs b{font-size:15px;overflow-wrap:anywhere;line-height:1.25}
+#ap662 .qrb{gap:10px}
+#ap662 .apcamw{position:relative;aspect-ratio:4/3;flex:none;border-radius:20px;overflow:hidden;border:4px solid #fff;background:linear-gradient(135deg,#46566E,#2A3342);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+#ap662 .apcamw video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}#ap662 .apcamw video.on{opacity:1}
+#ap662 .apcamw .cn{position:absolute;width:12%;aspect-ratio:1/1;border:5px solid #7CE08A;border-radius:6px}
+#ap662 .cn.a{left:22%;top:16%;border-right:0;border-bottom:0}#ap662 .cn.b{right:22%;top:16%;border-left:0;border-bottom:0}#ap662 .cn.c{left:22%;bottom:26%;border-right:0;border-top:0}#ap662 .cn.d{right:22%;bottom:26%;border-left:0;border-top:0}
+#ap662 .apcs{position:absolute;right:6px;top:6px;width:15%}#ap662 .apcs img{width:100%;display:block}
+#ap662 .apcmsg{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(255,255,255,.94);border-radius:14px;padding:5px 10px;font-weight:900;font-size:13px;line-height:1.5;text-align:center;color:#2A3A5A}
+#ap662 .apcol2{display:flex;flex-direction:column;gap:8px;min-width:0}
+#ap662 .apbtn{display:flex;align-items:center;gap:10px;border:3px solid #fff;background:#fff;border-radius:18px;padding:5px 12px 5px 8px;min-height:62px;text-align:left;box-shadow:0 3px 0 #D5DEEA;color:#2A3A5A;cursor:pointer;width:100%}
+#ap662 .apbtn.pr{background:linear-gradient(180deg,#FFF4C8,#FFE08A);box-shadow:0 3px 0 #E8B04A}
+#ap662 .apbtn img{width:46px;height:46px;object-fit:contain;flex:none;border-radius:8px}
+#ap662 .apbtn span{display:flex;flex-direction:column;min-width:0;flex:1}#ap662 .apbtn b{font-size:16px;line-height:1.3;overflow-wrap:anywhere}#ap662 .apbtn small{font-size:11.5px;font-weight:800;color:#6A7A90;line-height:1.4;overflow-wrap:anywhere}
+#ap662 .apbtn:active{transform:translateY(2px)}
+#ap662 .apfile{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#ap662 .apqcard{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+#ap662 .apqcard canvas{width:min(100%,300px);height:auto;border-radius:30px;box-shadow:0 5px 14px rgba(0,0,0,.2);display:block}
+#ap662 .apqi{margin:0;font-size:12.5px;font-weight:800;color:#5A6A80;text-align:center;line-height:1.6}
+#ap662 .appk{display:flex;align-items:center;gap:4px;background:#fff;border-radius:16px;padding:2px 6px 2px 10px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+#ap662 .appk .lb{flex:none;font-weight:900;font-size:12px;color:#8A5A10;width:4.6em}
+#ap662 .appk .vl{flex:1;min-width:0;text-align:center;font-size:15px;color:#2A3A5A;overflow-wrap:anywhere;line-height:1.35}
+#ap662 .appk .pb{flex:none;width:46px;height:46px;border:0;background:none;padding:0}#ap662 .appk .pb img{width:100%;height:100%;object-fit:contain;display:block}#ap662 .appk .pb.r img{transform:scaleX(-1)}
+.apta{width:100%;border:3px solid #CFE0F2;border-radius:12px;padding:8px;font-size:14px;font-family:monospace;resize:none;box-sizing:border-box}
+.apfpv{display:flex;flex-direction:column;align-items:center;gap:4px}.apfpv .th{width:100%;max-width:300px;border-radius:16px;box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.apfpv .dlgT,.apfpv .dlgP{overflow-wrap:anywhere}.apfpv .apdl{align-items:center}.apfpv .apdl img{height:70px}
+.apfpv .apbq{display:inline-block;background:#fff;border:3px solid #9FC3E8;border-radius:16px;padding:6px 12px;font-size:14px;font-weight:900;color:#2A3A5A;line-height:1.5;max-width:210px;overflow-wrap:anywhere;text-align:left}
+.apbigqr{display:flex;justify-content:center}.apbigqr img{width:100%;max-width:420px;border-radius:24px}
+#ap662 .apqr.tab .qrb{flex-direction:row;align-items:flex-start;padding-top:4px}
+#ap662 .apqr.tab .apcamw{flex:1.3}#ap662 .apqr.tab .apcol2{flex:1}
+#ap662 .apqr.tab .apqcard{flex:1.1}#ap662 .apqr.tab .apqcard canvas{width:min(100%,360px)}
+#ap662 .apqr.tab .aptabs{max-width:560px;margin:0 auto;width:100%}
 `;
 document.head.appendChild(css);
 })();
