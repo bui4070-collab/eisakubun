@@ -1,5 +1,5 @@
 /* =====================================================================
-   まなびタウン v4.2：たてものの きのう（v7.0：ホテルを 全面アップデート）
+   まなびタウン v4.2：たてものの きのう（v7.1：ホテル 家具・かざり・記念家具）
    畑・公園・図書館・学校・パーキング・病院・市やくしょ・ホテル
    （おまけ：はくぶつかん・風車）
    ※ app.js の あとに 読みこむ。セーブは save.fac に 追加するだけ
@@ -315,6 +315,40 @@ const SPECIAL = [
   {id:'itm_palletter',   n:'仲良しレター',             p:2500, g:3, d:'仲良しリストから1人選んで、必ず住民として来てもらう（住む家が必要）'}
 ];
 const SV = id => SOUV.find(x => x.id===id) || SPECIAL.find(x => x.id===id);
+/* ---------- ホテル限定の 家具・かざり（v7.1）：k='fur'＝わたしの家／k='deco'＝まち ---------- */
+const HFUR = [
+  {id:'htl_chandelier', art:'fur_htl_chandelier', n:'ゴールドシャンデリア',     k:'fur',  g:1, p:2000, sty:12, size:1.2, d:'キラキラ光る、ホテルの大シャンデリア'},
+  {id:'htl_wagon',      art:'fur_htl_wagon',      n:'ルームサービスワゴン',     k:'fur',  g:1, p:1500, sty:8,  size:1.4, foot:[2,1], d:'お部屋にとどく、ごうかなワゴン'},
+  {id:'htl_cart',       art:'fur_htl_cart',       n:'ベルボーイのにもつカート', k:'fur',  g:2, p:2500, sty:12, size:1.2, d:'旅行かばんがいっぱいの金色カート'},
+  {id:'d_htlpenguin',   art:'dc_htl_penguin',     n:'ペンギンのドアマン像',     k:'deco', g:2, p:1800, dev:20, emoji:'🐧', d:'まちに置ける、ホテルのドアマンの像'},
+  {id:'d_htlarch',      art:'dc_htl_arch',        n:'ホテルのバラのアーチ',     k:'deco', g:3, p:3000, dev:30, emoji:'🌹', d:'まちに置ける、赤いじゅうたんとバラのアーチ'}
+];
+/* 部屋の 記念家具：その部屋で はじめて 仲良しが できると お店に ならぶ */
+const MEMO = [
+  {id:'mm_std',    room:'std',    n:'ふかふかまくら',     p:1500, sty:8,  size:1.0},
+  {id:'mm_wa',     room:'wa',     n:'たたみの小上がり',   p:2000, sty:10, size:1.8, foot:[2,2]},
+  {id:'mm_ocean',  room:'ocean',  n:'貝がらランプ',       p:2000, sty:10, size:1.0},
+  {id:'mm_forest', room:'forest', n:'きりかぶテーブル',   p:2000, sty:10, size:1.3},
+  {id:'mm_sky',    room:'sky',    n:'くものソファ',       p:2500, sty:12, size:1.6, foot:[2,1]},
+  {id:'mm_snow',   room:'snow',   n:'雪の結晶ランプ',     p:2500, sty:12, size:1.1},
+  {id:'mm_suite',  room:'suite',  n:'ゴールドミラー',     p:3500, sty:16, size:1.1},
+  {id:'mm_royal',  room:'royal',  n:'おうかんのベッド',   p:5000, sty:25, size:1.8, foot:[2,2]}
+].map(m => Object.assign({art:'fur_' + m.id, k:'fur', g:0, d:`${ROOM(m.room).n}の記念家具`}, m));
+const HF = id => HFUR.find(x => x.id===id) || MEMO.find(x => x.id===id);
+try{
+  HFUR.concat(MEMO).forEach(f => {
+    DEFAULT_ART[f.art] = himg(f.art); SHOP_ONLY[f.id] = 'hotel';
+    if(f.k==='fur'){
+      if(!FURNITURE.some(x => x.id===f.id)) FURNITURE.push({id:f.id, name:f.n, art:f.art, type:'fur', price:f.p, lv:5, sty:f.sty, special:true, hotel:true});
+      if(f.foot) FOOT[f.id] = f.foot;
+      FUR_SIZE[f.id] = f.size || 1; SIDE_W[f.id] = f.foot ? f.foot[0]*0.95 + 0.1 : 1;
+    } else if(!TOWN_ITEMS.some(x => x.id===f.id)){
+      TOWN_ITEMS.push({id:f.id, type:'bld', cat:'deco', name:f.n, art:f.art, emoji:f.emoji, price:f.p, lv:5, dev:f.dev, ev:'hotel'});
+    }
+  });
+}catch(e){ console.warn('hotel fur', e); }
+const hOwned = f => f.k==='fur' ? (() => { const H = ensureHome(); return (H.inv[f.id]||0) + H.items.filter(i => i.id===f.id).length; })()
+  : (save.town.inv[f.id]||0) + Object.values(save.town.cells).filter(v => v===f.id).length;
 const TOUR_LINES = ['この町、すてきだね！来てよかった〜','今日はどこを見に行こうかな？','この町のおすすめの場所、教えて！',
   'ホテルのベッド、ふかふかだったよ','町のみんな、やさしいね','写真をいっぱい撮っちゃった！','次のお休みも、また来たいなあ','このお部屋、とっても気に入ったよ'];
 
@@ -520,13 +554,17 @@ async function becomePal(t){
   t.pal = true; f.pals[t.sp] = (f.pals[t.sp]||0) + 1;
   h.palList.push({id:t.id, sp:t.sp, name:t.name, room:t.room, at:now()});
   if(h.palList.length > 10){ const x = h.palList.shift(); if(f.pals[x.sp] > 0){ f.pals[x.sp]--; if(!f.pals[x.sp]) delete f.pals[x.sp]; } toast(`仲良しリストがいっぱいなので、${x.name}さんとはお別れしました`); }
-  if(t.room) h.memo[t.room] = h.memo[t.room] || now();
+  let newMemo = null;
+  if(t.room && !h.memo[t.room]){ h.memo[t.room] = now(); newMemo = MEMO.find(m => m.room===t.room); }
   persist(); sound('fan'); confetti(2600);
   const sp = SP(t.sp), home = findHome(sp);
   await dialog(`<div class="htlFx" style="background-image:url('${hurl(isL() ? 'htl_pal_l' : 'htl_pal_p')}')"><div class="dlgArt big pop">${resPic(tourObj(t))}</div></div>
     <h2 class="dlgT">💞 ${esc(t.name)}と仲良しになった！</h2>
     <p class="dlgP">${esc(sp.name)}はこの町が気に入ったみたい！<br>「おまねきレター」「きらきらレター」を使うと<br><b>来てくれる確率がアップ</b>するよ！${home ? '' : `<br><small>※ 住む家「${esc(homeName(sp.home))}」に空きがあると来てくれるよ</small>`}</p>`,
     [{label:'やったー！', cls:'gold', v:1}], 'gold');
+  if(newMemo){ sound('fan');
+    await dialog(`<div class="dlgArt big pop"><img src="${himg(newMemo.art)}" alt=""></div><h2 class="dlgT">🎁 記念家具が登場！</h2>
+      <p class="dlgP">${esc(ROOM(newMemo.room).n)}で はじめて 仲良しが できたので、<br>記念家具「<b>${esc(newMemo.n)}</b>」が<br>ホテルのお店に ならんだよ！</p>`, [{label:'見てみる', cls:'gold', v:1}], 'gold'); }
   hRender();
 }
 async function rareArrive(t){
@@ -540,7 +578,15 @@ async function rareArrive(t){
 function vShop(L){
   const tab = HV.tab || 'sv', h = HT(), g = hGrade();
   const list = tab==='sv' ? SOUV.map(s => Object.assign({d:`好きな物グループ：${s.grp==='all' ? 'だれでも好物（＋2）' : GRP[s.grp].i}`}, s)) : SPECIAL;
-  const cards = tab==='fur' ? `<div class="htlFur"><img src="${himg('htl_penguin_think')}" alt=""><p>バスタブやシャンデリアなど、ホテルの家具は「家具のお店」で買えます。ホテル限定の家具もありますよ。</p>
+  const furCard = f => { const lk = (f.g||0) > g, memo = f.room && !h.memo[f.room], can = save.points.bal >= f.p && !lk && !memo, own = hOwned(f);
+    if(memo) return `<div class="htlSCard hLock hMemo"><img src="${himg(f.art)}" alt=""><div><b>？？？</b><span class="htlLim">記念家具</span>
+      <small>${esc(ROOM(f.room).n)}で はじめて 仲良しが できると ならびます</small></div><div class="htlSBtns"><button class="htlB" disabled>🔒 まだ</button></div></div>`;
+    return `<div class="htlSCard ${lk ? 'hLock' : ''}"><img src="${himg(f.art)}" alt=""><div><b>${esc(f.n)}</b><span class="htlLim">${f.room ? '記念家具' : 'ホテル限定'}</span>
+      <small>${esc(f.d)}${f.k==='deco' ? '（まちの かざり）' : '（わたしの家の 家具）'}</small><small>持っている数：${own}</small></div>
+      <div class="htlSBtns"><button class="htlB ${can ? 'gold' : ''}" data-h="fbuy:${f.id}" ${lk ? 'disabled' : ''}>${lk ? `★${f.g}で解放` : `<span class="coin sm">P</span>${nf(f.p)}`}</button></div></div>`; };
+  const cards = tab==='fur' ? `<p class="htlCap">✨ ホテル限定の 家具・かざり</p><div class="htlShop">${HFUR.map(furCard).join('')}</div>
+      <p class="htlCap">🎁 お部屋の 記念家具（${MEMO.filter(m => h.memo[m.room]).length} / ${MEMO.length}）</p><div class="htlShop">${MEMO.map(furCard).join('')}</div>
+      <div class="htlFur"><img src="${himg('htl_penguin_think')}" alt=""><p>バスタブやシャンデリアなど、いつもの ホテルの家具は「家具のお店」で 買えます。</p>
       <button class="htlB gold" data-h="furshop">🛋️ 家具のお店へ</button></div>`
     : `<div class="htlShop">${list.map(s => { const lk = (s.g||0) > g, can = save.points.bal >= s.p && !lk;
       return `<div class="htlSCard ${lk ? 'hLock' : ''}"><img src="${himg(s.id)}" alt=""><div><b>${s.n}</b><span class="htlLim">ホテル限定</span><small>${s.d}</small>
@@ -548,7 +594,7 @@ function vShop(L){
         <div class="htlSBtns"><button class="htlB ${can ? 'gold' : ''}" data-h="buy:${s.id}" ${lk ? 'disabled' : ''}>${lk ? `★${s.g}で解放` : `<span class="coin sm">P</span>${nf(s.p)}`}</button>
         ${['itm_goldbell','itm_htlinvite','itm_palletter'].includes(s.id) && (h.bag[s.id]||0) > 0 ? `<button class="htlB" data-h="use:${s.id}">使う</button>` : ''}</div></div>`; }).join('')}</div>`;
   const tabs = `<div class="htlTabs">${[['sv','🎁 おみやげ'],['sp','✨ スペシャル'],['fur','🛋️ 家具・かざり']].map(([k,n]) => `<button class="${k===tab ? 'hOn' : ''}" data-h="tab:${k}">${n}</button>`).join('')}</div>`;
-  return hBar('🛎️ ホテルのお店') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_talk_l' : 'htl_talk_p')}')">${tabs}${cards}</div>`;
+  return hBar('🛎️ ホテルのお店') + `<div class="htlBody listV hShopV" style="--bg:url('${hurl(L ? 'htl_shop_l' : 'htl_shop_p')}')">${tabs}${cards}</div>`;
 }
 async function buy(id){
   const s = SV(id); if(!s) return;
@@ -556,6 +602,20 @@ async function buy(id){
   if(save.points.bal < s.p){ toast('ポイントが足りないよ'); return; }
   givePts(-s.p, `ホテルのお店で ${s.n}`); const h = HT(); h.bag[id] = (h.bag[id]||0) + 1; persist(); sound('ok');
   toast(`${s.n}を買ったよ！`); hRender();
+}
+async function fbuy(id){
+  const f = HF(id); if(!f) return;
+  if((f.g||0) > hGrade()){ toast(`ホテルを★${f.g}にすると買えるよ`); return; }
+  if(f.room && !HT().memo[f.room]){ toast('まだ ならんで いないよ'); return; }
+  if(save.points.bal < f.p){ toast('ポイントが足りないよ'); return; }
+  givePts(-f.p, `ホテルのお店で ${f.n}`);
+  if(f.k==='fur'){ const H = ensureHome(); H.inv[f.id] = (H.inv[f.id]||0) + 1; }
+  else { const t = save.town; t.inv[f.id] = (t.inv[f.id]||0) + 1; }
+  if(f.k==='deco'){ try{ discover(f.id); }catch(e){} }
+  persist(); sound('ok'); confetti(900);
+  toast(f.k==='fur' ? `${f.n}を買ったよ！「わたしの家」の もようがえで おけるよ` : `${f.n}を買ったよ！まちの もようがえで おけるよ`);
+  try{ checkBadges(); }catch(e){}
+  hRender();
 }
 async function useItem(id){
   const h = HT(); if(!(h.bag[id] > 0)) return;
@@ -584,8 +644,8 @@ async function useInvite(roomId){
 function vGrade(L){
   const g = hGrade(), nx = ROOMS.filter(r => r.g===g+1);
   const rows = [0,1,2,3].map(n => `<div class="htlGRow ${n<=g ? 'hOn' : ''}"><b>${'★'.repeat(n) || '☆0'}</b>${ROOMS.filter(r => r.g===n).map(r => `<span><img src="${himg('door_' + r.id)}" alt="">${r.s}</span>`).join('')}</div>`).join('');
-  return hBar('⬆ ホテルのグレード') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_top_l' : 'htl_top_p')}')">
-    <div class="htlPanel"><div class="htlSay"><img src="${himg('htl_penguin_cheer')}" alt=""><p>${g >= 3 ? '最高のホテルになりました！すべてのお部屋が使えます。' : `グレードアップすると「${nx.map(r => r.s).join('」「')}」のお部屋が増えます！`}</p></div>
+  return hBar('⬆ ホテルのグレード') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_grade_l' : 'htl_grade_p')}')">
+    <div class="htlPanel"><img class="htlBanner" src="${himg(L ? 'htl_grade_l' : 'htl_grade_p')}" alt=""><div class="htlSay"><img src="${himg('htl_penguin_cheer')}" alt=""><p>${g >= 3 ? '最高のホテルになりました！すべてのお部屋が使えます。' : `グレードアップすると「${nx.map(r => r.s).join('」「')}」のお部屋が増えます！`}</p></div>
     ${rows}<p class="sub">グレードアップは、建物のメニューから行います（費用はいつもと同じです）。</p>
     <div class="htlBtns">${g < 3 ? '<button class="htlB gold" data-h="dograde">⬆ グレードアップする</button>' : ''}<button class="htlB" data-h="top">◀ ホテルにもどる</button></div></div></div>`;
 }
@@ -597,7 +657,7 @@ function vPals(L){
     return `<div class="htlPal r${sp.rar||1}">${resPic({id:p.id, sp:p.sp, name:p.name, star:1, ab:{}})}<div><b>${esc(p.name)}</b> <small>${esc(sp.name)}／${esc(ROOM(p.room)?.s || '')}</small>
       <small>${home ? '🏠 住む家あり：レターで来てくれるかも' : `🏠 「${esc(homeName(sp.home))}」が必要`}</small></div>
       ${pick ? `<button class="htlB gold" data-h="palcall:${p.id}" ${home ? '' : 'disabled'}>来てもらう</button>` : ''}</div>`; }).join('');
-  return hBar('💞 仲良しリスト') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_pal_l' : 'htl_pal_p')}')"><div class="htlPanel">
+  return hBar('💞 仲良しリスト') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_palbook_l' : 'htl_palbook_p')}')"><div class="htlPanel"><img class="htlBanner" src="${himg(L ? 'htl_palbook_l' : 'htl_palbook_p')}" alt="">
     <div class="htlSay"><img src="${himg('htl_penguin_wave')}" alt=""><p>${pick ? '仲良しレターで来てもらうお客さんを選んでください。' : '仲良しになったお客さんです。レターを使うと、町に住みに来てくれる確率が上がります（最大10人）。'}</p></div>
     ${list || '<p class="sub">まだ仲良しのお客さんはいません。お部屋をたずねて話しかけてみよう！</p>'}
     <div class="htlBtns"><button class="htlB" data-h="top">◀ ホテルにもどる</button></div></div></div>`;
@@ -630,6 +690,7 @@ async function hClick(e){
     case 'shop': return hGo('shop', {tab:HV.tab || 'sv'});
     case 'tab': return hGo('shop', {tab:v});
     case 'buy': return buy(v);
+    case 'fbuy': return fbuy(v);
     case 'use': return useItem(v);
     case 'invite': return useInvite(HV.room);
     case 'furshop': { const k = HV.key; hClose(); SHOP_KEY = k; return openShop(k); }

@@ -162,3 +162,10 @@
 @keyframes htlGlow{50%{filter:brightness(1.15)}}
 @keyframes htlBob{50%{transform:translate(-50%,-3%)}}
 @media (max-width:380px){.htlGrid{gap:4px}.htlCard img{height:38px}.htlB{font-size:13px}.htlItems{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* v7.1 ホテル：家具・かざり／記念家具／見出しイラスト */
+.htlCap{margin:12px 2px 6px;color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.htlSCard.hMemo>img{filter:brightness(0) opacity(.35)}
+.htlBody.hShopV::before{filter:blur(3px) brightness(.68)}
+.htlBanner{display:block;width:100%;aspect-ratio:2.4/1;object-fit:cover;object-position:center 40%;border-radius:12px;border:2px solid #E0B54A;margin-bottom:8px}
+#htl.hP .htlBanner{aspect-ratio:1.6/1}
+.htlFur{margin-top:12px}
