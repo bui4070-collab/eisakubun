@@ -1,5 +1,5 @@
 /* =====================================================================
-   まなびタウン v4.2：たてものの きのう（v7.2：ホテルの 絵の 引き伸ばし修正／ゆうえんち パレード修正）
+   まなびタウン v4.2：たてものの きのう（v7.3：ホテル家具の 上から見た絵／ハナを 前面に）
    畑・公園・図書館・学校・パーキング・病院・市やくしょ・ホテル
    （おまけ：はくぶつかん・風車）
    ※ app.js の あとに 読みこむ。セーブは save.fac に 追加するだけ
@@ -317,27 +317,28 @@ const SPECIAL = [
 const SV = id => SOUV.find(x => x.id===id) || SPECIAL.find(x => x.id===id);
 /* ---------- ホテル限定の 家具・かざり（v7.1）：k='fur'＝わたしの家／k='deco'＝まち ---------- */
 const HFUR = [
-  {id:'htl_chandelier', art:'fur_htl_chandelier', n:'ゴールドシャンデリア',     k:'fur',  g:1, p:2000, sty:12, size:1.2, d:'キラキラ光る、ホテルの大シャンデリア'},
+  {id:'htl_chandelier', art:'fur_htl_chandelier', n:'ゴールドシャンデリア',     k:'fur',  g:1, p:2000, sty:12, size:1.2, foot:[1,1], d:'キラキラ光る、ホテルの大シャンデリア'},
   {id:'htl_wagon',      art:'fur_htl_wagon',      n:'ルームサービスワゴン',     k:'fur',  g:1, p:1500, sty:8,  size:1.4, foot:[2,1], d:'お部屋にとどく、ごうかなワゴン'},
-  {id:'htl_cart',       art:'fur_htl_cart',       n:'ベルボーイのにもつカート', k:'fur',  g:2, p:2500, sty:12, size:1.2, d:'旅行かばんがいっぱいの金色カート'},
+  {id:'htl_cart',       art:'fur_htl_cart',       n:'ベルボーイのにもつカート', k:'fur',  g:2, p:2500, sty:12, size:1.2, foot:[1,1], d:'旅行かばんがいっぱいの金色カート'},
   {id:'d_htlpenguin',   art:'dc_htl_penguin',     n:'ペンギンのドアマン像',     k:'deco', g:2, p:1800, dev:20, emoji:'🐧', d:'まちに置ける、ホテルのドアマンの像'},
   {id:'d_htlarch',      art:'dc_htl_arch',        n:'ホテルのバラのアーチ',     k:'deco', g:3, p:3000, dev:30, emoji:'🌹', d:'まちに置ける、赤いじゅうたんとバラのアーチ'}
 ];
 /* 部屋の 記念家具：その部屋で はじめて 仲良しが できると お店に ならぶ */
 const MEMO = [
-  {id:'mm_std',    room:'std',    n:'ふかふかまくら',     p:1500, sty:8,  size:1.0},
+  {id:'mm_std',    room:'std',    n:'ふかふかまくら',     p:1500, sty:8,  size:1.0, foot:[1,1]},
   {id:'mm_wa',     room:'wa',     n:'たたみの小上がり',   p:2000, sty:10, size:1.8, foot:[2,2]},
-  {id:'mm_ocean',  room:'ocean',  n:'貝がらランプ',       p:2000, sty:10, size:1.0},
-  {id:'mm_forest', room:'forest', n:'きりかぶテーブル',   p:2000, sty:10, size:1.3},
+  {id:'mm_ocean',  room:'ocean',  n:'貝がらランプ',       p:2000, sty:10, size:1.0, foot:[1,1]},
+  {id:'mm_forest', room:'forest', n:'きりかぶテーブル',   p:2000, sty:10, size:1.6, foot:[2,2]},
   {id:'mm_sky',    room:'sky',    n:'くものソファ',       p:2500, sty:12, size:1.6, foot:[2,1]},
-  {id:'mm_snow',   room:'snow',   n:'雪の結晶ランプ',     p:2500, sty:12, size:1.1},
-  {id:'mm_suite',  room:'suite',  n:'ゴールドミラー',     p:3500, sty:16, size:1.1},
+  {id:'mm_snow',   room:'snow',   n:'雪の結晶ランプ',     p:2500, sty:12, size:1.1, foot:[1,1]},
+  {id:'mm_suite',  room:'suite',  n:'ゴールドミラー',     p:3500, sty:16, size:1.3, foot:[2,1]},
   {id:'mm_royal',  room:'royal',  n:'おうかんのベッド',   p:5000, sty:25, size:1.8, foot:[2,2]}
 ].map(m => Object.assign({art:'fur_' + m.id, k:'fur', g:0, d:`${ROOM(m.room).n}の記念家具`}, m));
 const HF = id => HFUR.find(x => x.id===id) || MEMO.find(x => x.id===id);
 try{
   HFUR.concat(MEMO).forEach(f => {
     DEFAULT_ART[f.art] = himg(f.art); SHOP_ONLY[f.id] = 'hotel';
+    if(f.k==='fur') DEFAULT_ART['ft_' + f.id] = himg('ft_' + f.id);   // 上から見た絵（v7.3）
     if(f.k==='fur'){
       if(!FURNITURE.some(x => x.id===f.id)) FURNITURE.push({id:f.id, name:f.n, art:f.art, type:'fur', price:f.p, lv:5, sty:f.sty, special:true, hotel:true});
       if(f.foot) FOOT[f.id] = f.foot;
@@ -468,7 +469,8 @@ function concierge(){
 }
 function vTop(L){
   const sp = L ? SPOTS_L : SPOTS_P, g = hGrade();
-  const img = stage(himg(L ? 'htl_top_l' : 'htl_top_p'), L ? '3/2' : '3/4', ROOMS.map(r => spotHTML(r, sp)).join(''), 'hTopS');
+  const front = L ? '' : `<img class="htlFront" src="${himg('htl_top_p')}" alt="" draggable="false">`;   // ハナを 窓より 前に
+  const img = stage(himg(L ? 'htl_top_l' : 'htl_top_p'), L ? '3/2' : '3/4', ROOMS.map(r => spotHTML(r, sp)).join('') + front, 'hTopS');
   const side = `<div class="htlSay"><img src="${himg('htl_penguin_wave')}" alt=""><p>${concierge()}</p></div>
     <div class="htlGrid">${ROOMS.map(cardHTML).join('')}</div>
     <div class="htlBtns"><button class="htlB gold" data-h="shop">🛎️ ホテルのお店</button><button class="htlB" data-h="pals">💞 仲良し <small>${HT().palList.length}</small></button>
