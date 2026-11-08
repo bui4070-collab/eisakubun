@@ -10,7 +10,7 @@
    ===================================================================== */
 (function(){
 'use strict';
-const VER = '6.71.0', IMG = './assets/images/science/';
+const VER = '6.72.0', IMG = './assets/images/science/';
 const X = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pick = a => a[Math.random() * a.length | 0];
 const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -1243,7 +1243,7 @@ function ckView(v, m){
   }
   return SVGW(330, 250, ckSVG(v, m));
 }
-const resBox = (x, y, r, lab) => `<g transform="translate(${x} ${y})"><path d="M0 14h14l5-12 8 24 8-24 8 24 8-24 5 12h14" fill="none" stroke="#9B6CE0" stroke-width="4" stroke-linejoin="round"/><text x="35" y="46" font-size="15" font-weight="900" text-anchor="middle" fill="#4A3420">${lab || r + 'Ω'}</text></g>`;
+let resBox = (x, y, r, lab) => `<g transform="translate(${x} ${y})"><path d="M0 14h14l5-12 8 24 8-24 8 24 8-24 5 12h14" fill="none" stroke="#9B6CE0" stroke-width="4" stroke-linejoin="round"/><text x="35" y="46" font-size="15" font-weight="900" text-anchor="middle" fill="#4A3420">${lab || r + 'Ω'}</text></g>`;
 LABDEF.circuit = star => {
   const swc = {type:'tog', k:'sw', l:'スイッチ', opts:[[0, 'OFF'], [1, 'ON']], v:0}, mod = {type:'tog', k:'mode', l:'つなぎかた', opts:[['s', 'ちょくれつ'], ['p', 'へいれつ']], v:'s'};
   const ms = [];
@@ -1661,7 +1661,7 @@ function onClick(e){
     case 'back': return back();
     case 'top': return go('top');
     case 'ruby': { const o = ['hard', 'all', 'none'], s = SC(); s.settings.ruby = o[(o.indexOf(s.settings.ruby || 'hard') + 1) % 3]; persist(); return render(); }
-    case 'talk': return render();
+    case 'talk': V.say = hallSay(); return render();
     case 'rank': return rankModal();
     case 'zone': snd('tap'); return go('zone', {z:v});
     case 'exp': return expStart(v, !!t.dataset.daily);
@@ -2346,9 +2346,590 @@ Object.assign(RBD, {
   "酸性":"さんせい","中性":"ちゅうせい","性質":"せいしつ","塩酸":"えんさん","水酸化":"すいさんか","指示薬":"しじやく","中和":"ちゅうわ","溶解度":"ようかいど","結晶":"けっしょう","蒸発":"じょうはつ","温度":"おんど","静電気":"せいでんき","放電":"ほうでん","電費":"でんぴ","動力":"どうりょく","熱効率":"ねつこうりつ","総合効率":"そうごうこうりつ","再生可能":"さいせいかのう","焦点":"しょうてん","実像":"じつぞう","虚像":"きょぞう","月齢":"げつれい","上弦":"じょうげん","下弦":"かげん","満月":"まんげつ","新月":"しんげつ","三日月":"みかづき","月食":"げっしょく","日食":"にっしょく","北極星":"ほっきょくせい","気圧":"きあつ","高気圧":"こうきあつ","低気圧":"ていきあつ","寒冷前線":"かんれいぜんせん","温暖前線":"おんだんぜんせん","停滞前線":"ていたいぜんせん","梅雨":"つゆ","前線":"ぜんせん","等圧線":"とうあつせん","転向力":"てんこうりょく","優性":"ゆうせい","劣性":"れっせい","遺伝子":"いでんし","遺伝":"いでん","色覚異常":"しきかくいじょう","保因者":"ほいんしゃ","右心房":"みぎしんぼう","右心室":"みぎしんしつ","左心房":"ひだりしんぼう","左心室":"ひだりしんしつ","肺":"はい","全身":"ぜんしん","食道":"しょくどう","小腸":"しょうちょう","大腸":"だいちょう","肛門":"こうもん","気管":"きかん","気管支":"きかんし","肺胞":"はいほう","毛細血管":"もうさいけっかん","腎臓":"じんぞう","輸尿管":"ゆにょうかん","尿道":"にょうどう","大静脈":"だいじょうみゃく","大動脈":"だいどうみゃく","肺動脈":"はいどうみゃく","肺静脈":"はいじょうみゃく","赤血球":"せっけっきゅう","白血球":"はっけっきゅう","血小板":"けっしょうばん","血しょう":"けっしょう","横隔膜":"おうかくまく","柔毛":"じゅうもう","再吸収":"さいきゅうしゅう","心拍数":"しんぱくすう","反射":"はんしゃ","口":"くち","胃":"い","鼻":"はな","胃液":"いえき","酵素":"こうそ","肝臓":"かんぞう","筋肉":"きんにく","心臓":"しんぞう","酸素":"さんそ","二酸化炭素":"にさんかたんそ","呼吸":"こきゅう","栄養":"えいよう"
 });
 
+
+
+/* =====================================================================
+   v6.72：イラスト版（館内トップ・実験の 図を ぜんぶ イラストに）
+   ===================================================================== */
+const SPD = {"tk_earth":[288,280],"bd_lab":[750,494],"op_prism":[231,248],"fx_plasma_burst":[341,326],"tk_star":[249,242],"lf_elodea":[265,300],"lab_spoon_citric":[300,165],"fx_plasma_beam":[358,318],"en_valve_ex":[141,296],"el_sw_off":[246,237],"em_plasma":[243,340],"cr_robot":[269,304],"em_crank":[306,191],"bd_factory":[750,494],"sci_hall_tab":[1536,1024],"el_led_on":[161,284],"cr_chassis":[367,134],"fx_flame_Cu":[142,307],"bd_map":[750,494],"bd_night":[750,494],"em_hand":[340,213],"og_small":[226,260],"bd_pond":[750,494],"tx_orange":[276,268],"op_spot_g":[242,285],"cr_crate":[364,290],"fx_flame_Li":[154,310],"og_nose":[228,260],"em_balloon":[221,273],"op_spot_b":[248,288],"op_filter_g":[227,263],"em_nail5":[316,198],"op_fork":[239,297],"lab_burner":[227,299],"bk_teal":[258,283],"el_sw_on":[239,300],"tk_raincloud":[300,244],"el_resistor":[300,81],"tk_rock":[269,258],"el_bulb_on":[237,300],"fx_rocketflame":[197,360],"en_piston":[192,307],"em_paper":[340,239],"em_nail25":[340,185],"el_led_off":[129,279],"lab_beaker_empty":[231,290],"tk_sun":[280,282],"bd_work":[750,494],"lab_flask_fizz":[201,300],"bk_green":[259,283],"tk_mirror":[238,246],"tk_laser":[300,115],"em_gener":[339,282],"lf_pod":[300,234],"en_air":[340,255],"tk_moon":[264,261],"lf_bunny_girl":[164,300],"bk_red":[259,283],"og_stomach":[239,260],"el_ammeter":[300,240],"en_ev":[340,207],"og_esoph":[86,260],"mc_paramecium":[384,384],"bd_sky":[750,494],"op_magnifier":[276,274],"mc_elodea":[384,384],"mc_daphnia":[384,384],"bk_pink":[259,283],"en_smoke":[330,257],"op_lens":[219,284],"og_large":[260,255],"op_filter_b":[224,262],"cr_seat":[182,266],"og_lungs":[260,257],"bk_blue":[258,283],"cr_bad_window_yellow":[362,229],"tk_epicenter":[255,253],"lf_bunny_boy":[178,300],"en_crank":[340,238],"el_wire_blue":[300,238],"op_candle":[222,292],"tk_cloud":[300,226],"lf_pea_wg":[231,228],"lab_beaker_few":[248,295],"lab_loop":[300,274],"en_block":[260,321],"lab_spoon_soda":[300,155],"lf_pea_wy":[233,227],"og_bladder":[236,260],"bk_lime":[259,282],"em_clips":[340,189],"tk_station":[199,233],"hall_src1":[1536,1024],"el_bulb_off":[211,300],"el_battery":[126,300],"og_bronchi":[260,250],"lab_beaker_crystal":[260,300],"op_screen":[253,290],"bd_dark":[750,494],"bk_yellow":[259,283],"op_lightbox":[156,195],"fx_fireball":[360,321],"cr_conveyor":[420,152],"fx_flame_K":[147,307],"fx_flame_Ca":[152,306],"em_cloth":[340,281],"fx_flame_Sr":[155,311],"og_kidney":[260,250],"mc_onion":[384,384],"cr_engine":[363,150],"bk_litmus_blue":[291,231],"bk_purple":[260,284],"lf_co2":[165,300],"cr_bad_wheel_blue":[363,222],"en_valve_in":[143,305],"bk_water":[259,283],"el_motor":[300,179],"tx_blue":[275,268],"lab_flask":[221,300],"lab_dish":[300,205],"lab_thermo":[161,300],"fx_flame_Ba":[143,302],"og_mouth":[254,260],"em_nail12":[340,200],"cr_bad_wheel_red":[368,221],"op_spot_r":[244,287],"lab_balloon":[184,300],"fx_flame_blue":[146,306],"lf_slide":[300,165],"cr_wheels":[363,184],"fx_flame_Na":[148,304],"op_scope":[300,225],"bk_litmus_red":[292,229],"en_plug":[125,315],"lf_pea_ry":[224,219],"tk_goal":[268,259],"og_alveoli":[260,258],"en_injector":[137,309],"lf_pea_rg":[231,227],"sci_hall_ph":[780,1688],"op_filter_r":[228,263],"lf_lamp":[300,295],"lf_can":[300,225],"op_hand_mirror":[177,293],"og_heart":[191,260],"cr_seal":[250,252],"el_wire_red":[300,246],"bk_dropper":[126,300],"em_clip":[247,195],"cr_bad_window_green":[374,228],"town_rocket":[451,457],"card_life_heart":[231,300],"town_rainbow":[465,371],"card_life_leaf":[276,300],"card_life_cells":[299,297],"card_space_rocket":[189,300],"sci_top":[1280,853],"card_car_gears":[287,300],"card_elec_cable":[300,265],"card_elec_switch":[251,263],"card_space_saturn":[300,180],"top_fossil":[399,273],"card_chem_tubes":[300,242],"card_chem_burner":[178,300],"card_space_moon":[261,261],"top_prism":[298,300],"town_fireworks":[450,459],"card_space_telescope":[249,300],"car_red":[475,314],"zone_life":[1280,853],"card_chem_crystal":[266,300],"card_space_seismo":[300,195],"card_light_gold":[230,300],"card_car_light":[300,187],"card_life_dna":[162,300],"card_car_helmet":[300,280],"card_car_piston":[138,300],"card_space_gold":[265,266],"card_elec_magnet":[286,292],"card_light_glasses":[300,146],"card_life_gold":[300,265],"card_life_plankton":[226,300],"card_car_oilcan":[300,267],"card_elec_turbine":[215,300],"card_elec_bulb":[214,300],"zone_car":[1280,853],"card_light_prism":[300,194],"card_space_satellite":[300,205],"fur_rocket":[222,431],"card_light_rainbow":[300,190],"card_light_mic":[215,300],"card_light_mirror":[222,300],"car_green":[476,315],"card_chem_mortar":[300,261],"town_stardeck":[481,387],"card_elec_plasma":[254,300],"top_gears":[289,294],"car_purple":[475,315],"card_life_microscope":[187,300],"car_yellow":[475,314],"card_elec_gold":[300,269],"card_life_ammonite":[288,300],"card_chem_jars":[219,291],"top_rocket":[334,350],"card_light_phones":[300,295],"top_desk":[408,314],"card_life_sprout":[280,291],"fur_plasma":[286,388],"card_chem_litmus":[300,270],"top_owl":[339,307],"fur_fossil":[397,395],"town_power":[452,459],"fur_gears":[325,383],"card_light_fork":[163,300],"zone_light":[1280,853],"card_car_tools":[300,263],"card_chem_balance":[300,248],"card_light_lens":[230,300],"card_elec_tesla":[300,299],"fur_owl":[285,443],"card_elec_coil":[202,300],"card_space_starchart":[288,300],"card_chem_beaker":[250,270],"card_elec_generator":[300,203],"town_fountain":[443,406],"card_space_shooting":[300,237],"card_light_guitar":[300,276],"zone_chem":[1280,853],"card_chem_flask":[221,291],"card_chem_molecule":[300,269],"card_car_wheel":[300,295],"fur_desk":[407,391],"card_space_earth":[281,279],"card_chem_gold":[220,299],"card_elec_battery":[188,299],"top_plasma":[286,347],"top_starlight":[297,314],"card_light_loupe":[286,285],"card_car_tire":[277,300],"card_chem_balloon":[149,300],"card_light_speaker":[300,233],"card_life_brain":[300,267],"fur_starlight":[303,312],"fur_prism":[390,362],"car_orange":[474,314],"card_car_plug":[177,300],"zone_space":[1280,853],"card_space_meteor":[274,277],"zone_elec":[1280,853],"car_blue":[474,315],"card_life_skeleton":[142,300],"card_car_gold":[300,258],"card_car_jack":[300,247],"card_elec_motor":[300,232],"card_life_butterfly":[300,280],"card_space_helmet":[300,281],"card_car_engine":[300,270]};
+const sd = n => SPD[n] || [100, 100];
+/* スプライト（イラスト）を SVG に おく。a：基準点  tl=ひだり上 / c=中心 / bc=下の まん中 / tc=上の まん中 */
+function SI(n, x, y, w, o = {}){
+  const [iw, ih] = sd(n), h = o.h || w * ih / iw; let X = x, Y = y; const a = o.a || 'tl';
+  if(a === 'c'){ X = x - w / 2; Y = y - h / 2; } else if(a === 'bc'){ X = x - w / 2; Y = y - h; } else if(a === 'tc'){ X = x - w / 2; } else if(a === 'cl'){ Y = y - h / 2; } else if(a === 'cr'){ X = x - w; Y = y - h / 2; }
+  let tr = '';
+  if(o.rot) tr += `rotate(${o.rot} ${(o.px ?? (X + w / 2)).toFixed(1)} ${(o.py ?? (Y + h / 2)).toFixed(1)}) `;
+  if(o.fx) tr += `translate(${(2 * X + w).toFixed(1)} 0) scale(-1 1) `;
+  return `<image href="${IC(n)}" x="${X.toFixed(1)}" y="${Y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}"${o.op != null ? ` opacity="${o.op}"` : ''}${tr ? ` transform="${tr.trim()}"` : ''}${o.cls ? ` class="${o.cls}"` : ''}${o.f ? ` filter="${o.f}"` : ''}/>`;
+}
+const spH = (n, w) => w * sd(n)[1] / sd(n)[0];
+/* たかさ ぎめで スプライトを おく */
+const SIH = (n, x, y, h, o = {}) => SI(n, x, y, h * sd(n)[0] / sd(n)[1], o);
+let _cpn = 0;
+/* ぜんめんの はいけい（イラスト）＋ ふち */
+function BGI(n, W, H, o = {}){
+  const id = 'cpx' + (++_cpn), rx = o.rx ?? 22;
+  return `<defs><clipPath id="${id}"><rect x="0" y="0" width="${W}" height="${H}" rx="${rx}"/></clipPath></defs><image href="${IC(n)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="${o.par || 'xMidYMid slice'}" clip-path="url(#${id})"/>${o.dim ? `<rect width="${W}" height="${H}" rx="${rx}" fill="rgba(8,10,30,${o.dim})"/>` : ''}<rect x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" rx="${rx}" fill="none" stroke="${o.stroke || '#fff'}" stroke-width="3"/>`;
+}
+/* 小さな ラベル（こたえ・数字 など） */
+const TAG = (x, y, t, o = {}) => { const fs = o.fs || 13, w = (o.w || (String(t).length * fs * 0.95 + 14)); return `<g><rect x="${(x - w / 2).toFixed(1)}" y="${(y - fs - 1).toFixed(1)}" width="${w.toFixed(1)}" height="${fs + 9}" rx="${(fs + 9) / 2}" fill="${o.bg || 'rgba(255,255,255,.92)'}" stroke="${o.st || '#EADFCF'}" stroke-width="2"/><text x="${x}" y="${(y + 3).toFixed(1)}" font-size="${fs}" font-weight="900" text-anchor="middle" fill="${o.col || '#4A3420'}">${t}</text></g>`; };
+/* 画像パターン（金属の ざい質など） */
+let _pn = 0;
+const PAT = (n, sz = 120) => { const id = 'ptx' + (++_pn); return {id, def: `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${sz}" height="${sz}"><image href="${IC(n)}" width="${sz}" height="${sz}" preserveAspectRatio="xMidYMid slice"/></pattern>`}; };
+
+/* =====================================================================
+   K-01 館内トップ：専用イラスト（スマホ縦／iPad横）
+   ===================================================================== */
+const HALLS = {
+  tab:{img:'sci_hall_tab', W:1536, H:1024,
+    doors:[[545, 195, 245, 245, 574, 436, 187, 33], [858, 195, 275, 245, 892, 436, 205, 33], [1205, 195, 245, 245, 1236, 436, 185, 33], [545, 494, 245, 245, 578, 737, 180, 33], [858, 494, 275, 245, 915, 737, 175, 33], [1205, 494, 245, 245, 1240, 737, 182, 33]],
+    props:{qsel:[788, 740, 140, 240, '', 856, 990], cards:[942, 790, 355, 190, '', 1118, 996], rew:[1296, 815, 236, 190, '', 1400, 996]},
+    owl:[30, 560, 300, 400, 40, 470, 300], rank:[34, 22, 480, 150], daily:[560, 146, 700, 44], fs:1},
+  ph:{img:'sci_hall_ph', W:780, H:1688,
+    doors:[[28, 364, 346, 298, 36, 620, 330, 36], [406, 364, 346, 298, 414, 620, 330, 36], [28, 676, 346, 298, 36, 932, 330, 36], [406, 676, 346, 298, 414, 932, 330, 36], [28, 988, 346, 298, 36, 1244, 330, 36], [406, 988, 346, 298, 414, 1244, 330, 36]],
+    props:{qsel:[560, 1296, 92, 92, '', 606, 1405], cards:[560, 1424, 92, 92, '', 606, 1533], rew:[560, 1552, 92, 92, '', 606, 1661]},
+    owl:[10, 1300, 250, 380, 30, 1290, 300], rank:[22, 108, 736, 150], daily:[22, 266, 736, 82], fs:2}
+};
+function hallHTML(tab){
+  const Hh = HALLS[tab ? 'tab' : 'ph'], iw = innerWidth, ih = innerHeight, sc = Math.max(iw / Hh.W, ih / Hh.H), cw = Hh.W * sc, ch = Hh.H * sc;
+  const P = (x, y, w, h) => `left:${(x / Hh.W * 100).toFixed(3)}%;top:${(y / Hh.H * 100).toFixed(3)}%;width:${(w / Hh.W * 100).toFixed(3)}%;height:${(h / Hh.H * 100).toFixed(3)}%`;
+  const s = SC(), rk = RK(), nx = RANKS[rankNo() + 1], pct = nx ? (s.hira - rk.m) / (nx.m - rk.m) * 100 : 100, de = dailyExp();
+  const rdy = REWARDS.filter(r => rwState(r) === 'ready').length;
+  const say = V.say || (tab ? (V.say = hallSay()) : '');
+  let h = `<div class="sxHall" style="width:${cw.toFixed(1)}px;height:${ch.toFixed(1)}px;left:${((iw - cw) / 2).toFixed(1)}px;top:${((ih - ch) / 2).toFixed(1)}px;--k:${sc.toFixed(4)};--f:${tab ? 15 : 12}px"><img class="sxHallBg" src="${IC(Hh.img)}" alt="">`;
+  ZONES.forEach((z, i) => {
+    const d = Hh.doors[i], imp = zoneImpl(z.id).length, cl = zoneClears(z.id);
+    h += `<button class="sxHd" data-a="zone" data-v="${z.id}" style="${P(d[0], d[1], d[2], d[3])};--zc:${z.c}" aria-label="${X(z.n)}"></button>`;
+    h += `<div class="sxHl" style="${P(d[4], d[5], d[6], d[7])}"><b>${X(z.sh)}</b><i>${'●'.repeat(cl)}${'○'.repeat(Math.max(0, imp - cl))}${zoneMaster(z.id) ? '★' : ''}</i></div>`;
+  });
+  const pr = Hh.props, pl = {qsel:'もんだい', cards:'カード', rew:'ごほうび'}, cnt = {qsel:'', cards:`${Object.keys(s.cards).length}/72`, rew:rdy ? `${rdy}` : ''};
+  Object.keys(pr).forEach(k => { const p = pr[k];
+    h += `<button class="sxHp" data-a="${k}" style="${P(p[0], p[1], p[2], p[3])}" aria-label="${pl[k]}">${k === 'rew' && rdy ? `<i class="sxDot">${rdy}</i>` : ''}</button><div class="sxHpl" style="left:${(p[5] / Hh.W * 100).toFixed(3)}%;top:${(p[6] / Hh.H * 100).toFixed(3)}%">${pl[k]}${k === 'cards' ? `<small>${cnt.cards}</small>` : ''}</div>`; });
+  const o = Hh.owl;
+  h += `<button class="sxHo" data-a="talk" style="${P(o[0], o[1], o[2], o[3])}" aria-label="フクロウはかせ"></button>${say ? `<div class="sxHb" style="left:${(o[4] / Hh.W * 100).toFixed(3)}%;top:${(o[5] / Hh.H * 100).toFixed(3)}%;width:${(o[6] / Hh.W * 100).toFixed(3)}%"><b>フクロウ はかせ</b>${RB(say)}</div>` : ''}`;
+  const rkp = Hh.rank, dp = Hh.daily;
+  h += `<div class="sxHrank" data-a="rank" style="${P(rkp[0], rkp[1], rkp[2], rkp[3])}">${SVGI.rank(rk.c, 40)}<div class="sxHrk"><div class="sxRkN">${rk.n}${nx ? `<small>つぎ：${nx.n}</small>` : '<small>さいこう！</small>'}</div>${bar(pct, 'bl')}<div class="sxRkS">${nx ? `あと ${nf(nx.m - s.hira)} ひらめき` : 'おめでとう！'}${tixChip()}</div></div></div>`;
+  h += `<button class="sxHdaily" data-a="exp" data-v="${de.id}" data-daily="1" style="${P(dp[0], dp[1], dp[2], dp[3])}"><img src="${IC(de.ic)}" alt=""><span><small>きょうの ふしぎ</small><b>${X(de.n)}</b></span><em>ポイント ×${CFG.dailyX}</em></button>`;
+  return h + '</div>';
+}
+const HALL_SAY = ['ようこそ！ 科学館へ！', 'きょうも ふしぎを さがそう！', '実験と もんだいで ひらめきを ためよう！', 'ひらめきを ためると ランクが 上がるよ。', '好きな へやの とびらを タッチしてね！', 'へやごとに ちがう 実験が あるよ！'];
+const hallSay = () => pick(HALL_SAY);
+SCREENS.top = function(tab){ return {title:'かがくかん', cls:'top hallscreen', html:hallHTML(tab)}; };
+
+
+/* =====================================================================
+   ばけがく
+   ===================================================================== */
+/* ---- 炎色反応 ---- */
+function flameStage(key, lit, lbl){
+  const W = 300, H = 300, fl = lit && key ? 'fx_flame_' + key : 'fx_flame_blue', col = lit && key ? FK(key).col : '#4A9CFF';
+  const bw = 104, bh = spH('lab_burner', bw), bx = 150 - 103 / 227 * bw, by = 270 - bh, tubeY = by + 6 / 299 * bh;
+  return SVGW(W, H, `${BGI('bd_dark', W, H, {dim:.12})}<defs><radialGradient id="gFl"><stop offset="0" stop-color="${col}" stop-opacity=".6"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient></defs>
+    ${lit ? `<circle cx="150" cy="${tubeY - 40}" r="${key ? 120 : 64}" fill="url(#gFl)"/>` : ''}${SI('lab_loop', 214, 196, 78, {rot:-8})}${SI('lab_dish', 14, 216, 96)}
+    ${SI('lab_burner', bx, by, bw)}${SI(fl, 150, tubeY + 8, 66, {a:'bc', cls:'sxFlk'})}${TAG(62, 294, lbl, {fs:13})}`);
+}
+EXRUN.flame.html = function(tab){
+  const r = E.rounds[E.i], m = FK(r.k), star = E.star, lit = E.on || (r.type === 'B' && E.done);
+  const found = SC().flame;
+  const stage = `<div class="sxStage fl">${flameStage(lit ? r.k : null, lit, r.type === 'A' ? 'ようき A' : m.n)}${r.type === 'A' && !E.on && !E.done ? `<button class="sxBtn big go" data-a="flput">金属の 粉を 炎に 入れる！</button>` : ''}</div>`;
+  const notes = star <= 4 ? `<div class="sxNotes"><b>ノート</b><div>${FLAME.map(f => `<span class="sxNt ${found[f.k] ? 'on' : ''}" style="--fc:${f.col}"><i>${found[f.k] ? `<img src="${IC('fx_flame_' + f.k)}" alt="">` : '?'}</i><small>${found[f.k] ? f.n + '：' + f.cn : '？？？'}</small></span>`).join('')}</div></div>` : '<div class="sxNotes"><b>ノートは 見られない！</b> 色を よく おぼえよう</div>';
+  const q = r.type === 'A' ? 'この 炎の 色は、どの 金属 かな？' : `${m.n} の 炎の 色は？`;
+  const choice = r.type === 'A' ? r.ch.map((k, i) => `<button class="sxCh ${E.done ? (k === r.k ? 'ok' : (E.picked === i ? 'ng' : 'dim')) : ''}" data-a="flc" data-v="${i}" ${E.done || (!E.on && !E.flash) ? 'disabled' : ''}>${RB(FK(k).n)}</button>`).join('')
+    : r.ch.map((k, i) => `<button class="sxCh sw ${E.done ? (k === r.k ? 'ok' : (E.picked === i ? 'ng' : 'dim')) : ''}" data-a="flc" data-v="${i}" ${E.done ? 'disabled' : ''}><img src="${IC('fx_flame_' + k)}" alt=""></button>`).join('');
+  const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいかい！' : 'ざんねん…'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+  const side = `<div class="sxMis"><span class="sxMisN">もんだい ${E.i + 1} / ${E.rounds.length}</span><p>${RB(r.type === 'A' && !E.on && !E.done && !E.flash ? 'ようき A の 粉を 炎に 入れると、炎の 色が かわるよ。ためして みよう！' : q)}</p></div><div class="sxChG ${r.type === 'B' ? 'sw' : ''}">${choice}</div>${fb}${E.done ? `<button class="sxBtn big" data-a="flnext">${E.i + 1 >= E.rounds.length ? 'けっかへ' : 'つぎへ ▶'}</button>` : ''}${notes}
+    <div class="sxNote">※ ほんものの 炎色反応は 先生と いっしょに！ アプリの 中だけで あんぜんに 体験しよう。</div>`;
+  return tab ? `<div class="sxLabG"><div class="sxLabL">${stage}</div><div class="sxLabR">${side}</div></div>` : `${stage}${side}`;
+};
+
+/* ---- もこもこ ふうせん ---- */
+function balloonView(v){
+  const gas = gasOf(v.soda, v.cit), size = clampN(gas / 0.24 * 100, 0, 100);
+  const leftS = Math.max(0, v.soda - gas / 3 * 252), leftC = Math.max(0, v.cit - gas / 3 * 192);
+  const fz = size > 1, fw = 100, fn = fz ? 'lab_flask_fizz' : 'lab_flask', fh = spH(fn, fw), fy = 272 - fh, neckY = fy + 12;
+  const bw = 24 + Math.sqrt(size / 100) * 60;
+  return SVGW(300, 300, `${BGI('bd_lab', 300, 300)}${SI(fn, 150, 272, fw, {a:'bc'})}${SI('lab_balloon', 150, neckY + spH('lab_balloon', bw) * .1, bw, {a:'bc', op:size > 0 ? 1 : .55})}
+    ${SI('lab_spoon_soda', 6, 214, 78)}${SI('lab_spoon_citric', 216, 214, 78)}${TAG(44, 262, `重曹 ${v.soda} g`, {fs:12})}${TAG(256, 262, `クエン酸 ${v.cit} g`, {fs:12, w:84})}`)
+    + `<div class="sxGs">${gauge(size, 'ふくらみ', size > 92 ? '#E8414B' : '#F0709A')}<div class="sxLeft">のこり：重曹 ${r1(leftS)} g　クエン酸 ${r1(leftC)} g</div></div>`;
+}
+
+/* ---- 色が かわる 水 ---- */
+const cabSprite = ph => ph < 3.5 ? 'bk_red' : ph < 5.5 ? 'bk_pink' : ph < 7.5 ? 'bk_purple' : ph < 9 ? 'bk_blue' : ph < 11.5 ? 'bk_teal' : 'bk_lime';
+const btbSprite = ph => ph < 6 ? 'bk_yellow' : ph <= 7.6 ? 'bk_green' : 'bk_blue';
+function indicView(v, m){
+  const W = 300, H = 260; let body = '', cap = '';
+  if(m.mode === 'neu'){
+    const nA = m.va * m.ca, nB = v.nv * m.cb, tot = m.va + v.nv, d = nA - nB, conc = Math.abs(d) / tot, ph = Math.abs(d) < 1e-9 ? 7 : (d > 0 ? -Math.log10(conc) : 14 + Math.log10(conc));
+    body = SI(btbSprite(ph), 120, 238, 112, {a:'bc'}) + SI('bk_dropper', 226, 120, 44, {a:'bc', rot:8}) + `<path d="M231 126v26" stroke="#3C93DC" stroke-width="5" stroke-linecap="round" stroke-dasharray="1 9"/>` + TAG(226, 54, `アルカリ ${v.nv} mL`, {fs:12, w:100}) + TAG(120, 28, `さん ${m.va} mL`, {fs:13}) + TAG(150, 252, `BTB液：${btbName(ph)}　pH ≒ ${r1(ph)}`, {fs:14, w:210});
+    return SVGW(W, H, BGI('bd_lab', W, H) + body) + `<div class="sxGs"><div class="sxGg">さん：${m.ca} mol/L　${m.va} mL ／ アルカリ：${m.cb} mol/L（${m.cb > .1 ? '濃い' : m.cb < .1 ? 'うすい' : '同じ'}）</div></div>`;
+  }
+  const L = LIQ[v.liq], ph = L.ph;
+  if(m.mode === 'litmus'){
+    const redTurns = litRed(ph) === '#3C6FE0', blueTurns = litBlue(ph) === '#E0364A';
+    body = SI('bk_water', 150, 236, 112, {a:'bc'}) + SI(redTurns ? 'bk_litmus_blue' : 'bk_litmus_red', 124, 132, 96, {a:'c', rot:-62}) + SI(blueTurns ? 'bk_litmus_red' : 'bk_litmus_blue', 178, 132, 96, {a:'c', rot:-48})
+      + TAG(150, 28, L.n, {fs:15}) + TAG(150, 252, `赤い 紙 → ${redTurns ? '青' : '赤のまま'}　青い 紙 → ${blueTurns ? '赤' : '青のまま'}`, {fs:12, w:230});
+  } else if(m.mode === 'btb'){
+    body = SI(btbSprite(ph), 150, 238, 120, {a:'bc'}) + SI('bk_dropper', 232, 112, 44, {a:'bc', rot:10}) + TAG(150, 28, L.n + ' ＋ BTB液', {fs:14, w:200}) + TAG(150, 252, `BTB液：${btbName(ph)}`, {fs:15});
+  } else {
+    const leg = ['bk_red', 'bk_pink', 'bk_purple', 'bk_blue', 'bk_teal', 'bk_lime'], ln = ['強い さん', 'さん', '中性', 'アルカリ', '強い ア.', 'とても 強い'];
+    body = SI(cabSprite(ph), 118, 238, 116, {a:'bc'}) + TAG(130, 28, L.n + ' ＋ むらさきキャベツ液', {fs:13, w:232}) + TAG(118, 252, `いろ：${cabName(ph)}`, {fs:15})
+      + leg.map((n, i) => SI(n, 258, 52 + i * 34, 28, {a:'c', op:cabSprite(ph) === n ? 1 : .55}) + `<text x="244" y="${57 + i * 34}" font-size="9" font-weight="900" text-anchor="end" fill="#fff" stroke="#4A3420" stroke-width="2.4" paint-order="stroke">${ln[i]}</text>`).join('');
+  }
+  return SVGW(W, H, BGI('bd_lab', W, H) + body);
+}
+
+/* ---- けっしょうを そだてる ---- */
+function crystalView(v, m){
+  const sub = m.sub || 'alum', W0 = m.water || 100, cap = solCap(sub, v.T) * W0 / 100, amt = m.amt, cryst = Math.max(0, amt - cap), f = cryst / Math.max(amt, 1);
+  const bsp = f <= 0.001 ? 'bk_water' : f < .4 ? 'lab_beaker_few' : 'lab_beaker_crystal', hot = v.T >= 40;
+  return SVGW(300, 260, `${BGI('bd_lab', 300, 260)}${SI(bsp, 112, 238, 124, {a:'bc'})}${SI('lab_thermo', 240, 238, 46, {a:'bc'})}
+    ${hot ? SI('lab_burner', 196, 262, 44, {a:'bc', op:.9}) + SI('fx_flame_blue', 218, 224, 22, {a:'bc', cls:'sxFlk'}) : ''}
+    ${TAG(112, 26, `${SOL[sub].n} ${amt} g を 水 ${W0} g に`, {fs:13, w:220})}${TAG(240, 70, v.T + '℃', {fs:15, bg:hot ? '#FFD9C9' : '#D9EEFF'})}${TAG(150, 254, `とける 限界：${r1(cap)} g　→ 結晶：${r1(cryst)} g`, {fs:13, w:252, col:cryst > 0 ? '#2C6FB0' : '#4A3420'})}`)
+    + `<div class="sxGs">${gauge(clampN(cap / Math.max(amt, 1) * 100, 0, 100), 'とけている わりあい', '#3C93DC')}</div>`;
+}
+
+/* =====================================================================
+   でんき
+   ===================================================================== */
+const bulbSp = (x, y, w, lv) => `${lv > .02 ? `<circle cx="${x}" cy="${y - w * .05}" r="${w * (.55 + lv * .35)}" fill="#FFE98A" opacity="${(0.12 + lv * 0.38).toFixed(2)}"/>` : ''}${SI('el_bulb_off', x, y, w, {a:'c'})}${lv > .02 ? SI('el_bulb_on', x, y, w, {a:'c', op:clampN(lv, 0, 1)}) : ''}`;
+const cable = (d, on, col = '#E8414B') => `<path d="${d}" fill="none" stroke="#3a2a22" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".35" transform="translate(0 3)"/><path d="${d}" fill="none" stroke="${on ? col : '#B9A8A0'}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1.5 -1.5)"/>`;
+/* 電流計（ふちは イラスト、メーターの はりだけ プログラム） */
+function ammeterSVG(x, y, w, I){
+  const s = w / 300, a = clampN(I / 1.5, 0, 1) * 100 - 50, ar = a * Math.PI / 180;
+  let ticks = ''; for(let k = -50; k <= 50; k += 5){ const r = k * Math.PI / 180, l = k % 25 === 0 ? 16 : 9; ticks += `<line x1="${150 + Math.sin(r) * 112}" y1="${172 - Math.cos(r) * 112}" x2="${150 + Math.sin(r) * (112 - l)}" y2="${172 - Math.cos(r) * (112 - l)}" stroke="#4A3420" stroke-width="2.4"/>`; }
+  return `${SI('el_ammeter', x, y, w)}<g transform="translate(${x} ${y}) scale(${s})"><path d="M24 30h248q4 0 4 4v130q0 6-6 6H26q-6 0-6-6V34q0-4 4-4z" fill="#F7F4EA"/>${ticks}<text x="150" y="112" font-size="34" font-weight="900" text-anchor="middle" fill="#4A3420">A</text>
+    <line x1="150" y1="172" x2="${150 + Math.sin(ar) * 104}" y2="${172 - Math.cos(ar) * 104}" stroke="#E8414B" stroke-width="5" stroke-linecap="round"/><circle cx="150" cy="172" r="15" fill="#2B2B33"/><rect x="104" y="150" width="92" height="22" rx="8" fill="#10131A"/><text x="150" y="167" font-size="17" font-weight="900" text-anchor="middle" fill="#7CFF9B">${(Math.round(I * 100) / 100).toFixed(2)}A</text></g>`;
+}
+function ckSVG(v, m){
+  const par = v.mode === 'p', on = v.sw === 1 && (v.wire !== 0);
+  let lvA, lvB; if(m.single){ lvA = on ? 1 : 0; lvB = 0; } else { lvA = lvB = on ? (par ? 1 : 0.25) : 0; }
+  let body;
+  if(m.single) body = cable('M50 150V52H130M200 52H280V150V210H50V150', on) + (v.wire === 0 ? `<rect x="136" y="38" width="58" height="26" fill="#9a7440" opacity=".0"/>` : '') + bulbSp(165, 70, 66, lvA);
+  else if(par) body = cable('M50 150V50H280V210H50V150M120 50V90M120 150V210M210 50V90M210 150V210', on) + bulbSp(120, 118, 54, lvA) + bulbSp(210, 118, 54, lvB);
+  else body = cable('M50 150V50H100M150 50H190M240 50H280V210H50V150', on) + bulbSp(125, 64, 54, lvA) + bulbSp(215, 64, 54, lvB);
+  return `${BGI('bd_work', 330, 250)}${body}${SI(v.sw ? 'el_sw_on' : 'el_sw_off', 82, 214, 54, {a:'bc'})}${SI('el_battery', 50, 188, 34, {a:'bc'})}`;
+}
+function ckView(v, m){
+  if(m.calc){
+    const Rt = m.calc(v), I = (v.sw ? 1 : 0) * (1.5 * v.bat) / Rt;
+    let bats = ''; for(let i = 0; i < (v.bat || 1); i++) bats += SI('el_battery', 38 + i * 34, 92, 30, {a:'bc'});
+    return SVGW(330, 250, `${BGI('bd_work', 330, 250)}${bats}${TAG(90, 112, `電池 ${(1.5 * (v.bat || 1)).toFixed(1)} V`, {fs:13, w:104})}${m.res(v)}${ammeterSVG(176, 140, 134, I)}`);
+  }
+  return SVGW(330, 250, ckSVG(v, m));
+}
+resBox = (x, y, r, lab) => `${SI('el_resistor', x, y, 74)}${TAG(x + 37, y + 40, lab || r + 'Ω', {fs:13, w:60})}`;
+
+/* ---- でんじしゃくを つくろう ---- */
+function emagView(v){
+  const n = CLIPS(v.turns, v.batt), sp = v.turns <= 30 ? 'em_nail5' : v.turns <= 70 ? 'em_nail12' : 'em_nail25', nw = 214, nx = 22, ny = 38;
+  let clips = ''; for(let i = 0; i < n; i++){ const col = i % 6, row = Math.floor(i / 6); clips += SI('em_clip', 226 + (col - 2.5) * 13 + (row % 2) * 5, 92 + row * 17, 34, {a:'c', rot:((i * 37) % 60) - 30}); }
+  let bats = ''; for(let i = 0; i < v.batt; i++) bats += SI('el_battery', 40 + i * 36, 244, 30, {a:'bc'});
+  return SVGW(300, 260, `${BGI('bd_work', 300, 260)}${SI(sp, nx, ny, nw, {op:v.turns === 0 ? .5 : 1})}${clips}${bats}${cable('M50 146V196H70', true, '#E8414B')}${cable('M118 142V176H40V204', true, '#3C93DC')}${TAG(150, 24, `まき数 ${v.turns}回 ／ 電池 ${v.batt}こ`, {fs:13, w:190})}`)
+    + `<div class="sxGs">${gauge(n / 24 * 100, `もちあげた クリップ：${n}こ`, '#9B6CE0')}</div>`;
+}
+
+/* ---- てまわし はつでん ---- */
+function generView(v){
+  const rpm = v.rpm, bulb = clampN((rpm - 45) / 60, 0, 1), led = rpm >= 15 ? clampN(0.35 + rpm / 150, 0, 1) : 0, dur = rpm > 0 ? (120 / rpm).toFixed(2) : 0;
+  const gw = 150, gh = spH('em_gener', gw), gx = 8, gy = 232 - gh, shx = gx + 305 / 339 * gw, shy = gy + 112 / 282 * gh;
+  const cw = 82, ch = spH('em_crank', cw), crank = `<g>${SI('em_crank', shx - 20 / 306 * cw, shy - 150 / 191 * ch, cw)}${rpm > 0 ? `<animateTransform attributeName="transform" type="rotate" from="0 ${shx.toFixed(1)} ${shy.toFixed(1)}" to="360 ${shx.toFixed(1)} ${shy.toFixed(1)}" dur="${dur}s" repeatCount="indefinite"/>` : ''}</g>`;
+  return SVGW(300, 260, `${BGI('bd_work', 300, 260)}${cable(`M${gx + 70} ${gy + gh - 8}V248H190V128`, rpm > 0)}${cable('M190 128V84', bulb > .02 || led > 0)}${SI('em_gener', gx, gy, gw)}${crank}${bulbSp(222, 76, 76, bulb)}
+    ${SI('el_led_off', 262, 196, 40, {a:'c'})}${led > 0 ? SI('el_led_on', 262, 196, 40, {a:'c', op:clampN(led, 0, 1)}) : ''}${TAG(222, 134, '電球', {fs:12, w:46})}${TAG(262, 232, 'LED', {fs:12, w:46})}`)
+    + `<div class="sxGs">${gauge(rpm / 120 * 100, `ハンドルの はやさ：${rpm}`, '#F2A33A')}${gauge(bulb * 100, '電球の 明るさ', '#FFC93C')}${gauge(led * 100, 'LEDの 明るさ', '#4CB84C')}</div>`;
+}
+
+/* ---- プラズマボール／静電気 ---- */
+function staticView(v, m){
+  if(m.kind === 'balloon'){
+    const q = v.rub, lift = q >= 20 ? 2 : q >= 10 ? 1 : 0, bw = 84 + q * .9, wig = (q % 2 ? 4 : -4);
+    let bits = ''; for(let i = 0; i < 7; i++) bits += SI('em_paper', 70 + i * 22, lift === 2 ? 118 - (i % 3) * 6 : lift === 1 ? 164 - (i % 3) * 5 : 232, 34, {a:'c', rot:(i - 3) * 14});
+    return SVGW(300, 260, `${BGI('bd_lab', 300, 260)}${lift === 0 ? SI('em_paper', 150, 232, 130, {a:'c'}) : bits}${SI('em_balloon', 150 + wig, 78, bw, {a:'c'})}${SI('em_cloth', 232 + wig, 120, 74, {a:'c', rot:-12})}
+      ${TAG(150, 250, lift === 2 ? '紙が ぴったり くっつく！' : lift === 1 ? '紙が すこし うく' : '紙は うごかない', {fs:13, w:190})}`)
+      + `<div class="sxGs">${gauge(q / 30 * 100, `こすった 回数：${q}`, '#F2A33A')}${gauge(Math.min(100, q * 3.4), 'たまった 静電気（−）', '#3C6FE0')}</div>`;
+  }
+  const d = v.dist, near = d <= 3, bx = 84, by = 118, br = 96, fx = 166 + d * 12;
+  return SVGW(300, 260, `${BGI('bd_dark', 300, 260, {dim:.3})}${SI('em_plasma', bx, 242, 142, {a:'bc'})}${near ? SI('fx_plasma_beam', bx, by, 150, {a:'cl', op:.95}) : SI('fx_plasma_burst', bx, by, 150, {a:'c', op:.9})}
+    ${SI('em_hand', fx, 134, 128, {a:'cl'})}${TAG(150, 252, near ? '光が ゆびの ほうへ あつまる！' : '光は ぜんたいに ひろがる', {fs:13, w:210})}`)
+    + `<div class="sxGs">${gauge(100 - d * 10, '光が ゆびに あつまる 強さ', '#B58CFF')}</div>`;
+}
+
+/* ---- でんき車 vs ガソリン車 ---- */
+function evView(v, m){
+  const bar = (x, label, eta, col, car) => `<defs><linearGradient id="evg${x}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${col}"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="${col}"/></linearGradient></defs>${SI(car, x + 36, 70, 96, {a:'bc'})}<rect x="${x}" y="82" width="72" height="116" rx="12" fill="#fff" fill-opacity=".85" stroke="#BFDDEE" stroke-width="3"/><rect x="${x + 4}" y="${82 + 4 + 108 * (1 - eta)}" width="64" height="${108 * eta}" rx="9" fill="url(#evg${x})"/><rect x="${x + 4}" y="86" width="64" height="${108 * (1 - eta)}" rx="9" fill="#F2A3A3" fill-opacity=".6"/>
+    ${TAG(x + 36, 82 + 4 + 108 * (1 - eta) + 54 * eta + 6, `${Math.round(eta * 100)}%`, {fs:16, w:52, bg:'rgba(255,255,255,.85)'})}${TAG(x + 36, 218, label, {fs:12, w:84})}${T(x + 36, 236, `動力 ${Math.round(eta * 100)}% ／ 熱 ${Math.round((1 - eta) * 100)}%`, 10, '#6B5A44')}`;
+  if(m.chain){
+    const ch = m.chain, n = ch.length, icons = {'発電所':'tk_station', '送電':'el_wire_blue', '充電':'el_battery', 'モーター':'el_motor'}, cw = 284 / n;
+    const boxes = ch.map((c, i) => { const x = 8 + i * cw; return `<rect x="${x + 3}" y="56" width="${cw - 8}" height="84" rx="12" fill="#fff" fill-opacity=".92" stroke="#BFDDEE" stroke-width="3"/>${SIH(icons[c[0]] || 'el_battery', x + 3 + (cw - 8) / 2, 60, 40, {a:'tc'})}${T(x + 3 + (cw - 8) / 2, 114, c[0], 11)}${T(x + 3 + (cw - 8) / 2, 133, Math.round(c[1] * 100) + '%', 16, '#C27A1C')}${i < n - 1 ? T(x + cw - 2, 104, '×', 15, '#8A7A65') : ''}`; }).join('');
+    return SVGW(300, 260, `${BGI('bd_factory', 300, 260, {dim:.15})}${TAG(150, 34, m.title || 'エネルギーの 流れ', {fs:13, w:250})}${boxes}${T(150, 170, 'ぜんぶ かけあわせた 効率', 13, '#fff')}<rect x="30" y="180" width="240" height="26" rx="13" fill="#EFE5D3"/><rect x="30" y="180" width="${240 * clampN(v.eta / 100, 0, 1)}" height="26" rx="13" fill="#4CB84C"/>${T(150, 199, `あなたの こたえ：${v.eta}%`, 14, '#fff')}${T(150, 238, '発電 → 送電 → 充電 → モーター', 12, '#fff')}`);
+  }
+  return SVGW(300, 260, `${BGI('bd_factory', 300, 260, {dim:.22})}${bar(40, 'ガソリン車', m.etaG || .3, '#E8803A', 'car_red')}${bar(188, 'でんき車', m.etaE || .9, '#3C93DC', 'car_blue')}${TAG(150, 22, 'エネルギーの ゆくえ（赤＝むだな 熱）', {fs:11, w:250})}`)
+    + (m.showAns ? `<div class="sxGs">${gauge(clampN(v.ans / m.max * 100, 0, 100), `あなたの こたえ：${r1(v.ans)}${m.u || ''}`, '#4CB84C')}</div>` : '');
+}
+
+
+/* =====================================================================
+   くるま
+   ===================================================================== */
+/* ---- ぎあ（ざい質は イラストの 金属） ---- */
+function gearSVG(N, r, cx, cy, rot, col, anim, dir = 1, rpm = 0){
+  const ro = r * 1.16, ri = r * 0.92, w = 2 * Math.PI / N; let d = '';
+  for(let i = 0; i < N; i++){
+    const a = i * w, P = (rad, k) => `${(cx + rad * Math.cos(a + w * k)).toFixed(1)} ${(cy + rad * Math.sin(a + w * k)).toFixed(1)}`;
+    d += (i ? 'L' : 'M') + P(ri, 0) + 'L' + P(ro, 0.13) + 'L' + P(ro, 0.37) + 'L' + P(ri, 0.5);
+  }
+  d += 'Z';
+  const tex = col === '#3C93DC' ? 'tx_blue' : 'tx_orange', p = PAT(tex, Math.max(70, r * 3.2)), gid = 'gg' + (++_pn);
+  const an = anim && rpm > 0 ? `<animateTransform attributeName="transform" type="rotate" from="${rot} ${cx} ${cy}" to="${rot + 360 * dir} ${cx} ${cy}" dur="${(120 / rpm).toFixed(2)}s" repeatCount="indefinite"/>` : '';
+  const bolts = [0, 1, 2, 3, 4, 5].map(i => `<circle cx="${(cx + Math.cos(i * 1.0472) * r * .56).toFixed(1)}" cy="${(cy + Math.sin(i * 1.0472) * r * .56).toFixed(1)}" r="${Math.max(2, r * .07).toFixed(1)}" fill="#E8EDF3" stroke="#6B7480" stroke-width="1.4"/>`).join('');
+  return `<defs>${p.def}<radialGradient id="${gid}" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient></defs>
+    <g transform="rotate(${rot} ${cx} ${cy})">${an}<path d="${d}" fill="url(#${p.id})" stroke="rgba(0,0,0,.5)" stroke-width="2.4" stroke-linejoin="round"/><path d="${d}" fill="url(#${gid})"/><circle cx="${cx}" cy="${cy}" r="${r * .66}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2"/>${bolts}<circle cx="${cx}" cy="${cy}" r="${r * .22}" fill="#B9C2CF" stroke="#3A3F47" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="${r * .08}" fill="#3A3F47"/></g>`;
+}
+function gearView(v, m){
+  const inRpm = m.rpm || 60, out = inRpm * v.a / v.b, r1p = 14 + v.a * 1.7, r2p = 14 + v.b * 1.7, cx1 = 20 + r1p * 1.16, cx2 = cx1 + r1p * 1.16 + r2p * 1.16 - 4;
+  const W = cx2 + r2p * 1.16 + 20, H = Math.max(r1p, r2p) * 2.4 + 30, cy = H / 2, half = Math.PI / v.b * 180 / Math.PI;
+  return SVGW(W, H, `${BGI('bd_work', W, H)}${gearSVG(v.a, r1p, cx1, cy, 0, '#3C93DC', true, 1, inRpm)}${gearSVG(v.b, r2p, cx2, cy, half, '#F2A33A', true, -1, out)}`) +
+    `<div class="sxGs"><div class="sxGg"><b>入力（青）</b>${v.a}歯　${inRpm} 回転/分</div><div class="sxGg"><b>出力（オレンジ）</b>${v.b}歯　${r1(out)} 回転/分</div><div class="sxGg">力（トルク）は 入力の ${r1(v.b / v.a)}倍</div></div>`;
+}
+FIGS.gear2 = () => `<svg viewBox="0 0 380 200">${BGI('bd_work', 380, 200, {rx:14})}${gearSVG(20, 36, 110, 100, 0, '#3C93DC', false)}${gearSVG(60, 78, 100 + 36 + 78 + 22, 100, 0, '#F2A33A', false)}${TAG(110, 176, 'A 20歯', {fs:14})}${TAG(238, 190, 'B 60歯', {fs:14})}</svg>`;
+FIGS.ser = () => `<svg viewBox="0 0 380 210">${BGI('bd_work', 380, 210, {rx:14})}${cable('M70 150V58H120M184 58H256M320 58H350V150V178H70V150', true)}${SI('el_battery', 70, 150, 40, {a:'c'})}${bulbSp(150, 72, 66, .55)}${bulbSp(290, 72, 66, .8)}${TAG(150, 118, '100W', {fs:15})}${TAG(290, 118, '60W', {fs:15})}${TAG(70, 192, '100V', {fs:15})}${T(215, 204, 'ちょくれつ（どちらも 100V用）', 12, '#fff')}</svg>`;
+FIGS.quakeg = () => `<svg viewBox="0 0 380 170">${BGI('bd_map', 380, 170, {rx:14})}<rect x="10" y="10" width="360" height="150" rx="10" fill="#fff" fill-opacity=".72"/><path d="M20 90H90l8-14 8 28 8-34 8 40 8-28 8 18 8-8H190l10-38 10 70 10-60 10 46 10-30 10 22 8-10H366" fill="none" stroke="#4A3420" stroke-width="3" stroke-linejoin="round"/>
+  <text x="96" y="130" font-size="13" font-weight="900" fill="#E8414B">P波</text><text x="196" y="130" font-size="13" font-weight="900" fill="#3C82E0">S波</text><path d="M96 140H196" stroke="#4A3420" stroke-width="2"/><text x="146" y="157" font-size="13" font-weight="900" text-anchor="middle">10 びょう</text>${SI('card_space_seismo', 318, 40, 44, {a:'c'})}</svg>`;
+
+/* ---- 車の 組立ライン ---- */
+function asmSVG(step, col, w = 320){
+  const cw = 120; let car;
+  if(step <= 0) car = SI('cr_chassis', 118, 99, cw, {a:'bc'});
+  else if(step === 1) car = SI('cr_engine', 118, 99, cw, {a:'bc'});
+  else if(step === 2) car = SI('cr_wheels', 118, 100, cw, {a:'bc'});
+  else car = SI('car_' + col, 118, 102, cw + 8, {a:'bc'});
+  return `<svg class="sxAsm" viewBox="0 0 240 150" width="${w}">${BGI('bd_factory', 240, 150, {rx:14})}${SI('cr_robot', 180, 14, 52)}${SI('cr_conveyor', 0, 84, 240)}${car}${step >= 4 ? SI('cr_seat', 118, 44, 24, {a:'c'}) : ''}${step >= 5 ? SI('cr_seal', 214, 40, 30, {a:'c'}) : ''}</svg>`;
+}
+EXRUN.assemble.html = function(tab){
+  const st = E.star, next = PARTS[E.step] && PARTS[E.step][0];
+  if(E.phase === 'inspect') return this.inspHTML(tab);
+  const ico = p => p[0] === 'body' ? `<img src="${IC('car_' + E.color)}" alt="">` : p[0] === 'seat' ? `<img src="${IC('cr_seat')}" alt="">` : `<img src="${IC(p[2])}" alt="">`;
+  const tray = E.tray.map(p => `<button class="sxPart ${E.hint && p[0] === next ? 'hint' : ''}" data-a="asm" data-v="${p[0]}"><span>${ico(p)}</span><b>${p[1]}</b></button>`).join('');
+  const sw = Object.keys(CCOL).map(k => `<button class="sxSw ${E.color === k ? 'on' : ''}" data-a="asmc" data-v="${k}" style="background:${CCOL[k]}"></button>`).join('');
+  const tg = [['gas', 'ガソリン'], ['ev', 'でんき'], ['hyb', 'ハイブリッド']].map(o => `<button class="sxBtn sm ${E.eng === o[0] ? '' : 'w'}" data-a="asme" data-v="${o[0]}">${o[1]}</button>`).join('');
+  const perf = {gas:[60, 55, 40], ev:[50, 60, 85], hyb:[55, 50, 70]}[E.eng];
+  const stage = `<div class="sxStage asm"><div class="sxAsmW ${E.shake ? 'shake' : ''}">${asmSVG(E.step, E.color, tab ? 400 : 330)}<div class="sxGhost">${E.step < 5 ? `つぎ：${PARTS[E.step][1]}` : 'かんせい！'}</div></div>
+    <div class="sxConv"></div><div class="sxAsmMeta">車 ${E.cnt + 1} / ${E.target}　ミス ${'♥'.repeat(Math.max(0, E.maxMiss - E.miss))}${'♡'.repeat(E.miss)}</div></div>`;
+  const tm = `<div class="sxTimer"><span>のこり <b id="sxTL">${Math.ceil(Math.max(0, E.limit - (Date.now() - E.t0) / 1000))}</b> びょう</span><div class="sxBar2 bl"><i id="sxTF" style="width:${Math.max(0, 100 - (Date.now() - E.t0) / 10 / E.limit)}%"></i></div></div>`;
+  const side = `<div class="sxMis"><span class="sxMisN">${st === 6 ? '3台を 時間内に！' : 'じゅんばんどおりに！'}</span><p>${RB(E.hint ? '光って いる 部品を じゅんばんに タッチしよう。' : '正しい じゅんばん（エンジン→タイヤ→ボディ→シート→ハンドル）で 部品を はめよう。')}</p></div>
+    <div class="sxTray">${tray}</div><div class="sxAsmOpt"><div><span>ボディの 色</span>${sw}</div><div><span>エンジン</span>${tg}</div>
+    <div class="sxPerf">${gauge(perf[0], 'パワー', '#F2A33A')}${gauge(perf[1], 'スピード', '#3C93DC')}${gauge(perf[2], 'エコ', '#4CB84C')}</div></div>`;
+  return `${tm}` + (tab ? `<div class="sxLabG"><div class="sxLabL">${stage}</div><div class="sxLabR">${side}</div></div>` : `${stage}${side}`);
+};
+EXRUN.assemble.carFinal = function(c, col){
+  const sp = c.bad ? ((col === 'red' || col === 'blue') ? 'cr_bad_wheel_' + col : 'cr_bad_window_' + col) : 'car_' + col;
+  return `<img class="sxInspImg" src="${IC(sp)}" alt="">`;
+};
+EXRUN.assemble.inspHTML = function(tab){
+  const I = E.insp, cars = I.cars.map((c, i) => { const col = ['red', 'blue', 'green', 'yellow'][i];
+    return `<button class="sxInsp ${I.sel.includes(i) ? 'sel' : ''}" data-a="asmi" data-v="${i}">${this.carFinal(c, col)}<i>${I.sel.includes(i) ? 'ふりょう！' : ''}</i></button>`; }).join('');
+  return `<div class="sxMis"><span class="sxMisN">けんさ</span><p>${RB('ラインを 流れてきた 車の 中から、ふりょうひん（タイヤが 足りない・まどが ない 車）を 全部 えらぼう！')}</p></div><div class="sxInspG">${cars}</div><button class="sxBtn big" data-a="asmicheck">けんさ かんりょう！</button>`;
+};
+
+/* ---- エンジン ---- */
+function engineSVG(deg, mode, w = 300){
+  const d = ((deg % 720) + 720) % 720, stroke = Math.floor(d / 180), a = (d - 90) * Math.PI / 180;
+  if(mode === 'ev'){ const rot = d / 720 * 360 * 2;
+    return `<svg viewBox="0 0 300 400" width="${w}">${BGI('bd_factory', 300, 400, {dim:.45})}${SI('en_ev', 150, 190, 260, {a:'c'})}<g transform="rotate(${rot} 98 200)"><circle cx="98" cy="200" r="3" fill="none"/></g>${TAG(150, 360, 'モーター：ピストンも バルブも ないよ', {fs:14, w:280})}</svg>`;
+  }
+  const k = 200 / 260, bx = 50, by = 34, boreX = bx + 131 * k, boreTop = by + 105 * k, kp = 80 / 192, headH = 142 * kp, pinOff = 102 * kp;
+  const r = 18, L = 100, pinTDC = boreTop + 6 + pinOff, cx = boreX, cy = pinTDC + L + r;
+  const pinY = cy - r * Math.cos(d * Math.PI / 180) - Math.sqrt(L * L - Math.pow(r * Math.sin(d * Math.PI / 180), 2));
+  const pinX = boreX, qx = cx + r * Math.cos(a), qy = cy + r * Math.sin(a), len = Math.hypot(qx - pinX, qy - pinY), phi = Math.atan2(-(qx - pinX), (qy - pinY)) * 180 / Math.PI;
+  const burn = stroke === 2, fl = burn ? Math.max(0.3, 1 - (d - 360) / 220) : 0, spark = (d >= 350 && d <= 385) && mode === 'gas';
+  const topWord = ['吸気', '圧縮', '燃焼', '排気'][stroke], cid = 'ec' + (++_cpn), crk = PAT('tx_orange', 80), cr = 36;
+  const hid = 'ed' + _cpn;
+  return `<svg viewBox="0 0 300 400" width="${w}">${BGI('bd_factory', 300, 400, {dim:.5})}<defs>${crk.def}<clipPath id="${cid}"><rect x="0" y="100" width="192" height="207"/></clipPath>
+    <radialGradient id="${hid}" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient></defs>
+    <svg x="${bx}" y="${by}" width="${200}" height="${262 * k}" viewBox="0 0 260 262" overflow="hidden"><image href="${IC('en_block')}" width="260" height="321"/></svg>
+    ${stroke === 0 ? SI('en_air', 60, 62, 62, {a:'c', op:.95}) : ''}${stroke === 3 ? SI('en_smoke', 244, 62, 64, {a:'c', op:.95}) : ''}
+    ${mode === 'diesel' ? SI('en_injector', 150, 96, 30, {a:'bc'}) : ''}
+    ${burn ? SI('fx_fireball', boreX, boreTop + 40, 96, {a:'c', op:fl}) : ''}${spark ? SI('fx_fireball', boreX, boreTop + 10, 40, {a:'c', op:1}) : ''}
+    <g transform="translate(${pinX.toFixed(1)} ${pinY.toFixed(1)}) rotate(${phi.toFixed(2)}) scale(${kp.toFixed(4)} ${(len / 155).toFixed(4)}) translate(-100 -100)"><g clip-path="url(#${cid})"><image href="${IC('en_piston')}" width="192" height="307"/></g></g>
+    <svg x="${(boreX - 100 * kp).toFixed(1)}" y="${(pinY - pinOff).toFixed(1)}" width="${(192 * kp).toFixed(1)}" height="${headH.toFixed(1)}" viewBox="0 0 192 142" overflow="hidden"><image href="${IC('en_piston')}" width="192" height="307"/></svg>
+    <g transform="rotate(${d} ${cx.toFixed(1)} ${cy.toFixed(1)})"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${cr}" fill="url(#${crk.id})" stroke="#8A4B12" stroke-width="3"/><path d="M${(cx - cr).toFixed(1)} ${cy.toFixed(1)}A${cr} ${cr} 0 0 0 ${(cx + cr).toFixed(1)} ${cy.toFixed(1)}Z" fill="#3A3F47" opacity=".55"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${cr}" fill="url(#${hid})"/><circle cx="${cx.toFixed(1)}" cy="${(cy - r).toFixed(1)}" r="8" fill="#E4E8EE" stroke="#565E69" stroke-width="2.5"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7" fill="#9AA3AE" stroke="#3A3F47" stroke-width="2"/></g>
+    ${['吸気', '圧縮', '燃焼', '排気'].map((t, i) => TAG(46 + i * 69, 352, t, {fs:13, w:60, bg:i === stroke ? '#FFE08A' : 'rgba(255,255,255,.55)', st:i === stroke ? '#F2A33A' : '#fff'})).join('')}
+    ${TAG(150, 384, `いま：${topWord}の 行程（${Math.round(d)}°）`, {fs:14, w:230, bg:'#10162E', col:'#FFE08A', st:'#3A4780'})}</svg>`;
+}
+
+/* =====================================================================
+   ひかり・おと
+   ===================================================================== */
+/* ---- プリズムで にじ ---- */
+function prismView(v, m){
+  if(m.mix){
+    const on = c => v[c] ? 1 : 0, R = on('r'), G = on('g'), B = on('b'), circ = (x, y, c) => `<circle cx="${x}" cy="${y}" r="58" fill="${c}" style="mix-blend-mode:screen"/>`;
+    return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#10121C"/>${R ? circ(168, 100, '#FF0000') : ''}${G ? circ(232, 100, '#00FF00') : ''}${B ? circ(200, 156, '#0000FF') : ''}
+      ${SI('op_spot_r', 34, 64, 58, {a:'c', op:R ? 1 : .55})}${SI('op_spot_g', 34, 130, 58, {a:'c', op:G ? 1 : .55})}${SI('op_spot_b', 34, 196, 58, {a:'c', op:B ? 1 : .55})}
+      ${R ? `<path d="M62 64L140 96" stroke="#FF6060" stroke-opacity=".5" stroke-width="3"/>` : ''}${G ? `<path d="M62 130L204 100" stroke="#60FF60" stroke-opacity=".5" stroke-width="3"/>` : ''}${B ? `<path d="M62 196L172 156" stroke="#6080FF" stroke-opacity=".5" stroke-width="3"/>` : ''}
+      ${TAG(200, 246, R && G && B ? 'まんなか：白！' : (R && G ? '重なり：黄色' : G && B ? '重なり：水色（シアン）' : R && B ? '重なり：赤むらさき（マゼンタ）' : '3つの ライトを ためそう'), {fs:13, w:230})}`);
+  }
+  const ang = v.ang, spread = 14 + Math.min(1, ang / 45) * 74, full = ang >= 30 && ang <= 60, fil = v.f;
+  const show = SPEC.map((c, i) => (!fil || fil === 'none') ? true : fil === 'r' ? i <= 1 : fil === 'g' ? i === 3 : i >= 5);
+  let bands = ''; SPEC.forEach((c, i) => { const y = 120 - spread / 2 + (i + .5) * spread / 7, vis = show[i] && (full || Math.abs(i - 3) <= 1 + (ang > 20 ? 1 : 0)); if(vis) bands += `<path d="M176 126L262 ${y - 5}L262 ${y + 5}Z" fill="${c[0]}" opacity=".95"/>`; });
+  const beamY = 128 + (ang - 45) * 0.6, fsp = {r:'op_filter_r', g:'op_filter_g', b:'op_filter_b'}[fil];
+  return SVGW(300, 260, `${BGI('bd_dark', 300, 260, {dim:.3})}${SI('op_screen', 276, 170, 46, {a:'bc'})}${SI('op_lightbox', 6, 160, 62, {a:'bc', rot:(ang - 45) * .3})}<path d="M60 ${beamY - 3}L150 126L150 132L60 ${beamY + 3}Z" fill="#fff" opacity=".85"/>
+    ${fsp ? SI(fsp, 98, 156, 40, {a:'bc'}) : ''}${SI('op_prism', 150, 188, 92, {a:'bc'})}${bands}${TAG(150, 246, full ? '7色 ぜんぶ 見える！' : 'まだ 一部 しか 見えない', {fs:13, w:210})}`);
+}
+
+/* ---- おとの なみ ---- */
+function waveView(v, m){
+  const f = v.f, A = v.A, cyc = f * 0.01, sx = 26, sw = 146, sy = 48, sh = 124, cyl = sy + sh / 2, H = 10 + A * 4.6;
+  let d = `M${sx} ${cyl}`; for(let x = 0; x <= sw; x += 2) d += `L${sx + x} ${(cyl - Math.sin(x / sw * cyc * 2 * Math.PI) * H).toFixed(1)}`;
+  return SVGW(300, 260, `${BGI('bd_dark', 300, 260, {dim:.35})}${SI('op_scope', 5, 16, 290)}<path d="${d}" fill="none" stroke="#9BFFC9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#wglow)"/><defs><filter id="wglow"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    ${SI('op_fork', 244, 252, 48, {a:'bc'})}${TAG(100, 246, m.showT ? `1回の ふるえ（周期）＝ ${m.period} ミリ秒` : `${f} Hz`, {fs:14, w:m.showT ? 246 : 90, bg:'rgba(16,18,28,.8)', col:'#FFE08A', st:'#3A4780'})}${TAG(98, 30, '10ミリ秒（0.01秒）ぶんの 波', {fs:11, w:180, bg:'rgba(16,18,28,.8)', col:'#CFE0FF', st:'#3A4780'})}`)
+    + `<div class="sxGs">${gauge((f - 100) / 900 * 100, `音の 高さ：${f} Hz`, '#7CE3FF')}${gauge(A * 10, '音の 大きさ', '#FFC93C')}</div>`;
+}
+
+/* ---- レンズの ふしぎ ---- */
+function lensView(v, m){
+  const f = m.f, a = v.a, scl = 2.4, X0 = 150, Y0 = 118, h0 = 34, W = 320, H = 240;
+  const bv = a === f ? Infinity : a * f / (a - f), real = a > f, mag = bv === Infinity ? 0 : Math.abs(bv) / a;
+  const ox = X0 - a * scl, ix = Math.min(308, X0 + bv * scl), ih = bv === Infinity ? 0 : Math.min(92, h0 * mag), cwid = 30;
+  let rays = '', img = '';
+  if(real && isFinite(bv)){
+    rays = `<path d="M${ox} ${Y0 - h0}H${X0}L${ix} ${Y0 + ih}" fill="none" stroke="#FFB0B0" stroke-width="2" opacity=".9"/><path d="M${ox} ${Y0 - h0}L${X0} ${Y0}L${ix} ${Y0 + ih}" fill="none" stroke="#FFD28A" stroke-width="2" opacity=".9"/>`;
+    img = SI('op_candle', ix, Y0, clampN(cwid * mag * .9, 12, 64), {a:'tc', rot:180});
+  } else if(!real && a < f){
+    rays = `<path d="M${ox} ${Y0 - h0}H${X0}L${X0 + 60} ${Y0 - h0 + 60 * h0 / (f * scl)}" fill="none" stroke="#FFB0B0" stroke-width="2"/><path d="M${ox} ${Y0 - h0}L${X0} ${Y0}L${X0 + 70} ${Y0 + 70 * h0 / (X0 - ox)}" fill="none" stroke="#FFD28A" stroke-width="2"/><path d="M${X0} ${Y0 - h0}L${ix} ${Y0 - ih}" stroke="#FFB0B0" stroke-width="2" stroke-dasharray="4 4"/><path d="M${X0} ${Y0}L${ix} ${Y0 - ih}" stroke="#FFD28A" stroke-width="2" stroke-dasharray="4 4"/>`;
+    img = SI('op_candle', ix, Y0, clampN(cwid * mag * .9, 12, 64), {a:'bc', op:.55});
+  }
+  const sx = m.screen ? X0 + v.s * scl : null, blur = m.screen ? Math.min(6, Math.abs(v.s - bv) * .3) : 0;
+  const info = a === f ? '焦点の 上：像は できない（光が 平行に なる）' : real ? `実像：${r1(bv)} cm ／ 大きさ ${r1(mag)} 倍（さかさま）` : `虚像：レンズの 手前 ${r1(-bv)} cm ／ ${r1(mag)} 倍（正立）`;
+  const lw = 54, lh = spH('op_lens', lw);
+  return SVGW(W, H, `${BGI('bd_dark', W, H, {dim:.3})}<path d="M10 ${Y0}H310" stroke="#9AA8D8" stroke-width="1.5" stroke-dasharray="6 5"/>${rays}
+    ${[-1, 1].map(s => `<circle cx="${X0 + s * f * scl}" cy="${Y0}" r="4" fill="#C9A8FF"/>${T(X0 + s * f * scl, Y0 + 18, 'F', 12, '#C9A8FF')}`).join('')}
+    ${SI('op_lens', X0, Y0 + lh * .614, lw, {a:'bc', op:.97})}${SI('op_candle', ox, Y0 + 2, cwid * .9, {a:'bc'})}${img}
+    ${m.screen ? `${SI('op_screen', sx, Y0 + 66, 54, {a:'bc', op:1})}${isFinite(bv) && real ? `<g opacity="${Math.max(.15, 1 - blur / 6)}"><ellipse cx="${sx}" cy="${Y0 + ih / 2}" rx="${3 + blur * 1.4}" ry="${Math.max(6, ih / 2)}" fill="#FFD28A" opacity=".55"/></g>` : ''}` : ''}
+    ${TAG(160, 214, info, {fs:11, w:290, bg:'rgba(16,18,28,.8)', col:'#fff', st:'#3A4780'})}${TAG(160, 232, `焦点距離 f ＝ ${f} cm ／ 物体 a ＝ ${a} cm`, {fs:11, w:260, bg:'rgba(16,18,28,.7)', col:'#CFE0FF', st:'#3A4780'})}`);
+}
+
+/* ---- かがみ めいろ ---- */
+EXRUN.mirror.html = function(tab){
+  const P = E.rounds[E.i], n = P.n, cs = 46, pad = 34, W = n * cs + pad * 2, H = n * cs + pad * 2;
+  const tr = mirTrace(P, E.pl);
+  let g = '';
+  for(let y = 0; y < n; y++) for(let x = 0; x < n; x++){
+    const key = y + ',' + x, m = E.pl[key], isRock = P.rocks.includes(key), isStar = P.stars.includes(key), X0 = pad + x * cs, Y0 = pad + y * cs, sol = E.show && P.mir[key];
+    g += `<g data-a="mrc" data-v="${key}" style="cursor:pointer"><rect x="${X0}" y="${Y0}" width="${cs}" height="${cs}" fill="rgba(255,255,255,${(x + y) % 2 ? .5 : .66})" stroke="rgba(120,90,50,.45)" stroke-width="1.5"/>`;
+    if(isRock) g += SI('tk_rock', X0 + cs / 2, Y0 + cs / 2, cs - 4, {a:'c'});
+    if(isStar) g += SI('tk_star', X0 + cs / 2, Y0 + cs / 2, cs - 14, {a:'c', op:tr.hit.has(key) ? 1 : .5});
+    if(sol && !m) g += SI('tk_mirror', X0 + cs / 2, Y0 + cs / 2, cs - 4, {a:'c', op:.45, fx:P.mir[key] === '\\'});
+    if(m) g += SI('tk_mirror', X0 + cs / 2, Y0 + cs / 2, cs - 3, {a:'c', fx:m === '\\'});
+    g += `</g>`;
+  }
+  const line = `<polyline points="${tr.pts.map(p => (pad + p[0] * cs).toFixed(1) + ',' + (pad + p[1] * cs).toFixed(1)).join(' ')}" fill="none" stroke="#FF5A5A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".3" pointer-events="none"/><polyline points="${tr.pts.map(p => (pad + p[0] * cs).toFixed(1) + ',' + (pad + p[1] * cs).toFixed(1)).join(' ')}" fill="none" stroke="#FF2A2A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`;
+  const ex = P.exit, ed = DIRS[ex.d], gx = pad + (ex.c + .5 + ed[0] * .5) * cs, gy = pad + (ex.r + .5 + ed[1] * .5) * cs;
+  const goal = SI('tk_goal', gx + ed[0] * 16, gy + ed[1] * 16, 34, {a:'c'});
+  const src = `<svg x="${pad - 46}" y="${pad + (P.r0 + .5) * cs - 15}" width="46" height="30" viewBox="0 0 135 115" preserveAspectRatio="xMidYMid meet" overflow="hidden"><image href="${IC('tk_laser')}" width="300" height="115"/></svg>`;
+  const svg = SVGW(W, H, `${BGI('bd_map', W, H, {dim:0, rx:22})}${g}${line}${goal}${src}`);
+  const used = Object.keys(E.pl).length, lim = P.lim < 99 ? `　つかえる かがみ：${used} / ${P.lim}` : '';
+  const stage = `<div class="sxStage">${svg}</div>`;
+  const stars = P.stars.length ? `<br>★の マスを ぜんぶ 通って ゴールへ！（${P.stars.filter(s => tr.hit.has(s)).length}/${P.stars.length}）` : '';
+  const info = `<div class="sxMis"><span class="sxMisN">もんだい ${E.i + 1} / 3</span><p>${RB('光を ゴール（緑の ○）に とどけよう。マスを タッチすると かがみ（／ ＼ なし）が きりかわるよ。岩には 光が とどかない。' + lim + stars.replace('<br>', '　')).replace('　', '<br>')}</p><p style="font-size:.82em;color:#8A7A65;margin-top:4px">${RB('かがみで はねかえる とき、入る 角と 出る 角は 同じ（反射の 法則）。')}</p></div>`;
+  const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいこう！' : 'こたえは これ！'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+  const acts = E.done ? `<button class="sxBtn big" data-a="mrn">${E.i + 1 >= 3 ? 'けっかへ' : 'つぎへ ▶'}</button>` : `<div class="sxQAct"><button class="sxBtn v sm" data-a="mrh">ヒント</button><button class="sxBtn w sm" data-a="mrg">わからない</button></div>`;
+  const side = `${info}${fb}${acts}`;
+  return tab ? `<div class="sxLabG"><div class="sxLabL">${stage}</div><div class="sxLabR">${side}</div></div>` : `${stage}${side}`;
+};
+
+
+/* =====================================================================
+   うちゅう・ちきゅう
+   ===================================================================== */
+function moonSVG(age, R = 54, cx = 0, cy = 0){
+  const th = 2 * Math.PI * age / 29.53, c = Math.cos(th), rx = Math.abs(c) * R, wax = age <= 14.765, sw1 = wax ? 1 : 0, sw2 = wax ? (c > 0 ? 0 : 1) : (c > 0 ? 1 : 0), id = 'mn' + (++_cpn);
+  const lit = `M${cx} ${cy - R}A${R} ${R} 0 0 ${sw1} ${cx} ${cy + R}A${rx} ${R} 0 0 ${sw2} ${cx} ${cy - R}Z`;
+  return `<defs><clipPath id="${id}"><path d="${lit}"/></clipPath></defs><circle cx="${cx}" cy="${cy}" r="${R}" fill="#1D2548" stroke="#8A9AC8" stroke-width="2"/><g clip-path="url(#${id})">${SI('tk_moon', cx, cy, R * 2.02, {a:'c'})}</g>`;
+}
+const starDefs = `<defs><radialGradient id="stg"><stop offset="0" stop-color="#fff"/><stop offset=".3" stop-color="#FFF4C2"/><stop offset="1" stop-color="#FFF4C2" stop-opacity="0"/></radialGradient></defs>`;
+const starDot = (x, y, s) => `<circle cx="${x}" cy="${y}" r="${(2 + s * 2.4).toFixed(1)}" fill="url(#stg)"/>`;
+function planetView(v, m){
+  const W = 300, H = 260;
+  if(m.kind === 'moon'){
+    return SVGW(W, H, `${BGI('bd_night', W, H)}${moonSVG(v.age, 62, 150, 98)}${TAG(150, 196, `${phaseName(v.age)}（${r1(v.age)} 日め）`, {fs:16, w:240})}${m.rise ? TAG(150, 226, `月が のぼる 時刻 ≒ ${String(Math.floor((6 + v.age / 29.53 * 24) % 24)).padStart(2, '0')}時ごろ`, {fs:14, w:240, bg:'#FFE08A'}) : TAG(150, 226, '新月 → 満月 → 新月 で 約 29.5日', {fs:12, w:240, bg:'rgba(16,24,58,.8)', col:'#CFE0FF', st:'#3A4780'})}`);
+  }
+  if(m.kind === 'season'){
+    const S = SKY[seasonOf(v.mo)];
+    return SVGW(W, H, `${BGI('bd_night', W, H, {dim:.2})}${starDefs}<g transform="translate(150 128)">${S.lines.map(l => `<path d="M${S.stars[l[0]][0]} ${S.stars[l[0]][1]}L${S.stars[l[1]][0]} ${S.stars[l[1]][1]}" stroke="#8FB4FF" stroke-width="1.6" opacity=".7"/>`).join('')}${S.stars.map(s => `${starDot(s[0], s[1], s[3])}${s[2] ? T(s[0], s[1] - 10, s[2], 8, '#CFE0FF') : ''}`).join('')}</g>${TAG(150, 30, `${v.mo}月 夜9時ごろの 南の 空`, {fs:14, w:210, bg:'rgba(16,24,58,.85)', col:'#fff', st:'#3A4780'})}${TAG(150, 244, S.label, {fs:13, w:230, bg:'#FFE08A'})}`);
+  }
+  if(m.kind === 'rot'){
+    const ang = v.h * 15, rot = `rotate(${-ang} 150 128)`;
+    const dipper = [[-30, -62], [-18, -70], [-6, -72], [8, -66], [16, -52], [42, -50], [48, -70]], cas = [[-70, 28], [-52, 48], [-34, 30], [-18, 50], [0, 30]];
+    const grp = (pts, col) => `<g transform="${rot}"><path d="M${pts.map(p => (150 + p[0]) + ' ' + (128 + p[1])).join('L')}" fill="none" stroke="${col}" stroke-width="1.6" opacity=".8"/>${pts.map(p => starDot(150 + p[0], 128 + p[1], 1.2)).join('')}</g>`;
+    return SVGW(W, H, `${BGI('bd_night', W, H, {dim:.2})}${starDefs}<circle cx="150" cy="128" r="104" fill="none" stroke="#2A3A7A" stroke-width="1.5" stroke-dasharray="4 5"/>${grp(dipper, '#8FB4FF')}${grp(cas, '#FFB08F')}${starDot(150, 128, 2)}${T(150, 118, '北極星', 10, '#FFE08A')}${TAG(150, 30, `${v.h} 時間 たった（回った 角度 ${ang}°）`, {fs:14, w:250, bg:'rgba(16,24,58,.85)', col:'#fff', st:'#3A4780'})}${TAG(150, 246, '北の 空：北極星の まわりを 反時計回りに 回る', {fs:11, w:270, bg:'rgba(16,24,58,.8)', col:'#CFE0FF', st:'#3A4780'})}`);
+  }
+  const a = v.ang, rad = a * Math.PI / 180, mx = 150 + Math.cos(rad - Math.PI) * 74, my = 128 + Math.sin(rad - Math.PI) * 74 * -1, age = a / 360 * 29.53;
+  const ecl = Math.abs(a) <= 8 || Math.abs(a - 360) <= 8 ? '日食（太陽が かくれる）' : Math.abs(a - 180) <= 8 ? '月食（月が 地球の かげに 入る）' : '';
+  return SVGW(W, H, `${BGI('bd_night', W, H, {dim:.25})}${SI('tk_sun', 26, 128, 76, {a:'c'})}<path d="M62 92H108M62 128H108M62 164H108" stroke="#FFE08A" stroke-width="2" opacity=".5"/>
+    <circle cx="150" cy="128" r="74" fill="none" stroke="#3A4A8A" stroke-dasharray="4 5"/>${SI('tk_earth', 150, 128, 34, {a:'c'})}${SI('tk_moon', mx, my, 20, {a:'c'})}
+    <g transform="translate(250 56)">${moonSVG(age, 22, 0, 0)}${T(0, 40, phaseName(age), 10, '#fff')}</g>${TAG(150, 236, ecl || `月の ち位置：${a}°`, {fs:13, w:240, bg:ecl ? '#FFE08A' : 'rgba(16,24,58,.85)', col:ecl ? '#4A3420' : '#fff', st:'#3A4780'})}`);
+}
+
+/* ---- ロケット ---- */
+function rocketView(v){
+  const dv = dvOf(v.fuel, v.pay), h = clampN(dv / 12, 0, 1), x = 40 + h * 226, y = 150;
+  const mark = (xx, t) => `<line x1="${xx}" y1="40" x2="${xx}" y2="238" stroke="#FFC93C" stroke-width="2" stroke-dasharray="5 4"/>${TAG(xx, 30, t, {fs:11, w:56, bg:'#FFE08A'})}`;
+  const rw = 34, rh = spH('card_space_rocket', rw);
+  return SVGW(300, 260, `${BGI('bd_night', 300, 260, {dim:.05})}${SI('tk_earth', 20, 240, 150, {a:'c'})}${mark(20 + 7.9 / 12 * 250, '7.9')}${mark(20 + 11.2 / 12 * 250, '11.2')}
+    ${dv > 0.2 ? `<g transform="rotate(90 ${(x - rh / 2 - 6).toFixed(1)} ${y})">${SI('fx_rocketflame', x - rh / 2 - 6, y, 36, {a:'c', op:.95, cls:'sxFlk'})}</g>` : ''}${SI('card_space_rocket', x, y, rw, {a:'c', rot:90})}
+    ${TAG(150, 248, `速さの ふえかた：${r1(dv)} km/秒`, {fs:14, w:230, bg:'rgba(16,24,58,.85)', col:'#fff', st:'#3A4780'})}`)
+    + `<div class="sxGs"><div class="sxGg">ロケット（空）20 t ＋ ペイロード ${v.pay} t ＋ 燃料 ${v.fuel} t ＝ ${20 + v.pay + v.fuel} t</div></div>`;
+}
+
+/* ---- じしん ハンター ---- */
+function quakeView(v, m){
+  const d = v.d, R = d / 200 * 105;
+  return SVGW(300, 260, `${BGI('bd_map', 300, 260, {dim:0})}${[40, 80, 120, 160, 200].map(k => `<circle cx="150" cy="120" r="${k / 200 * 105}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2" stroke-dasharray="5 5"/><text x="${150 + k / 200 * 105 * 0.71}" y="${120 - k / 200 * 105 * 0.71}" font-size="10" font-weight="900" fill="#3A2A1A" stroke="#fff" stroke-width="2.4" paint-order="stroke">${k}km</text>`).join('')}
+    <circle cx="150" cy="120" r="${R}" fill="#E8414B" fill-opacity=".14" stroke="#E8414B" stroke-width="4"/>${SI('tk_station', 150, 126, 38, {a:'bc'})}${SI('tk_epicenter', 150 + R * 0.71, 124 + R * 0.71, 40, {a:'bc'})}
+    ${TAG(150, 150, '観測点', {fs:11, w:54})}${TAG(150, 246, `しんげんまでの きょり（予想）：${d} km`, {fs:13, w:250})}`) + (m.dt ? `<div class="sxGs"><div class="sxGg">観測点で P波が 来て から S波が 来る までの 時間（初期微動継続時間）＝ <b>${m.dt}秒</b>　${m.k ? `（この 地域：P波 6 km/秒・S波 3 km/秒）` : ''}</div></div>` : '');
+}
+
+/* ---- てんきの ふしぎ ---- */
+function weatherView(v, m){
+  const W = 300, H = 260;
+  if(m.kind === 'press'){
+    const P = v.p, hi = P >= 1013, wx = P >= 1018 ? '晴れ' : P >= 1006 ? 'くもり' : 'あめ', ic = P >= 1018 ? 'tk_sun' : P >= 1006 ? 'tk_cloud' : 'tk_raincloud';
+    return SVGW(W, H, `${BGI('bd_sky', W, H)}${[1, 2, 3, 4].map(i => `<circle cx="150" cy="108" r="${i * 22}" fill="none" stroke="${hi ? '#E8414B' : '#3C6FE0'}" stroke-width="2.5" opacity=".7"/>`).join('')}<circle cx="150" cy="108" r="24" fill="${hi ? '#FFE0E0' : '#E0E8FF'}" stroke="${hi ? '#E8414B' : '#3C6FE0'}" stroke-width="3"/>${T(150, 117, hi ? '高' : '低', 24, hi ? '#E8414B' : '#3C6FE0')}
+      ${hi ? '<path d="M150 20v18M150 196v-18M40 108h18M260 108h-18" stroke="#E8414B" stroke-width="4" stroke-linecap="round"/>' : '<path d="M150 38v-18M150 178v18M58 108h-18M242 108h18" stroke="#3C6FE0" stroke-width="4" stroke-linecap="round"/>'}
+      ${SI(ic, 150, 238, 74, {a:'bc'})}${TAG(150, 22, `中心の 気圧：${P} hPa`, {fs:14, w:220})}${TAG(60, 244, `天気：${wx}`, {fs:13, w:92})}${TAG(240, 244, hi ? '下りてくる 空気' : 'のぼって いく 空気', {fs:11, w:112})}`);
+  }
+  if(m.kind === 'front'){
+    const cold = v.type === 'cold', h = v.h, rain = cold ? (h >= -1 && h <= 2) : (h >= -6 && h <= 0), strong = cold && rain;
+    const temp = cold ? (h < 0 ? 24 : 24 - Math.min(8, h * 4 + 2)) : (h < 0 ? 14 : 14 + Math.min(6, h * 2 + 1)), xf = 150 + h * 14;
+    const wedge = cold ? `<path d="M${xf} 150L${xf - 18} 60L${xf + 52} 150z" fill="#3C6FE0" fill-opacity=".38" stroke="#3C6FE0" stroke-width="2"/>${SI('tk_raincloud', xf + 10, 66, 70, {a:'c'})}` : `<path d="M${xf} 150L${xf - 120} 78L${xf - 120} 150z" fill="#E8414B" fill-opacity=".3" stroke="#E8414B" stroke-width="2"/>${SI('tk_cloud', xf - 70, 70, 84, {a:'c'})}`;
+    const drops = rain ? Array.from({length:cold ? 7 : 9}, (_, i) => { const x = cold ? xf - 14 + i * 8 : xf - 100 + i * 12; return `<path d="M${x} ${110 + (i % 2) * 8}l-3 ${cold ? 20 : 12}" stroke="#3C93DC" stroke-width="${cold ? 3 : 2}" stroke-linecap="round"/>`; }).join('') : '';
+    return SVGW(W, H, `${BGI('bd_sky', W, H)}${wedge}${drops}${SI('lf_bunny_boy', 150, 176, 26, {a:'bc'})}${TAG(150, 28, cold ? '寒冷前線（つめたい 空気が もぐりこむ）' : '温暖前線（あたたかい 空気が はいあがる）', {fs:12, w:290})}${TAG(150, 204, `前線が 通る 時刻から ${h >= 0 ? '+' : ''}${h} 時間`, {fs:13, w:210})}${TAG(66, 238, `気温 ${Math.round(temp)}℃`, {fs:14, w:96, bg:'#FFE3D6'})}${TAG(212, 238, rain ? (strong ? 'はげしい 雨（せまい）' : 'しとしと 雨（ひろい）') : '雨は ふって いない', {fs:12, w:150, bg:'#DDEEFF'})}`);
+  }
+  if(m.kind === 'iso'){
+    const sp = v.sp, wind = Math.round(48 / sp), lines = [0, 1, 2, 3, 4].map(i => `<path d="M${40 + i * sp * 13} 30Q${60 + i * sp * 13} 120 ${40 + i * sp * 13} 214" fill="none" stroke="#5A4A8A" stroke-width="2.4"/>`).join('');
+    const arrows = [0, 1, 2].map(i => `<path d="M${54 + i * 6} ${70 + i * 54}h${Math.min(60, wind * 3)}l-8 -6m8 6l-8 6" stroke="#E8414B" stroke-width="3.4" fill="none" stroke-linecap="round"/>`).join('');
+    return SVGW(W, H, `${BGI('bd_map', W, H, {dim:0})}<rect x="8" y="8" width="284" height="244" rx="16" fill="#fff" fill-opacity=".45"/>${lines}${arrows}${TAG(150, 26, `等圧線の 間隔：${sp}（×100 km）`, {fs:13, w:220})}${TAG(150, 246, `ふく 風の 速さ ≒ ${wind} m/秒`, {fs:15, w:210, bg:'#FFE3E3', col:'#E8414B'})}`) + `<div class="sxGs">${gauge(wind / 24 * 100, '風の 強さ', '#E8414B')}</div>`;
+  }
+  const P = m.pat; let body = '';
+  if(P === 'winter') body = `${[0, 1, 2, 3, 4].map(i => `<path d="M${180 + i * 12} 30Q${196 + i * 12} 120 ${180 + i * 12} 220" fill="none" stroke="#5A4A8A" stroke-width="2.4"/>`).join('')}${T(70, 128, '高', 40, '#E8414B')}${T(250, 128, '低', 40, '#3C6FE0')}<path d="M130 70l-40 20M136 110l-40 14M130 150l-40 14" stroke="#E8414B" stroke-width="3" opacity=".55"/>`;
+  else if(P === 'baiu') body = `<path d="M20 124H280" stroke="#3C6FE0" stroke-width="6" stroke-dasharray="14 10"/><path d="M20 124H280" stroke="#E8414B" stroke-width="6" stroke-dasharray="10 14" stroke-dashoffset="12"/>${T(80, 78, '高', 32, '#E8414B')}${T(220, 196, '高', 32, '#E8414B')}${TAG(150, 160, '停滞前線', {fs:14, w:100})}`;
+  else if(P === 'summer') body = `${[1, 2, 3].map(i => `<circle cx="210" cy="170" r="${i * 30}" fill="none" stroke="#E8414B" stroke-width="2.4" opacity=".7"/>`).join('')}${T(210, 184, '高', 38, '#E8414B')}${T(60, 64, '低', 24, '#3C6FE0')}`;
+  else body = `${[1, 2, 3].map(i => `<circle cx="150" cy="120" r="${i * 24}" fill="none" stroke="#3C6FE0" stroke-width="2.4" opacity=".7"/>`).join('')}${T(150, 134, '低', 38, '#3C6FE0')}<path d="M232 120a82 82 0 0 0-30-60M68 120a82 82 0 0 0 30 60" stroke="#E8414B" stroke-width="3.4" fill="none"/><path d="M206 66l-4-8 9 1M94 174l4 8-9-1" stroke="#E8414B" stroke-width="3.4" fill="none"/>${SI('tk_cloud', 236, 60, 50, {a:'c'})}`;
+  return SVGW(W, H, `${BGI('bd_map', W, H, {dim:0})}<rect x="8" y="8" width="284" height="244" rx="16" fill="#fff" fill-opacity=".45"/>${body}${m.cap ? TAG(150, 246, m.cap, {fs:12, w:230}) : ''}`);
+}
+
+/* =====================================================================
+   いのち・からだ
+   ===================================================================== */
+/* ---- こうごうせい ---- */
+function photoView(v){
+  const n = Math.round(PH(v)), lim = v.light <= v.co2 && v.light <= v.water * 1.5 ? '光' : v.co2 <= v.water * 1.5 ? '二酸化炭素' : '水';
+  const bub = Array.from({length:Math.min(10, n)}, (_, i) => `<circle cx="${126 + (i * 17) % 60}" cy="150" r="${3 + i % 3}" fill="#fff" fill-opacity=".9" stroke="#9FD3EE" stroke-width="1"><animate attributeName="cy" from="${200 - (i % 4) * 6}" to="${104 + (i % 3) * 8}" dur="${(1.2 + i * .13).toFixed(2)}s" repeatCount="indefinite"/></circle>`).join('');
+  return SVGW(300, 260, `${BGI('bd_pond', 300, 260)}<defs><radialGradient id="lg"><stop offset="0" stop-color="#FFF3A0" stop-opacity=".9"/><stop offset="1" stop-color="#FFF3A0" stop-opacity="0"/></radialGradient></defs>
+    <ellipse cx="96" cy="130" rx="${50 + v.light * .5}" ry="${60 + v.light * .5}" fill="url(#lg)" opacity="${(v.light / 100).toFixed(2)}"/>${SI('lf_lamp', 6, 8, 104)}${SI('lf_elodea', 150, 238, 124, {a:'bc'})}${bub}
+    ${SI('lf_can', 264, 140, 74, {a:'c', op:.45 + v.water / 200})}${Array.from({length:Math.round(v.water / 25)}, (_, i) => `<path d="M${236 - i * 4} ${160 + i * 9}l-2 7" stroke="#3C93DC" stroke-width="3" stroke-linecap="round"/>`).join('')}
+    ${SI('lf_co2', 22, 238, 44, {a:'bc', op:.45 + v.co2 / 200})}${TAG(150, 22, `光 ${v.light} ／ 水 ${v.water} ／ 二酸化炭素 ${v.co2}`, {fs:12, w:262})}${TAG(150, 252, `あわの 数：1分に ${n}こ`, {fs:13, w:170})}`)
+    + `<div class="sxGs">${gauge(n * 10, `あわ（酸素）：${n} こ/分`, '#4CB84C')}<div class="sxGg">いちばん 足りない 条件（限定要因）：<b>${n >= 10 ? '（ぜんぶ たっぷり）' : lim}</b></div></div>`;
+}
+
+/* ---- けんびきょう ---- */
+function microView(v, m){
+  const blur = Math.abs(v.focus - m.best) / 100 * 9, id = 'mf' + (++_cpn), zs = {60:1, 100:1.5, 160:2.4}[v.mag] || 1.5, iw = 360 * zs;
+  return SVGW(300, 260, `<rect x="2" y="2" width="296" height="256" rx="22" fill="#0B0D16"/><defs><filter id="${id}" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${blur.toFixed(2)}"/></filter><clipPath id="c${id}"><circle cx="150" cy="125" r="112"/></clipPath><radialGradient id="v${id}"><stop offset=".72" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>
+    <linearGradient id="r${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E8EDF3"/><stop offset=".5" stop-color="#6B7480"/><stop offset="1" stop-color="#C9CED6"/></linearGradient></defs>
+    <g clip-path="url(#c${id})"><g filter="url(#${id})">${SI('mc_' + m.sample, 150, 125, iw, {a:'c'})}</g><circle cx="150" cy="125" r="112" fill="url(#v${id})"/></g><circle cx="150" cy="125" r="116" fill="none" stroke="url(#r${id})" stroke-width="9"/>
+    ${TAG(150, 252, blur < 1.2 ? 'くっきり 見える！' : 'ぼやけて いる…（ピントを あわせよう）', {fs:13, w:250, bg:'rgba(16,18,28,.85)', col:'#fff', st:'#3A4780'})}`);
+}
+const MCN = {onion:'onion', elodea:'elodea', paramecium:'paramecium', daphnia:'daphnia'};
+
+/* ---- いでんの ふしぎ ---- */
+function seedSVG(x, y, r, wr, col){
+  const green = /7FBF5A|green/i.test(col || ''), sp = wr ? (green ? 'lf_pea_wg' : 'lf_pea_wy') : (green ? 'lf_pea_rg' : 'lf_pea_ry');
+  return SI(sp, x, y, r * 2.3, {a:'c'});
+}
+function geneView(v, m){
+  if(m.kind === 'di'){
+    const G = ['RY', 'Ry', 'rY', 'ry'], cell = 48, x0 = 56, y0 = 74; let cnt = {ry:0, rY:0, Ry:0, RY:0}, out = '';
+    out += G.map((g, i) => T(x0 + i * cell + cell / 2, y0 - 8, g, 12) + T(x0 - 24, y0 + i * cell + cell / 2 + 4, g, 12)).join('');
+    G.forEach((a, i) => G.forEach((b, j) => { const A = a[0] + b[0], Bb = a[1] + b[1], rd = /R/.test(A), yl = /Y/.test(Bb); cnt[(rd ? 'R' : 'r') + (yl ? 'Y' : 'y')]++; out += `<rect x="${x0 + j * cell}" y="${y0 + i * cell}" width="${cell}" height="${cell}" fill="#fff" fill-opacity=".85" stroke="#BFDDEE" stroke-width="2"/>${seedSVG(x0 + j * cell + cell / 2, y0 + i * cell + cell / 2, 15, !rd, yl ? '#E5D47A' : '#7FBF5A')}`; }));
+    return SVGW(300, 290, `${BGI('bd_pond', 300, 290, {dim:.0})}<rect x="8" y="8" width="284" height="274" rx="18" fill="#fff" fill-opacity=".62"/>${out}${TAG(150, 30, 'RrYy × RrYy（丸・黄色が 優性）', {fs:13, w:250})}${TAG(150, 276, `丸黄 ${cnt.RY}／丸緑 ${cnt.Ry}／しわ黄 ${cnt.rY}／しわ緑 ${cnt.ry}`, {fs:12, w:270})}`);
+  }
+  if(m.kind === 'sex'){
+    const mo = v.mom, fa = v.dad, ga = mo.split('|'), gb = fa.split('|'); let out = '';
+    ga.forEach((a, i) => { out += T(116 + i * 80, 78, a === 'Xc' ? 'Xᶜ' : a, 15, a === 'Xc' ? '#E8414B' : '#4A3420'); });
+    gb.forEach((b, j) => { out += T(60, 118 + j * 70, b === 'Xc' ? 'Xᶜ' : b, 15, b === 'Xc' ? '#E8414B' : '#4A3420'); });
+    ga.forEach((a, i) => gb.forEach((b, j) => { const boy = b === 'Y', cc = boy ? a === 'Xc' : (a === 'Xc' && b === 'Xc'), car = !boy && (a === 'Xc') !== (b === 'Xc');
+      out += `<rect x="${78 + i * 80}" y="${90 + j * 70}" width="76" height="64" rx="10" fill="${boy ? '#E6F0FF' : '#FFE6F0'}" stroke="${cc ? '#E8414B' : '#BFDDEE'}" stroke-width="${cc ? 4 : 2}"/>${SIH(boy ? 'lf_bunny_boy' : 'lf_bunny_girl', 78 + i * 80 + 22, 90 + j * 70 + 32, 52, {a:'c'})}${T(78 + i * 80 + 40, 90 + j * 70 + 26, boy ? '男の子' : '女の子', 10.5, '#4A3420', 'start')}${T(78 + i * 80 + 40, 90 + j * 70 + 48, cc ? '色覚異常' : car ? '保因者' : 'ふつう', 10, cc ? '#E8414B' : '#6B5A44', 'start')}`; }));
+    return SVGW(300, 250, `${BGI('bd_pond', 300, 250)}<rect x="8" y="8" width="284" height="234" rx="18" fill="#fff" fill-opacity=".62"/>${TAG(150, 28, '色覚異常の 遺伝（Xᶜ の 遺伝子）', {fs:13, w:250})}${T(150, 54, `母：${mo.replace('|', ' ')}　父：${fa.replace('|', ' ')}`, 12, '#6B5A44')}${out}`);
+  }
+  const p1 = v.p1, p2 = v.p2, g1 = gam(p1), g2 = gam(p2), cell = 62, x0 = 100, y0 = 70; let out = '', n = {R:0, r:0};
+  g1.forEach((a, i) => { out += T(x0 + i * cell + cell / 2, y0 - 10, a, 18, a === 'R' ? '#2F8A2F' : '#C2541F'); });
+  g2.forEach((b, j) => { out += T(x0 - 22, y0 + j * cell + cell / 2 + 6, b, 18, b === 'R' ? '#2F8A2F' : '#C2541F'); });
+  g1.forEach((a, i) => g2.forEach((b, j) => { const g = [a, b].sort().join(''), wr = g === 'rr'; wr ? n.r++ : n.R++; out += `<rect x="${x0 + i * cell}" y="${y0 + j * cell}" width="${cell}" height="${cell}" fill="#fff" fill-opacity=".85" stroke="#BFDDEE" stroke-width="2"/>${seedSVG(x0 + i * cell + cell / 2, y0 + j * cell + cell / 2 - 6, 17, wr, '#E5D47A')}${T(x0 + i * cell + cell / 2, y0 + j * cell + cell - 8, g, 12)}`; }));
+  return SVGW(300, 250, `${BGI('bd_pond', 300, 250)}<rect x="8" y="8" width="284" height="234" rx="18" fill="#fff" fill-opacity=".62"/>${TAG(150, 28, `親：${p1} × ${p2}（丸 R が 優性）`, {fs:13, w:240})}${out}${TAG(150, 238, `丸 ${n.R} ： しわ ${n.r}`, {fs:15, w:150})}`);
+}
+
+/* ---- からだの しくみ ---- */
+const OGI = {'口':'og_mouth', '食道':'og_esoph', '胃':'og_stomach', '小腸':'og_small', '大腸':'og_large', '肛門':'og_large', '右心房':'og_heart', '右心室':'og_heart', '左心房':'og_heart', '左心室':'og_heart', '肺':'og_lungs', '全身':'lf_bunny_boy', '鼻':'og_nose', '気管':'og_esoph', '気管支':'og_bronchi', '肺胞':'og_alveoli', '毛細血管':'og_alveoli', '腎臓':'og_kidney', '輸尿管':'og_kidney', 'ぼうこう':'og_bladder', '尿道':'og_bladder', '大静脈':'og_heart', '肺動脈':'og_lungs', '肺静脈':'og_lungs', '大動脈':'og_heart'};
+EXRUN.body.html = function(tab){
+  const r = E.rounds[E.i]; let stage = '', body = '';
+  if(r.t === 'o'){
+    const S = ORD[r.set], nodes = S.nodes.map((nd, i) => { const k = E.seq.indexOf(i);
+      return `<button class="sxBo ${k >= 0 ? 'on' : ''}" data-a="bdo" data-v="${i}" style="left:${nd[1]}%;top:${nd[2]}%" ${E.done ? 'disabled' : ''}>${k >= 0 ? `<i>${k + 1}</i>` : ''}${OGI[nd[0]] ? `<img src="${IC(OGI[nd[0]])}" alt="">` : ''}<span>${nd[0]}</span></button>`; }).join('');
+    const pts = E.seq.map(i => S.nodes[i]), line = `<svg class="sxBoSvg" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts.map(p => p[1] + ',' + p[2]).join(' ')}" fill="none" stroke="#4CB84C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+    stage = `<div class="sxStage"><div class="sxBoW"><div class="sxBoCap">${S.cap}</div>${line}${nodes}</div></div>`;
+    const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいこう！' : 'ざんねん…'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+    body = `<div class="sxMis"><span class="sxMisN">もんだい ${E.i + 1} / 5</span><p>${RB(S.t)}　ミス ${'♥'.repeat(Math.max(0, 3 - E.miss))}${'♡'.repeat(Math.min(3, E.miss))}</p></div>${fb}${E.done ? `<button class="sxBtn big" data-a="bdn">${E.i + 1 >= 5 ? 'けっかへ' : 'つぎへ ▶'}</button>` : ''}`;
+  } else {
+    stage = `<div class="sxStage"><div class="sxBoQ"><img src="${IC(({1:'card_life_skeleton', 2:'og_heart', 3:'og_lungs', 4:'og_kidney', 5:'card_life_brain'})[E.star])}" alt=""></div></div>`;
+    const fb = E.msg ? `<div class="sxFb ${E.msg.ok ? 'ok' : 'ng'}"><b>${E.msg.ok ? 'せいかい！' : 'ざんねん…'}</b><p>${RB(E.msg.t)}</p></div>` : '';
+    body = `<div class="sxMis"><span class="sxMisN">クイズ ${E.i + 1} / 5</span><p>${RB(r.q)}</p></div><div class="sxChG">${r.ch.map((c, i) => `<button class="sxCh ${E.done ? (c === r.a ? 'ok' : (E.picked === i ? 'ng' : 'dim')) : ''}" data-a="bdc" data-v="${i}" ${E.done ? 'disabled' : ''}>${RB(c)}</button>`).join('')}</div>${fb}${E.done ? `<button class="sxBtn big" data-a="bdn">${E.i + 1 >= 5 ? 'けっかへ' : 'つぎへ ▶'}</button>` : ''}`;
+  }
+  return tab ? `<div class="sxLabG"><div class="sxLabL">${stage}</div><div class="sxLabR">${body}</div></div>` : `${stage}${body}`;
+};
+
+/* =====================================================================
+   render（トップ画面は 全面イラスト）
+   ===================================================================== */
+function render(){
+  if(!ROOT || !VIEW) return;
+  stopTimers();
+  const tab = isTab(); ROOT.classList.toggle('tab', tab); ROOT.classList.toggle('ph', !tab); ROOT.classList.toggle('sxTopFull', V.s === 'top');
+  const f = SCREENS[V.s] || SCREENS.top, r = f(tab);
+  ROOT.classList.toggle('sxZoneBg', !!r.bg); if(r.bg){ ROOT.style.setProperty('--zbg', `url(${r.bg})`); ROOT.style.setProperty('--zpos', r.bgpos || '50% 40%'); }
+  ROOT.style.setProperty('--zc', r.zc || '#F2A33A');
+  const rbm = {hard:'ふりがな：一部', all:'ふりがな：全部', none:'ふりがな：なし'}[MODE()];
+  const ttl = r.title || TITLES[V.s] || '';
+  const keepY = (VIEW.querySelector('.sxMain') || {}).scrollTop || 0, same = VIEW.dataset.s === V.s;
+  VIEW.dataset.s = V.s;
+  VIEW.innerHTML = `<header class="sxBarT"><button class="sxBack" data-a="back">${SVGI.back}<span>${V.s === 'top' ? 'まちへ' : 'もどる'}</span></button>
+    <div class="sxTtl">${V.s === 'top' ? '' : `<span>${X(ttl)}</span>`}</div>
+    ${V.s === 'top' ? `<button class="sxRb" data-a="ruby">${rbm}</button>` : ''}
+    <div class="sxPt"><i class="sxCoin">P</i><b>${nf(save.points.bal)}</b><small>pt</small></div></header>
+    <main class="sxMain ${r.cls || ''}">${r.html}</main>`;
+  rubify(VIEW);
+  const m = VIEW.querySelector('.sxMain'); if(m && same && r.keep) m.scrollTop = keepY;
+  if(r.after) r.after(VIEW);
+}
+
+/* ---- K-02 ゾーン：画面ぜんたいが イラスト ---- */
+SCREENS.zone = function(tab){
+  const z = ZN(V.z) || ZONES[0], ex = zoneExps(z.id), imp = zoneImpl(z.id).length, cl = zoneClears(z.id);
+  const rw = REWARDS.find(r => r.t === 'town' && ({chem:'sci_fireworks', elec:'sci_power', light:'sci_rainbow', space:'sci_stardeck'})[z.id] === r.id);
+  const name = `<div class="sxZName" style="--zc:${z.c}">${X(z.n)}</div>`;
+  const say = `<div class="sxSay"><img src="${art(z.ch)}" alt=""><div class="sxBub2"><b>${X(z.chn)}</b>${RB(pick(z.say))}</div></div>`;
+  const tabs = `<div class="sxTabs"><button class="on">じっけん</button><button data-a="qsel" data-v="${z.id}">もんだい</button><button data-a="cards" data-v="${z.id}">ずかん</button></div>`;
+  const master = `<div class="sxMaster"><div><b>${X(z.sh)} マスターまで</b>${bar(imp ? cl / imp * 100 : 0)}</div><span>${zoneMaster(z.id) ? 'マスター！' : `${cl}/${imp}`}${rw ? `<small>ごほうび：${X(rw.n)}</small>` : ''}</span></div>`;
+  const list = `<div class="sxExL">${ex.map(expCard).join('')}</div>`;
+  return {title:tab ? z.n : z.sh, zc:z.c, cls:'zone', bg:IC(z.bg), bgpos:z.fx, html: tab
+    ? `<div class="sxTabL sxZL"><div class="sxZSpace">${name}${say}</div></div><div class="sxTabR sxZR">${tabs}${list}${master}</div>`
+    : `<div class="sxZSpace">${name}${say}</div><div class="sxPh sxZP">${tabs}${list}${master}</div>`};
+};
+
 /* ---------- CSS ---------- */
 const css = document.createElement('style'); css.id = 'sc700css';
 css.textContent = "#sc700{position:fixed;inset:0;z-index:66;opacity:0;transition:opacity .22s;background:linear-gradient(180deg,#DDF1FF,#FFF8E8 60%);overflow:hidden;color:#4A3420;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}\n#sc700.show{opacity:1}\nbody.sc700on{overflow:hidden}\n#sc700 *{box-sizing:border-box;min-width:0}\n:where(#sc700) button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}\n:where(#sc700) button:disabled{cursor:default}\n#sxView{position:absolute;inset:0;display:flex;flex-direction:column}\nbody.sc700on #toast{z-index:90}\n/* ---- 上の バー ---- */\n.sxBarT{flex:none;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;position:relative;z-index:6;background:linear-gradient(#fff 55%,rgba(255,255,255,0))}\n.sxBack{display:flex;align-items:center;background:#fff;border:3px solid #fff;border-radius:99px;padding:2px 14px 2px 6px;font-weight:900;font-size:15px;color:#2E6FB5;box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap;flex:none}\n.sxBack svg{width:22px;height:22px}\n.sxTtl{flex:1;text-align:center;overflow:hidden}\n.sxTtl span{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(#FFE08A,#F6B93B);border:3px solid #fff;border-radius:99px;padding:3px 16px;font-size:17px;font-weight:900;color:#6B3E0A;box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap}\n.sxRb{background:#fff;border-radius:99px;padding:4px 10px;font-weight:900;font-size:11px;color:#6B5A44;box-shadow:0 2px 4px rgba(0,0,0,.2);flex:none;white-space:nowrap}\n.sxPt{display:flex;align-items:center;gap:4px;background:#fff;border-radius:99px;padding:3px 12px 3px 4px;font-weight:900;font-size:15px;box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap;flex:none}\n.sxPt small{font-size:11px;color:#8A7A65}\n.sxCoin{display:inline-flex;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFE98A,#F2B33D);border:2px solid #C98A12;color:#8A5A00;font-size:12px;font-weight:900;align-items:center;justify-content:center;font-style:normal;flex:none}\n.sxMain{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative;padding-bottom:calc(14px + env(safe-area-inset-bottom))}\n.sxPh{padding:10px 12px;display:flex;flex-direction:column;gap:10px}\n.tab .sxBarT{padding:calc(10px + env(safe-area-inset-top)) 18px 8px}\n.tab .sxBack{font-size:19px;padding:3px 18px 3px 8px}\n.tab .sxTtl span{font-size:21px;padding:4px 24px}\n.tab .sxPt{font-size:18px}\n.tab .sxRb{font-size:14px;padding:6px 14px}\n/* タブレット：左右2分割 */\n.tab .sxMain.top,.tab .sxMain.zone,.tab .sxMain.qsel,.tab .sxMain.res{display:grid;grid-template-columns:57% 43%;overflow:hidden;padding:0}\n.tab .sxTabL{position:relative;overflow:hidden;min-height:0}\n.tab .sxTabR{overflow-y:auto;overflow-x:hidden;padding:6px 16px 16px;display:flex;flex-direction:column;gap:10px;min-height:0;border-left:6px solid #F1D9AA;background:#FFF8E8}\n/* ---- ボタン・カード ---- */\n.sxBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;font-weight:900;color:#fff;background:#F2A33A;box-shadow:0 5px 0 #C27A1C;padding:9px 18px;font-size:16px;position:relative;white-space:nowrap}\n.sxBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #C27A1C}\n.sxBtn.b{background:#3C93DC;box-shadow:0 5px 0 #2569A6}.sxBtn.p{background:#F0709A;box-shadow:0 5px 0 #BE4570}.sxBtn.g{background:#4CB84C;box-shadow:0 5px 0 #2F8A2F}.sxBtn.v{background:#9B6CE0;box-shadow:0 5px 0 #6F45B3}\n.sxBtn.w{background:#fff;color:#4A3420;box-shadow:0 5px 0 #CFC3AE;border:2px solid #EADFCF}\n.sxBtn.sm{padding:6px 14px;font-size:14px}.sxBtn.big{font-size:19px;padding:12px 22px;width:100%}\n.sxBtn:disabled{opacity:.5}\n.sxBtn svg,.sxBtn img{width:22px;height:22px}\n.sxBtn small{font-size:11px;opacity:.9}\n.tab .sxBtn{font-size:19px}.tab .sxBtn.sm{font-size:16px}.tab .sxBtn.big{font-size:22px;padding:14px}\n.sxCard{background:#fff;border:3px solid #F1D9AA;border-radius:22px;box-shadow:0 4px 0 #EADCC4;position:relative;padding:8px 12px}\n.sxDot{position:absolute;right:-4px;top:-8px;min-width:22px;height:22px;border-radius:99px;background:#E8414B;color:#fff;font-size:13px;font-weight:900;font-style:normal;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 4px}\n.sxBar2{height:13px;border-radius:99px;background:#EFE5D3;overflow:hidden;position:relative}\n.sxBar2 i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FFD25A,#F2A33A);transition:width .4s}\n.sxBar2.bl i{background:linear-gradient(90deg,#8FDDF7,#2C8FD0)}\n.sxSt{color:#F2A33A;letter-spacing:1px}.sxSt u{text-decoration:none;color:#E0D6C2}\n.sxX2{display:inline-block;background:#fff;color:#E8414B;border-radius:99px;padding:2px 10px;font-size:13px;font-weight:900;white-space:nowrap}\n.sxPtT{display:inline-flex;align-items:center;gap:3px;font-weight:900;color:#C27A1C}.sxPtT .sxCoin{width:18px;height:18px;font-size:10px}\n.sxTix{display:inline-flex;align-items:center;gap:3px;background:#FFF3D6;border-radius:99px;padding:1px 8px;font-weight:900;font-size:13px}.sxTix svg{width:22px;height:16px}.sxTix small{font-size:11px;color:#8A7A65}\n.sxOk{display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-weight:900;color:#2F8A2F}.sxOk svg{width:24px;height:24px}.sxOk small{font-size:11px}\n.sxNew{display:inline-block;background:#E8414B;color:#fff;border-radius:8px;padding:1px 8px;font-size:12px;font-weight:900}\n.sxSoon{display:inline-flex;flex-direction:column;align-items:center;font-size:11px;color:#8A7A65;font-weight:900}.sxSoon svg{width:22px;height:22px}\n.sxNote{font-size:12.5px;color:#8A7A65;line-height:1.6;padding:2px 6px}\n.sxBub2{position:relative;background:#fff;border:3px solid #E8B04A;border-radius:16px;padding:6px 12px;font-weight:900;font-size:14px;line-height:1.45;box-shadow:0 3px 6px rgba(0,0,0,.18)}\n.sxBub2 b{display:block;font-size:11px;color:#C27A1C}\n.sxBub2:before{content:\"\";position:absolute;left:-11px;top:50%;margin-top:-8px;border:8px solid transparent;border-right-color:#E8B04A;border-left:0}\n.tab .sxBub2{font-size:18px;padding:10px 16px}\n/* ---- トップ ---- */\n.sxHero{position:relative;height:300px;overflow:hidden;border-radius:0 0 26px 26px}\n.sxHeroBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}\n.sxOwl{position:absolute;left:3%;bottom:-6px;height:62%;max-height:210px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}\n.sxHana{position:absolute;right:5%;bottom:-6px;height:58%;max-height:195px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}\n.sxBub{position:absolute;left:12px;top:10px;max-width:62%;background:#fff;border:3px solid #E8B04A;border-radius:16px;padding:5px 12px;font-weight:900;font-size:13px;line-height:1.4;box-shadow:0 3px 6px rgba(0,0,0,.25);cursor:pointer}\n.sxBub b{display:block;font-size:11px;color:#C27A1C}\n.tab .sxMain.top .sxTabL{height:100%}.tab .sxHero{height:100%;border-radius:0}.tab .sxBub{font-size:19px;padding:10px 18px;top:18px;left:18px}.tab .sxBub b{font-size:14px}\n.tab .sxOwl{max-height:none;height:50%}.tab .sxHana{max-height:none;height:46%}\n.sxRank{display:flex;align-items:center;gap:10px;cursor:pointer}\n.sxRk{flex:1}.sxRkN{font-size:16px;font-weight:900}.sxRkN small{font-size:11px;color:#8A7A65;margin-left:8px}\n.sxRkS{font-size:12px;color:#8A7A65;margin-top:3px;display:flex;justify-content:space-between;align-items:center;gap:6px}\n.sxDaily{display:flex;align-items:center;gap:10px;width:100%;border-radius:20px;background:linear-gradient(90deg,#F7B733,#F0653C);border:3px solid #fff;box-shadow:0 4px 0 #C2541F;padding:6px 10px 6px 6px;color:#fff;text-align:left}\n.sxDaily img{width:46px;height:46px;border-radius:12px;background:#fff;border:2px solid #fff;object-fit:contain;padding:2px;flex:none}\n.sxDaily div{flex:1;line-height:1.25}.sxDaily small{font-size:12px;display:block}.sxDaily b{font-size:17px}\n.sxZg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px 8px}\n.sxZc{position:relative;background:#fff;border:3px solid var(--zc);border-radius:18px;overflow:hidden;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.12);display:flex;flex-direction:column}\n.sxZi{display:block;width:100%;height:70px;background-size:cover}\n.sxZc b{display:flex;align-items:center;padding:3px 6px 0;font-size:11.5px;line-height:1.2;min-height:2.5em}\n.sxZc i{font-style:normal;padding:0 6px 4px;font-size:11px;color:var(--zc);letter-spacing:1px;min-height:18px}\n.tab .sxZg{grid-template-columns:repeat(2,1fr);gap:10px}.tab .sxZi{height:84px}.tab .sxZc b{font-size:15px;padding:4px 10px 0;min-height:0}.tab .sxZc i{font-size:14px;padding:0 10px 6px}\n.sxNav{display:flex;gap:8px}.sxNav .sxBtn{flex:1;padding:10px 4px}\n/* ---- ゾーン ---- */\n.sxZHero{position:relative;height:230px;overflow:hidden;border-radius:0 0 26px 26px}\n.sxZHero img{width:100%;height:100%;object-fit:cover;display:block}\n.sxZName{position:absolute;left:12px;bottom:10px;background:var(--zc);color:#fff;border:3px solid #fff;border-radius:99px;padding:3px 16px;font-weight:900;font-size:16px;box-shadow:0 3px 6px rgba(0,0,0,.3)}\n.tab .sxMain.zone .sxTabL{display:flex;flex-direction:column}.tab .sxZHero{height:100%;flex:1;border-radius:0}.tab .sxZName{font-size:22px;padding:5px 24px}\n.sxSay{display:flex;align-items:center;gap:8px}.sxSay img{width:54px;height:54px;object-fit:contain;flex:none}\n.tab .sxMain.zone .sxSay{position:absolute;left:14px;right:14px;bottom:62px}.tab .sxSay img{width:86px;height:86px}\n.sxTabs{display:flex;gap:6px}\n.sxTabs button{flex:1;border-radius:99px;padding:7px 4px;font-weight:900;font-size:15px;background:#fff;border:3px solid #fff;box-shadow:0 3px 0 #CFC3AE;position:relative}\n.sxTabs button.on{background:var(--zc);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.25)}\n.tab .sxTabs button{font-size:18px;padding:9px 4px}\n.sxExL{display:flex;flex-direction:column;gap:9px}\n.sxEx{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:7px 10px 7px 7px;text-align:left;box-shadow:0 4px 0 #EADCC4;width:100%}\n.sxEx.isSoon{opacity:.55;filter:grayscale(.5)}\n.sxEx>img{width:62px;height:62px;border-radius:14px;background:radial-gradient(#fff,#EAF6FF);border:3px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.2);object-fit:contain;flex:none;padding:3px}\n.sxExT{flex:1;line-height:1.3}.sxExT b{font-size:16px;display:block}.sxExT em{font-style:normal;font-size:11.5px;color:#8A7A65;font-weight:700;display:block}\n.sxExM{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px;flex-wrap:wrap}.sxExM span:nth-child(2){color:#8A7A65;font-weight:900}\n.tab .sxEx>img{width:78px;height:78px}.tab .sxExT b{font-size:20px}.tab .sxExT em{font-size:14px}.tab .sxExM{font-size:14px}\n.sxMaster{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:6px 12px}\n.sxMaster>div{flex:1;font-size:13px;font-weight:900}.sxMaster .sxBar2{margin-top:3px}.sxMaster>span{font-size:13px;font-weight:900;color:#C27A1C;text-align:center;line-height:1.2}.sxMaster small{display:block;font-size:11px;color:#8A7A65}\n/* ---- カード ---- */\n.sxCZ{display:flex;gap:6px;padding:4px 12px;overflow-x:auto}.sxCz{flex:none;width:58px;border:3px solid #fff;background:#fff;border-radius:16px;box-shadow:0 2px 4px rgba(0,0,0,.2);padding:2px;text-align:center;opacity:.75}\n.sxCz.on{border-color:var(--zc);opacity:1}.sxCz img{width:100%;height:40px;object-fit:contain}.sxCz small{font-size:10px;font-weight:900}\n.sxCH{display:flex;align-items:center;gap:10px;padding:6px 14px}.sxCH b{color:var(--zc);font-size:17px}.sxCH>div{flex:1}.sxCH span{font-weight:900}\n.sxCB{padding:0 14px 6px;font-size:13px;font-weight:900;color:#6B5A44}.sxCB b{color:#C27A1C}\n.sxCg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 12px}\n.sxCd{position:relative;background:#fff;border:3px solid #fff;border-radius:18px;box-shadow:0 3px 0 #EADCC4,0 0 0 2px #F1D9AA;padding:6px;text-align:center}\n.sxCd.rare{background:#FFF8DD;box-shadow:0 3px 0 #E0B94A,0 0 0 3px #F2B33D}\n.sxCdI{position:relative;display:block;aspect-ratio:1;border-radius:12px;background:radial-gradient(#fff,#EAF6FF);overflow:hidden}.sxCdI img{width:100%;height:100%;object-fit:contain;padding:6px}\n.sxCd.no .sxCdI img{filter:grayscale(1) brightness(.4) blur(3px);opacity:.5}.sxCdI em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-style:normal;font-weight:900;color:#8A7A65}\n.sxCd b{display:block;font-size:12px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.sxCd u{position:absolute;left:-4px;top:-6px;background:#F2B33D;color:#fff;border-radius:8px;padding:0 8px;font-size:11px;text-decoration:none;font-weight:900}\n.tab .sxCg{grid-template-columns:repeat(4,1fr);gap:14px;padding:6px 22px}.tab .sxCd b{font-size:15px}.tab .sxCz{width:84px}.tab .sxCz img{height:56px}.tab .sxCH b{font-size:22px}\n/* ---- ごほうび ---- */\n.sxRwG{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:8px 12px}\n.sxRw{background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:6px 6px 8px;text-align:center;box-shadow:0 3px 0 #EADCC4;display:flex;flex-direction:column;gap:2px}\n.sxRw.ready{border-color:#4CB84C;background:#F4FFF0}.sxRw.xLk .sxRwI img{filter:grayscale(.85) brightness(.85)}\n.sxRwI{position:relative;height:120px;border-radius:14px;background:radial-gradient(#fff,#EAF6FF);display:flex;align-items:center;justify-content:center}.sxRwI>img{max-width:100%;max-height:100%;object-fit:contain}\n.sxRwT{position:absolute;right:4px;bottom:4px;width:44px;height:44px;border-radius:10px;border:2px solid #fff;background:#fff;object-fit:contain;box-shadow:0 2px 4px rgba(0,0,0,.25)}\n.sxRwTL{position:absolute;right:4px;bottom:46px;font-size:9px;font-style:normal;background:#4A3420;color:#fff;border-radius:6px;padding:0 4px}\n.sxRw b{font-size:14px;line-height:1.25}.sxRw em{font-style:normal;font-size:11px;color:#8A7A65;font-weight:700;line-height:1.35;min-height:2.7em}\n.sxRwA{margin-top:auto;padding-top:4px}.sxRP{display:flex;flex-direction:column;gap:3px}.sxRP small{font-size:10.5px;color:#8A7A65;font-weight:900;display:flex;align-items:center;gap:3px;justify-content:center;line-height:1.3}.sxRP small svg{width:14px;height:14px;flex:none}\n.tab .sxRwG{grid-template-columns:repeat(4,1fr);gap:14px;padding:10px 22px}.tab .sxRwI{height:150px}.tab .sxRw b{font-size:17px}.tab .sxRw em{font-size:13px}.tab .sxRP small{font-size:12px}\n.sxRkL{display:flex;flex-direction:column;gap:8px;padding:8px 12px}.sxRkR{display:flex;align-items:center;gap:10px;opacity:.6}.sxRkR.on{opacity:1}.sxRkR b{display:block;font-size:15px}.sxRkR small{display:block;font-size:11px;color:#8A7A65}.sxRkR em{display:block;font-style:normal;font-size:12px;color:#2F8A2F;font-weight:900}.sxRkR>div{flex:1}.sxRkR>svg{width:24px;height:24px}\n.sxRkL.m{padding:0}.sxRkL.m .sxRkR{padding:4px 0}\n.sxMain.rew .sxTabs{padding:6px 12px 0}.sxMain.rew .sxTabs button.on{background:#4CB84C}\n/* ---- もんだい：レベル ---- */\n.sxQHead{display:flex;align-items:flex-end;gap:10px;padding:6px 12px 0}.sxQHead img{width:74px;height:100px;object-fit:contain;flex:none}.sxQHead .sxBub2{flex:1;margin-bottom:22px}\n.tab .sxMain.qsel .sxTabL.qh{display:flex;align-items:center;justify-content:center;background:linear-gradient(#DDF1FF,#FFF8E8)}.tab .sxQHead{flex-direction:column;align-items:center;padding:0 30px}.tab .sxQHead img{width:210px;height:280px}.tab .sxQHead .sxBub2{margin:0 0 20px}.tab .sxQHead .sxBub2:before{display:none}\n.sxChips{display:flex;gap:6px;padding:4px 12px;overflow-x:auto;flex:none}.sxChip{flex:none;border-radius:99px;padding:4px 12px;font-weight:900;font-size:13px;background:#fff;border:3px solid var(--zc);color:#4A3420;white-space:nowrap}.sxChip.on{background:var(--zc);color:#fff}\n.tab .sxChips{padding:2px 0;flex-wrap:wrap}.tab .sxChip{font-size:16px;padding:5px 16px}\n.sxLvG{display:flex;flex-direction:column;gap:7px;padding:4px 12px}\n.tab .sxLvG{padding:0}\n.sxLv{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;padding:6px 12px 6px 8px;text-align:left;width:100%;box-shadow:0 3px 0 #EADCC4}\n.sxLv.sel{border-color:#F2A33A;background:#FFF8DD}.sxLv.xLk{opacity:.55}\n.sxLvI{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);line-height:1;flex:none}.sxLvI i{font-style:normal;font-size:11px}.sxLvI b{font-size:17px}\n.sxLvT{flex:1}.sxLvT b{font-size:16px;display:block;line-height:1.25}.sxLvT b small{display:block;font-size:11px;color:#8A7A65;font-weight:700}.sxLvT .sxBar2{height:9px;margin-top:4px}.sxLvH{display:flex;align-items:center;gap:3px;font-size:11px;color:#8A7A65;font-weight:900;margin-top:3px}.sxLvH svg{width:14px;height:14px;flex:none}\n.sxLvP{text-align:right;font-size:11px;color:#8A7A65}.sxLvP svg{width:22px;height:22px}\n.tab .sxLvT b{font-size:20px}.tab .sxLvT b small{font-size:13px;display:inline;margin-left:6px}\n.sxQN{display:flex;align-items:center;gap:8px;margin:2px 12px;flex-wrap:wrap}.sxQN>span:first-child{font-size:13px;font-weight:900}.sxQT{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:12px;color:#8A7A65;font-weight:900}.sxQT svg{width:24px;height:17px}\n.tab .sxQN{margin:0}\n.sxMain.qsel>.sxBtn.big,.sxMain.qsel .sxBtn.big{background:var(--bc,#F2A33A);margin:4px 12px 0;width:calc(100% - 24px)}.tab .sxMain.qsel .sxBtn.big{margin:4px 0 0;width:100%}\n/* ---- もんだい：出題 ---- */\n.sxQTop{display:flex;align-items:center;gap:8px;padding:2px 14px}.sxQTop .sxBar2{flex:1;height:14px}.sxQTop b{font-size:14px}\n.sxLvTag{display:inline-block;color:#fff;border-radius:99px;padding:1px 12px;font-size:13px;font-weight:900;white-space:nowrap;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.2)}\n.sxTimer{display:flex;align-items:center;gap:8px;padding:4px 14px;font-size:13px;font-weight:900}.sxTimer .sxBar2{flex:1;height:11px}.sxTimer b{font-size:18px;color:#E8414B}\n.sxMain.quiz,.sxMain.exp{padding-top:2px}\n.sxFig{margin:6px 14px;background:#fff;border:3px solid #F1D9AA;border-radius:20px;height:150px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px}.sxFig svg{max-height:100%;max-width:100%;width:auto;height:100%}\n.sxFig.z{background-size:cover;padding:0;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2)}\n.sxQBox{margin:6px 14px;padding:10px 14px;font-size:16.5px;line-height:1.65;font-weight:800;position:relative}.sxQBox p{margin:0}\n.sxQZ{position:absolute;left:12px;top:-10px;color:#fff;border-radius:99px;padding:0 10px;font-size:11px;font-weight:900}\n.sxChG{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:6px 14px}\n.sxCh{position:relative;background:#fff;border:3px solid #F1D9AA;border-radius:18px;padding:10px 8px;font-weight:900;font-size:15px;line-height:1.35;box-shadow:0 4px 0 #EADCC4;min-height:54px;display:flex;align-items:center;justify-content:center;text-align:center}\n.sxCh svg{position:absolute;right:6px;top:6px;width:22px;height:22px}\n.sxCh.ok{background:#E8FAE0;border-color:#4CB84C;box-shadow:0 4px 0 #2F8A2F}.sxCh.ng{background:#FFE6E6;border-color:#E8414B;box-shadow:0 4px 0 #A82A33}.sxCh.dim{opacity:.5}.sxCh.hid{opacity:.22}\n.sxCh.sw i{display:block;width:46px;height:46px;border-radius:50%;border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}\n.sxChG.sw{grid-template-columns:repeat(4,1fr)}\n.sxFb{margin:6px 14px;border-radius:18px;padding:8px 14px;font-size:14px;line-height:1.55}.sxFb b{display:block;font-size:17px}.sxFb span{display:block;font-weight:900}.sxFb p{margin:2px 0 0;font-weight:700}\n.sxFb.ok{background:#E8FAE0;border:3px solid #4CB84C}.sxFb.ng{background:#FFF0E0;border:3px solid #F2A33A}.sxFb.ok b{color:#2F8A2F}.sxFb.ng b{color:#C2541F}\n.sxQAct{display:flex;gap:10px;padding:4px 14px}.sxQAct .sxBtn{flex:1}\n.sxMain.quiz>.sxBtn.big,.sxMain.exp>.sxBtn.big{margin:6px 14px;width:calc(100% - 28px)}\n.sxMas{display:flex;align-items:flex-end;gap:8px;padding:4px 14px}.sxMas img{width:70px;height:84px;object-fit:contain;flex:none}.sxMas .sxBub2{margin-bottom:14px}\n.tab .sxQG{display:grid;grid-template-columns:40% 60%;gap:12px;padding:6px 18px;height:calc(100% - 70px)}.tab .sxQL{display:flex;flex-direction:column;justify-content:space-between;min-height:0}.tab .sxQL .sxFig{margin:0;height:auto;flex:1;min-height:0}.tab .sxQL .sxMas{padding:6px 0 0}.tab .sxQL .sxMas img{width:110px;height:140px}\n.tab .sxQR{overflow-y:auto;display:flex;flex-direction:column;gap:6px}.tab .sxQBox{margin:8px 0 6px;font-size:22px}.tab .sxChG{padding:4px 0}.tab .sxCh{font-size:20px;min-height:76px}.tab .sxFb{margin:4px 0}.tab .sxQAct{padding:4px 0}.tab .sxMain.quiz .sxQR>.sxBtn.big{margin:4px 0}\n.tab .sxQTop{padding:4px 18px}.tab .sxTimer{padding:2px 18px}\n/* ---- けっか ---- */\n.sxResH{text-align:center;padding:10px 14px 2px}.sxRibbon{display:inline-block;background:linear-gradient(#FF8E8E,#E8414B);color:#fff;font-size:21px;font-weight:900;padding:5px 26px;border-radius:12px;border:3px solid #fff;box-shadow:0 4px 0 #A82A33}.sxResS{font-size:15px;font-weight:900;margin-top:8px}\n.sxResT{padding:6px 14px}.sxResRow{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:5px 0;border-bottom:2px dashed #F1D9AA}.sxResRow b{color:#C27A1C;white-space:nowrap}\n.sxResTot{display:flex;justify-content:space-between;align-items:center;padding-top:6px;font-weight:900}.sxResTot .sxPtT{font-size:26px;color:#E8414B}.sxResTot .sxCoin{width:26px;height:26px;font-size:14px}\n.sxResCard{display:flex;align-items:center;gap:12px;background:#FFF8DD;border-color:#F2A33A;cursor:pointer}.sxResCard .sxCdI.big{width:90px;flex:none;border:4px solid #F2B33D}.sxResCard small{font-size:12px;color:#8A7A65;display:block}.sxResCard b{font-size:19px;display:block}.sxResCard em{font-style:normal;font-size:12px;color:#8A7A65}\n.sxNewT{position:absolute;left:-2px;top:-2px;background:#E8414B;color:#fff;font-size:11px;font-weight:900;border-radius:8px;padding:0 6px;z-index:2}\n.sxBadgeN{background:#FFF8DD;font-weight:900;font-size:14px}.sxRankUp{display:flex;align-items:center;gap:10px;background:#EAF6FF;border-color:#3C93DC}.sxRankUp small{font-size:12px;color:#3C93DC;font-weight:900;display:block}.sxRankUp b{font-size:19px;display:block}.sxRankUp em{font-style:normal;font-size:12px;color:#6B5A44}\n.sxInfo{background:rgba(60,147,220,.92);color:#fff;border-radius:16px;padding:8px 14px;font-size:13px;line-height:1.55;border:3px solid #fff}\n.sxResB{display:flex;gap:8px}.sxResB .sxBtn{flex:1;padding:10px 4px;font-size:15px}\n.sxResArt{display:flex;align-items:flex-end;gap:8px}.sxResArt img{width:74px;height:90px;object-fit:contain}.sxResArt .sxBub2{margin-bottom:18px}\n.tab .sxMain.res .sxTabL.resL{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:linear-gradient(#DDF1FF,#FFF8E8)}.tab .sxResH{padding-top:0}.tab .sxRibbon{font-size:34px;padding:8px 36px}.tab .sxResS{font-size:22px}.tab .sxResArt img{width:200px;height:250px}.tab .sxResRow{font-size:17px}.tab .sxResTot .sxPtT{font-size:34px}\n/* ---- モーダル ---- */\n#sxModal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(74,63,53,.5);padding:14px}\n#sxModal.on{display:flex}\n.sxMCard{background:#FFFDF8;border:4px solid #F1D9AA;border-radius:26px;padding:16px 16px 14px;width:min(440px,100%);max-height:100%;overflow-y:auto;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}\n.sxMod.gold .sxMCard{border-color:#F2B33D;background:linear-gradient(#FFF8DD,#fff)}\n.sxMT{font-size:20px;margin:6px 0}.sxMP{font-size:14.5px;line-height:1.65;margin:4px 0 8px}.sxMS{font-size:12px;color:#8A7A65;margin:2px 0}\n.sxMArt{margin:0 auto 4px;width:150px;height:130px;display:flex;align-items:center;justify-content:center;position:relative}.sxMArt img{max-width:100%;max-height:100%;object-fit:contain}\n.sxMArt.xcard{width:170px;height:170px;border-radius:24px;background:radial-gradient(#fff,#EAF6FF);border:5px solid var(--zc);box-shadow:0 4px 10px rgba(0,0,0,.25)}.sxMArt.xcard.rare{border-color:#F2B33D;background:radial-gradient(#fff,#FFF1B8)}.sxMArt.xcard img{padding:10px}.sxMArt em{position:absolute;font-size:60px;font-style:normal;font-weight:900;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4)}\n.sxRare{background:#F2B33D;color:#fff;border-radius:8px;padding:0 8px;font-size:13px}\n.sxMBtns{display:flex;gap:10px;justify-content:center;margin-top:8px}.sxMBtns .sxBtn{flex:1;max-width:210px}\n.sxPickH{display:flex;align-items:center;gap:10px;text-align:left}.sxPickH img{width:64px;height:64px;object-fit:contain;flex:none}.sxPickH b{font-size:18px;display:block}.sxPickH small{font-size:12px;color:#8A7A65;font-weight:700;display:block}\n.sxPick{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;margin:6px 0}\n.sxPickB{border-radius:18px;background:#fff;border:3px solid #F2A33A;box-shadow:0 4px 0 #C27A1C;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:1px}.sxPickB b{font-size:19px;color:#E0A000}.sxPickB small{font-size:11px}.sxPickB.xLk{border-color:#EADFCF;box-shadow:0 4px 0 #CFC3AE;opacity:.6}.sxPickB.xLk b{color:#8A7A65}\n/* ---- 実験 ---- */\n.sxExTop{display:flex;align-items:center;gap:8px;padding:2px 14px 4px}.sxExTop b{font-size:16px}\n.sxStage{margin:4px 14px;background:transparent;border:0;border-radius:22px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;flex-direction:column}\n.sxStage .sxSvg{width:100%;max-height:300px;height:auto}\n.sxGs{width:100%;padding:4px 6px 2px;display:flex;flex-direction:column;gap:4px}.sxG{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:900}.sxG span{width:130px;flex:none}.sxG .sxBar2{flex:1}\n.sxGg{font-size:12.5px;font-weight:800;line-height:1.5}.sxLeft{font-size:12px;font-weight:800;color:#6B5A44}\n.sxMis{margin:4px 14px;padding:8px 12px;background:#FFF3D6;border-radius:16px;font-size:14.5px;line-height:1.6;font-weight:800}.sxMis p{margin:2px 0 0}.sxMisN{display:inline-block;background:#F2A33A;color:#fff;border-radius:99px;padding:0 10px;font-size:11px;font-weight:900}\n.sxCtl{display:flex;flex-direction:column;gap:8px;padding:4px 14px}\n.sxSl{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:900}.sxSl>span{width:44%;flex:none;line-height:1.3}.sxSl b{width:62px;text-align:right;flex:none;font-size:14px;color:#C27A1C}.sxSl.big{padding:4px 14px}\n.sxSl input[type=range]{flex:1;height:34px;accent-color:var(--zc);-webkit-appearance:none;appearance:none;background:transparent}\n.sxSl input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:99px;background:#E6D9C2}.sxSl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;border-radius:50%;background:#fff;border:5px solid var(--zc);margin-top:-10px;box-shadow:0 2px 5px rgba(0,0,0,.35)}\n.sxSl input[type=range]:disabled{opacity:.5}\n.sxTg{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:900;padding:2px 14px}.sxTg>span{width:30%;flex:none}.sxTg .sxSeg{display:flex;gap:6px;flex:1;flex-wrap:wrap}.sxCtl .sxTg{padding:0}.sxCtl .sxSl{padding:0}\n.sxMain.exp>.sxBtn,.sxMain.exp .sxBtn.v.sm{margin:4px 14px}.sxMain.exp>.sxChG,.sxMain.exp>.sxFb,.sxMain.exp>.sxTray,.sxMain.exp>.sxAsmOpt,.sxMain.exp>.sxNotes{margin-left:14px;margin-right:14px}\n.tab .sxLabG{display:grid;grid-template-columns:50% 50%;gap:14px;padding:6px 18px;height:calc(100% - 44px)}.tab .sxLabL{display:flex;flex-direction:column;min-height:0}.tab .sxLabL .sxStage{margin:0;flex:1;min-height:0}.tab .sxLabR{overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:0;padding-bottom:10px}\n.tab .sxLabR .sxMis,.tab .sxLabR .sxChG,.tab .sxLabR .sxFb,.tab .sxLabR .sxCtl,.tab .sxLabR .sxTg,.tab .sxLabR .sxTray,.tab .sxLabR .sxAsmOpt,.tab .sxLabR .sxNotes,.tab .sxLabR .sxSl.big{margin-left:0;margin-right:0;padding-left:0;padding-right:0}\n.tab .sxLabR .sxMis{padding:10px 14px;font-size:18px}.tab .sxLabR .sxBtn.v.sm,.tab .sxLabR .sxBtn.big{margin:0;width:100%}.tab .sxSl,.tab .sxTg{font-size:16px}.tab .sxG,.tab .sxGg{font-size:15px}.tab .sxSl b{font-size:17px;width:84px}\n.tab .sxStage .sxSvg{max-height:none;height:100%}.tab .sxExTop{padding:4px 18px}.tab .sxExTop b{font-size:20px}\n.tab .sxMain.exp .sxLabR .sxFb{margin:0}\n.sxMain.exp .sxTimer{padding:2px 14px}\n/* 炎色反応 */\n.sxStage.fl{background:linear-gradient(#1B1F3A,#2D2250);border:3px solid #5B4B8A;padding:6px}\n.sxFlW{position:relative;display:flex;flex-direction:column;align-items:center}.sxBurner{filter:drop-shadow(0 0 16px rgba(255,255,255,.12))}.sxFl{transform-origin:50% 90%;animation:sxFlick .5s ease-in-out infinite alternate}\n@keyframes sxFlick{from{transform:scale(1,1)}to{transform:scale(.96,1.05)}}\n.sxFlD{position:absolute;left:-6px;top:56px;text-align:center;color:#fff;font-size:12px;font-weight:900;display:flex;flex-direction:column;align-items:center}\n.sxStage.fl .sxBtn.go{margin-top:8px;width:auto}\n.sxNotes{background:#fff;border:3px solid #F1D9AA;border-radius:18px;padding:6px 10px;font-size:12.5px;font-weight:800}.sxNotes>div{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}\n.sxNt{display:inline-flex;align-items:center;gap:4px;background:#F4F0E6;border-radius:99px;padding:2px 8px 2px 2px;font-size:11px;color:#8A7A65}.sxNt i{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#D9D0BE;color:#fff;font-style:normal;font-weight:900;align-items:center;justify-content:center;font-size:11px}.sxNt.on{background:#fff;color:#4A3420;box-shadow:inset 0 0 0 2px var(--fc)}.sxNt.on i{background:var(--fc);text-shadow:0 1px 2px rgba(0,0,0,.5)}\n/* 車 */\n.sxStage.asm{background:linear-gradient(#DDF1FF,#EEF6FA);border:3px solid #fff;padding:6px}.sxAsmW{position:relative;display:flex;justify-content:center;width:100%}.sxAsmW.shake{animation:sxShk .3s}@keyframes sxShk{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}\n.sxAsm{width:100%;max-width:640px;height:auto}.sxGhost{position:absolute;right:6px;top:2px;background:#fff;border:3px solid #F2A33A;border-radius:99px;padding:1px 12px;font-size:13px;font-weight:900}\n.sxAsmMeta{font-size:13px;font-weight:900;color:#6B5A44;margin-top:2px}\n.sxTray{display:grid;grid-template-columns:repeat(auto-fit,minmax(60px,1fr));gap:7px;padding:4px 14px}\n.sxPart{background:#fff;border:3px solid #F1D9AA;border-radius:16px;box-shadow:0 3px 0 #EADCC4;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:2px}.sxPart span{width:44px;height:40px;display:flex;align-items:center;justify-content:center}.sxPart img{max-width:100%;max-height:100%;object-fit:contain}.sxPart b{font-size:11px;white-space:nowrap}\n.sxPart.hint{border-color:#F2A33A;background:#FFF3C8;animation:sxGlow .8s infinite alternate}@keyframes sxGlow{to{box-shadow:0 0 0 4px rgba(242,163,58,.45)}}\n.sxBody{display:block;width:44px;height:26px;border-radius:12px 12px 6px 6px;border:3px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}.sxSeat{display:block;width:30px;height:34px;border-radius:10px;background:#B9773A;border:3px solid #7A4A1E}\n.sxAsmOpt{display:flex;flex-direction:column;gap:6px;padding:2px 14px;font-size:13px;font-weight:900}.sxAsmOpt>div{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.sxAsmOpt>div>span{width:78px;flex:none}\n.sxAsmOpt>div.sxPerf{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:4px}.sxPerf .sxG{width:100%}\n.sxSw{width:30px;height:30px;border-radius:50%;border:3px solid rgba(255,255,255,.8);box-shadow:0 2px 4px rgba(0,0,0,.35)}.sxSw.on{border-color:#4A3420}\n.sxPerf{display:flex;flex-direction:column;gap:3px;margin-top:2px}.sxPerf .sxG span{width:64px}\n.sxInspG{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 14px}.sxInsp{position:relative;background:#E6EEF3;border:4px solid #fff;border-radius:18px;padding:4px;box-shadow:0 3px 0 #BFD0DA}.sxInsp.sel{border-color:#E8414B;background:#FFE6E6}.sxInsp svg{width:100%;height:auto}.sxInsp i{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:13px;color:#E8414B;font-style:normal;font-weight:900}\n/* エンジン */\n.sxStage.eng{background:linear-gradient(#10162E,#1F2A50);border:3px solid #3A4780;padding:6px}.sxStage.eng svg{max-height:380px;width:100%;height:auto}.tab .sxStage.eng svg{max-height:none;height:100%;width:100%}\n/* ---- 画面の 演出 ---- */\n.sxFx{position:fixed;inset:0;z-index:92}\n.sxFx.fw{pointer-events:none;background:transparent}\n#sxFw{background:rgba(10,14,40,.0)}\n.sxRkSky{position:absolute;inset:0;background:linear-gradient(#0E1530,#4A7BD6 70%,#BFE5FA);overflow:hidden;display:flex;justify-content:center}.sxRkCount{position:absolute;top:18%;left:0;right:0;text-align:center;color:#fff;font-size:44px;font-weight:900;text-shadow:0 3px 8px rgba(0,0,0,.5);z-index:2}\n.sxRkImg{position:absolute;bottom:-20%;height:38%;animation:sxUp 3.8s 1.5s ease-in forwards}.sxRkSm{position:absolute;bottom:-4%;width:160px;height:120px;border-radius:50%;background:radial-gradient(#fff,rgba(255,255,255,0) 70%);animation:sxSm 4s 1.4s ease-out forwards;opacity:0}\n@keyframes sxUp{to{bottom:130%}}@keyframes sxSm{20%{opacity:1}to{opacity:0;transform:scale(3)}}\n.sxMtSky{position:absolute;inset:0;background:linear-gradient(#050A24,#1B2A6B);color:#fff;padding-top:calc(24px + env(safe-area-inset-top));text-align:center}.sxMtSky b{font-size:22px;display:block}.sxMtSky span{font-size:30px;font-weight:900;color:#FFD84A}\n.sxMtS{position:absolute;right:-90px;width:80px;height:80px;animation:sxFly 5.2s linear both;z-index:3}.sxMtS img{width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}.sxMtS.got{animation-play-state:paused;opacity:0;transform:scale(2);transition:.4s}\n@keyframes sxFly{from{right:-90px;transform:translateY(0)}to{right:110%;transform:translateY(120px)}}\n@media (prefers-reduced-motion:reduce){.sxFl,.sxMtS{animation:none}}\n#sc700 .sxPh>*,#sc700 .sxTabR>*,#sc700 .sxExL>*,#sc700 .sxLvG>*,#sc700 .sxLabR>*,#sc700 .sxQR>*,#sc700 .sxRkL>*,#sc700 .sxCtl>*{flex-shrink:0}\n";
 document.head.appendChild(css);
 { const css2 = document.createElement('style'); css2.id = 'sc700css2'; css2.textContent = "\n/* v6.71 からだの しくみ */\n.sxBoW{position:relative;width:100%;max-width:380px;aspect-ratio:1/1.02;margin:0 auto;background:linear-gradient(#FFF8E8,#EAF6FF);border-radius:18px;overflow:hidden}\n.sxBoSvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}\n.sxBoCap{position:absolute;left:0;right:0;top:2px;text-align:center;font-size:12px;font-weight:900;color:#8A7A65;z-index:2;pointer-events:none}\n.sxBo{position:absolute;transform:translate(-50%,-50%);background:#fff;border:3px solid #F2A33A;border-radius:99px;padding:5px 12px;font-weight:900;font-size:14px;white-space:nowrap;box-shadow:0 3px 0 #C27A1C;z-index:3;display:flex;align-items:center;gap:4px}\n.sxBo.on{background:#E8FAE0;border-color:#4CB84C;box-shadow:0 3px 0 #2F8A2F}\n.sxBo i{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#4CB84C;color:#fff;font-style:normal;font-size:12px;align-items:center;justify-content:center}\n.sxBoQ{display:flex;align-items:center;justify-content:center;padding:16px}.sxBoQ img{width:150px;height:150px;object-fit:contain}\n.tab .sxBo{font-size:17px;padding:7px 16px}.tab .sxBoQ img{width:220px;height:220px}\n"; document.head.appendChild(css2); }
+{ const css3 = document.createElement('style'); css3.id = 'sc700css3'; css3.textContent = "/* v6.72 イラスト版 */\n#sc700 .sxMain.hallscreen{position:absolute;inset:0;padding:0;overflow:hidden;display:block;background:#1a2040}\n#sc700.sxTopFull .sxBarT{position:absolute;left:0;right:0;top:0;background:linear-gradient(rgba(10,14,40,.62),rgba(10,14,40,0));padding-bottom:22px;z-index:8}\n.sxHall{position:absolute}\n.sxHallBg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none;user-select:none}\n.sxHall button{position:absolute;margin:0;padding:0;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}\n.sxHd{border-radius:calc(var(--k)*34px)}\n.sxHd:active,.sxHp:active{background:rgba(255,236,150,.28);box-shadow:inset 0 0 0 3px rgba(255,255,255,.8)}\n.sxHp{border-radius:50%}\n.sxHl{position:absolute;display:flex;align-items:center;justify-content:center;gap:.4em;pointer-events:none;font-weight:900;color:#FFF8E0;text-shadow:0 1px 0 #5a3410,0 0 4px rgba(60,30,0,.9);font-size:var(--f);line-height:1;white-space:nowrap}\n.sxHl i{font-style:normal;font-size:.74em;letter-spacing:1px;color:#FFE08A}\n.sxHpl{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.94);border:calc(var(--k)*5px) solid #F2B33D;border-radius:99px;padding:.12em .7em;font-weight:900;font-size:var(--f);color:#4A3420;white-space:nowrap;pointer-events:none;box-shadow:0 2px 4px rgba(0,0,0,.3);line-height:1.25}\n.sxHpl small{font-size:.74em;color:#8A7A65;margin-left:.3em}\n.sxHo{border-radius:30%}\n.sxHb{position:absolute;background:#fff;border:3px solid #E8B04A;border-radius:16px;padding:.3em .8em;font-weight:900;font-size:var(--f);line-height:1.4;box-shadow:0 3px 6px rgba(0,0,0,.3);pointer-events:none;transform:translateY(-100%)}\n.sxHb b{display:block;font-size:.72em;color:#C27A1C}\n.sxHb:after{content:\"\";position:absolute;left:26%;bottom:-11px;border:9px solid transparent;border-top-color:#E8B04A;border-bottom:0}\n.sxHrank{position:absolute;display:flex;align-items:center;gap:.6em;padding:.25em .7em;border-radius:18px;background:rgba(255,253,246,.94);border:3px solid #F1D9AA;box-shadow:0 4px 10px rgba(0,0,0,.25);cursor:pointer;font-size:var(--f);overflow:hidden}\n.sxHrank>svg{flex:none;height:78%;width:auto}.sxHrank .sxTix svg{width:22px;height:16px}\n.sxHrk{flex:1;min-width:0}\n.sxHrank .sxRkN{font-size:1.08em}.sxHrank .sxRkN small{font-size:.72em}.sxHrank .sxRkS{font-size:.78em;margin-top:2px}\n.sxHrank .sxBar2{height:.75em;margin-top:2px}\n.sxHall .sxHdaily{position:absolute;display:flex;align-items:center;gap:.6em;padding:0 .9em 0 .35em;border-radius:99px;background:linear-gradient(90deg,#F7B733,#F0653C);border:3px solid #fff;box-shadow:0 3px 0 #C2541F,0 4px 10px rgba(0,0,0,.25);color:#fff;font-size:calc(var(--f)*.92);font-weight:900;text-align:left;white-space:nowrap}\n.sxHdaily img{height:84%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:50%;padding:2px;flex:none}\n.sxHdaily span{flex:1;line-height:1.12;overflow:hidden;text-overflow:ellipsis}.sxHdaily small{display:block;font-size:.72em;opacity:.95;font-weight:800}\n.sxHdaily em{font-style:normal;background:#fff;color:#E8414B;border-radius:99px;padding:.05em .6em;font-size:.82em;flex:none}\n/* 炎・図 */\n.sxFlk{transform-box:fill-box;transform-origin:50% 100%;animation:sxFlick .55s ease-in-out infinite alternate}\n@keyframes sxFlick{from{transform:scale(1,1)}to{transform:scale(.95,1.05)}}\n.sxStage.fl{background:#0b0d16;padding:0;border:3px solid #5B4B8A;overflow:hidden}\n.sxStage.fl .sxSvg{max-height:none}\n.sxNt i{background:transparent!important;box-shadow:none}.sxNt i img{width:100%;height:100%;object-fit:contain}\n.sxNt.on{box-shadow:inset 0 0 0 2px var(--fc)}\n.sxCh.sw{min-height:74px}.sxCh.sw img{height:62px;width:auto;object-fit:contain}\n.sxInspImg{width:100%;height:auto;display:block}\n.sxBo{padding:3px 12px 3px 5px}.sxBo img{height:2.3em;width:auto;max-width:3.2em;object-fit:contain;flex:none}.sxBo span{white-space:nowrap}\n.sxBoQ img{width:170px;height:170px}\n.sxStage .sxSvg{border-radius:20px}\n.sxStage.asm .sxAsm{border-radius:14px}\n.sxHrank .sxTix{white-space:nowrap;font-size:.8em;padding:0 .5em}.sxHrank .sxTix small{white-space:nowrap}\n.sxHrank{font-size:calc(var(--f)*.92)}\n.sxHall .sxHrank .sxRkS{display:flex;justify-content:space-between;align-items:center;gap:.4em}\n\n/* ゾーン：ぜんめん イラスト */\n#sc700.sxZoneBg{background:#1a1a22 var(--zbg) var(--zpos,50% 40%)/cover no-repeat}\n#sc700.sxZoneBg .sxBarT{background:linear-gradient(rgba(10,14,40,.6),rgba(10,14,40,0));padding-bottom:18px}\n.sxZSpace{position:relative;height:215px}\n.sxZSpace .sxZName{position:absolute;left:12px;top:62px;background:var(--zc);color:#fff;border:3px solid #fff;border-radius:99px;padding:3px 16px;font-weight:900;font-size:16px;box-shadow:0 3px 6px rgba(0,0,0,.3)}\n.sxZSpace .sxSay{position:absolute;left:10px;right:10px;bottom:4px;margin:0}\n.sxZSpace .sxSay img{width:50px;height:50px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}\n.sxZP{background:linear-gradient(rgba(255,248,232,0),rgba(255,248,232,.6) 22px);padding-top:18px;min-height:calc(100% - 215px)}\n.sxZP .sxEx,.sxZR .sxEx,.sxZP .sxMaster,.sxZR .sxMaster{background:rgba(255,255,255,.93)}\n.sxZP .sxTabs button.on{background:var(--zc)}\n.tab #sc700 .sxZSpace,.tab .sxZSpace{position:absolute;inset:0;height:auto}\n.tab .sxZSpace .sxZName{left:18px;top:auto;bottom:18px;font-size:22px;padding:5px 24px}\n.tab .sxZSpace .sxSay{left:14px;right:14px;bottom:78px}\n.tab .sxZSpace .sxSay img{width:96px;height:96px}\n.tab .sxZL{background:transparent}\n.tab .sxMain.zone .sxZR{background:rgba(255,248,232,.9);border-left:6px solid rgba(241,217,170,.9)}\n.tab .sxMain.zone .sxSay{position:absolute}\n.sxHrank .sxRkS{font-size:.72em}.sxHrank .sxTix{padding:0 .3em;flex:none}.sxHrk{overflow:hidden}\n"; document.head.appendChild(css3); }
 })();
