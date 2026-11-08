@@ -1,5 +1,5 @@
 /* =====================================================================
-   まなびタウン v4.2：たてものの きのう
+   まなびタウン v4.2：たてものの きのう（v7.0：ホテルを 全面アップデート）
    畑・公園・図書館・学校・パーキング・病院・市やくしょ・ホテル
    （おまけ：はくぶつかん・風車）
    ※ app.js の あとに 読みこむ。セーブは save.fac に 追加するだけ
@@ -21,7 +21,7 @@ function F(){
   f.farm = f.farm || {}; f.park = f.park || {ids:[], until:0, played:false};
   f.school = f.school || {day:'', ids:[], done:false, exp:{}};
   f.parking = f.parking || {}; f.books = f.books || []; f.hall = f.hall || 0;
-  f.tour = f.tour || []; f.pals = f.pals || {};
+  f.tour = f.tour || []; f.pals = f.pals || {}; f.htl = f.htl || {};
   return f;
 }
 const MIN = 60000, now = () => Date.now();
@@ -268,81 +268,395 @@ async function openHall(key){
 }
 
 /* =====================================================================
-   ホテル：かんこうきゃくと なかよく なる → レターで 来やすく
+   ホテル v7.0：豪華な外観 → 部屋 → 観光客と仲良くなる → レターで来やすく
+   （仕様書 hotel_spec_v0.3：部屋8種・レア度別確率・おみやげ・ホテル限定品）
    ===================================================================== */
-const TOUR_MAX = 12, TOUR_CD = 10*MIN;
-const TOUR_LINES = ['この まち すてきだね！ 来て よかった〜','きょうは どこを 見に いこうかな？','おみやげ なにが いいと おもう？','この まちの おすすめの ばしょ おしえて！',
-  'ホテルの ベッド ふかふかだったよ','まちの みんな やさしいね','しゃしん いっぱい とっちゃった！','つぎの おやすみも また 来たいなあ'];
-const tourCount = () => Math.min(TOUR_MAX, cellsOf('hotel').reduce((n,k) => n + 1 + Math.min(3, glv(k)), 0));
-function pickTourist(){
+const TOUR_CD = 10*MIN, HIMG = './assets/images/hotel/';
+const himg = n => HIMG + n + '.webp';
+const hurl = n => { try{ return new URL(himg(n), location.href).href; }catch(e){ return himg(n); } };   // CSS変数用（絶対パス）
+const isL = () => matchMedia('(orientation: landscape) and (min-width: 700px)').matches;
+const hasHome = (s, ...h) => h.includes(s.home);
+/* 部屋：g＝解放グレード／P＝[ふつう, ちょっとレア, レア, ちょうレア]（％） */
+const ROOMS = [
+  {id:'std',    n:'スタンダードルーム',   s:'スタンダード',     g:0, P:[70,25,5,0],     like:'家に住む動物',       pool:s => hasHome(s,'house')},
+  {id:'wa',     n:'和室',                 s:'和室',             g:0, P:[65,28,7,0],     like:'和風の動物',         pool:s => hasHome(s,'bamboo') || ['tanuki','fox','frog','sparrow','hedgehog'].includes(s.id)},
+  {id:'ocean',  n:'オーシャンビュールーム', s:'オーシャン', g:1, P:[62,28,9.5,0.5], like:'水辺の動物',         pool:s => hasHome(s,'water')},
+  {id:'forest', n:'森のコテージルーム',   s:'森のコテージ',     g:1, P:[62,28,9.5,0.5], like:'森の動物',           pool:s => hasHome(s,'tree','log')},
+  {id:'sky',    n:'スカイテラスルーム',   s:'スカイテラス',     g:2, P:[58,30,11,1],    like:'鳥のなかま',         pool:s => hasHome(s,'bird')},
+  {id:'snow',   n:'雪見ルーム',           s:'雪見',             g:2, P:[58,30,11,1],    like:'寒い所の動物',       pool:s => ['penguin','seal','shima','bear','alpaca','owl'].includes(s.id)},
+  {id:'suite',  n:'スイートルーム',       s:'スイート',         g:3, P:[45,35,18,2],    like:'いろいろな動物',     pool:() => true},
+  {id:'royal',  n:'ロイヤルスイート',     s:'ロイヤル',         g:3, P:[30,40,27,3],    like:'すごいお客さんも…？', pool:() => true}
+];
+const ROOM = id => ROOMS.find(r => r.id===id);
+/* 外観イラストの 窓の 位置（％：left, top, width, height） */
+const SPOTS_P = {suite:[10.4,13.3,29,13], royal:[56.8,13.3,29,13], sky:[9.9,28.3,29,13.7], snow:[56.8,28.3,29,13.7],
+  ocean:[9.9,44,29,13.6], forest:[56.8,44,29,13.6], std:[10,59.6,21,12.4], wa:[66,59.6,20,12.4]};
+const SPOTS_L = {std:[19.7,22.8,12,15.7], wa:[35.6,22.8,12.2,15.7], ocean:[51.8,22.8,11.8,15.7], forest:[68,22.8,12.2,15.7],
+  sky:[19.7,41.4,12,15.7], snow:[35.6,41.4,12.2,15.7], suite:[51.8,41.4,11.8,15.7], royal:[68,41.4,12.2,15.7]};
+const FR_MAX = {1:3, 2:3, 3:4, 4:5};
+const RAR_C = {1:'#B8A48C', 2:'#2F86C6', 3:'#9B4FD0', 4:'#E0A400'};
+/* おみやげ（ホテル限定）。grp＝好きな物の グループ */
+const SOUV = [
+  {id:'sv_postcard',  n:'まちの絵はがき',     p:60,  grp:'scene'},
+  {id:'sv_cookie',    n:'まちのクッキー',     p:80,  grp:'sweet'},
+  {id:'sv_bouquet',   n:'花たば',             p:120, grp:'flower'},
+  {id:'sv_keyholder', n:'ご当地キーホルダー', p:150, grp:'goods'},
+  {id:'sv_cake',      n:'特製ケーキ',         p:250, grp:'sweet'},
+  {id:'sv_omamori',   n:'金のおまもり',       p:600, grp:'all'}
+];
+const GRP = {scene:{h:'きれいな景色が好き',       i:'絵はがき'},
+             sweet:{h:'甘い物が大好き',           i:'クッキー・ケーキ'},
+             flower:{h:'お花が大好き',            i:'花たば'},
+             goods:{h:'かわいい小物を集めてる',   i:'キーホルダー'}};
+const SPECIAL = [
+  {id:'itm_roomservice', n:'ルームサービス',           p:200,  g:0, d:'お客さん1人の仲良し度が＋1（1人1日1回）'},
+  {id:'itm_goldbell',    n:'ゴールドベル',             p:1200, g:1, d:'24時間、レア以上のお客さんが来やすくなる（×1.5）'},
+  {id:'itm_htlinvite',   n:'ホテルの招待状',           p:2000, g:2, d:'空いている部屋に、そうじ時間なしでお客さんを呼ぶ（その部屋の上位2段階のレア度だけ）'},
+  {id:'itm_palletter',   n:'仲良しレター',             p:2500, g:3, d:'仲良しリストから1人選んで、必ず住民として来てもらう（住む家が必要）'}
+];
+const SV = id => SOUV.find(x => x.id===id) || SPECIAL.find(x => x.id===id);
+const TOUR_LINES = ['この町、すてきだね！来てよかった〜','今日はどこを見に行こうかな？','この町のおすすめの場所、教えて！',
+  'ホテルのベッド、ふかふかだったよ','町のみんな、やさしいね','写真をいっぱい撮っちゃった！','次のお休みも、また来たいなあ','このお部屋、とっても気に入ったよ'];
+
+function HT(){
+  const f = F(), h = f.htl || (f.htl = {});
+  h.clean = h.clean || {}; h.bag = h.bag || {}; h.palList = h.palList || []; h.memo = h.memo || {}; h.bell = h.bell || 0;
+  return h;
+}
+const hGrade = () => maxGlv('hotel');
+const openRooms = () => ROOMS.filter(r => r.g <= hGrade());
+const cleanMs = () => Math.max(0.4, 1 - 0.2*Math.max(0, cellsOf('hotel').length - 1)) * 30*MIN;
+const guestIn = id => F().tour.find(t => t.room===id);
+const frMax = t => FR_MAX[SP(t.sp).rar||1] || 3;
+const rarOf = t => SP(t.sp).rar || 1;
+
+/* レア度を 決める（ゴールドベル：レア以上×1.5、ちょうレアは 最大4.5％） */
+function rollRar(room, top2){
+  let P = room.P.slice();
+  if(HT().bell > now()){ P[2] *= 1.5; P[3] = Math.min(4.5, P[3]*1.5); P[0] = Math.max(0, 100 - P[1] - P[2] - P[3]); }
+  if(top2){ const idx = [0,1,2,3].filter(i => P[i] > 0).slice(-2); P = P.map((v,i) => idx.includes(i) ? v : 0); }
+  let x = Math.random() * P.reduce((a,b) => a+b, 0);
+  for(let i=0;i<4;i++){ x -= P[i]; if(x <= 0 && P[i] > 0) return i+1; }
+  return 1;
+}
+function pickTourist(room, top2){
   const live = new Set(save.town.res.map(r => r.sp)), cur = new Set(F().tour.map(t => t.sp));
-  const W = {1:1, 2:0.8, 3:0.35, 4:0.12};
-  let pool = SPECIES.filter(s => !s.human && (s.w||0) > 0 && !cur.has(s.id) && !live.has(s.id));
-  if(!pool.length) pool = SPECIES.filter(s => !s.human && (s.w||0) > 0 && !cur.has(s.id));
-  if(!pool.length) return null;
-  let x = Math.random() * pool.reduce((a,s) => a + (W[s.rar||1]||0.1), 0);
-  for(const s of pool){ x -= (W[s.rar||1]||0.1); if(x <= 0) return s; }
-  return pool[pool.length-1];
+  const ok = s => !s.human && (s.w||0) > 0 && (s.rar||1) <= 4;
+  let rar = rollRar(room, top2);
+  for(; rar >= 1; rar--){
+    const base = SPECIES.filter(s => ok(s) && (s.rar||1)===rar && !cur.has(s.id));
+    const tries = [base.filter(s => room.pool(s) && !live.has(s.id)), base.filter(s => room.pool(s)), base.filter(s => !live.has(s.id)), base];
+    const pool = tries.find(a => a.length);
+    if(pool){ let x = Math.random() * pool.reduce((a,s) => a + (s.w||1), 0); for(const s of pool){ x -= (s.w||1); if(x <= 0) return s; } return pool[pool.length-1]; }
+  }
+  return null;
+}
+function newGuest(room, top2){
+  const s = pickTourist(room, top2); if(!s) return null;
+  const used = new Set(save.town.res.map(r => r.name).concat(F().tour.map(t => t.name)));
+  const nm = NAMES.filter(n => !used.has(n));
+  const grps = shuffle(Object.keys(GRP)).slice(0,2);
+  const r4 = (s.rar||1) >= 4;
+  const g = {id:'t'+now().toString(36)+rint(100,999), sp:s.id, name: nm.length ? choice(nm) : choice(NAMES), star:1, ab:{},
+    room:room.id, fr:0, last:0, fav:grps, favKnown:[], gd:'', gn:0, rsd:'', until: now() + (r4 ? rint(6,10) : rint(8,14))*60*MIN, fresh: r4};
+  F().tour.push(g); try{ discover(s.id); }catch(e){}
+  return g;
 }
 function refreshTour(){
-  const f = F(); let ch = false;
-  const keep = f.tour.filter(t => t.until > now()); if(keep.length !== f.tour.length){ f.tour = keep; ch = true; }
+  const f = F(), h = HT(); let ch = false;
+  f.tour.forEach(t => { if(!t.fav){ t.fav = shuffle(Object.keys(GRP)).slice(0,2); t.favKnown = []; ch = true; } });
+  const gone = f.tour.filter(t => t.until <= now());
+  if(gone.length){ gone.forEach(t => { if(t.room) h.clean[t.room] = t.until + cleanMs(); }); f.tour = f.tour.filter(t => t.until > now()); ch = true; }
   if(!has('hotel')) return ch;
-  while(f.tour.length < tourCount()){
-    const s = pickTourist(); if(!s) break;
-    const used = new Set(save.town.res.map(r => r.name).concat(f.tour.map(t => t.name)));
-    const nm = NAMES.filter(n => !used.has(n)); 
-    f.tour.push({id:'t'+now().toString(36)+rint(100,999), sp:s.id, name: nm.length ? choice(nm) : choice(NAMES), star:1, ab:{}, fr:0, last:0, until:now() + rint(8,14)*60*MIN});
-    ch = true;
-  }
+  const open = openRooms();
+  /* ロビーで 待っている お客さん（前の版から 引き継ぎ）を 空き部屋へ */
+  f.tour.filter(t => !t.room || !ROOM(t.room) || ROOM(t.room).g > hGrade()).forEach(t => {
+    const r = open.find(r => !guestIn(r.id)); if(r){ t.room = r.id; ch = true; } else if(t.room){ t.room = null; ch = true; } });
+  open.forEach(r => { if(!guestIn(r.id) && (h.clean[r.id]||0) <= now()){ if(newGuest(r)) ch = true; } });
   return ch;
 }
 const tourObj = t => ({id:t.id, sp:t.sp, name:t.name, star:1, ab:{}, pers:t.pers, hobby:t.hobby, kuchi:t.kuchi});
 const vegIds = () => { const B = foodBag(); return Object.keys(B).filter(k => B[k] > 0 && /^f_(tomato|carrot|cabbage|eggplant|corn|daikon|pumpkin|apple|banana|grapes|strawberry|watermelon)$/.test(k)); };
-async function becomePal(t){
-  const f = F(); t.pal = true; f.pals[t.sp] = (f.pals[t.sp]||0) + 1; persist(); sound('fan'); confetti(2600);
-  await dialog(`<div class="dlgArt big">${resPic(tourObj(t))}</div><h2 class="dlgT">💞 ${esc(t.name)}と なかよしに なった！</h2>
-    <p class="dlgP">${esc(SP(t.sp).name)}は この まちが 気に入ったみたい！<br>「おまねきレター」「きらきらレター」を つかうと<br><b>来てくれる かくりつが アップ</b> するよ！${findHome(SP(t.sp)) ? '' : `<br><small>※ すむ 家「${esc(homeName(SP(t.sp).home))}」に あきが あると 来てくれるよ</small>`}</p>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+const heartsT = t => t.pal ? '<span class="facHearts">💞 仲良し！</span>' : hearts(t.fr, frMax(t));
+const rarTag = t => { const R = RARITY[rarOf(t)]; return `<span class="htlRar" style="background:${R.c}">${R.n}</span>`; };
+
+/* ---------- 画面のわく ---------- */
+let HV = null;   // {view, key, room, guest}
+function hRoot(){
+  let el = document.getElementById('htl');
+  if(!el){ el = document.createElement('div'); el.id = 'htl'; document.body.appendChild(el);
+    el.addEventListener('click', hClick);
+    let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if(HV && el.classList.contains('show')) hRender(); }, 150); }); }
+  return el;
 }
-async function talkTourist(t){
+function hBar(title){
+  return `<div class="htlBar"><button class="htlBack" data-h="back">◀</button><b>${title}</b>
+    <span class="htlPt"><span class="coin sm">P</span>${nf(save.points.bal)}</span><button class="htlX" data-h="close">✕</button></div>`;
+}
+function stage(img, ratio, inner, cls=''){
+  return `<div class="htlStage ${cls}" style="aspect-ratio:${ratio}"><img class="htlBg" src="${img}" alt="" draggable="false">${inner||''}</div>`;
+}
+function hClose(){ const el = hRoot(); el.classList.remove('show'); el.innerHTML = ''; HV = null; try{ decorate(); }catch(e){} }
+function hGo(view, o={}){ HV = Object.assign({}, HV, {view}, o); hRender(); }
+function hRender(){
+  if(!HV) return;
+  const el = hRoot(), L = isL(); el.className = 'show ' + (L ? 'hL' : 'hP');
+  const V = {top:vTop, room:vRoom, talk:vTalk, shop:vShop, grade:vGrade, pals:vPals}[HV.view] || vTop;
+  el.innerHTML = V(L); el.scrollTop = 0;
+}
+
+/* ---------- H-01 トップ ---------- */
+function spotHTML(r, sp){
+  const [x,y,w,h] = sp[r.id], t = guestIn(r.id), lock = r.g > hGrade(), cl = HT().clean[r.id] || 0;
+  let inner = '', cls = 'htlSpot';
+  if(lock){ cls += ' hLock'; inner = `<img src="${himg('room_locked')}" alt=""><i>★${r.g}</i>`; }
+  else if(t){ cls += ' hOn r' + rarOf(t); inner = `<span class="htlFace">${resPic(tourObj(t))}</span>${t.pal ? '<i class="hPalI">💞</i>' : ''}`; }
+  else { cls += ' hClean'; inner = `<img src="${himg('room_cleaning')}" alt=""><i>${cl > now() ? left(cl - now()) : '…'}</i>`; }
+  return `<button class="${cls}" data-h="room:${r.id}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%">${inner}</button>`;
+}
+function cardHTML(r){
+  const t = guestIn(r.id), lock = r.g > hGrade(), cl = HT().clean[r.id] || 0;
+  const st = lock ? `🔒 ★${r.g}で解放` : t ? `${esc(t.name)}${t.pal ? ' 💞' : ''}` : `🧹 そうじ中 ${cl > now() ? left(cl - now()) : ''}`;
+  return `<button class="htlCard ${lock ? 'hLock' : t ? 'hOn r' + rarOf(t) : ''}" data-h="room:${r.id}"><img src="${himg('door_' + r.id)}" alt=""><span><b>${r.s}</b><small>${st}</small></span></button>`;
+}
+function concierge(){
+  const T = F().tour.filter(t => t.room), rare = T.filter(t => rarOf(t) >= 3);
+  if(HT().bell > now()) return `ゴールドベルが鳴っています！あと${left(HT().bell - now())}、レアなお客さんが来やすいですよ。`;
+  if(rare.length) return `ただいま${RARITY[rarOf(rare[0])].n}のお客さま「${esc(rare[0].name)}」さんがお泊まり中です！`;
+  if(!T.length) return 'ただいまお部屋のそうじ中です。少し待ってからまた来てくださいね。';
+  return `ようこそ！ただいま${T.length}組のお客さまがお泊まりです。お部屋をタッチして会いに行きましょう。`;
+}
+function vTop(L){
+  const sp = L ? SPOTS_L : SPOTS_P, g = hGrade();
+  const img = stage(himg(L ? 'htl_top_l' : 'htl_top_p'), L ? '3/2' : '3/4', ROOMS.map(r => spotHTML(r, sp)).join(''), 'hTopS');
+  const side = `<div class="htlSay"><img src="${himg('htl_penguin_wave')}" alt=""><p>${concierge()}</p></div>
+    <div class="htlGrid">${ROOMS.map(cardHTML).join('')}</div>
+    <div class="htlBtns"><button class="htlB gold" data-h="shop">🛎️ ホテルのお店</button><button class="htlB" data-h="pals">💞 仲良し <small>${HT().palList.length}</small></button>
+    <button class="htlB" data-h="grade">⬆ グレード <small>${'★'.repeat(g)}${'☆'.repeat(3-g)}</small></button><button class="htlB" data-h="close">とじる</button></div>`;
+  return hBar('🏨 ホテル') + `<div class="htlBody topV">${img}<div class="htlSide">${side}</div></div>`;
+}
+
+/* ---------- H-02 部屋 ---------- */
+function vRoom(L){
+  const r = ROOM(HV.room), t = guestIn(r.id), lock = r.g > hGrade(), cl = HT().clean[r.id] || 0;
+  let guest = '', panel = '';
+  if(lock){
+    panel = `<div class="htlInfo"><h3>🔒 ${r.n}</h3><p>ホテルを ★${r.g} にグレードアップすると泊まれるようになります。</p><p class="sub">来やすいお客さん：${r.like}</p>
+      <div class="htlBtns"><button class="htlB gold" data-h="grade">⬆ グレードアップ</button></div></div>`;
+  } else if(!t){
+    panel = `<div class="htlInfo"><h3>🧹 ${r.n}</h3><p>ただいまおそうじ中です。${cl > now() ? `あと <b>${left(cl - now())}</b> で次のお客さんが来ます。` : 'もうすぐ次のお客さんが来ます。'}</p>
+      <p class="sub">来やすいお客さん：${r.like}</p>${(HT().bag.itm_htlinvite||0) > 0 ? '<div class="htlBtns"><button class="htlB gold" data-h="invite">💌 招待状を使う</button></div>' : ''}</div>`;
+  } else {
+    const o = tourObj(t);
+    guest = `<div class="htlGuest r${rarOf(t)}" data-h="talk">${resPic(o)}</div>`;
+    panel = `<div class="htlInfo">${rarTag(t)}<h3>${esc(t.name)} <small>（${esc(SP(t.sp).name)}）</small></h3>
+      <p>仲良し度 ${heartsT(t)}</p><p class="sub">あと ${left(t.until - now())} 泊まります ／ ${r.n}</p>
+      ${t.favKnown && t.favKnown.length ? `<p class="sub">好きな物：${t.favKnown.map(k => GRP[k].i).join('、')}</p>` : ''}
+      <div class="htlBtns"><button class="htlB gold" data-h="talk">💬 話しかける</button>${t.pal ? '' : '<button class="htlB" data-h="gift">🎁 おみやげ</button>'}</div></div>`;
+  }
+  const bg = stage(himg(`room_${r.id}_${L ? 'l' : 'p'}`), L ? '3/2' : '3/4', guest, 'hRoomS' + (lock ? ' hDim' : ''));
+  return hBar(`${r.n}`) + `<div class="htlBody roomV">${bg}${panel}</div>`;
+}
+
+/* ---------- H-03 おはなし・おみやげ ---------- */
+function giftGrid(t){
+  const B = HT().bag, today = dayKey(), giftLeft = t.gd===today ? 2 - t.gn : 2, veg = vegIds();
+  const items = SOUV.map(s => { const n = B[s.id]||0, dis = !n || giftLeft <= 0;
+    return `<button class="htlItem" data-h="give:${s.id}" ${dis ? 'disabled' : ''}><img src="${himg(s.id)}" alt=""><b>${s.n}</b><small>${n}こ</small></button>`; }).join('');
+  const rs = B.itm_roomservice||0, rsDis = !rs || t.rsd===today;
+  return `<p class="sub">おみやげは 1日2回まで（今日はあと${Math.max(0,giftLeft)}回）</p><div class="htlItems">${items}
+    <button class="htlItem" data-h="give:itm_roomservice" ${rsDis ? 'disabled' : ''}><img src="${himg('itm_roomservice')}" alt=""><b>ルームサービス</b><small>${rs}こ${t.rsd===today ? '・今日はずみ' : ''}</small></button>
+    <button class="htlItem" data-h="give:veg" ${veg.length ? '' : 'disabled'}><span class="emo">🥕</span><b>畑のやさい</b><small>${veg.length ? 'あげられる' : 'なし'}</small></button></div>
+    <div class="htlBtns"><button class="htlB" data-h="shop">🛎️ お店で買う</button></div>`;
+}
+function vTalk(L){
+  const t = F().tour.find(x => x.id===HV.guest); if(!t){ HV.view = 'top'; return vTop(L); }
+  const o = tourObj(t);
+  const body = `<div class="htlTalkG r${rarOf(t)}">${resPic(o)}</div><div class="talkBubble htlBub"><b>${esc(t.name)}</b>${esc(speak(o, HV.line || '…'))}</div>`;
+  const panel = `<div class="htlInfo">${rarTag(t)}<h3>${esc(t.name)}</h3><p>仲良し度 ${heartsT(t)}</p>
+    ${t.pal ? '<p class="sub">レターを使うと、この町に住みに来てくれるかも！</p>' : giftGrid(t)}
+    <div class="htlBtns"><button class="htlB" data-h="room:${t.room}">◀ 部屋にもどる</button></div></div>`;
+  return hBar('💬 おはなし') + `<div class="htlBody talkV">${stage(himg(L ? 'htl_talk_l' : 'htl_talk_p'), L ? '3/2' : '3/4', body, 'hTalkS')}${panel}</div>`;
+}
+async function talkTo(t){
   const o = tourObj(t); persOf(o); Object.assign(t, {pers:o.pers, hobby:o.hobby, kuchi:o.kuchi});
   const cd = now() - (t.last||0) < TOUR_CD && !t.pal;
-  let line = cd ? 'さっき いっぱい おはなし したね。また あとで おはなし しよう！' : t.pal ? 'きみと なかよく なれて うれしいな！ この まちに すみたく なっちゃった' : choice(TOUR_LINES);
-  if(!cd && !t.pal){ t.fr = Math.min(3, t.fr + 1); t.last = now(); persist(); sound('ok'); }
-  const R = RARITY[SP(t.sp).rar||1], veg = vegIds();
-  const v = await dialog(`<div class="dlgArt big">${resPic(o)}</div><div class="rarTag" style="background:${R.c}">${R.n}</div>
-    <h2 class="dlgT">🧳 ${esc(t.name)}（${esc(SP(t.sp).name)}）</h2>
-    <div class="talkBubble"><b>${esc(t.name)}</b>${esc(speak(o, line))}</div>
-    <p class="dlgP">${t.pal ? '💞 なかよし！' : `なかよし度 ${hearts(t.fr, 3)}`}<br><small>あと ${left(t.until - now())} この まちに いるよ</small></p>`,
-    (!t.pal && veg.length ? [{label:'🎁 やさいを あげる', cls:'gold', v:'gift'}] : []).concat([closeBtn]), 'wide');
-  if(!t.pal && t.fr >= 3 && v!=='gift'){ await becomePal(t); return; }
-  if(v==='gift'){
-    const id = choice(veg), B = foodBag(), fd = FD(id); B[id]--; if(!B[id]) delete B[id];
-    t.fr = Math.min(3, t.fr + 1); persist(); sound('fan');
-    await dialog(`<div class="dlgArt"><img src="${esc(artSrc(fd?.art))}" alt=""></div><div class="talkBubble"><b>${esc(t.name)}</b>${esc(speak(o, `わあ！ ${fd?.n||'やさい'}だ！ ありがとう〜 とっても うれしい！`))}</div>
-      <p class="dlgP">なかよし度 ${hearts(t.fr, 3)}</p>`, [{label:'どういたしまして', cls:'gold', v:1}], 'wide');
-    if(t.fr >= 3) await becomePal(t);
+  let line;
+  if(t.pal) line = 'きみと仲良くなれてうれしいな！この町に住みたくなっちゃった';
+  else if(cd) line = 'さっきいっぱいお話ししたね。また後でお話ししよう！';
+  else {
+    t.fr = Math.min(frMax(t), t.fr + 1); t.last = now(); sound('ok');
+    const unknown = (t.fav||[]).filter(k => !(t.favKnown||[]).includes(k));
+    if(unknown.length && Math.random() < 0.5){ const k = choice(unknown); t.favKnown = (t.favKnown||[]).concat(k); line = `じつはね、${GRP[k].h}なんだ！`; }
+    else line = choice(TOUR_LINES);
+  }
+  persist(); hGo('talk', {guest:t.id, line});
+  if(!t.pal && t.fr >= frMax(t)) await becomePal(t);
+}
+async function give(t, id){
+  const h = HT(), today = dayKey(); let line, up = 1, img;
+  if(id==='veg'){
+    const v = vegIds(); if(!v.length) return;
+    const k = choice(v), B = foodBag(), fd = FD(k); B[k]--; if(!B[k]) delete B[k];
+    line = `わあ！${fd?.n||'やさい'}だ！ありがとう〜とってもうれしい！`;
+  } else if(id==='itm_roomservice'){
+    if(!(h.bag[id] > 0) || t.rsd===today) return;
+    h.bag[id]--; t.rsd = today; line = 'ルームサービス！？ぜいたくな気分〜ありがとう！';
+  } else {
+    const s = SV(id); if(!s || !(h.bag[id] > 0)) return;
+    if(t.gd!==today){ t.gd = today; t.gn = 0; } if(t.gn >= 2){ toast('今日のおみやげはもう渡したよ'); return; }
+    h.bag[id]--; t.gn++;
+    const fav = s.grp==='all' || (t.fav||[]).includes(s.grp);
+    if(fav){ up = 2; if(s.grp!=='all' && !(t.favKnown||[]).includes(s.grp)) t.favKnown = (t.favKnown||[]).concat(s.grp); }
+    line = fav ? `${s.n}！これ、ずっとほしかったんだ！本当にありがとう！` : `${s.n}をくれるの？ありがとう！`;
+  }
+  t.fr = Math.min(frMax(t), t.fr + up); persist(); sound(up > 1 ? 'fan' : 'ok');
+  if(up > 1) toast('💗💗 好きな物だった！仲良し度 ＋2'); else toast('💗 仲良し度 ＋1');
+  hGo('talk', {guest:t.id, line});
+  if(t.fr >= frMax(t)) await becomePal(t);
+}
+async function becomePal(t){
+  const f = F(), h = HT(); if(t.pal) return;
+  t.pal = true; f.pals[t.sp] = (f.pals[t.sp]||0) + 1;
+  h.palList.push({id:t.id, sp:t.sp, name:t.name, room:t.room, at:now()});
+  if(h.palList.length > 10){ const x = h.palList.shift(); if(f.pals[x.sp] > 0){ f.pals[x.sp]--; if(!f.pals[x.sp]) delete f.pals[x.sp]; } toast(`仲良しリストがいっぱいなので、${x.name}さんとはお別れしました`); }
+  if(t.room) h.memo[t.room] = h.memo[t.room] || now();
+  persist(); sound('fan'); confetti(2600);
+  const sp = SP(t.sp), home = findHome(sp);
+  await dialog(`<div class="htlFx" style="background-image:url('${hurl(isL() ? 'htl_pal_l' : 'htl_pal_p')}')"><div class="dlgArt big pop">${resPic(tourObj(t))}</div></div>
+    <h2 class="dlgT">💞 ${esc(t.name)}と仲良しになった！</h2>
+    <p class="dlgP">${esc(sp.name)}はこの町が気に入ったみたい！<br>「おまねきレター」「きらきらレター」を使うと<br><b>来てくれる確率がアップ</b>するよ！${home ? '' : `<br><small>※ 住む家「${esc(homeName(sp.home))}」に空きがあると来てくれるよ</small>`}</p>`,
+    [{label:'やったー！', cls:'gold', v:1}], 'gold');
+  hRender();
+}
+async function rareArrive(t){
+  t.fresh = false; persist(); sound('fan'); confetti(3000);
+  await dialog(`<div class="htlFx hRare" style="background-image:url('${hurl(isL() ? 'fx_rare_l' : 'fx_rare_p')}')"><div class="dlgArt big pop">${resPic(tourObj(t))}</div></div>
+    <div class="rarTag" style="background:${RARITY[4].c}">${RARITY[4].n}</div><h2 class="dlgT">✨ すごいお客さんが来たよ！</h2>
+    <p class="dlgP">${esc(ROOM(t.room)?.n || 'ホテル')}に <b>${esc(t.name)}（${esc(SP(t.sp).name)}）</b>が泊まっています！<br>会いに行ってみよう！</p>`, [{label:'会いに行く', cls:'gold', v:1}], 'gold');
+}
+
+/* ---------- H-05 お店 ---------- */
+function vShop(L){
+  const tab = HV.tab || 'sv', h = HT(), g = hGrade();
+  const list = tab==='sv' ? SOUV.map(s => Object.assign({d:`好きな物グループ：${s.grp==='all' ? 'だれでも好物（＋2）' : GRP[s.grp].i}`}, s)) : SPECIAL;
+  const cards = tab==='fur' ? `<div class="htlFur"><img src="${himg('htl_penguin_think')}" alt=""><p>バスタブやシャンデリアなど、ホテルの家具は「家具のお店」で買えます。ホテル限定の家具もありますよ。</p>
+      <button class="htlB gold" data-h="furshop">🛋️ 家具のお店へ</button></div>`
+    : `<div class="htlShop">${list.map(s => { const lk = (s.g||0) > g, can = save.points.bal >= s.p && !lk;
+      return `<div class="htlSCard ${lk ? 'hLock' : ''}"><img src="${himg(s.id)}" alt=""><div><b>${s.n}</b><span class="htlLim">ホテル限定</span><small>${s.d}</small>
+        <small>持っている数：${h.bag[s.id]||0}${s.id==='itm_goldbell' && h.bell > now() ? `（使用中 あと${left(h.bell - now())}）` : ''}</small></div>
+        <div class="htlSBtns"><button class="htlB ${can ? 'gold' : ''}" data-h="buy:${s.id}" ${lk ? 'disabled' : ''}>${lk ? `★${s.g}で解放` : `<span class="coin sm">P</span>${nf(s.p)}`}</button>
+        ${['itm_goldbell','itm_htlinvite','itm_palletter'].includes(s.id) && (h.bag[s.id]||0) > 0 ? `<button class="htlB" data-h="use:${s.id}">使う</button>` : ''}</div></div>`; }).join('')}</div>`;
+  const tabs = `<div class="htlTabs">${[['sv','🎁 おみやげ'],['sp','✨ スペシャル'],['fur','🛋️ 家具・かざり']].map(([k,n]) => `<button class="${k===tab ? 'hOn' : ''}" data-h="tab:${k}">${n}</button>`).join('')}</div>`;
+  return hBar('🛎️ ホテルのお店') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_talk_l' : 'htl_talk_p')}')">${tabs}${cards}</div>`;
+}
+async function buy(id){
+  const s = SV(id); if(!s) return;
+  if((s.g||0) > hGrade()){ toast(`ホテルを★${s.g}にすると買えるよ`); return; }
+  if(save.points.bal < s.p){ toast('ポイントが足りないよ'); return; }
+  givePts(-s.p, `ホテルのお店で ${s.n}`); const h = HT(); h.bag[id] = (h.bag[id]||0) + 1; persist(); sound('ok');
+  toast(`${s.n}を買ったよ！`); hRender();
+}
+async function useItem(id){
+  const h = HT(); if(!(h.bag[id] > 0)) return;
+  if(id==='itm_goldbell'){
+    h.bag[id]--; h.bell = Math.max(now(), h.bell) + 24*60*MIN; persist(); sound('fan'); confetti(1400);
+    toast('🔔 ゴールドベルを鳴らしたよ！24時間レアなお客さんが来やすい'); hRender(); return;
+  }
+  if(id==='itm_htlinvite'){
+    const r = openRooms().find(r => !guestIn(r.id));
+    if(!r){ toast('空いている部屋がないよ'); return; }
+    return useInvite(r.id);
+  }
+  if(id==='itm_palletter'){ hGo('pals', {pick:true}); }
+}
+async function useInvite(roomId){
+  const h = HT(), r = ROOM(roomId); if(!(h.bag.itm_htlinvite > 0) || guestIn(roomId)) return;
+  h.bag.itm_htlinvite--; delete h.clean[roomId];
+  const g = newGuest(r, true); persist();
+  if(!g){ h.bag.itm_htlinvite++; persist(); toast('今は呼べるお客さんがいないみたい'); return; }
+  sound('fan'); toast(`💌 ${r.n}に ${g.name}さんが来たよ！`);
+  if(g.fresh) await rareArrive(g);
+  hGo('room', {room:roomId});
+}
+
+/* ---------- H-06 グレード ---------- */
+function vGrade(L){
+  const g = hGrade(), nx = ROOMS.filter(r => r.g===g+1);
+  const rows = [0,1,2,3].map(n => `<div class="htlGRow ${n<=g ? 'hOn' : ''}"><b>${'★'.repeat(n) || '☆0'}</b>${ROOMS.filter(r => r.g===n).map(r => `<span><img src="${himg('door_' + r.id)}" alt="">${r.s}</span>`).join('')}</div>`).join('');
+  return hBar('⬆ ホテルのグレード') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_top_l' : 'htl_top_p')}')">
+    <div class="htlPanel"><div class="htlSay"><img src="${himg('htl_penguin_cheer')}" alt=""><p>${g >= 3 ? '最高のホテルになりました！すべてのお部屋が使えます。' : `グレードアップすると「${nx.map(r => r.s).join('」「')}」のお部屋が増えます！`}</p></div>
+    ${rows}<p class="sub">グレードアップは、建物のメニューから行います（費用はいつもと同じです）。</p>
+    <div class="htlBtns">${g < 3 ? '<button class="htlB gold" data-h="dograde">⬆ グレードアップする</button>' : ''}<button class="htlB" data-h="top">◀ ホテルにもどる</button></div></div></div>`;
+}
+
+/* ---------- H-07 仲良しリスト ---------- */
+function vPals(L){
+  const h = HT(), pick = HV.pick && (h.bag.itm_palletter||0) > 0;
+  const list = h.palList.slice().reverse().map(p => { const sp = SP(p.sp), home = findHome(sp);
+    return `<div class="htlPal r${sp.rar||1}">${resPic({id:p.id, sp:p.sp, name:p.name, star:1, ab:{}})}<div><b>${esc(p.name)}</b> <small>${esc(sp.name)}／${esc(ROOM(p.room)?.s || '')}</small>
+      <small>${home ? '🏠 住む家あり：レターで来てくれるかも' : `🏠 「${esc(homeName(sp.home))}」が必要`}</small></div>
+      ${pick ? `<button class="htlB gold" data-h="palcall:${p.id}" ${home ? '' : 'disabled'}>来てもらう</button>` : ''}</div>`; }).join('');
+  return hBar('💞 仲良しリスト') + `<div class="htlBody listV" style="--bg:url('${hurl(L ? 'htl_pal_l' : 'htl_pal_p')}')"><div class="htlPanel">
+    <div class="htlSay"><img src="${himg('htl_penguin_wave')}" alt=""><p>${pick ? '仲良しレターで来てもらうお客さんを選んでください。' : '仲良しになったお客さんです。レターを使うと、町に住みに来てくれる確率が上がります（最大10人）。'}</p></div>
+    ${list || '<p class="sub">まだ仲良しのお客さんはいません。お部屋をたずねて話しかけてみよう！</p>'}
+    <div class="htlBtns"><button class="htlB" data-h="top">◀ ホテルにもどる</button></div></div></div>`;
+}
+async function palCall(pid){
+  const h = HT(), f = F(), p = h.palList.find(x => x.id===pid); if(!p || !(h.bag.itm_palletter > 0)) return;
+  const t = save.town, sp = SP(p.sp), home = findHome(sp);
+  if(t.res.length >= townCalc().maxRes){ toast('町がいっぱいで、もう住めないよ'); return; }
+  if(!home){ toast('住む家が足りないよ'); return; }
+  h.bag.itm_palletter--; h.palList = h.palList.filter(x => x.id!==pid);
+  if(f.pals[p.sp] > 0){ f.pals[p.sp]--; if(!f.pals[p.sp]) delete f.pals[p.sp]; }
+  const r = newResident(sp); r.home = home.key; t.res.push(r); persist(); discover(r.sp);
+  hClose(); await arrival(r, `ホテルで仲良くなった${p.name}が来てくれた！`); try{ checkBadges(); renderCurrent(); }catch(e){}
+}
+
+/* ---------- タッチ ---------- */
+async function hClick(e){
+  const b = e.target.closest('[data-h]'); if(!b || b.disabled || !HV) return;
+  const [a, v] = b.dataset.h.split(':');
+  const t = HV.room ? guestIn(HV.room) : null;
+  switch(a){
+    case 'close': hClose(); return;
+    case 'back': if(HV.view==='talk'){ const g = F().tour.find(x => x.id===HV.guest); return hGo('room', {room:g?.room || HV.room}); }
+                 if(HV.view==='top') return hClose(); return hGo('top', {pick:false});
+    case 'top': return hGo('top', {pick:false});
+    case 'room': return hGo('room', {room:v});
+    case 'talk': if(t) return talkTo(t); return;
+    case 'gift': if(t) return hGo('talk', {guest:t.id, line:'わあ、何かくれるの？'}); return;
+    case 'give': { const g = F().tour.find(x => x.id===HV.guest); if(g) return give(g, v); return; }
+    case 'shop': return hGo('shop', {tab:HV.tab || 'sv'});
+    case 'tab': return hGo('shop', {tab:v});
+    case 'buy': return buy(v);
+    case 'use': return useItem(v);
+    case 'invite': return useInvite(HV.room);
+    case 'furshop': { const k = HV.key; hClose(); SHOP_KEY = k; return openShop(k); }
+    case 'grade': return hGo('grade');
+    case 'dograde': { const k = HV.key; hClose(); return openBuilding(k); }
+    case 'pals': return hGo('pals', {pick:false});
+    case 'palcall': return palCall(v);
   }
 }
 async function openHotel(key){
-  refreshTour(); const L = F().tour;
-  const v = await pickDialog(head('bld_hotel', '🏨 ホテル', L.length ? 'かんこうに 来た おきゃくさんが とまっているよ' : '')
-    + (L.length ? `<div class="facGrid">${L.map(t => `<button class="facCard ${t.pal?'on':''}" data-pick="${t.id}">${resPic(tourObj(t))}<b>${esc(t.name)}</b><small>${esc(SP(t.sp).name)}</small>${t.pal ? '<small>💞 なかよし</small>' : hearts(t.fr, 3)}</button>`).join('')}</div>
-      <p class="dlgP facNote">おはなし したり やさいを あげたり して なかよく なると、<br>レターを つかった ときに その 住民が 来やすく なるよ！</p>`
-      : '<p class="dlgP">いまは おきゃくさんが いないよ。また あとで 来てみてね</p>'),
-    [{label:'🛎️ ホテルの お店', cls:'white', v:'shop'}, gradeBtn, closeBtn], 'wide');
-  if(v==='shop'){ SHOP_KEY = key; return openShop(key); }
-  if(v==='grade') return openBuilding(key);
-  if(v && v.startsWith('pick:')){ const t = L.find(x => x.id===v.slice(5)); if(t) talkTourist(t); }
+  if(refreshTour()) persist();
+  HV = {view:'top', key}; hRoot(); hRender(); sound('ok');
+  const fresh = F().tour.find(t => t.fresh && t.room);
+  if(fresh) await rareArrive(fresh);
 }
-/* レター：なかよしの 種類が 来やすい */
+
+/* ---------- レター：仲良しの 種類が 来やすい（レア度別の 確率） ---------- */
+const PAL_P = {letter:{1:.60, 2:.50, 3:.35, 4:.10}, gold:{2:.70, 3:.60, 4:.45}};
 const _pickSpeciesFac = pickSpecies;
 pickSpecies = function(o={}){
   try{
     const P = F().pals, ks = Object.keys(P).filter(k => P[k] > 0);
     if(o.needHome && ks.length){
-      const pool = SPECIES.filter(s => ks.includes(s.id) && (s.w||0) > 0 && (s.rar||1) >= (o.minRar||1) && (s.rar||1) <= (o.maxRar||9) && findHome(s));
-      if(pool.length && Math.random() < Math.min(0.6, 0.3*pool.length)) return choice(pool);
+      const gold = (o.minRar||1) >= 2, T = gold ? PAL_P.gold : PAL_P.letter;
+      const pool = SPECIES.filter(s => ks.includes(s.id) && (s.w||0) > 0 && (s.rar||1) >= (o.minRar||1) && (s.rar||1) <= (o.maxRar||9) && findHome(s))
+        .sort((a,b) => (b.rar||1) - (a.rar||1));
+      for(const s of pool){ if(Math.random() < (T[s.rar||1]||0)) return s; }
     }
   }catch(e){}
   return _pickSpeciesFac.apply(this, arguments);
@@ -351,8 +665,10 @@ const _inviteFac = inviteResident;
 inviteResident = async function(){
   const before = new Set(save.town.res.map(r => r.id));
   const out = await _inviteFac.apply(this, arguments);
-  try{ const P = F().pals; save.town.res.filter(r => !before.has(r.id) && P[r.sp] > 0).forEach(r => {
-    P[r.sp]--; if(!P[r.sp]) delete P[r.sp]; persist(); toast(`🏨 ホテルで なかよく なった ${SP(r.sp).name}が 来てくれたよ！`); }); }catch(e){}
+  try{ const P = F().pals, h = HT(); save.town.res.filter(r => !before.has(r.id) && P[r.sp] > 0).forEach(r => {
+    P[r.sp]--; if(!P[r.sp]) delete P[r.sp];
+    const i = h.palList.findIndex(x => x.sp===r.sp); if(i >= 0) h.palList.splice(i, 1);
+    persist(); toast(`🏨 ホテルで仲良くなった ${SP(r.sp).name}が来てくれたよ！`); }); }catch(e){}
   return out;
 };
 
@@ -442,7 +758,7 @@ async function openMuseum(key){
 
 /* ---------- ショップの せつめいにも のせる ---------- */
 const FAC_DESC = {field:'🌱 やさいを そだてて しゅうかく', park:'🛝 住民が あそびに 来る', library:'📚 こうりゃく本を かりられる', school:'🏫 住民が かよって かしこく なる',
-  parking:'🚗 たまに 車が とまって りょうきんが もらえる', clinic:'🏥 けがを した 住民を なおす', cityhall:'🏛️ 住民わくを ふやせる', hotel:'🧳 かんこうきゃくと なかよく なれる',
+  parking:'🚗 たまに 車が とまって りょうきんが もらえる', clinic:'🏥 けがを した 住民を なおす', cityhall:'🏛️ 住民わくを ふやせる', hotel:'🧳 部屋を たずねて 観光客と なかよく なれる',
   museum:'❓ 1日1かい てんじクイズ', windmill:'🌬️ 畑の やさいが はやく そだつ'};
 const _itemEffectFac = itemEffect;
 itemEffect = function(it){ const s = _itemEffectFac.apply(this, arguments); return it && FAC_DESC[it.id] ? `${s}${s ? '・' : ''}${FAC_DESC[it.id]}` : s; };
@@ -458,7 +774,7 @@ function ovHTML(k, id){
   if(id==='parking'){ const p = f.parking[k], it = p && ITEM(p.v); return it && !p.paid ? '<span class="facOv ready">🪙</span>' : ''; }   // v5.5：車の 絵は drawLots だけ（2重に ならない）
   if(id==='park' && f.park.ids.length) return `<span class="facOv badge">${f.park.game ? f.park.game[1] : '🎵'}${f.park.ids.length}</span>`;
   if(id==='school' && f.school.day===dayKey() && f.school.ids.length) return `<span class="facOv badge">✏️${f.school.ids.length}</span>`;
-  if(id==='hotel' && f.tour.length) return `<span class="facOv badge">🧳${f.tour.length}</span>`;
+  if(id==='hotel' && f.tour.length){ const r4 = f.tour.some(t => t.room && (SP(t.sp).rar||1) >= 4); return `<span class="facOv badge">${r4 ? '✨' : '🧳'}${f.tour.filter(t => t.room).length}</span>`; }
   if(id==='clinic' && hurtList().length) return '<span class="facOv ready">🩹</span>';
   if(id==='library' && f.books.length) return `<span class="facOv badge">📖${f.books.length}</span>`;
   return '';
@@ -509,7 +825,7 @@ function facTick(quiet){
   if(!save.town) return;
   let ch = false;
   [refreshParking, refreshPark, refreshSchool, refreshTour, refreshBooks, hurtCheck].forEach(fn => { try{ if(fn()) ch = true; }catch(e){ console.warn(e); } });
-  if(ch){ persist(); if(!quiet) decorate(); }
+  if(ch){ persist(); if(!quiet) decorate(); try{ if(HV && HV.view==='top' && !$('#dlg').classList.contains('show')) hRender(); }catch(e){} }
   else if(!quiet && curScreen==='town') decorate();   // 畑の そだち ぐあい
 }
 setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')) facTick(false); }, 20000);
