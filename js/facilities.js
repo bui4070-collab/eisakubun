@@ -928,3 +928,54 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     }))).observe(document.body, {childList:true, subtree:true});
   }catch(e){ console.warn('parade fix', e); }
 })();
+
+
+/* =====================================================================
+   v7.4：新しい 超レア 3体（ピヨまる・モッチー・プルリン）
+   ・画像は ./assets/images/chara/（立ち絵 res_〈id〉、特別イラスト scu_〈id〉_〈場面〉）
+   ・特別イラストは いまの「とくべつな 1まい」と 同じ しくみ（町に 住んでいる 時に 建物・かざりを タッチ）
+   ===================================================================== */
+(function(){
+  const CIMG = './assets/images/chara/';
+  const NC = [
+    {id:'piyomaru', name:'ピヨまる', emoji:'🐤', home:'bird',  bias:'pop',
+      ab:{work:22, biz:24, know:24, pop:44, drive:23}, skill:['bonus','hint'], kuchi:'ぴよ',
+      sc:['sakura','flowers','park','tree','stars'],
+      info:'小さいけれど 元気いっぱいの ひよこ。どこにでも ちょこちょこ ついていく 町の 人気者。',
+      lines:'きょうも げんき いっぱいだぴよ！|ちっちゃくても いっぱい あるけるぴよ|みんなの あとを ついていくの、だいすきぴよ|さくらの はなびら、ぼうしに したぴよ|おほしさまに おねがいごと したぴよ'},
+    {id:'mocchi', name:'モッチー', emoji:'🍡', home:'house', bias:'drive',
+      ab:{work:24, biz:23, know:25, pop:26, drive:43}, skill:['gift','guard'], kuchi:'もち',
+      sc:['fountain','festival','snow','onsen','library'],
+      info:'おもちみたいに まっ白で ふわふわ。ぼーっと しているけど、乗り物に 乗るのが 大すき。',
+      lines:'でんしゃの まどから 見る けしき、すきだもち|ふわぁ… ちょっと ぼーっと してたもち|この おだんご、ぼくに にてるもち…？|ゆきだるま、ぼくに そっくりに できたもち|おんせん、ぽかぽかだもち'},
+    {id:'pururin', name:'プルリン', emoji:'🍮', home:'house', bias:'pop',
+      ab:{work:23, biz:30, know:26, pop:42, drive:20}, skill:['mult','bonus'], kuchi:'ぷる',
+      sc:['bakery','castle','festival','park','pond'],
+      info:'プリンの 国から 来た、ぷるぷるの 人気者。あまい においで みんなを 笑顔に する。',
+      lines:'ぷるぷる ゆれるのは うれしい しるしだぷる|カラメルの ところが いちばん じまんぷる|みんなで いっしょに おどるぷる！|あまい においで みんな 笑顔に なるぷる|おしろの パーティー、たのしみぷる'}
+  ];
+  const NCM = Object.fromEntries(NC.map(c => [c.id, c]));
+  try{
+    NC.forEach(c => {
+      DEFAULT_ART['res_' + c.id] = CIMG + 'res_' + c.id + '.webp';
+      c.sc.forEach(k => { DEFAULT_ART[`scu_${c.id}_${k}`] = CIMG + `scu_${c.id}_${k}.webp`; });
+      if(!SPECIES.some(s => s.id===c.id)) SPECIES.push({id:c.id, name:c.name, art:'res_' + c.id, emoji:c.emoji, rar:4, w:0.5, bias:c.bias, home:c.home});
+      try{ ZUKAN_INFO[c.id] = c.info; }catch(e){}
+      try{ KUCHI[c.id] = c.kuchi; }catch(e){}
+      try{ SP_SKILL[c.id] = c.skill; }catch(e){}
+    });
+    /* 特別イラストの 場面を 固定（5まい） */
+    const _ss74 = speciesScenes;
+    speciesScenes = function(sp){ return NCM[sp] ? NCM[sp].sc.slice() : _ss74.apply(this, arguments); };
+  }catch(e){ console.warn('new chara', e); }
+
+  /* features.js（超レアの 能力）より あとで 上書きするため、全部 読みこんだ あとに 設定 */
+  const late = () => {
+    try{ const V = window.__v53; if(V && V.SPL) NC.forEach(c => { V.SPL[c.id] = c.lines; }); }catch(e){}
+    try{
+      const _nr74 = newResident;
+      newResident = function(sp){ const r = _nr74.apply(this, arguments); const c = sp && NCM[sp.id]; if(c){ r.ab = Object.assign({}, c.ab); r.ur66 = 1; } return r; };
+    }catch(e){ console.warn('new chara ab', e); }
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', late); else setTimeout(late, 0);
+})();
