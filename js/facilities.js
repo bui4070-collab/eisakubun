@@ -1,5 +1,5 @@
 /* =====================================================================
-   まなびタウン v4.2：たてものの きのう（v7.1：ホテル 家具・かざり・記念家具）
+   まなびタウン v4.2：たてものの きのう（v7.2：ホテルの 絵の 引き伸ばし修正／ゆうえんち パレード修正）
    畑・公園・図書館・学校・パーキング・病院・市やくしょ・ホテル
    （おまけ：はくぶつかん・風車）
    ※ app.js の あとに 読みこむ。セーブは save.fac に 追加するだけ
@@ -409,6 +409,10 @@ function refreshTour(){
   open.forEach(r => { if(!guestIn(r.id) && (h.clean[r.id]||0) <= now()){ if(newGuest(r)) ch = true; } });
   return ch;
 }
+/* お客さんの絵：ふちの中に「縦横比を保って」おさめる（引き伸ばし防止） */
+const gSrc = t => { const s = SP(t.sp); return s.img || artSrc(s.art) || ''; };
+const gImg = (t, cls='') => { const s = SP(t.sp), src = gSrc(t);
+  return src ? `<img class="hgImg ${cls}" src="${esc(src)}" alt="">` : `<span class="hgEmo ${cls}">${s.emoji||'🐾'}</span>`; };
 const tourObj = t => ({id:t.id, sp:t.sp, name:t.name, star:1, ab:{}, pers:t.pers, hobby:t.hobby, kuchi:t.kuchi});
 const vegIds = () => { const B = foodBag(); return Object.keys(B).filter(k => B[k] > 0 && /^f_(tomato|carrot|cabbage|eggplant|corn|daikon|pumpkin|apple|banana|grapes|strawberry|watermelon)$/.test(k)); };
 const heartsT = t => t.pal ? '<span class="facHearts">💞 仲良し！</span>' : hearts(t.fr, frMax(t));
@@ -444,7 +448,9 @@ function spotHTML(r, sp){
   const [x,y,w,h] = sp[r.id], t = guestIn(r.id), lock = r.g > hGrade(), cl = HT().clean[r.id] || 0;
   let inner = '', cls = 'htlSpot';
   if(lock){ cls += ' hLock'; inner = `<img src="${himg('room_locked')}" alt=""><i>★${r.g}</i>`; }
-  else if(t){ cls += ' hOn r' + rarOf(t); inner = `<span class="htlFace">${resPic(tourObj(t))}</span>${t.pal ? '<i class="hPalI">💞</i>' : ''}`; }
+  else if(t){ cls += ' hOn r' + rarOf(t);
+    const ar = (w / h) * (sp===SPOTS_L ? 1.5 : 0.75), fh = 64, fw = Math.min(60, fh / ar);   // 窓の 実際の 縦横比から 正方形の 枠を 計算
+    inner = `<span class="htlFace" style="width:${fw.toFixed(1)}%;height:${(fw * ar).toFixed(1)}%">${gImg(t)}</span>${t.pal ? '<i class="hPalI">💞</i>' : ''}`; }
   else { cls += ' hClean'; inner = `<img src="${himg('room_cleaning')}" alt=""><i>${cl > now() ? left(cl - now()) : '…'}</i>`; }
   return `<button class="${cls}" data-h="room:${r.id}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%">${inner}</button>`;
 }
@@ -482,7 +488,7 @@ function vRoom(L){
       <p class="sub">来やすいお客さん：${r.like}</p>${(HT().bag.itm_htlinvite||0) > 0 ? '<div class="htlBtns"><button class="htlB gold" data-h="invite">💌 招待状を使う</button></div>' : ''}</div>`;
   } else {
     const o = tourObj(t);
-    guest = `<div class="htlGuest r${rarOf(t)}" data-h="talk">${resPic(o)}</div>`;
+    guest = `<div class="htlGuest r${rarOf(t)}" data-h="talk">${gImg(t)}</div>`;
     panel = `<div class="htlInfo">${rarTag(t)}<h3>${esc(t.name)} <small>（${esc(SP(t.sp).name)}）</small></h3>
       <p>仲良し度 ${heartsT(t)}</p><p class="sub">あと ${left(t.until - now())} 泊まります ／ ${r.n}</p>
       ${t.favKnown && t.favKnown.length ? `<p class="sub">好きな物：${t.favKnown.map(k => GRP[k].i).join('、')}</p>` : ''}
@@ -506,7 +512,7 @@ function giftGrid(t){
 function vTalk(L){
   const t = F().tour.find(x => x.id===HV.guest); if(!t){ HV.view = 'top'; return vTop(L); }
   const o = tourObj(t);
-  const body = `<div class="htlTalkG r${rarOf(t)}">${resPic(o)}</div><div class="talkBubble htlBub"><b>${esc(t.name)}</b>${esc(speak(o, HV.line || '…'))}</div>`;
+  const body = `<div class="htlTalkG r${rarOf(t)}">${gImg(t)}</div><div class="talkBubble htlBub"><b>${esc(t.name)}</b>${esc(speak(o, HV.line || '…'))}</div>`;
   const panel = `<div class="htlInfo">${rarTag(t)}<h3>${esc(t.name)}</h3><p>仲良し度 ${heartsT(t)}</p>
     ${t.pal ? '<p class="sub">レターを使うと、この町に住みに来てくれるかも！</p>' : giftGrid(t)}
     <div class="htlBtns"><button class="htlB" data-h="room:${t.room}">◀ 部屋にもどる</button></div></div>`;
@@ -890,4 +896,33 @@ function facTick(quiet){
   else if(!quiet && curScreen==='town') decorate();   // 畑の そだち ぐあい
 }
 setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')) facTick(false); }, 20000);
+})();
+
+
+/* =====================================================================
+   v7.2：ゆうえんち ミニパレードの キャラクターが 縦長に 引き伸ばされる 問題の 修正
+   （iPad横などで 画像の 幅が 正しく 計算されない ことが あるため、画像の 本当の 縦横比から 幅と 高さを 直接 決める）
+   ===================================================================== */
+(function(){
+  try{
+    const st = document.createElement('style');
+    st.textContent = `#yu659 .ypd .ln{align-items:flex-end!important}
+#yu659 .ypd .ln img{aspect-ratio:auto!important;flex:none!important;align-self:flex-end!important;object-fit:contain!important;min-width:0!important;min-height:0!important}`;
+    document.head.appendChild(st);
+    const fit = img => {
+      const go = () => {
+        if(!img.naturalWidth || !img.naturalHeight) return;
+        const vh = innerHeight / 100, sp = img.classList.contains('sp');
+        const hgt = Math.round(sp ? Math.min(18*vh, 130) : Math.min(34*vh, 250));
+        img.style.setProperty('height', hgt + 'px', 'important');
+        img.style.setProperty('width', Math.round(hgt * img.naturalWidth / img.naturalHeight) + 'px', 'important');
+      };
+      if(img.complete) go(); else img.addEventListener('load', go, {once:true});
+    };
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+      if(n.nodeType !== 1) return;
+      const L = n.matches && n.matches('.ypd') ? [n] : (n.querySelectorAll ? [...n.querySelectorAll('.ypd')] : []);
+      L.forEach(p => p.querySelectorAll('.ln img').forEach(fit));
+    }))).observe(document.body, {childList:true, subtree:true});
+  }catch(e){ console.warn('parade fix', e); }
 })();
