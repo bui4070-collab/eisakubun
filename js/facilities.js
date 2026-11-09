@@ -995,6 +995,12 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
   const CH = './assets/images/chara/';
   const MOVED = 'res_cat,res_dog,res_sparrow,res_rabbit,res_tanuki,res_bear,res_squirrel,res_fox,res_panda,res_hamster,res_penguin,res_sheep,res_pig,res_frog,res_owl,res_koala,res_seal,res_hedgehog,res_otter,res_redpanda,res_alpaca,acc_gradcap,acc_hardhat,acc_tophat,acc_flowercrown,acc_drivercap,acc_crown,acc_tiara,acc_glasses,acc_bowtie,acc_medal,acc_cape,acc_star,res_mouse,res_cow,res_horse,res_goat,res_hen,res_duck,res_donkey,res_guinea,res_ferret,res_parrot,res_budgie,res_turtle,res_gecko,res_chipmunk,res_mole,res_bat,res_raccoon,res_skunk,res_beaver,res_porcupine,res_deer,res_boar,res_wolf,res_lynx,res_badger,res_macaque,res_gorilla,res_orangutan,res_lemur,res_sloth,res_armadillo,res_opossum,res_moose,res_bison,res_reindeer,res_polarbear,res_fennec,res_arcticfox,res_mongoose,res_sunbear,res_lion,res_tiger,res_cheetah,res_leopard,res_giraffe,res_elephant,res_zebra,res_hippo,res_rhino,res_camel,res_kangaroo,res_wallaby,res_meerkat,res_hyena,res_warthog,res_ostrich,res_flamingo,res_toucan,res_peacock,res_gazelle,res_dolphin,res_whale,res_shark,res_octopus,res_squid,res_crab,res_lobster,res_jelly,res_starfish,res_seaturtle,res_clownfish,res_puffer,res_seahorse,res_walrus,res_sealion,res_manatee,res_axolotl,res_hermit,res_narwhal,res_beluga,res_eagle,res_hawk,res_crow,res_pigeon,res_swallow,res_robin,res_bluebird,res_hummingbird,res_woodpecker,res_kingfisher,res_crane,res_swan,res_stork,res_cockatoo,res_cardinal,res_mejiro,res_bunchou,res_snowyowl,res_puffin,res_pelican,res_capybara,res_tapir,res_okapi,res_pangolin,res_quokka,res_wombat,res_platypus,res_kiwi,res_sugarglider,res_chinchilla,res_tasdevil,res_binturong,res_whitetiger,res_snowleopard,res_goldmonkey,res_anteater,res_corgi,res_poodle,res_mike,res_kuroneko,res_orca,res_namazu,res_girl,res_girl_party,res_girl_explore,res_girl_pajama,scu_redpanda_park,scu_redpanda_fountain,scu_redpanda_library,scu_redpanda_festival,scu_redpanda_onsen,scu_shima_tree,scu_shima_library,scu_shima_festival,scu_shima_pond,scu_shima_onsen,scu_whitetiger_onsen,scu_whitetiger_festival,scu_whitetiger_pond,scu_whitetiger_library,scu_whitetiger_tree,scu_girl_sakura,scu_girl_festival,scu_girl_bakery,scu_girl_stars,scu_girl_snow,scu_koala_park,scu_koala_festival,scu_koala_pond,scu_alpaca_library,scu_alpaca_onsen,scu_alpaca_festival,scu_panda_onsen,scu_panda_fountain,scu_panda_tree,scu_peacock_stars,scu_peacock_library,scu_peacock_tree,scu_narwhal_harbor,scu_narwhal_library,scu_narwhal_tree,scu_crane_pond,scu_crane_harbor,scu_crane_fountain,scu_snowyowl_sakura,scu_snowyowl_library,scu_snowyowl_harbor,scu_okapi_park,scu_okapi_pond,scu_okapi_library,scu_quokka_pond,scu_quokka_library,scu_quokka_tree,scu_platypus_onsen,scu_platypus_fountain,scu_platypus_tree,scu_snowleopard_tree,scu_snowleopard_fountain,scu_snowleopard_onsen,scu_goldmonkey_park,scu_goldmonkey_fountain,scu_goldmonkey_festival,scu_orca_onsen,scu_orca_library,scu_orca_tree,scu_namazu_pond,scu_namazu_fountain,scu_namazu_library,res_unicorn,scu_unicorn_onsen,scu_unicorn_library,scu_unicorn_pond,scu_unicorn_tree,scu_unicorn_festival'.split(',');
 
+  /* ★ レア度ごとの ゴージャスさ（STEP7 から）
+       超レア    ：★5 がいちばん ゴージャス（大きな ひかり・オーラ・たくさんの キラキラ）
+       レア      ：★5 は 大きめの ひかり ＋ テーマの かざり ＋ キラキラ
+       ちょっとレア：★5 は ひかえめ（キラキラ 数こ ＋ 小さな ひかり ＋ ワンポイント）  ← STEP6 までの 12しゅは すこし 派手め
+       ふつう    ：★5 は ごく ひかえめ（キラキラ 2〜3こ ＋ うっすら ひかり）
+       ★3 は どのレア度も ワンポイントの かざりだけ（レア度が 高いほど ちょっと 凝った かざり） */
   /* ★ ランク専用イラストが できている しゅ：id → {ランク:大きさ補正}
        大きさ補正＝ 絵に キラキラ・ぼうし等で 余白が ふえた ぶんを 拡大して、からだの 大きさを そろえる数
        （1 ＝ そのまま。★5 の 絵だけ ちょっと 大きく したい時は 5 の 数を ふやす） */
@@ -1035,7 +1041,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     mole:{3:1, 5:1.12},
     bat:{3:1, 5:1.12},
     skunk:{3:1, 5:1.12},
-    beaver:{3:1, 5:1.18}
+    beaver:{3:1, 5:1.18},
+    /* STEP7：ちょっとレア（2）… ★5 は「ひかえめ」なので 補正は ほぼ 1 */
+    porcupine:{3:1, 5:1},
+    wolf:{3:1, 5:1},
+    lynx:{3:1, 5:1},
+    gorilla:{3:1, 5:1},
+    orangutan:{3:1, 5:1},
+    lemur:{3:1, 5:1.01},
+    sloth:{3:1, 5:1},
+    armadillo:{3:1, 5:1},
+    moose:{3:1, 5:1},
+    reindeer:{3:1, 5:1},
+    polarbear:{3:1, 5:1},
+    fennec:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
