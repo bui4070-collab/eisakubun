@@ -997,7 +997,9 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
 
   /* ★ ランク専用イラストが できている しゅ：id → できている ランク */
   const RANK_ART = {
-    cat:[3,5]
+    cat:[3,5],                                   /* STEP1・2 */
+    piyomaru:[3,5], mocchi:[3,5], pururin:[3,5], /* STEP2：新しい 超レア 3体 */
+    shima:[3,5]                                  /* STEP2：シマエナガ（超レア） */
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
