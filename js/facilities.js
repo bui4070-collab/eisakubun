@@ -1080,7 +1080,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     hummingbird:{3:1, 5:1.05},
     kingfisher:{3:1, 5:1},
     swan:{3:1, 5:1},
-    stork:{3:1, 5:1}
+    stork:{3:1, 5:1},
+    /* STEP10：ちょっとレア（5） */
+    cockatoo:{3:1, 5:1},
+    cardinal:{3:1, 5:1},
+    puffin:{3:1, 5:1},
+    capybara:{3:1, 5:1},
+    tapir:{3:1, 5:1},
+    pangolin:{3:1, 5:1},
+    wombat:{3:1, 5:1},
+    kiwi:{3:1, 5:1.02},
+    sugarglider:{3:1, 5:1.01},
+    chinchilla:{3:1, 5:1},
+    tasdevil:{3:1, 5:1},
+    binturong:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
