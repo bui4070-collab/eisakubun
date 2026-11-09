@@ -1093,7 +1093,9 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     sugarglider:{3:1, 5:1.01},
     chinchilla:{3:1, 5:1},
     tasdevil:{3:1, 5:1},
-    binturong:{3:1, 5:1}
+    binturong:{3:1, 5:1},
+    /* STEP11：ちょっとレア（最後の1しゅ）… これで ちょっとレア 全61しゅ 完了 */
+    anteater:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
