@@ -1054,7 +1054,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     moose:{3:1, 5:1},
     reindeer:{3:1, 5:1},
     polarbear:{3:1, 5:1},
-    fennec:{3:1, 5:1}
+    fennec:{3:1, 5:1},
+    /* STEP8：ちょっとレア（3） */
+    arcticfox:{3:1, 5:1},
+    sunbear:{3:1, 5:1},
+    lion:{3:1, 5:1},
+    tiger:{3:1, 5:1},
+    cheetah:{3:1, 5:1},
+    leopard:{3:1, 5:1},
+    giraffe:{3:1, 5:1.05},
+    elephant:{3:1, 5:1.15},
+    flamingo:{3:1, 5:1},
+    toucan:{3:1, 5:1},
+    dolphin:{3:1, 5:1.05},
+    whale:{3:1, 5:1.18}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
