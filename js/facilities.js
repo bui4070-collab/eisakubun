@@ -979,3 +979,67 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', late); else setTimeout(late, 0);
 })();
+
+
+/* =====================================================================
+   v7.5：キャラクター画像を assets/images/chara/ に集約 ＋ ランクアップ専用イラスト
+   ・res_〈キー〉／scu_〈キー〉／acc_〈キー〉 の画像は すべて ./assets/images/chara/〈キー〉.〈かくちょうし〉
+     （tools/move_chara_images.ps1 で 今の 画像を ひっこし → 名前も 〈キー〉に そろう）
+   ・ランク専用イラスト：res_〈id〉_r3.webp（★3〜4）／res_〈id〉_r5.webp（★5）
+       ふつう ：★1〜2 = もとの絵、★3〜4 = _r3、★5 = _r5
+       超レア ：★3〜4 = _r3、★5 = _r5（もとの絵は ずかん 用）
+   ・RANK_ART に 書いた しゅだけ 新イラストに なる。書いていない 子は これまで通り（もとの絵＋かざり）
+   ・ステップごとに RANK_ART の 行を ふやして このファイルを 上書きするだけ（.js は ふやさない）
+   ===================================================================== */
+(function(){
+  const CH = './assets/images/chara/';
+  const MOVED = 'res_cat,res_dog,res_sparrow,res_rabbit,res_tanuki,res_bear,res_squirrel,res_fox,res_panda,res_hamster,res_penguin,res_sheep,res_pig,res_frog,res_owl,res_koala,res_seal,res_hedgehog,res_otter,res_redpanda,res_alpaca,acc_gradcap,acc_hardhat,acc_tophat,acc_flowercrown,acc_drivercap,acc_crown,acc_tiara,acc_glasses,acc_bowtie,acc_medal,acc_cape,acc_star,res_mouse,res_cow,res_horse,res_goat,res_hen,res_duck,res_donkey,res_guinea,res_ferret,res_parrot,res_budgie,res_turtle,res_gecko,res_chipmunk,res_mole,res_bat,res_raccoon,res_skunk,res_beaver,res_porcupine,res_deer,res_boar,res_wolf,res_lynx,res_badger,res_macaque,res_gorilla,res_orangutan,res_lemur,res_sloth,res_armadillo,res_opossum,res_moose,res_bison,res_reindeer,res_polarbear,res_fennec,res_arcticfox,res_mongoose,res_sunbear,res_lion,res_tiger,res_cheetah,res_leopard,res_giraffe,res_elephant,res_zebra,res_hippo,res_rhino,res_camel,res_kangaroo,res_wallaby,res_meerkat,res_hyena,res_warthog,res_ostrich,res_flamingo,res_toucan,res_peacock,res_gazelle,res_dolphin,res_whale,res_shark,res_octopus,res_squid,res_crab,res_lobster,res_jelly,res_starfish,res_seaturtle,res_clownfish,res_puffer,res_seahorse,res_walrus,res_sealion,res_manatee,res_axolotl,res_hermit,res_narwhal,res_beluga,res_eagle,res_hawk,res_crow,res_pigeon,res_swallow,res_robin,res_bluebird,res_hummingbird,res_woodpecker,res_kingfisher,res_crane,res_swan,res_stork,res_cockatoo,res_cardinal,res_mejiro,res_bunchou,res_snowyowl,res_puffin,res_pelican,res_capybara,res_tapir,res_okapi,res_pangolin,res_quokka,res_wombat,res_platypus,res_kiwi,res_sugarglider,res_chinchilla,res_tasdevil,res_binturong,res_whitetiger,res_snowleopard,res_goldmonkey,res_anteater,res_corgi,res_poodle,res_mike,res_kuroneko,res_orca,res_namazu,res_girl,res_girl_party,res_girl_explore,res_girl_pajama,scu_redpanda_park,scu_redpanda_fountain,scu_redpanda_library,scu_redpanda_festival,scu_redpanda_onsen,scu_shima_tree,scu_shima_library,scu_shima_festival,scu_shima_pond,scu_shima_onsen,scu_whitetiger_onsen,scu_whitetiger_festival,scu_whitetiger_pond,scu_whitetiger_library,scu_whitetiger_tree,scu_girl_sakura,scu_girl_festival,scu_girl_bakery,scu_girl_stars,scu_girl_snow,scu_koala_park,scu_koala_festival,scu_koala_pond,scu_alpaca_library,scu_alpaca_onsen,scu_alpaca_festival,scu_panda_onsen,scu_panda_fountain,scu_panda_tree,scu_peacock_stars,scu_peacock_library,scu_peacock_tree,scu_narwhal_harbor,scu_narwhal_library,scu_narwhal_tree,scu_crane_pond,scu_crane_harbor,scu_crane_fountain,scu_snowyowl_sakura,scu_snowyowl_library,scu_snowyowl_harbor,scu_okapi_park,scu_okapi_pond,scu_okapi_library,scu_quokka_pond,scu_quokka_library,scu_quokka_tree,scu_platypus_onsen,scu_platypus_fountain,scu_platypus_tree,scu_snowleopard_tree,scu_snowleopard_fountain,scu_snowleopard_onsen,scu_goldmonkey_park,scu_goldmonkey_fountain,scu_goldmonkey_festival,scu_orca_onsen,scu_orca_library,scu_orca_tree,scu_namazu_pond,scu_namazu_fountain,scu_namazu_library,res_unicorn,scu_unicorn_onsen,scu_unicorn_library,scu_unicorn_pond,scu_unicorn_tree,scu_unicorn_festival'.split(',');
+
+  /* ★ ランク専用イラストが できている しゅ：id → できている ランク */
+  const RANK_ART = {
+    cat:[3,5]
+  };
+
+  /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
+  const remap = () => {
+    MOVED.forEach(k => {
+      const o = DEFAULT_ART[k]; if(!o || o.indexOf(CH) === 0) return;
+      const m = /\.(webp|jpg|jpeg|png)$/i.exec(o);
+      DEFAULT_ART[k] = CH + k + '.' + (m ? m[1].toLowerCase() : 'webp');
+    });
+  };
+  const regRank = () => {
+    Object.keys(RANK_ART).forEach(id => RANK_ART[id].forEach(t => {
+      const k = 'res_' + id + '_r' + t; DEFAULT_ART[k] = CH + k + '.webp';
+    }));
+  };
+  remap(); regRank();
+  const late = () => {
+    remap(); regRank();                      /* features.js で あとから 入る ユニコーン分も そろえる */
+    try{ applyArt(); }catch(e){}
+    try{ renderCurrent(); }catch(e){}
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', late); else setTimeout(late, 0);
+
+  /* ---------- 2) ランクで 絵を 切りかえる ---------- */
+  try{
+    RANK_LOOK[4] = 'もっと りっぱに なったよ！ あと ★1つで ゴージャス！';
+  }catch(e){}
+  const _rp75 = resPic;
+  resPic = function(r, cls){
+    let h = _rp75.apply(this, arguments);
+    try{
+      if(!r) return h;
+      const s = SP(r.sp), have = RANK_ART[r.sp];
+      if(!have || s.human) return h;
+      const st = r.star || 1, want = st >= 5 ? 5 : st >= 3 ? 3 : 1;
+      let t = 1; have.forEach(x => { if(x <= want && x > t) t = x; });
+      if(t === 1) return h;
+      const src = artSrc('res_' + r.sp + '_r' + t); if(!src) return h;
+      h = h.replace(/<img class="acc[^>]*>/g, '')
+           .replace(/(<img class="rb"[^>]*?\ssrc=")[^"]*(")/, (m, a, b) => a + esc(src) + b)
+           .replace('class="rpic', 'class="rpic art75 ');
+    }catch(e){ console.warn('rank art', e); }
+    return h;
+  };
+})();
