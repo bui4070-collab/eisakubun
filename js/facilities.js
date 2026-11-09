@@ -1005,7 +1005,15 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     pururin:{3:1, 5:1.175},
     shima:{3:1, 5:1.28},
     unicorn:{3:1, 5:1.04},
-    whitetiger:{3:1, 5:1.008}
+    whitetiger:{3:1, 5:1.008},
+    /* STEP4：レア（★2から はじまる 子） */
+    koala:{3:1, 5:1.15},
+    redpanda:{3:1, 5:1.25},
+    alpaca:{3:1, 5:1.12},
+    panda:{3:1, 5:1.2},
+    peacock:{3:1, 5:1.12},
+    narwhal:{3:1, 5:1.1},
+    snowyowl:{3:1, 5:1.25}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
