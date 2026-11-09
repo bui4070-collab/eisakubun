@@ -1022,7 +1022,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     snowleopard:{3:1, 5:1.12},
     goldmonkey:{3:1, 5:1.12},
     orca:{3:1, 5:1.1},
-    namazu:{3:1, 5:1.18}
+    namazu:{3:1, 5:1.18},
+    /* STEP6：ちょっとレア（1） */
+    owl:{3:1, 5:1.15},
+    squirrel:{3:1, 5:1.1},
+    bear:{3:1, 5:1.12},
+    fox:{3:1, 5:1.1},
+    hedgehog:{3:1, 5:1.18},
+    otter:{3:1, 5:1.15},
+    penguin:{3:1, 5:1.18},
+    seal:{3:1, 5:1.12},
+    mole:{3:1, 5:1.12},
+    bat:{3:1, 5:1.12},
+    skunk:{3:1, 5:1.12},
+    beaver:{3:1, 5:1.18}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
