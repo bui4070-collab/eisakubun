@@ -1067,7 +1067,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     flamingo:{3:1, 5:1},
     toucan:{3:1, 5:1},
     dolphin:{3:1, 5:1.05},
-    whale:{3:1, 5:1.18}
+    whale:{3:1, 5:1.18},
+    /* STEP9：ちょっとレア（4） */
+    shark:{3:1, 5:1},
+    seaturtle:{3:1, 5:1},
+    seahorse:{3:1, 5:1},
+    manatee:{3:1, 5:1},
+    axolotl:{3:1, 5:1},
+    beluga:{3:1, 5:1},
+    eagle:{3:1, 5:1},
+    hawk:{3:1, 5:1},
+    hummingbird:{3:1, 5:1.05},
+    kingfisher:{3:1, 5:1},
+    swan:{3:1, 5:1},
+    stork:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
