@@ -1135,7 +1135,7 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     wallaby:{3:1, 5:1},
     meerkat:{3:1, 5:1},
     hyena:{3:1, 5:1},
-    /* STEP15：ふつう（4）… STEP12 で もれていた ニワトリ・アヒルを ふくむ */
+    /* STEP15：ふつう（4） */
     hen:{3:1, 5:1},
     duck:{3:1, 5:1},
     warthog:{3:1, 5:1},
@@ -1147,7 +1147,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     lobster:{3:1.07, 5:1.14},
     jelly:{3:1, 5:1.01},
     starfish:{3:1, 5:1},
-    clownfish:{3:1, 5:1}
+    clownfish:{3:1, 5:1},
+    /* STEP16：ふつう（5） */
+    puffer:{3:1, 5:1},
+    walrus:{3:1, 5:1},
+    sealion:{3:1, 5:1},
+    hermit:{3:1, 5:1},
+    crow:{3:1, 5:1},
+    pigeon:{3:1, 5:1},
+    swallow:{3:1, 5:1},
+    robin:{3:1, 5:1},
+    bluebird:{3:1, 5:1},
+    woodpecker:{3:1, 5:1},
+    mejiro:{3:1, 5:1},
+    bunchou:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
