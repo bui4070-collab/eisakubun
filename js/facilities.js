@@ -1108,7 +1108,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     mouse:{3:1, 5:1},
     cow:{3:1, 5:1},
     horse:{3:1, 5:1},
-    goat:{3:1, 5:1}
+    goat:{3:1, 5:1},
+    /* STEP13：ふつう（2） */
+    donkey:{3:1, 5:1},
+    guinea:{3:1, 5:1},
+    ferret:{3:1, 5:1},
+    parrot:{3:1, 5:1.02},
+    budgie:{3:1, 5:1},
+    turtle:{3:1, 5:1},
+    gecko:{3:1, 5:1},
+    chipmunk:{3:1, 5:1},
+    raccoon:{3:1, 5:1},
+    deer:{3:1, 5:1},
+    boar:{3:1, 5:1},
+    badger:{3:1, 5:1.02}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
