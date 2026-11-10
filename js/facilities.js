@@ -1121,7 +1121,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     raccoon:{3:1, 5:1},
     deer:{3:1, 5:1},
     boar:{3:1, 5:1},
-    badger:{3:1, 5:1.02}
+    badger:{3:1, 5:1.02},
+    /* STEP14：ふつう（3） */
+    macaque:{3:1, 5:1},
+    opossum:{3:1, 5:1},
+    bison:{3:1, 5:1},
+    mongoose:{3:1, 5:1},
+    zebra:{3:1, 5:1},
+    hippo:{3:1, 5:1},
+    rhino:{3:1, 5:1},
+    camel:{3:1, 5:1},
+    kangaroo:{3:1, 5:1},
+    wallaby:{3:1, 5:1},
+    meerkat:{3:1, 5:1},
+    hyena:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
