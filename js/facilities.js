@@ -1095,7 +1095,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     tasdevil:{3:1, 5:1},
     binturong:{3:1, 5:1},
     /* STEP11：ちょっとレア（最後の1しゅ）… これで ちょっとレア 全61しゅ 完了 */
-    anteater:{3:1, 5:1}
+    anteater:{3:1, 5:1},
+    /* STEP12：ふつう（1）… ★5 は ごく ひかえめ（キラキラ 2〜3こ ＋ うっすら ひかり） */
+    dog:{3:1, 5:1},
+    rabbit:{3:1, 5:1},
+    hamster:{3:1, 5:1},
+    pig:{3:1, 5:1},
+    sheep:{3:1, 5:1},
+    sparrow:{3:1, 5:1},
+    tanuki:{3:1, 5:1},
+    frog:{3:1, 5:1},
+    mouse:{3:1, 5:1},
+    cow:{3:1, 5:1},
+    horse:{3:1, 5:1},
+    goat:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
