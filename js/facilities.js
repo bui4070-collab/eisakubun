@@ -1134,7 +1134,20 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     kangaroo:{3:1, 5:1},
     wallaby:{3:1, 5:1},
     meerkat:{3:1, 5:1},
-    hyena:{3:1, 5:1}
+    hyena:{3:1, 5:1},
+    /* STEP15：ふつう（4）… STEP12 で もれていた ニワトリ・アヒルを ふくむ */
+    hen:{3:1, 5:1},
+    duck:{3:1, 5:1},
+    warthog:{3:1, 5:1},
+    ostrich:{3:1, 5:1},
+    gazelle:{3:1, 5:1},
+    octopus:{3:1, 5:1},
+    squid:{3:1, 5:1},
+    crab:{3:1, 5:1.01},
+    lobster:{3:1.07, 5:1.14},
+    jelly:{3:1, 5:1.01},
+    starfish:{3:1, 5:1},
+    clownfish:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
