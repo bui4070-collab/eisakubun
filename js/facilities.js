@@ -1160,7 +1160,13 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     bluebird:{3:1, 5:1},
     woodpecker:{3:1, 5:1},
     mejiro:{3:1, 5:1},
-    bunchou:{3:1, 5:1}
+    bunchou:{3:1, 5:1},
+    /* STEP17：ふつう（6）… これで 全66しゅ 完了 */
+    pelican:{3:1, 5:1.01},
+    corgi:{3:1, 5:1},
+    poodle:{3:1, 5:1},
+    mike:{3:1, 5:1},
+    kuroneko:{3:1, 5:1}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
