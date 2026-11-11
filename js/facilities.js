@@ -931,28 +931,29 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
 
 
 /* =====================================================================
-   v7.4：新しい 超レア 3体（ピヨまる・モッチー・プルリン）
+   v7.4：新しい 超レア 3体（ID: piyomaru / mocchi / pururin）
+   ※ v7.6 で 名前を ゼリーさん／お文具さん／プリンさん に へんこう
    ・画像は ./assets/images/chara/（立ち絵 res_〈id〉、特別イラスト scu_〈id〉_〈場面〉）
    ・特別イラストは いまの「とくべつな 1まい」と 同じ しくみ（町に 住んでいる 時に 建物・かざりを タッチ）
    ===================================================================== */
 (function(){
   const CIMG = './assets/images/chara/';
   const NC = [
-    {id:'piyomaru', name:'ピヨまる', emoji:'🐤', home:'bird',  bias:'pop',
-      ab:{work:22, biz:24, know:24, pop:44, drive:23}, skill:['bonus','hint'], kuchi:'ぴよ',
+    {id:'piyomaru', name:'ゼリーさん', emoji:'🐤', home:'bird',  bias:'pop',
+      ab:{work:22, biz:24, know:24, pop:44, drive:23}, skill:['bonus','hint'], kuchi:'',
       sc:['sakura','flowers','park','tree','stars'],
-      info:'小さいけれど 元気いっぱいの ひよこ。どこにでも ちょこちょこ ついていく 町の 人気者。',
-      lines:'きょうも げんき いっぱいだぴよ！|ちっちゃくても いっぱい あるけるぴよ|みんなの あとを ついていくの、だいすきぴよ|さくらの はなびら、ぼうしに したぴよ|おほしさまに おねがいごと したぴよ'},
-    {id:'mocchi', name:'モッチー', emoji:'🍡', home:'house', bias:'drive',
-      ab:{work:24, biz:23, know:25, pop:26, drive:43}, skill:['gift','guard'], kuchi:'もち',
+      info:'オレンジいろの ゼリーの ような ひよこ。ふつうの ことばは はなせず、「アアァァァ」としか いえない。',
+      lines:'アアァァァ|アァァ…|アアアァァァ！|アァ…|アアァァァァァ'},
+    {id:'mocchi', name:'お文具さん', emoji:'🍡', home:'house', bias:'drive',
+      ab:{work:24, biz:23, know:25, pop:26, drive:43}, skill:['gift','guard'], kuchi:'',
       sc:['fountain','festival','snow','onsen','library'],
-      info:'おもちみたいに まっ白で ふわふわ。ぼーっと しているけど、乗り物に 乗るのが 大すき。',
-      lines:'でんしゃの まどから 見る けしき、すきだもち|ふわぁ… ちょっと ぼーっと してたもち|この おだんご、ぼくに にてるもち…？|ゆきだるま、ぼくに そっくりに できたもち|おんせん、ぽかぽかだもち'},
-    {id:'pururin', name:'プルリン', emoji:'🍮', home:'house', bias:'pop',
-      ab:{work:23, biz:30, know:26, pop:42, drive:20}, skill:['mult','bonus'], kuchi:'ぷる',
+      info:'おもちみたいに まっ白な 男の子。プリンが 大すき。名前に「文具」と ついているけれど、文ぼうぐとは かんけいが ない。',
+      lines:'ぼくは お文具さん。でも 文ぼうぐは あまり かんけい ない|プリンが すき。まいにち たべても あきない|えんぴつ？ もってない。プリンなら もってる|のりものに のると おちつく|名前を よく まちがえられる。文ぼうぐやさん じゃない'},
+    {id:'pururin', name:'プリンさん', emoji:'🍮', home:'house', bias:'pop',
+      ab:{work:23, biz:30, know:26, pop:42, drive:20}, skill:['mult','bonus'], kuchi:'',
       sc:['bakery','castle','festival','park','pond'],
-      info:'プリンの 国から 来た、ぷるぷるの 人気者。あまい においで みんなを 笑顔に する。',
-      lines:'ぷるぷる ゆれるのは うれしい しるしだぷる|カラメルの ところが いちばん じまんぷる|みんなで いっしょに おどるぷる！|あまい においで みんな 笑顔に なるぷる|おしろの パーティー、たのしみぷる'}
+      info:'おうちで すごすのが 大すきな プリン。こんな 見た目なのに たまご アレルギー。すきな ものは オレンジゼリー。',
+      lines:'きょうも 家で のんびり。それが いちばん|じつは たまご アレルギー。こんな 見た目なのに|オレンジゼリーが だいすき。ぷるぷる してて かわいい|おそとは まぶしい。おうちの ソファが ちょうどいい|カラメルは ちょっとだけ。それが こだわり'}
   ];
   const NCM = Object.fromEntries(NC.map(c => [c.id, c]));
   try{
@@ -1006,9 +1007,9 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
        （1 ＝ そのまま。★5 の 絵だけ ちょっと 大きく したい時は 5 の 数を ふやす） */
   const RANK_ART = {
     cat:{3:1.2, 5:1},
-    piyomaru:{3:1.018, 5:1.263},
+    piyomaru:{3:1.22, 5:1.22},   /* v7.6：原画に キラキラだけ を たして 作りなおし */
     mocchi:{3:1.12, 5:1},
-    pururin:{3:1, 5:1.175},
+    pururin:{3:1.22, 5:1.22},   /* v7.6：同上 */
     shima:{3:1, 5:1.28},
     unicorn:{3:1, 5:1.04},
     whitetiger:{3:1, 5:1.008},
@@ -1166,7 +1167,11 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
     corgi:{3:1, 5:1},
     poodle:{3:1, 5:1},
     mike:{3:1, 5:1},
-    kuroneko:{3:1, 5:1}
+    kuroneko:{3:1, 5:1},
+    /* v7.6：新キャラ（レア） */
+    nanashi:{3:1.22, 5:1.22},
+    nekosan:{3:1.22, 5:1.22},
+    koneko:{3:1.22, 5:1.22}
   };
 
   /* ---------- 1) 画像の 場所を chara に そろえる ---------- */
@@ -1194,23 +1199,141 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
   try{
     RANK_LOOK[4] = 'もっと りっぱに なったよ！ あと ★1つで ゴージャス！';
   }catch(e){}
+  /* v7.6：種ごとの 表示サイズ（1 ＝ ふつう。子猫さんは 猫さんより かなり 小さく） */
+  const SIZE75 = { koneko:0.5 };
   const _rp75 = resPic;
   resPic = function(r, cls){
     let h = _rp75.apply(this, arguments);
     try{
       if(!r) return h;
-      const s = SP(r.sp), have = RANK_ART[r.sp];
-      if(!have || s.human) return h;
-      const st = r.star || 1, want = st >= 5 ? 5 : st >= 3 ? 3 : 1;
-      let t = 1; Object.keys(have).forEach(k => { const x = +k; if(x <= want && x > t) t = x; });
-      if(t === 1) return h;
-      const src = artSrc('res_' + r.sp + '_r' + t); if(!src) return h;
-      const sc = have[t] || 1, sty = sc > 1.005 ? 'scale:' + sc + ';transform-origin:50% 100%' : '';
-      h = h.replace(/<img class="acc[^>]*>/g, '')
-           .replace(/(<img class="rb"[^>]*?\ssrc=")[^"]*(")/, (m, a, b) => a + esc(src) + b)
-           .replace('class="rpic', 'class="rpic art75 ');
-      if(sty) h = h.replace(/<img class="rb"([^>]*)>/, (m, a) => '<img class="rb"' + (/\sstyle="/.test(a) ? a.replace(/style="([^"]*)"/, (mm, v) => 'style="' + v + ';' + sty + '"') : a + ' style="' + sty + '"') + '>');
+      const s = SP(r.sp); if(s.human) return h;
+      const have = RANK_ART[r.sp];
+      const zs = SIZE75[r.sp] || 1;
+      if(have){
+        const st = r.star || 1, want = st >= 5 ? 5 : st >= 3 ? 3 : 1;
+        let t = 1; Object.keys(have).forEach(k => { const x = +k; if(x <= want && x > t) t = x; });
+        const src = t > 1 ? artSrc('res_' + r.sp + '_r' + t) : '';
+        if(src){
+          const sc = have[t] || 1, sty = sc > 1.005 ? 'scale:' + sc + ';transform-origin:50% 100%' : '';
+          h = h.replace(/<img class=\"acc[^>]*>/g, '')
+               .replace(/(<img class=\"rb\"[^>]*?\ssrc=\")[^\"]*(\")/, (m, a, b) => a + esc(src) + b)
+               .replace('class=\"rpic', 'class=\"rpic art75 ');
+          if(sty) h = h.replace(/<img class=\"rb\"([^>]*)>/, (m, a) => '<img class=\"rb\"' + (/\sstyle=\"/.test(a) ? a.replace(/style=\"([^\"]*)\"/, (mm, v) => 'style=\"' + v + ';' + sty + '\"') : a + ' style=\"' + sty + '\"') + '>');
+        }
+      }
+      if(Math.abs(zs - 1) > 0.005){      /* 種ごとの サイズは ぜんたい（オーラも）に かける */
+        h = h.replace(/^<span class=\"([^\"]*)\"/, (m, c) => '<span class=\"' + c + '\" style=\"scale:' + zs + ';transform-origin:50% 100%\"');
+      }
     }catch(e){ console.warn('rank art', e); }
     return h;
   };
+})();
+
+/* =====================================================================
+   v7.6：キャラクター修正 ＋ 新キャラ 3体（レア）
+   ・名前の へんこう（IDは そのまま）：ピヨまる→ゼリーさん／モッチー→お文具さん／プルリン→プリンさん
+   ・「語尾は 無」＝ 口ぐせを つけない。ゼリーさんは「アアァァァ」だけ、子猫さんは はなせない
+   ・新キャラ（レア）：名も無き者（nanashi）／猫さん（nekosan）／子猫さん（koneko）
+       立ち絵 res_〈id〉、専用イラスト scu_〈id〉_〈場面〉 3まい、ランク絵 res_〈id〉_r3 / _r5
+   ===================================================================== */
+(function(){
+  const CIMG = './assets/images/chara/';
+
+  /* ---------- 新キャラ（レア） ---------- */
+  const NC2 = [
+    {id:'nanashi', name:'名も無き者', emoji:'\uD83C\uDF19', bias:'work', home:'log',   skill:['guard'], sc:['pond','tree','snow'],
+      info:'なまえの ない ふしぎな いきもの。ときどき ネガティブな ことを いう。'},
+    {id:'nekosan', name:'猫さん',     emoji:'\uD83D\uDC31', bias:'know', home:'house', skill:['hint'],  sc:['library','stars','castle'],
+      info:'高学歴の ねこ。むずかしい ことを よく 言う。たくさんの 資格を もっている。'},
+    {id:'koneko',  name:'子猫さん',   emoji:'\uD83D\uDC08', bias:'pop',  home:'house', skill:['gift'],  sc:['park','flowers','sakura'],
+      info:'猫さんに かわれている 子ねこ。はなせない。猫さんよりも かなり 小さい。'}
+  ];
+  const NC2M = Object.fromEntries(NC2.map(c => [c.id, c]));
+  try{
+    NC2.forEach(c => {
+      DEFAULT_ART['res_' + c.id] = CIMG + 'res_' + c.id + '.webp';
+      c.sc.forEach(k => { DEFAULT_ART[`scu_${c.id}_${k}`] = CIMG + `scu_${c.id}_${k}.webp`; });
+      if(!SPECIES.some(s => s.id===c.id)) SPECIES.push({id:c.id, name:c.name, art:'res_' + c.id, emoji:c.emoji, rar:3, w:3, bias:c.bias, home:c.home});
+      try{ ZUKAN_INFO[c.id] = c.info; }catch(e){}
+      try{ KUCHI[c.id] = ''; }catch(e){}
+      try{ SP_SKILL[c.id] = c.skill; }catch(e){}
+    });
+    /* レアは 専用イラスト 3まい（場面を 固定） */
+    const _ss76 = speciesScenes;
+    speciesScenes = function(sp){ return NC2M[sp] ? NC2M[sp].sc.slice() : _ss76.apply(this, arguments); };
+  }catch(e){ console.warn('v7.6 chara', e); }
+
+  /* ---------- 口ぐせ・セリフ ---------- */
+  const MUTE_Z = ['アアァァァ','アァァ…','アアアァァァ！','アァ…','アアァァァァァ'];
+  const MUTE_K = ['……','（じっと 見つめている）','（しっぽを ふりふり）','（あくびを した）','（猫さんの あとを ついていく）'];
+  const CH76 = {
+    piyomaru:{ mute:MUTE_Z, kuchiText:'アアァァァ（ふつうの ことばは はなせない）', lines:MUTE_Z },
+    koneko:  { mute:MUTE_K, kuchiText:'（はなせない）', lines:MUTE_K },
+    mocchi:{ kuchiText:'なし（語尾は つけない）',
+      lines:['ぼくは お文具さん。でも 文ぼうぐは あまり かんけい ない','プリンが すき。まいにち たべても あきない','えんぴつ？ もってない。プリンなら もってる','のりものに のると おちつく','名前を よく まちがえられる。文ぼうぐやさん じゃない'],
+      scl:{ fountain:['ふんすいの にじ、きれい','水が きらきら してる。プリンに かけたら おいしそう'],
+            festival:['たこやきより プリンの 屋台が ほしい','はなびの 音、ドーンって 大きい'],
+            snow:['ゆきだるま、ぼくに そっくり','さむい。あったかい プリンが たべたい'],
+            onsen:['おんせん、ぽかぽか','プリンを もって はいりたい'],
+            library:['本は むずかしい。プリンの ずかんなら 読める','ここでは しずかに する。プリンも しずかに たべる'] } },
+    pururin:{ kuchiText:'なし（語尾は つけない）',
+      lines:['きょうも 家で のんびり。それが いちばん','じつは たまご アレルギー。こんな 見た目なのに','オレンジゼリーが だいすき。ぷるぷる してて かわいい','おそとは まぶしい。おうちの ソファが ちょうどいい','カラメルは ちょっとだけ。それが こだわり'],
+      scl:{ bakery:['パンの においは すき。でも たまごの パンは だめ','オレンジゼリー、売ってない？'],
+            castle:['おしろの バルコニー、高い。家に かえりたい','見はらしは いい。でも 家の ほうが おちつく'],
+            festival:['はなび、見たい。でも 家の まどから 見たい','たこやきは たまごが 入ってる。だめ'],
+            park:['こうえんは 気もちいい。でも もう 家に かえりたい','ブランコで ぷるぷる ゆれる'],
+            pond:['池に うつる ゆうひ、オレンジゼリーに にてる','おうちから 見る ゆうひも すき'] } },
+    nanashi:{ kuchiText:'なし（語尾は つけない）',
+      lines:['どうせ ぼくなんか だれにも おぼえて もらえない','きょうは いい 天気。…でも あしたは くもりかも','名前は ない。ある 気も しない','みんな たのしそう。ぼくは ここで 見てる だけ','でも ここに いて いいなら、もう ちょっと だけ いる'],
+      scl:{ pond:['ゆうやけは きれい。すぐ 終わるけど','池に うつる ぼくも ぼんやり してる'],
+            tree:['木かげは しずか。だれも こない','ここで ねても だれも 気づかない。…それも いい'],
+            snow:['ゆきは つめたい。でも きらいじゃ ない','だれの あしあとも ない。ぼくだけの 場所'] } },
+    nekosan:{ kuchiText:'なし（語尾は つけない）',
+      lines:['先ほどの 問題は 二次方程式の 解の公式で とけます','資格は 全部で 十二個。さいきんは 気象予報士を 取りました','ブラックホールの 事象の地平線は 光さえ にげられない 境界です','読書は 脳の 最高の トレーニング。1日 二時間は 読みます','子猫さんの 食事の カロリー計算は 完ぺきです'],
+      scl:{ library:['この 蔵書は 十進分類法で 整理されています','本は 知識の 宝庫。資格の 勉強にも 最適です'],
+            stars:['あれは 北極星。地球の 自転軸の 延長線上に あります','流星群の 極大は 深夜です。観測には 防寒が 必要です'],
+            castle:['この 城の 構造は 中世の 築城術に もとづきます','見晴らしの よい 高台は 防衛上 重要でした'] } }
+  };
+
+  const late = () => {
+    try{
+      const V = window.__v53;
+      if(V && V.SPL) Object.keys(CH76).forEach(id => { V.SPL[id] = CH76[id].lines.join('|'); });
+    }catch(e){}
+    try{
+      const _sp76 = speak;
+      speak = function(r, line){
+        const c = r && CH76[r.sp];
+        if(!c) return _sp76.apply(this, arguments);
+        if(r.kuchi) r.kuchi = '';                       /* 保存ずみの 口ぐせも けす */
+        return c.mute ? choice(c.mute) : String(line);
+      };
+      const _tl76 = talkLine;
+      talkLine = function(r, ctx){
+        const c = r && CH76[r.sp];
+        if(!c) return _tl76.apply(this, arguments);
+        if(r.kuchi) r.kuchi = '';
+        return choice(c.lines);
+      };
+      const _ph76 = persHTML;
+      persHTML = function(r){
+        const h = _ph76.apply(this, arguments), c = r && CH76[r.sp];
+        return (c && h) ? h.replace(/口ぐせ：<b>[^<]*<\/b>/, '口ぐせ：<b>' + esc(c.kuchiText) + '</b>') : h;
+      };
+      const _sc76 = sceneCard;
+      sceneCard = function(r, sp, k, isNew){
+        let h = _sc76.apply(this, arguments);
+        try{
+          const c = CH76[sp];
+          if(c){
+            const L = c.mute || (c.scl || {})[k];
+            if(L) h = h.replace(/(<div class="scLine"><b>[^<]*<\/b>)[^<]*(<\/div>)/, (m, a, b) => a + esc(choice(L)) + b);
+          }
+          if(SP(sp).rar === 3) h = h.replace('scCard rk4 own', 'scCard rk3 own');   /* レアは 金の わく */
+        }catch(e){}
+        return h;
+      };
+    }catch(e){ console.warn('v7.6 speech', e); }
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', late); else setTimeout(late, 0);
 })();
