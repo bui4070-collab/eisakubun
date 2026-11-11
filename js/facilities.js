@@ -1264,6 +1264,8 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
   }catch(e){ console.warn('v7.6 chara', e); }
 
   /* ---------- 口ぐせ・セリフ ---------- */
+  /* 初期ネームを キャラの 名前に する しゅ（ゼリーさん・お文具さん・プリンさん・名も無き者・猫さん・子猫さん） */
+  const INITNAME76 = new Set(['piyomaru', 'mocchi', 'pururin', 'nanashi', 'nekosan', 'koneko']);
   const MUTE_Z = ['アアァァァ','アァァ…','アアアァァァ！','アァ…','アアァァァァァ'];
   const MUTE_K = ['……','（じっと 見つめている）','（しっぽを ふりふり）','（あくびを した）','（猫さんの あとを ついていく）'];
   const CH76 = {
@@ -1334,6 +1336,31 @@ setInterval(() => { if(!document.hidden && !$('#dlg').classList.contains('show')
         return h;
       };
     }catch(e){ console.warn('v7.6 speech', e); }
+
+    /* ---------- 初期ネーム：キャラの 名前（ゼリーさん など）を そのまま 住民の 名前に ---------- */
+    try{
+      const _nr76 = newResident;
+      newResident = function(sp){
+        const r = _nr76.apply(this, arguments);
+        if(sp && INITNAME76.has(sp.id)) r.name = SP(sp.id).name;
+        return r;
+      };
+      /* すでに いる 住民：ランダムな 初期ネーム（モモ・ソラ…）の ままの 子だけ キャラの 名前に そろえる */
+      const fixNames = () => {
+        let n = 0;
+        try{
+          (save.town?.res || []).forEach(r => {
+            if(!INITNAME76.has(r.sp)) return;
+            const want = SP(r.sp).name;
+            if(r.name !== want && NAMES.some(x => r.name === x || new RegExp('^' + x + '\\d{2}$').test(r.name))){ r.name = want; n++; }
+          });
+          if(n){ persist(); try{ renderCurrent(); }catch(e){} }
+        }catch(e){}
+        return n;
+      };
+      window.__fixNames76 = fixNames;
+      fixNames();
+    }catch(e){ console.warn('v7.6 names', e); }
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', late); else setTimeout(late, 0);
 })();
