@@ -16339,8 +16339,8 @@ function addEntry(){
     const box = document.querySelector('#scr-kmode .modeBtns');
     if(box && !document.getElementById('goHyaku')){
       const b = document.createElement('button'); b.className = 'modeBtn hy77btn'; b.id = 'goHyaku';
-      b.innerHTML = `<img alt="" src="${IMG}hy_fur_karuta.webp"/><div><b>百人一首</b><span>読み上げで 札とり・下の句あて（${learned()}/100首）</span></div>`;
-      b.onclick = () => { snd('tap'); open(); }; box.appendChild(b);
+      b.innerHTML = `<img alt="" src="${IMG}hy_icon.webp"/><div><b>百人一首</b><span>読み上げで 札とり・下の句あて（${learned()}/100首）</span></div>`;
+      b.onclick = () => { snd('tap'); open(); }; box.insertBefore(b, box.firstChild);
     }
     const ul = document.querySelector('#subjKanji ul'); if(ul && !ul.querySelector('.hyli')){ const li = document.createElement('li'); li.className = 'hyli'; li.textContent = '百人一首'; ul.appendChild(li); }
   }catch(e){ console.warn('hyakunin entry', e); }
@@ -16507,18 +16507,16 @@ body.hy77on{overflow:hidden}
 #hy77.tab .hybub1{font-size:18px;margin-top:4vh}
 #hy77.tab .hymodes{flex-direction:row;flex-wrap:wrap;align-items:stretch}#hy77.tab .hymb{flex:1 1 0;min-height:96px}#hy77.tab .hymul{flex-basis:100%;align-self:center}
 #hy77.tab .hymb small{font-size:13px}
-#hy77.tab.s-top .hybg{background-position:left bottom}
+#hy77.tab .hybg{background-position:center center}
 #hy77.tab .hyhon{grid-template-columns:minmax(0,.36fr) minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:'pg pg' 'bub rd' '. rd' '. cd';gap:12px}
 #hy77.tab .hyrd{padding:10px 18px}#hy77.tab .hyread .k1{font-size:34px}#hy77.tab .hyread .k2{font-size:22px}
 #hy77.tab .hybub2{font-size:16px;margin-top:4px}#hy77.tab .hybub2:after{right:auto;left:40%}
 #hy77.tab .hyhon .hycards{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:1fr;height:min(100%,44vh);gap:16px}
-#hy77.tab.s-hon .hybg{background-position:left center}
 #hy77.tab .hyshi{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:'pg pg' 'km ask' 'km cd' 'bb ok';gap:12px 18px}
 #hy77.tab .hykami{align-self:start;margin-top:10px}#hy77.tab .hykami .kt{flex-direction:column;font-size:34px}
 #hy77.tab .hyshi .hycards{width:100%}
 #hy77.tab .hyshi .hyok{width:100%}
 #hy77.tab .hybub3{right:auto;left:30%;bottom:34%;max-width:22%;font-size:16px}
-#hy77.tab.s-shimo .hybg{background-position:left bottom}
 #hy77.tab .hyfb{left:auto;right:18px;transform:none;bottom:14px;width:min(520px,48%)}
 #hy77.tab .hyfb{animation:none}
 `;
