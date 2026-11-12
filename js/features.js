@@ -16725,6 +16725,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
 /* =====================================================================
    v8.0 おんがく STEP1：おんがく トップ／じゆうに ひく／けんばんの 音
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
+   v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    ・画像：assets/images/music/　音：assets/audio/music/（pf_ ピアノ13・mh_ けんハモ33）
    ・セーブ：save.music = {inst:'mh'|'pf', label:'doremi'|'abc'|'none', oct:4, rec:[...]}
    ===================================================================== */
@@ -16818,19 +16819,19 @@ function root(){
 }
 function open(){ MS(); V = {s:'top'}; root(); document.body.classList.add('mu80on'); requestAnimationFrame(() => ROOT && ROOT.classList.add('show')); render(); }
 function close(){
-  stopRec(); stopPlay(); allOff(); FX.forEach(clearTimeout); FX = [];
+  cancelAnimationFrame(RAF); if(G) G.over = true; stopRec(); stopPlay(); allOff(); FX.forEach(clearTimeout); FX = [];
   if(!ROOT) return; const r = ROOT; ROOT = null; r.classList.remove('show'); document.body.classList.remove('mu80on'); setTimeout(() => r.remove(), 220);
   try{ persist(); }catch(e){}
 }
-function go(s){ stopRec(); stopPlay(); allOff(); PTR.clear(); FX.forEach(clearTimeout); FX = []; V = {s}; snd('tap'); render(); }
-let rzT = 0, lastL = ''; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if(!ROOT) return; const L = isTab() ? 'tab' : 'ph'; allOff(); PTR.clear(); if(V.s === 'dq' && Q && L !== lastL && Q.st === 1 && !Q.done){ newQ(); } lastL = L; render(); }, 150); });
+function go(s){ cancelAnimationFrame(RAF); if(G) G.over = true; stopRec(); stopPlay(); allOff(); PTR.clear(); FX.forEach(clearTimeout); FX = []; V = {s}; snd('tap'); render(); }
+let rzT = 0, lastL = ''; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if(!ROOT) return; const L = isTab() ? 'tab' : 'ph'; allOff(); PTR.clear(); if(V.s === 'dq' && Q && L !== lastL && Q.st === 1 && !Q.done){ newQ(); } lastL = L; render(); if(V.s === 'play' && G && !G.over){ measure(); const sc = ROOT.querySelector('#rgscore'); if(sc) sc.textContent = nf(G.score); } }, 150); });
 function render(){
   if(!ROOT) return; const L = isTab() ? 'tab' : 'ph', m = MS();
   ROOT.className = `show ${L} s-${V.s} i-${m.inst}`;
-  ROOT.innerHTML = `<div class="muw">${({free, dmenu:drMenu, dq, dres}[V.s] || top)(L)}</div>`;
-  if(V.s === 'free' || V.s === 'dq'){ preload(m.inst); }
+  ROOT.innerHTML = `<div class="muw">${({free, dmenu:drMenu, dq, dres, sel, play, rres}[V.s] || top)(L)}</div>`;
+  if(V.s === 'free' || V.s === 'dq' || V.s === 'sel'){ preload(m.inst); }
 }
-const head = (title, back, right) => `<header class="muhd"><button class="muback" data-a="${back === true ? 'top' : back || 'close'}">‹ ${back === 'drBack' ? 'やめる' : 'もどる'}</button>
+const head = (title, back, right) => `<header class="muhd"><button class="muback" data-a="${back === true ? 'top' : back || 'close'}">‹ ${back === 'drBack' || back === 'rgQuit' ? 'やめる' : 'もどる'}</button>
   <div class="mutt"><i>♪</i><b>${title}</b><i>♪</i></div>${right || '<span class="musp"></span>'}</header>`;
 
 /* ===================== ① おんがく トップ ===================== */
@@ -16845,8 +16846,8 @@ function top(L){
     <div class="mustage"><div class="mubub">${m.inst === 'mh' ? 'けんばんハーモニカ<br>いっしょに ふこう！' : 'ピアノで<br>ひいて みよう！'}</div>
       <img class="mubear" src="${IMG}mu_bear.webp" alt=""><img class="mupl ${m.inst}" src="${IMG}${I.chara}.webp" alt=""></div>
     <div class="mucards">${card('mh')}${card('pf')}</div>
-    <div class="mumodes">${mode('doremi', 'doremi', 'ドレミを おぼえる', `ふくろう先生 ★${STAGES.reduce((a, x) => a + DS()[x.id].st, 0)}/9`, false)}${mode('rhythm', 'rhythm', 'リズムゲーム', 'おちてくる 音を ひこう', true)}${mode('free', 'free', 'じゆうに ひく', 'すきに ひいて ろくおん', false)}</div>
-    <div class="mustrip"><span>★</span><b>クリアした 曲</b><i><u style="width:0%"></u></i><em>0 / 20</em><small>リズムゲームは もうすぐ！</small></div>
+    <div class="mumodes">${mode('doremi', 'doremi', 'ドレミを おぼえる', `ふくろう先生 ★${STAGES.reduce((a, x) => a + DS()[x.id].st, 0)}/9`, false)}${mode('rhythm', 'rhythm', 'リズムゲーム', `★${starSum()}/${SONGS.length * 3}`, false)}${mode('free', 'free', 'じゆうに ひく', 'すきに ひいて ろくおん', false)}</div>
+    <div class="mustrip"><span>★</span><b>クリアした 曲</b><i><u style="width:${cleared() / SONGS.length * 100}%"></u></i><em>${cleared()} / ${SONGS.length}</em></div>
   </div>`;
 }
 
@@ -16886,7 +16887,7 @@ function free(L){
 const PTR = new Map();
 const keyAt = (x, y) => { const e = document.elementFromPoint(x, y); return e && e.closest && e.closest('#mukb .muk'); };
 function press(el, id){
-  const k = +el.dataset.m, inst = MS().inst; noteOn(inst, k, 'p' + id); el.classList.add('on'); if(V.s !== 'dq') floatName(el, k);
+  const k = +el.dataset.m, inst = MS().inst; noteOn(inst, k, 'p' + id); el.classList.add('on'); if(V.s === 'free') floatName(el, k);
   if(REC.on) REC.ev.push([Date.now() - REC.t0, k, 1]);
 }
 function release(el, id){ if(el) el.classList.remove('on'); noteOff('p' + id); if(REC.on && el) REC.ev.push([Date.now() - REC.t0, +el.dataset.m, 0]); }
@@ -16896,6 +16897,7 @@ function kDown(e){
   try{ ROOT.querySelector('#mukb').setPointerCapture(e.pointerId); }catch(er){}
   PTR.set(e.pointerId, el); press(el, e.pointerId);
   if(V.s === 'dq' && Q && !Q.done && Q.st !== 1) drAnswer(+el.dataset.m);
+  if(V.s === 'play') rgHit(+el.dataset.m);
 }
 function kMove(e){
   if(!PTR.has(e.pointerId)) return; const cur = PTR.get(e.pointerId), el = keyAt(e.clientX, e.clientY);
@@ -16913,9 +16915,9 @@ function floatName(el, k){
 const PCK = 'awsedftgyhujk';
 const PCD = {};
 window.addEventListener('keydown', e => {
-  if(!ROOT || V.s !== 'free' || e.repeat || e.ctrlKey || e.metaKey) return; const i = PCK.indexOf(e.key.toLowerCase()); if(i < 0) return;
-  const k = range(isTab() ? 'tab' : 'ph')[0] + i, el = ROOT.querySelector(`#mukb .muk[data-m="${k}"]`); if(!el) return;
-  PCD[e.key.toLowerCase()] = el; press(el, 'kb' + i);
+  if(!ROOT || (V.s !== 'free' && V.s !== 'play') || e.repeat || e.ctrlKey || e.metaKey) return; const i = PCK.indexOf(e.key.toLowerCase()); if(i < 0) return;
+  const k = (V.s === 'play' && G ? G.range[0] : range(isTab() ? 'tab' : 'ph')[0]) + i, el = ROOT.querySelector(`#mukb .muk[data-m="${k}"]`); if(!el) return;
+  PCD[e.key.toLowerCase()] = el; press(el, 'kb' + i); if(V.s === 'play') rgHit(k);
 });
 window.addEventListener('keyup', e => { const k = e.key.toLowerCase(), el = PCD[k]; if(!el) return; delete PCD[k]; release(el, 'kb' + PCK.indexOf(k)); });
 
@@ -16969,7 +16971,7 @@ try{ FAC_LBL77.music = '🎵 おんがく'; HIST_LBL.fac_music = '🎵 おんが
 function drMenu(L){
   const D = DS(), tot = STAGES.reduce((a, s) => a + D[s.id].st, 0);
   const card = s => { const d = D[s.id], op = stOpen(s.id);
-    return `<button class="drst s${s.id} ${op ? '' : 'lock'}" data-a="${op ? 'drGo' : 'drLock'}" data-v="${s.id}">
+    return `<button class="drst s${s.id} ${op ? '' : 'mulk'}" data-a="${op ? 'drGo' : 'drLock'}" data-v="${s.id}">
       <span class="no">${s.id}</span><i><img src="${IMG}${s.ic}.webp" alt="">${op ? '' : '<span class="lk">カギ</span>'}</i><b>${s.t}</b><small>${op ? s.sub : `ステージ${s.id - 1}で ${DR.clear}もん せいかいで ひらく`}</small>
       <em>${op ? starTxt(d.st) : ''}</em>${op && d.n ? `<u>さいこう ${d.b}/${DR.per}</u>` : ''}</button>`; };
   return `<div class="mubg" style="background-image:url('${IMG}mu_bg_room.webp')"></div>
@@ -17086,9 +17088,209 @@ function dres(L){
   </div></div>`;
 }
 
+/* ===================== ③④⑤ リズムゲーム（v8.2） ===================== */
+/* 曲データ：「音名オクターブ:拍」。R は 休み。メロディーのみ（著作権の 切れた 曲） */
+const SONGS = [
+  {id:'kira', t:'きらきらぼし', g:'せかいの うた', d:1, bpm:100, lo:60,
+   n:'C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2'},
+  {id:'kaeru', t:'かえるのうた', g:'せかいの うた', d:1, bpm:92, lo:60,
+   n:'C4:1 D4:1 E4:1 F4:1 E4:1 D4:1 C4:2 E4:1 F4:1 G4:1 A4:1 G4:1 F4:1 E4:2 C4:1 R:1 C4:1 R:1 C4:1 R:1 C4:1 R:1 C4:.5 C4:.5 D4:.5 D4:.5 E4:.5 E4:.5 F4:.5 F4:.5 E4:1 D4:1 C4:2'},
+  {id:'mary', t:'メリーさんのひつじ', g:'せかいの うた', d:1, bpm:104, lo:60,
+   n:'E4:1 D4:1 C4:1 D4:1 E4:1 E4:1 E4:2 D4:1 D4:1 D4:2 E4:1 G4:1 G4:2 E4:1 D4:1 C4:1 D4:1 E4:1 E4:1 E4:1 E4:1 D4:1 D4:1 E4:1 D4:1 C4:4'},
+  {id:'chou', t:'ちょうちょう', g:'せかいの うた', d:1, bpm:100, lo:60,
+   n:'G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 D4:1 E4:1 F4:1 G4:1 G4:1 G4:2 G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 E4:1 G4:1 G4:1 E4:4 D4:1 D4:1 D4:1 D4:1 D4:1 E4:1 F4:2 E4:1 E4:1 E4:1 E4:1 E4:1 F4:1 G4:2 G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 E4:1 G4:1 G4:1 C4:4'},
+  {id:'london', t:'ロンドンばし', g:'せかいの うた', d:1, bpm:100, lo:60,
+   n:'G4:1.5 A4:.5 G4:1 F4:1 E4:1 F4:1 G4:2 D4:1 E4:1 F4:2 E4:1 F4:1 G4:2 G4:1.5 A4:.5 G4:1 F4:1 E4:1 F4:1 G4:2 D4:2 G4:2 E4:1 C4:3'},
+  {id:'joy', t:'よろこびのうた', g:'クラシック', d:2, bpm:100, lo:55,
+   n:'E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 E4:1.5 D4:.5 D4:2 E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 D4:1.5 C4:.5 C4:2 D4:1 D4:1 E4:1 C4:1 D4:1 E4:.5 F4:.5 E4:1 C4:1 D4:1 E4:.5 F4:.5 E4:1 D4:1 C4:1 D4:1 G3:2 E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 D4:1.5 C4:.5 C4:2'},
+  {id:'jingle', t:'ジングルベル', g:'せかいの うた', d:2, bpm:112, lo:60,
+   n:'E4:1 E4:1 E4:2 E4:1 E4:1 E4:2 E4:1 G4:1 C4:1.5 D4:.5 E4:4 F4:1 F4:1 F4:1.5 F4:.5 F4:1 E4:1 E4:1 E4:.5 E4:.5 E4:1 D4:1 D4:1 E4:1 D4:2 G4:2 E4:1 E4:1 E4:2 E4:1 E4:1 E4:2 E4:1 G4:1 C4:1.5 D4:.5 E4:4 F4:1 F4:1 F4:1.5 F4:.5 F4:1 E4:1 E4:1 E4:.5 E4:.5 G4:1 G4:1 F4:1 D4:1 C4:4'},
+  {id:'saints', t:'せいじゃの こうしん', g:'せかいの うた', d:2, bpm:120, lo:60,
+   n:'C4:1 E4:1 F4:1 G4:5 C4:1 E4:1 F4:1 G4:5 C4:1 E4:1 F4:1 G4:2 E4:2 C4:2 E4:2 D4:6 E4:1 E4:1 D4:1 C4:3 C4:1 E4:2 G4:2 G4:1 F4:5 E4:1 F4:1 G4:2 E4:2 C4:2 D4:2 C4:6'}
+];
+const DIFF = {1:['かんたん', 30, '#40C057'], 2:['ふつう', 50, '#339AF0'], 3:['むずかしい', 80, '#E0457B']};
+const SPEEDS = [0.5, 0.75, 1];
+const JW = {p:0.06, g:0.11, ok:0.17};                         // はんてい（びょう）
+const SC = {p:100, g:70, ok:40}, ACC = {p:1, g:0.8, ok:0.5};
+const LEAD = 2.0;                                              // おちてくる 時間（びょう）
+const PC = {C:0, D:2, E:4, F:5, G:7, A:9, B:11};
+function parseSong(s){
+  if(s.notes) return s.notes; let t = 0; const a = [];
+  s.n.trim().split(/\s+/).forEach(x => { const [nm, b] = x.split(':'), d = +b;
+    if(nm !== 'R'){ const m = 12 * (+nm.slice(-1) + 1) + PC[nm[0]] + (nm[1] === '#' ? 1 : 0); a.push({m, b:t, d}); }
+    t += d; });
+  s.beats = t; s.hi = Math.max(...a.map(n => n.m)); return s.notes = a;
+}
+function SG(){ const m = MS(); m.songs = m.songs || {}; return m.songs; }
+const songRec = id => SG()[id] || {st:0, hi:0, n:0};
+const songOpen = s => { const L = SONGS.filter(x => x.d === s.d), i = L.indexOf(s); return i <= 0 || songRec(L[i - 1].id).st >= 1; };
+const cleared = () => SONGS.filter(s => songRec(s.id).st >= 1).length;
+const starSum = () => SONGS.reduce((a, s) => a + songRec(s.id).st, 0);
+let G = null, RAF = 0;
+
+/* ---------- 曲えらび ---------- */
+function sel(L){
+  const tab = V.tab || 0, list = SONGS.filter(s => !tab || s.d === tab);
+  const row = s => { const r = songRec(s.id), op = songOpen(s), D = DIFF[s.d];
+    return `<button class="rgrow ${op ? '' : 'mulk'}" data-a="${op ? 'rgPick' : 'rgLock'}" data-v="${s.id}">
+      <span class="rgic" style="background:${D[2]}">♪</span>
+      <div class="rgtt"><b>${s.t}</b><small><em style="background:${D[2]}">${D[0]}</em>${s.g}${r.hi ? `・ハイスコア ${nf(r.hi)}` : ''}</small></div>
+      <span class="rgst">${op ? starTxt(r.st) : 'カギ'}</span><span class="rgpl">${op ? '▶' : ''}</span></button>`; };
+  return `<div class="mubg" style="background-image:url('${IMG}mu_bg_room.webp')"></div>
+  ${head('きょくを えらぼう', true, `<div class="drtot">★ ${starSum()}/${SONGS.length * 3}</div>`)}
+  <div class="rgsel">
+    <div class="rgtabs">${['ぜんぶ', 'かんたん', 'ふつう', 'むずかしい'].map((t, i) => `<button class="${tab === i ? 'on' : ''}" data-a="rgTab" data-v="${i}">${t}</button>`).join('')}</div>
+    <div class="rglist">${list.length ? list.map(row).join('') : '<div class="rgnone">むずかしい 曲は じゅんびちゅう！</div>'}</div>
+  </div>
+  ${V.song ? setSheet(V.song) : ''}`;
+}
+function setSheet(id){
+  const s = SONGS.find(x => x.id === id), m = MS(), o = m.rgo || (m.rgo = {sp:1, md:'play'}), r = songRec(id);
+  const seg = (k, arr) => arr.map(([v, t]) => `<button class="${o[k] === v ? 'on' : ''}" data-a="rgOpt" data-k="${k}" data-v="${v}">${t}</button>`).join('');
+  const base = DIFF[s.d][1];
+  return `<div class="rgmask" data-a="rgClose"><div class="rgsheet" data-stop="1">
+    <h3>${s.t}</h3><p class="rgsub">${DIFF[s.d][0]}・${INST[m.inst].n}・${parseSong(s).length}こ の 音</p>
+    <div class="rgopt"><small>はやさ</small><div class="seg">${seg('sp', [[0.5, 'ゆっくり 50%'], [0.75, '75%'], [1, 'ふつう 100%']])}</div></div>
+    <div class="rgopt"><small>モード</small><div class="seg">${seg('md', [['play', 'ゲーム'], ['wait', 'まってくれる'], ['auto', 'おてほん']])}</div></div>
+    <p class="rgnote">${o.md === 'wait' ? '正しい けんばんを おすまで 音ふが とまって まってくれるよ（★なし・ポイント はんぶん）' : o.md === 'auto' ? `${INST[m.inst].who}が ひいて みせるよ。けんばんの 光り方を 見てね（ポイントなし）` : o.sp < 1 ? `ゆっくりは ★2 まで。★3 は 100% で ねらおう！（${ptOf(base)}〜${ptOf(base * 1.3)}pt）` : `★の 数で ポイントが ふえるよ（${ptOf(base)}〜${ptOf(base * 1.6)}pt）${r.st < 3 ? `・はじめての ★3で ＋${ptOf(100)}` : ''}`}</p>
+    <div class="rgbtns"><button class="drnext white" data-a="rgClose">やめる</button><button class="drnext" data-a="rgStart">スタート！</button></div>
+  </div></div>`;
+}
+
+/* ---------- プレイ ---------- */
+function rgKb(L){
+  const s = SONGS.find(x => x.id === G.id), m = MS(), lo = s.lo, wn = L === 'tab' ? 15 : 8, W = [];
+  for(let k = lo; W.length < wn; k++) if(!isBlack(k)) W.push(k);
+  const hi = W[W.length - 1], w = 100 / W.length; G.range = [lo, hi];
+  let h = '';
+  W.forEach((k, i) => { const lab = m.label === 'none' ? '' : nameOf(k, m.label);
+    h += `<div class="muk w" data-m="${k}" style="left:${i * w}%;width:${w}%;--c:${COL[k % 12] || '#ccc'}"><span>${lab}</span></div>`; });
+  W.forEach((k, i) => { if(k + 1 <= hi && isBlack(k + 1)) h += `<div class="muk b" data-m="${k + 1}" style="left:${(i + 1) * w - w * 0.32}%;width:${w * 0.64}%"></div>`; });
+  return `<div class="mukbw ${m.inst} rg">${m.inst === 'mh' ? '<i class="mupipe"></i>' : ''}<div class="mukb" id="mukb">${h}</div></div>`;
+}
+function play(L){
+  const s = SONGS.find(x => x.id === G.id), I = INST[MS().inst];
+  const md = {play:'', wait:'まってくれる', auto:'おてほん'}[G.md];
+  return `<div class="mubg" style="background-image:url('${IMG}mu_bg_stage.webp')"></div>
+  ${head(s.t, 'rgQuit', `<div class="rgsc"><small>スコア</small><b id="rgscore">0</b></div>`)}
+  <div class="rgplay">
+    <div class="rgbar"><i><u id="rgpb"></u></i>${md ? `<em>${md}</em>` : ''}${G.sp < 1 ? `<em>${G.sp * 100}%</em>` : ''}<span id="rgcombo"></span></div>
+    <div class="rgfield" id="rgfield"><div class="rgline"></div><img class="rgchar" src="${IMG}${I.chara}.webp" alt=""><div class="rgjd" id="rgjd"></div><div class="rgcnt" id="rgcnt"></div><div id="rgnotes"></div>
+      <div class="rgpause" id="rgpause" hidden><button class="drnext" data-a="rgResume">▶ つづける</button></div></div>
+    ${rgKb(L)}
+  </div>`;
+}
+function rgStart(id){
+  const s = SONGS.find(x => x.id === id), m = MS(), o = m.rgo || {sp:1, md:'play'}; parseSong(s);
+  ctx(); preload(m.inst);
+  const spb = 60 / s.bpm / o.sp;
+  G = {id, sp:o.sp, md:o.md, spb, clock:-4 * spb - 0.6, last:0, tick:-5, cnt:{p:0, g:0, ok:0, miss:0}, score:0, combo:0, max:0, over:false, paused:false,
+    notes:s.notes.map(n => ({m:n.m, t:n.b * spb, dur:n.d * spb, j:null, el:null})), end:s.beats * spb};
+  V = {s:'play'}; render(); measure(); cancelAnimationFrame(RAF); RAF = requestAnimationFrame(t => { G.last = t; RAF = requestAnimationFrame(loop); });
+}
+function measure(){
+  if(!G || !ROOT) return; const f = ROOT.querySelector('#rgfield'), box = ROOT.querySelector('#rgnotes'); if(!f || !box) return;
+  const fr = f.getBoundingClientRect(); G.fh = fr.height; G.pos = {};
+  ROOT.querySelectorAll('#mukb .muk').forEach(k => { const r = k.getBoundingClientRect(); G.pos[k.dataset.m] = {x:r.left - fr.left, w:r.width, b:k.classList.contains('b')}; });
+  box.innerHTML = ''; G.notes.forEach(n => { const p = G.pos[n.m], d = document.createElement('div');
+    d.className = 'rgn' + (p && p.b ? ' bk' : ''); d.style.setProperty('--c', COL[n.m % 12] || '#555');
+    const lab = MS().label === 'none' ? '' : nameOf(n.m, MS().label);
+    d.innerHTML = `<span>${lab}</span>`; if(p){ d.style.left = (p.x + p.w * 0.08) + 'px'; d.style.width = (p.w * 0.84) + 'px'; }
+    if(n.j) d.style.display = 'none'; box.appendChild(d); n.el = d; });
+}
+function keyEl(m){ return ROOT && ROOT.querySelector(`#mukb .muk[data-m="${m}"]`); }
+function flashKey(m, cls){ const k = keyEl(m); if(!k) return; k.classList.remove('jp', 'jg', 'jo', 'jx'); void k.offsetWidth; k.classList.add(cls); setTimeout(() => k.classList.remove(cls), 300); }
+function showJ(t, cls){ const e = ROOT && ROOT.querySelector('#rgjd'); if(!e) return; e.className = 'rgjd ' + cls; e.textContent = t; void e.offsetWidth; e.classList.add('go'); }
+function judge(n, g){
+  n.j = g; G.cnt[g]++; if(n.el) n.el.style.display = 'none';
+  if(g === 'miss'){ G.combo = 0; showJ('MISS', 'x'); }
+  else { G.combo++; G.max = Math.max(G.max, G.combo); G.score += SC[g] + (G.combo % 10 === 0 ? 50 : 0);
+    showJ({p:'PERFECT!', g:'GREAT!', ok:'GOOD'}[g], g); flashKey(n.m, {p:'jp', g:'jg', ok:'jo'}[g]); }
+  const sc = ROOT && ROOT.querySelector('#rgscore'), cb = ROOT && ROOT.querySelector('#rgcombo');
+  if(sc) sc.textContent = nf(G.score); if(cb) cb.innerHTML = G.combo >= 3 ? `<b>${G.combo}</b> コンボ！` : '';
+}
+function rgHit(m){
+  if(!G || G.over || G.paused || G.md === 'auto' || G.clock < -0.3) return;
+  let best = null;
+  for(const n of G.notes){ if(n.j) continue; const dt = Math.abs(n.t - G.clock); if(n.t - G.clock > JW.ok) break;
+    if(n.m === m && dt <= JW.ok && (!best || dt < Math.abs(best.t - G.clock))) best = n; }
+  if(G.md === 'wait'){ const nx = G.notes.find(n => !n.j); if(nx && nx.m === m && nx.t - G.clock <= JW.ok){ judge(nx, 'p'); return; } }
+  if(best){ const dt = Math.abs(best.t - G.clock); judge(best, dt <= JW.p ? 'p' : dt <= JW.g ? 'g' : 'ok'); }
+  else if(G.notes.some(n => !n.j && Math.abs(n.t - G.clock) <= JW.ok)){ G.combo = 0; flashKey(m, 'jx'); showJ('ちがう けんばん', 'x'); const cb = ROOT.querySelector('#rgcombo'); if(cb) cb.innerHTML = ''; }
+}
+function tickSound(hi){ const ac = ctx(); if(!ac) return; const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+  o.frequency.value = hi ? 1568 : 1046; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t + 0.1); }
+function loop(now){
+  if(!G || G.over || !ROOT){ return; }
+  const dt = Math.min(0.1, (now - G.last) / 1000); G.last = now;
+  if(!G.paused){
+    let nc = G.clock + dt;
+    if(G.md === 'wait'){ const nx = G.notes.find(n => !n.j); if(nx && nc >= nx.t){ nc = Math.max(G.clock, nx.t); const k = keyEl(nx.m); if(k && !k.classList.contains('wt')) k.classList.add('wt'); } }
+    G.clock = nc;
+  }
+  /* カウント */
+  const beat = Math.floor(G.clock / G.spb);
+  if(G.clock < 0 && beat > G.tick && beat >= -4){ G.tick = beat; tickSound(beat === -4); const c = ROOT.querySelector('#rgcnt'); if(c){ c.textContent = -beat; c.classList.remove('go'); void c.offsetWidth; c.classList.add('go'); } }
+  /* おてほん */
+  if(G.md === 'auto') for(const n of G.notes){ if(n.j) continue; if(n.t > G.clock) break;
+    n.j = 'p'; G.cnt.p++; if(n.el) n.el.style.display = 'none'; const key = 'a' + n.m + n.t;
+    noteOn(MS().inst, n.m, key); const k = keyEl(n.m); if(k){ k.classList.add('on'); }
+    setTimeout(() => { noteOff(key); if(k) k.classList.remove('on'); }, Math.max(120, n.dur * 1000 * 0.85)); }
+  /* 見のがし */
+  if(G.md === 'play') for(const n of G.notes){ if(n.j) continue; if(G.clock - n.t <= JW.ok) break; judge(n, 'miss'); }
+  if(G.md === 'wait') ROOT.querySelectorAll('#mukb .muk.wt').forEach(k => { const nx = G.notes.find(n => !n.j); if(!nx || +k.dataset.m !== nx.m || G.clock < nx.t) k.classList.remove('wt'); });
+  /* 音ふを うごかす */
+  const hy = G.fh - 6;
+  for(const n of G.notes){ if(n.j || !n.el) continue; const until = n.t - G.clock;
+    if(until > LEAD + 0.3){ n.el.style.visibility = 'hidden'; continue; }
+    const y = hy - (until / LEAD) * hy, h = n.dur >= 2 * G.spb ? Math.max(34, Math.min(hy, n.dur / LEAD * hy - 6)) : 34;
+    n.el.style.visibility = 'visible'; n.el.style.height = h + 'px'; n.el.style.transform = `translateY(${y - h}px)`; }
+  const pb = ROOT.querySelector('#rgpb'); if(pb) pb.style.width = Math.max(0, Math.min(100, G.clock / G.end * 100)) + '%';
+  if(G.clock > G.end + 0.8 && G.notes.every(n => n.j)){ rgFinish(); return; }
+  RAF = requestAnimationFrame(loop);
+}
+document.addEventListener('visibilitychange', () => { if(document.hidden && G && !G.over && V.s === 'play'){ rgPause(true); } });
+function rgPause(on){ if(!G) return; G.paused = on; allOff(); const p = ROOT && ROOT.querySelector('#rgpause'); if(p) p.hidden = !on; }
+function rgFinish(){
+  cancelAnimationFrame(RAF); allOff(); const s = SONGS.find(x => x.id === G.id), N = G.notes.length; G.over = true;
+  const acc = (G.cnt.p * ACC.p + G.cnt.g * ACC.g + G.cnt.ok * ACC.ok) / N;
+  let st = acc >= 0.95 ? 3 : acc >= 0.8 ? 2 : acc >= 0.6 ? 1 : 0; if(G.sp < 1) st = Math.min(st, 2);
+  const r = SG()[G.id] || (SG()[G.id] = {st:0, hi:0, n:0}); G.res = {acc, st, pt:0, best:false, first3:false, unlock:null};
+  if(G.md === 'auto'){ G.res.st = 0; }
+  else {
+    const before = SONGS.filter(x => !songOpen(x)).map(x => x.id);
+    if(G.md === 'wait'){ G.res.st = 0; G.res.pt = ptOf(DIFF[s.d][1], true); }
+    else { r.n++; if(G.score > r.hi){ r.hi = G.score; G.res.best = true; }
+      if(st >= 1) G.res.pt = ptOf(DIFF[s.d][1] * [0, 1, 1.3, 1.6][st]);
+      if(st === 3 && !r.got3){ r.got3 = 1; G.res.first3 = ptOf(100); G.res.pt += G.res.first3; }
+      r.st = Math.max(r.st, st); }
+    try{ window.recAns && recAns(G.md === 'wait' || st >= 1, {src:'music'}); }catch(e){}
+    if(G.res.pt){ try{ givePts(G.res.pt, `おんがく ${s.t} クリア`); }catch(e){ try{ addPoints(G.res.pt, `おんがく ${s.t} クリア`); }catch(e2){} } }
+    const now = SONGS.find(x => before.includes(x.id) && songOpen(x)); if(now) G.res.unlock = now.t;
+  }
+  try{ persist(); }catch(e){}
+  snd(G.res.st >= 1 || G.md !== 'play' ? 'fan' : 'tap'); V = {s:'rres'}; render();
+}
+function rres(L){
+  const s = SONGS.find(x => x.id === G.id), R0 = G.res, c = G.cnt, idx = SONGS.indexOf(s), nx = SONGS.slice(idx + 1).find(songOpen);
+  const ttl = G.md === 'auto' ? 'おてほん おわり！' : G.md === 'wait' ? 'さいごまで ひけたね！' : R0.st >= 1 ? 'クリア！' : 'もう すこし！';
+  return `<div class="mubg" style="background-image:url('${IMG}mu_bg_stage.webp')"></div>
+  ${head('けっか', 'rhythm')}
+  <div class="drres"><div class="drrc rgres">
+    <div class="rgrt"><img src="${IMG}${MS().inst === 'mh' ? 'mu_rabbit' : 'mu_cat'}.webp" alt=""><div><h2>${ttl}</h2><p class="rgsub">${s.t}</p>${G.md === 'play' ? `<div class="drstar">${starTxt(R0.st)}</div>` : ''}</div></div>
+    ${G.md === 'play' ? `<div class="rgjg"><span class="p">PERFECT<b>${c.p}</b></span><span class="g">GREAT<b>${c.g}</b></span><span class="o">GOOD<b>${c.ok}</b></span><span class="x">MISS<b>${c.miss}</b></span></div>
+    <div class="drnum rg3"><div><small>スコア</small><b>${nf(G.score)}</b></div><div><small>さいだい コンボ</small><b>${G.max}</b></div><div><small>せいかいりつ</small><b>${Math.round(R0.acc * 100)}<span>%</span></b></div></div>` : ''}
+    ${R0.pt ? `<p class="drmsg">もらった ポイント <b class="rgpt">+${nf(R0.pt)}</b>${R0.first3 ? `（はじめての ★3 ＋${nf(R0.first3)}）` : ''}</p>` : ''}
+    ${R0.best ? '<p class="drmsg new">ハイスコア こうしん！</p>' : ''}${R0.unlock ? `<p class="drmsg new">「${R0.unlock}」が ひらいたよ！</p>` : ''}
+    ${G.md === 'play' && R0.st === 0 ? `<p class="drmsg">せいかいりつ 60% で クリア！「まってくれる」や「ゆっくり」で れんしゅう しよう</p>` : ''}
+    <div class="drbtns"><button class="drnext" data-a="rgAgain">もう一度</button>${nx ? `<button class="drnext blue" data-a="rgPick" data-v="${nx.id}">つぎの 曲 ›</button>` : ''}<button class="drnext white" data-a="rhythm">曲を えらぶ</button></div>
+  </div></div>`;
+}
+
 /* ===================== タッチ ===================== */
 function onClick(e){
   const b = e.target.closest('[data-a]'); if(!b) return; const a = b.dataset.a, m = MS();
+  if(a === 'rgClose' && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
   switch(a){
     case 'close': snd('tap'); close(); try{ show('subject'); }catch(er){} break;
     case 'top': go('top'); break;
@@ -17099,6 +17301,16 @@ function onClick(e){
     case 'oct': { const L = isTab() ? 'tab' : 'ph'; m.oct = Math.max(OCT_MIN, Math.min(OCT_MAX(L), m.oct + (+b.dataset.v))); allOff(); PTR.clear(); try{ persist(); }catch(er){} snd('tap'); render(); break; }
     case 'label': m.label = {doremi:'abc', abc:'none', none:'doremi'}[m.label]; try{ persist(); }catch(er){} render(); break;
     case 'doremi': go('dmenu'); break;
+    case 'rhythm': go('sel'); try{ window.suggestSnack && window.suggestSnack(); }catch(er){} break;
+    case 'rgTab': V.tab = +b.dataset.v; snd('tap'); render(); break;
+    case 'rgPick': if(V.s !== 'sel'){ cancelAnimationFrame(RAF); V = {s:'sel', tab:V.tab}; } V.song = b.dataset.v; snd('tap'); render(); break;
+    case 'rgLock': snd('ng'); try{ toast('ひとつ まえの 曲を ★1 で クリアすると ひらくよ'); }catch(er){} break;
+    case 'rgClose': V.song = null; render(); break;
+    case 'rgOpt': { const o = m.rgo || (m.rgo = {sp:1, md:'play'}); o[b.dataset.k] = b.dataset.k === 'sp' ? +b.dataset.v : b.dataset.v; try{ persist(); }catch(er){} snd('tap'); render(); break; }
+    case 'rgStart': if(V.song) rgStart(V.song); break;
+    case 'rgAgain': if(G) rgStart(G.id); break;
+    case 'rgQuit': rgPause(true); if(confirm('とちゅうで やめますか？（ポイントは もらえません）')){ go('sel'); } else rgPause(false); break;
+    case 'rgResume': rgPause(false); break;
     case 'drGo': drStart(+b.dataset.v); break;
     case 'drLock': snd('ng'); try{ toast(`まえの ステージで ${DR.clear}もん せいかいすると ひらくよ`); }catch(er){} break;
     case 'drBack': if(V.s === 'dres' || confirm('とちゅうで やめますか？（ここまでの ポイントは もらえます）')){ Q = null; go('dmenu'); } break;
@@ -17235,7 +17447,7 @@ body.mu80on{overflow:hidden}
 #mu80 .drsts{display:flex;flex-direction:column;gap:10px}
 #mu80 .drst{position:relative;display:grid;grid-template-columns:auto 1fr auto;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:left;border:4px solid #fff;border-radius:20px;padding:10px 14px 10px 10px;box-shadow:0 4px 0 rgba(0,0,0,.15)}
 #mu80 .drst.s1{background:linear-gradient(135deg,#FFF6CC,#FFE7A0)}#mu80 .drst.s2{background:linear-gradient(135deg,#DDF0FF,#BFE2FF)}#mu80 .drst.s3{background:linear-gradient(135deg,#EEE4FF,#DCCBFF)}
-#mu80 .drst.lock{filter:grayscale(.85);opacity:.75}
+#mu80 .drst.mulk{filter:grayscale(.85);opacity:.75}
 #mu80 .drst .no{position:absolute;top:-10px;left:12px;background:#8E5A2A;color:#fff;border-radius:99px;padding:0 9px;font-weight:900;font-size:12px}
 #mu80 .drst i{grid-row:1/3;font-style:normal;position:relative;width:56px;height:46px;display:flex;align-items:center;justify-content:center}#mu80 .drst i img{max-width:100%;max-height:100%;object-fit:contain}#mu80 .drst .lk{position:absolute;bottom:-4px;right:-6px;background:#6B6560;color:#fff;font-size:10px;font-weight:900;border-radius:6px;padding:0 4px}
 #mu80 .drst b{font-size:clamp(17px,5vw,22px);font-weight:900}
@@ -17292,6 +17504,64 @@ body.mu80on{overflow:hidden}
 #mu80.tab .mukbw.dr{height:clamp(200px,34vh,320px)}
 #mu80.tab .drrc{flex-direction:column}
 @media (max-height:700px){#mu80.ph .drowl2 .mubub3{font-size:11px}#mu80.ph .mukbw.dr{height:clamp(150px,27vh,220px)}#mu80.ph .drq{min-height:90px}#mu80.ph .drsv{max-height:20vh}#mu80.ph .drowl img{height:90px}}
+
+/* ===== リズムゲーム ===== */
+#mu80 .rgsel{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding-top:6px}
+#mu80 .rgtabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+#mu80 .rgtabs button{border:3px solid #fff;border-radius:99px;background:rgba(255,255,255,.85);font-weight:900;font-size:14px;padding:4px 14px;white-space:nowrap}
+#mu80 .rgtabs button.on{background:#FF8FAE;color:#fff}
+#mu80 .rglist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 2px 8px;-webkit-overflow-scrolling:touch}
+#mu80 .rgrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;text-align:left;background:rgba(255,252,242,.96);border:3px solid #fff;border-radius:18px;padding:8px 12px;box-shadow:0 3px 0 rgba(0,0,0,.15)}
+#mu80 .rgrow.mulk{background:rgba(226,221,212,.96)}#mu80 .rgrow.mulk .rgic{background:#A39C90!important}#mu80 .rgrow.mulk .rgtt b{color:#8A8378}
+#mu80 .rgic{width:42px;height:42px;border-radius:12px;color:#fff;font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -3px 0 rgba(0,0,0,.15)}
+#mu80 .rgtt b{display:block;font-size:clamp(16px,4.6vw,20px);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mu80 .rgtt small{font-size:11px;font-weight:800;color:#7A6A55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+#mu80 .rgtt em{font-style:normal;color:#fff;border-radius:6px;padding:0 5px;margin-right:4px}
+#mu80 .rgst{color:#FFB800;font-size:17px;letter-spacing:1px;white-space:nowrap;text-shadow:0 1px 0 #8A6A00}#mu80 .rgrow.mulk .rgst{color:#6B6560;font-size:12px;font-weight:900;text-shadow:none}
+#mu80 .rgpl{width:36px;height:36px;border-radius:50%;background:#2F86E8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px}#mu80 .rgrow.mulk .rgpl{background:none}
+#mu80 .rgnone{text-align:center;font-weight:900;background:rgba(255,255,255,.85);border-radius:14px;padding:20px}
+#mu80 .rgmask{position:absolute;inset:0;z-index:20;background:rgba(40,30,20,.45);display:flex;align-items:center;justify-content:center;padding:14px}
+#mu80 .rgsheet{width:min(500px,100%);background:#FFFBEF;border:4px solid #C9A05A;border-radius:24px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+#mu80 .rgsheet h3{margin:0;font-size:24px;font-weight:900;text-align:center}
+#mu80 .rgsub{margin:0;text-align:center;font-size:13px;font-weight:800;color:#7A6A55}
+#mu80 .rgopt small{display:block;font-size:12px;font-weight:900;margin-bottom:3px}
+#mu80 .rgopt .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#EFE4CC;border-radius:14px;padding:4px}
+#mu80 .rgopt .seg button{border:0;border-radius:10px;background:transparent;font-weight:900;font-size:13px;padding:8px 2px;white-space:nowrap}
+#mu80 .rgopt .seg button.on{background:#fff;color:#E0457B;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+#mu80 .rgnote{margin:0;font-size:12px;font-weight:800;background:#F3EAD3;border-radius:12px;padding:6px 10px;line-height:1.55}
+#mu80 .rgbtns{display:flex;gap:8px;justify-content:center}
+#mu80 .rgsc{flex:none;background:#3E5A3A;color:#fff;border:3px solid #C9A05A;border-radius:14px;padding:1px 10px;text-align:center;line-height:1.1;min-width:64px}
+#mu80 .rgsc small{display:block;font-size:10px;opacity:.8}#mu80 .rgsc b{font-size:18px}
+#mu80 .rgplay{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px;padding-top:2px}
+#mu80 .rgbar{display:flex;align-items:center;gap:6px;min-height:24px}
+#mu80 .rgbar i{flex:1;height:8px;background:rgba(255,255,255,.6);border-radius:5px;overflow:hidden}#mu80 .rgbar u{display:block;height:100%;width:0;background:linear-gradient(90deg,#FFD34D,#FF8FAE)}
+#mu80 .rgbar em{font-style:normal;background:#fff;border-radius:99px;padding:0 8px;font-size:11px;font-weight:900;white-space:nowrap}
+#mu80 .rgbar span{min-width:90px;text-align:right;color:#fff;font-weight:900;font-size:14px;text-shadow:0 2px 0 #B22A5C,0 0 6px #E0457B;white-space:nowrap}#mu80 .rgbar span b{font-size:20px;color:#FFE066}
+#mu80 .rgfield{position:relative;flex:1;min-height:120px;overflow:hidden;border-radius:14px 14px 0 0;background:linear-gradient(180deg,rgba(20,24,60,.15),rgba(20,24,60,.55));margin-bottom:-6px}
+#mu80 .rgline{position:absolute;left:0;right:0;bottom:4px;height:6px;border-radius:3px;background:linear-gradient(90deg,#FF8FAE,#FFE066,#7BD88F,#7CC3FF,#B49CFF);box-shadow:0 0 12px rgba(255,255,255,.9);z-index:2}
+#mu80 .rgn{position:absolute;top:0;left:0;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.35),var(--c) 40%);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;visibility:hidden;will-change:transform;z-index:1}
+#mu80 .rgn span{color:#fff;font-weight:900;font-size:clamp(13px,3.8vw,18px);text-shadow:0 1px 2px rgba(0,0,0,.45);padding-bottom:2px;white-space:nowrap}
+#mu80 .rgn:after{content:'';position:absolute;left:10%;right:10%;top:4px;height:5px;border-radius:3px;background:rgba(255,255,255,.55)}#mu80 .rgn.bk{background:linear-gradient(180deg,#666,#222)}
+#mu80 .rgchar{position:absolute;left:4px;top:6px;height:min(30%,120px);width:auto;opacity:.95;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4));animation:muBo 1s ease-in-out infinite;z-index:0}
+#mu80 .rgjd{position:absolute;left:50%;bottom:24%;transform:translateX(-50%);font-weight:900;font-size:clamp(26px,8vw,46px);white-space:nowrap;opacity:0;z-index:4;pointer-events:none;-webkit-text-stroke:2px #fff}
+#mu80 .rgjd.p{color:#FF5D8F}#mu80 .rgjd.g{color:#FF9F43}#mu80 .rgjd.ok{color:#339AF0}#mu80 .rgjd.x{color:#8E8A80;font-size:clamp(20px,6vw,32px)}
+#mu80 .rgjd.go{animation:rgJ .55s ease-out}@keyframes rgJ{0%{opacity:1;transform:translate(-50%,10px) scale(.7)}30%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-20px) scale(1)}}
+#mu80 .rgcnt{position:absolute;left:50%;top:35%;transform:translate(-50%,-50%);font-size:90px;font-weight:900;color:#fff;-webkit-text-stroke:3px #E0457B;opacity:0;z-index:4;pointer-events:none}
+#mu80 .rgcnt.go{animation:rgC .5s ease-out}@keyframes rgC{0%{opacity:1;transform:translate(-50%,-50%) scale(1.4)}100%{opacity:0;transform:translate(-50%,-50%) scale(.8)}}
+#mu80 .rgpause{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)}#mu80 .rgpause[hidden]{display:none}
+#mu80 .mukbw.rg{height:clamp(170px,30vh,280px);flex:none;border-top-left-radius:6px;border-top-right-radius:6px}
+#mu80 .muk.jp{box-shadow:inset 0 0 0 4px #FF5D8F,0 0 18px #FF5D8F!important}#mu80 .muk.jg{box-shadow:inset 0 0 0 4px #FF9F43!important}#mu80 .muk.jo{box-shadow:inset 0 0 0 4px #339AF0!important}#mu80 .muk.jx{background:#FFC9C9!important}
+#mu80 .muk.w.wt{background:linear-gradient(180deg,#fff,var(--c));animation:drQk .8s ease-in-out infinite}#mu80 .muk.b.wt{background:#9C8CFF}
+#mu80 .rgres .rgrt{display:flex;align-items:center;gap:12px}#mu80 .rgres .rgrt img{height:110px;width:auto}#mu80 .rgres h2{font-size:26px}
+#mu80 .rgjg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%}
+#mu80 .rgjg span{border-radius:12px;padding:4px;text-align:center;font-size:10px;font-weight:900;color:#fff}#mu80 .rgjg b{display:block;font-size:22px}
+#mu80 .rgjg .p{background:#FF5D8F}#mu80 .rgjg .g{background:#FF9F43}#mu80 .rgjg .o{background:#339AF0}#mu80 .rgjg .x{background:#8E8A80}
+#mu80 .drnum.rg3{grid-template-columns:repeat(3,1fr)}#mu80 .drnum.rg3 b{font-size:22px}
+#mu80 .rgpt{color:#E0457B;font-size:20px}
+#mu80.tab .rgsel{padding:6px 12%}#mu80.tab .rgrow{padding:10px 18px}#mu80.tab .rgtabs button{font-size:16px;padding:6px 20px}
+#mu80.tab .mukbw.rg{height:clamp(200px,32vh,300px)}#mu80.tab .rgchar{height:min(55%,260px);top:auto;bottom:20px;left:10px}
+#mu80.tab .rgn span{font-size:18px}
+@media (max-height:700px){#mu80.ph .mukbw.rg{height:clamp(140px,27vh,210px)}#mu80.ph .rgres .rgrt img{height:80px}}
 
 @media (max-width:420px){#mu80.ph .mutt i{display:none}#mu80.ph .mutt b{padding:4px 10px}}
 @media (max-height:700px){#mu80.ph .mubub{font-size:11px}#mu80.ph .mucard small,#mu80.ph .mumode small{display:none}#mu80.ph .mukbw{height:clamp(170px,38vh,280px)}}
