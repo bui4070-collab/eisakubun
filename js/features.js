@@ -16720,3 +16720,361 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
 .snk78 #dlgBtns .btn{width:100%}
 .snk78 .snk78m{color:#E0577A;font-size:1.25em}
 `; document.head.appendChild(c); })();
+
+
+/* =====================================================================
+   v8.0 おんがく STEP1：おんがく トップ／じゆうに ひく／けんばんの 音
+   ・画像：assets/images/music/　音：assets/audio/music/（pf_ ピアノ13・mh_ けんハモ33）
+   ・セーブ：save.music = {inst:'mh'|'pf', label:'doremi'|'abc'|'none', oct:4, rec:[...]}
+   ===================================================================== */
+(function(){
+'use strict';
+const IMG = './assets/images/music/', SND = './assets/audio/music/';
+const X = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
+const snd = t => { try{ sound(t); }catch(e){} };
+const R = (k, y) => `<span class="hzR">${k}<span class="hzRt">${y}</span></span>`;
+function MS(){
+  const m = save.music || (save.music = {});
+  if(m.inst !== 'pf' && m.inst !== 'mh') m.inst = 'mh';
+  if(!['doremi', 'abc', 'none'].includes(m.label)) m.label = 'doremi';
+  if(!(m.oct >= 3 && m.oct <= 5)) m.oct = 4;
+  m.rec = Array.isArray(m.rec) ? m.rec : [];
+  return m;
+}
+const INST = {
+  mh:{n:'けんばんハーモニカ', s:'けんハモ', img:'mu_melodica', chara:'mu_rabbit', who:'うさぎ', c:'#2F86E8'},
+  pf:{n:'ピアノ', s:'ピアノ', img:'mu_piano', chara:'mu_cat', who:'ねこ', c:'#E0457B'}
+};
+const NM = {doremi:['ド','ド♯','レ','レ♯','ミ','ファ','ファ♯','ソ','ソ♯','ラ','ラ♯','シ'], abc:['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B']};
+const COL = {0:'#FF6B6B', 2:'#FF9F43', 4:'#F5C518', 5:'#40C057', 7:'#339AF0', 9:'#9775FA', 11:'#F06595'};
+const isBlack = m => [1, 3, 6, 8, 10].includes(m % 12);
+const nameOf = (m, lab) => (NM[lab] || NM.doremi)[m % 12];
+
+/* ===================== 音（Web Audio） ===================== */
+const SAMP = {
+  pf:[48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84],
+  mh:Array.from({length:34}, (_, i) => 53 + i).filter(m => m !== 78)   // F#5 は 元の 音が ないので F5・G5 から 作る
+};
+const FN = ['C','Cs','D','Ds','E','F','Fs','G','Gs','A','As','B'];
+const fileOf = (inst, m) => `${SND}${inst}_${FN[m % 12]}${Math.floor(m / 12) - 1}.mp3`;
+let AC = null, MASTER = null; const BUF = {}, LOADING = {};
+function ctx(){
+  if(!AC){
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return null;
+    AC = new C(); const comp = AC.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 4;
+    MASTER = AC.createGain(); MASTER.gain.value = 0.9; MASTER.connect(comp); comp.connect(AC.destination);
+  }
+  if(AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function decode(ab){ return new Promise((ok, ng) => { try{ const p = AC.decodeAudioData(ab, ok, ng); if(p && p.then) p.then(ok, ng); }catch(e){ ng(e); } }); }
+function loadOne(inst, m){
+  const k = inst + m; if(BUF[k] || LOADING[k]) return LOADING[k] || Promise.resolve(BUF[k]);
+  if(!ctx()) return Promise.resolve(null);
+  return LOADING[k] = fetch(fileOf(inst, m)).then(r => { if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(decode)
+    .then(b => { BUF[k] = b; delete LOADING[k]; return b; }).catch(e => { delete LOADING[k]; console.warn('music load', k, e); return null; });
+}
+let loadedInst = {};
+function preload(inst){ if(loadedInst[inst]) return; loadedInst[inst] = 1; SAMP[inst].forEach(m => loadOne(inst, m)); }
+function nearest(inst, m){ let best = SAMP[inst][0]; SAMP[inst].forEach(s => { if(Math.abs(s - m) < Math.abs(best - m)) best = s; }); return best; }
+const VOICES = {};
+function noteOn(inst, m, key){
+  const ac = ctx(); if(!ac) return; key = key || ('k' + m);
+  noteOff(key, true);
+  const s = nearest(inst, m), buf = BUF[inst + s], g = ac.createGain(), t = ac.currentTime;
+  g.connect(MASTER);
+  if(buf){
+    const src = ac.createBufferSource(); src.buffer = buf; src.playbackRate.value = Math.pow(2, (m - s) / 12);
+    if(inst === 'mh'){ src.loop = true; src.loopStart = 0.9; src.loopEnd = Math.min(buf.duration - 0.35, 2.9); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.75, t + 0.025); }
+    else g.gain.setValueAtTime(0.95, t);
+    src.connect(g); src.start(t); VOICES[key] = {src, g, inst};
+  } else {
+    loadOne(inst, s);
+    const o = ac.createOscillator(); o.type = inst === 'mh' ? 'sawtooth' : 'triangle'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(inst === 'mh' ? 0.12 : 0.3, t + 0.02);
+    if(inst === 'pf') g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    o.connect(g); o.start(t); VOICES[key] = {src:o, g, inst};
+  }
+}
+function noteOff(key, quick){
+  const v = VOICES[key]; if(!v || !AC) return; delete VOICES[key];
+  const t = AC.currentTime, rel = quick ? 0.015 : v.inst === 'mh' ? 0.05 : 0.35;
+  try{ v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(v.g.gain.value, t); v.g.gain.setTargetAtTime(0, t, rel / 3); v.src.stop(t + rel * 3 + 0.05); }catch(e){}
+}
+function allOff(){ Object.keys(VOICES).forEach(k => noteOff(k, true)); }
+
+/* ===================== 画面の しくみ ===================== */
+const isTab = () => innerWidth >= 900 && innerWidth >= innerHeight;
+let ROOT = null, V = {s:'top'}, FX = [];
+function root(){
+  if(ROOT && document.body.contains(ROOT)) return ROOT;
+  ROOT = document.createElement('div'); ROOT.id = 'mu80'; document.body.appendChild(ROOT);
+  ROOT.addEventListener('click', onClick);
+  ROOT.addEventListener('pointerdown', kDown); ROOT.addEventListener('pointermove', kMove);
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => ROOT.addEventListener(t, kUp));
+  ROOT.addEventListener('contextmenu', e => e.preventDefault());
+  return ROOT;
+}
+function open(){ MS(); V = {s:'top'}; root(); document.body.classList.add('mu80on'); requestAnimationFrame(() => ROOT && ROOT.classList.add('show')); render(); }
+function close(){
+  stopRec(); stopPlay(); allOff(); FX.forEach(clearTimeout); FX = [];
+  if(!ROOT) return; const r = ROOT; ROOT = null; r.classList.remove('show'); document.body.classList.remove('mu80on'); setTimeout(() => r.remove(), 220);
+  try{ persist(); }catch(e){}
+}
+function go(s){ stopRec(); stopPlay(); allOff(); PTR.clear(); V = {s}; snd('tap'); render(); }
+let rzT = 0; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if(ROOT){ allOff(); PTR.clear(); render(); } }, 150); });
+function render(){
+  if(!ROOT) return; const L = isTab() ? 'tab' : 'ph', m = MS();
+  ROOT.className = `show ${L} s-${V.s} i-${m.inst}`;
+  ROOT.innerHTML = `<div class="muw">${V.s === 'free' ? free(L) : top(L)}</div>`;
+  if(V.s === 'free'){ preload(m.inst); }
+}
+const head = (title, back, right) => `<header class="muhd"><button class="muback" data-a="${back ? 'top' : 'close'}">‹ ${back ? 'もどる' : 'もどる'}</button>
+  <div class="mutt"><i>♪</i><b>${title}</b><i>♪</i></div>${right || '<span class="musp"></span>'}</header>`;
+
+/* ===================== ① おんがく トップ ===================== */
+function top(L){
+  const m = MS(), I = INST[m.inst];
+  const card = k => { const c = INST[k]; return `<button class="mucard ${k} ${m.inst === k ? 'on' : ''}" data-a="inst" data-v="${k}">
+    <img src="${IMG}${c.img}.webp" alt=""><div><b>${c.n}</b><small>${k === 'mh' ? 'ふいて ひく 学校の がっき' : 'きれいな 音の けんばん'}</small></div>${m.inst === k ? '<em>えらんでる</em>' : ''}</button>`; };
+  const mode = (a, ic, t, sub, soon) => `<button class="mumode ${a} ${soon ? 'soon' : ''}" data-a="${soon ? 'soon' : a}"><img src="${IMG}mu_ic_${ic}.webp" alt=""><b>${t}</b><small>${sub}</small>${soon ? '<em>もうすぐ</em>' : ''}</button>`;
+  return `<div class="mubg" style="background-image:url('${IMG}mu_bg_room.webp')"></div>
+  ${head('おんがく', false, `<button class="muinfo" data-a="credit" title="クレジット">i</button>`)}
+  <div class="mutop">
+    <div class="mustage"><div class="mubub">${m.inst === 'mh' ? 'けんばんハーモニカ<br>いっしょに ふこう！' : 'ピアノで<br>ひいて みよう！'}</div>
+      <img class="mubear" src="${IMG}mu_bear.webp" alt=""><img class="mupl ${m.inst}" src="${IMG}${I.chara}.webp" alt=""></div>
+    <div class="mucards">${card('mh')}${card('pf')}</div>
+    <div class="mumodes">${mode('doremi', 'doremi', 'ドレミを おぼえる', '音の なまえ・ばしょ', true)}${mode('rhythm', 'rhythm', 'リズムゲーム', 'おちてくる 音を ひこう', true)}${mode('free', 'free', 'じゆうに ひく', 'すきに ひいて ろくおん', false)}</div>
+    <div class="mustrip"><span>★</span><b>クリアした 曲</b><i><u style="width:0%"></u></i><em>0 / 20</em><small>リズムゲームは もうすぐ！</small></div>
+  </div>`;
+}
+
+/* ===================== ⑥ じゆうに ひく ===================== */
+const range = L => { const o = MS().oct, lo = 12 * (o + 1), n = L === 'tab' ? 24 : 12; return [lo, lo + n]; };
+const OCT_MIN = 3, OCT_MAX = L => L === 'tab' ? 4 : 5;
+function keyboard(L){
+  const m = MS(), [lo, hi] = range(L), whites = [];
+  for(let k = lo; k <= hi; k++) if(!isBlack(k)) whites.push(k);
+  const W = 100 / whites.length;
+  let h = '';
+  whites.forEach((k, i) => { const c = COL[k % 12] || '#ccc', lab = m.label === 'none' ? '' : nameOf(k, m.label);
+    h += `<div class="muk w" data-m="${k}" style="left:${i * W}%;width:${W}%;--c:${c}"><span>${lab}</span>${k % 12 === 0 && m.label !== 'none' ? `<small>${Math.floor(k / 12) - 1}</small>` : ''}</div>`; });
+  whites.forEach((k, i) => { if(k + 1 <= hi && isBlack(k + 1)) h += `<div class="muk b" data-m="${k + 1}" style="left:${(i + 1) * W - W * 0.32}%;width:${W * 0.64}%"></div>`; });
+  return `<div class="mukbw ${m.inst}">${m.inst === 'mh' ? '<i class="mupipe"></i>' : ''}<div class="mukb" id="mukb">${h}</div></div>`;
+}
+function free(L){
+  const m = MS(), I = INST[m.inst], [lo, hi] = range(L), om = OCT_MAX(L);
+  const labT = {doremi:'ドレミ', abc:'CDE', none:'なし'}[m.label];
+  const recBtns = REC.on ? `<button class="murb stop" data-a="recStop">■ とめる <span id="murt">0</span>びょう</button>`
+    : PLAY.on ? `<button class="murb stop" data-a="playStop">■ とめる</button>`
+    : `<button class="murb rec" data-a="recStart">● ろくおん</button>${m.rec.length ? `<button class="murb play" data-a="playStart">▶ きく</button>` : ''}`;
+  return `<div class="mubg" style="background-image:url('${IMG}mu_bg_stage.webp')"></div>
+  ${head('じゆうに ひく', true, `<div class="muinst">${['mh', 'pf'].map(k => `<button class="${m.inst === k ? 'on' : ''}" data-a="inst" data-v="${k}" title="${INST[k].n}"><img src="${IMG}${INST[k].img}.webp" alt=""></button>`).join('')}</div>`)}
+  <div class="mufree">
+    <div class="muside"><img class="mupl2 ${m.inst}" src="${IMG}${I.chara}.webp" alt=""><div class="mubub2">${REC.on ? 'ろくおん ちゅう！' : PLAY.on ? 'きいてね♪' : 'すきな けんばんを<br>おしてみよう！'}</div></div>
+    <div class="muctl">
+      <div class="muoct"><button data-a="oct" data-v="-1" ${m.oct <= OCT_MIN ? 'disabled' : ''}>◀ ひくい</button><span>${nameOf(lo, 'doremi')}${Math.floor(lo / 12) - 1}〜${nameOf(hi, 'doremi')}${Math.floor(hi / 12) - 1}</span><button data-a="oct" data-v="1" ${m.oct >= om ? 'disabled' : ''}>たかい ▶</button></div>
+      <div class="murow"><button class="mulab" data-a="label">なまえ：<b>${labT}</b></button>${recBtns}</div>
+    </div>
+    <div class="mufl" id="mufl"></div>
+    ${keyboard(L)}
+  </div>`;
+}
+
+/* ---------- けんばんを おす（マルチタッチ・すべらせ） ---------- */
+const PTR = new Map();
+const keyAt = (x, y) => { const e = document.elementFromPoint(x, y); return e && e.closest && e.closest('#mukb .muk'); };
+function press(el, id){
+  const k = +el.dataset.m, inst = MS().inst; noteOn(inst, k, 'p' + id); el.classList.add('on'); floatName(el, k);
+  if(REC.on) REC.ev.push([Date.now() - REC.t0, k, 1]);
+}
+function release(el, id){ if(el) el.classList.remove('on'); noteOff('p' + id); if(REC.on && el) REC.ev.push([Date.now() - REC.t0, +el.dataset.m, 0]); }
+function kDown(e){
+  const el = e.target.closest && e.target.closest('#mukb .muk'); if(!el) return;
+  e.preventDefault(); if(PLAY.on) stopPlay();
+  try{ ROOT.querySelector('#mukb').setPointerCapture(e.pointerId); }catch(er){}
+  PTR.set(e.pointerId, el); press(el, e.pointerId);
+}
+function kMove(e){
+  if(!PTR.has(e.pointerId)) return; const cur = PTR.get(e.pointerId), el = keyAt(e.clientX, e.clientY);
+  if(el && el !== cur){ release(cur, e.pointerId); PTR.set(e.pointerId, el); press(el, e.pointerId); }
+}
+function kUp(e){ if(!PTR.has(e.pointerId)) return; release(PTR.get(e.pointerId), e.pointerId); PTR.delete(e.pointerId); }
+function floatName(el, k){
+  const fl = ROOT && ROOT.querySelector('#mufl'), kb = ROOT && ROOT.querySelector('#mukb'); if(!fl || !kb) return;
+  const r = el.getBoundingClientRect(), fr = fl.getBoundingClientRect(), d = document.createElement('span');
+  d.className = 'mufn'; d.textContent = nameOf(k, MS().label === 'abc' ? 'abc' : 'doremi');
+  d.style.left = (r.left + r.width / 2 - fr.left) + 'px'; d.style.color = COL[k % 12] || '#555';
+  fl.appendChild(d); setTimeout(() => d.remove(), 900);
+}
+/* パソコンの キーボードでも ひける（a w s e d f t g y h u j k） */
+const PCK = 'awsedftgyhujk';
+const PCD = {};
+window.addEventListener('keydown', e => {
+  if(!ROOT || V.s !== 'free' || e.repeat || e.ctrlKey || e.metaKey) return; const i = PCK.indexOf(e.key.toLowerCase()); if(i < 0) return;
+  const k = range(isTab() ? 'tab' : 'ph')[0] + i, el = ROOT.querySelector(`#mukb .muk[data-m="${k}"]`); if(!el) return;
+  PCD[e.key.toLowerCase()] = el; press(el, 'kb' + i);
+});
+window.addEventListener('keyup', e => { const k = e.key.toLowerCase(), el = PCD[k]; if(!el) return; delete PCD[k]; release(el, 'kb' + PCK.indexOf(k)); });
+
+/* ---------- ろくおん・さいせい（30びょう まで） ---------- */
+const REC = {on:false, t0:0, ev:[], tm:0}, PLAY = {on:false, tms:[]};
+function startRec(){ stopPlay(); REC.on = true; REC.t0 = Date.now(); REC.ev = []; render();
+  REC.tm = setInterval(() => { const s = Math.floor((Date.now() - REC.t0) / 1000), el = ROOT && ROOT.querySelector('#murt'); if(el) el.textContent = s; if(s >= 30){ stopRec(); render(); } }, 250); }
+function stopRec(){
+  if(!REC.on) return; clearInterval(REC.tm); REC.on = false;
+  const end = Date.now() - REC.t0; PTR.forEach((el) => REC.ev.push([end, +el.dataset.m, 0]));
+  if(REC.ev.length){ MS().rec = REC.ev.map(e => [e[0], e[1], e[2]]); MS().recInst = MS().inst; try{ persist(); }catch(e){} snd('ok'); }
+}
+function startPlay(){
+  const m = MS(); if(!m.rec.length) return; stopPlay(); PLAY.on = true; render();
+  const inst = m.recInst || m.inst; preload(inst);
+  let last = 0;
+  m.rec.forEach(([t, k, on]) => { last = Math.max(last, t); PLAY.tms.push(setTimeout(() => {
+    const el = ROOT && ROOT.querySelector(`#mukb .muk[data-m="${k}"]`);
+    if(on){ noteOn(inst, k, 'r' + k); if(el){ el.classList.add('on'); floatName(el, k); } } else { noteOff('r' + k); if(el) el.classList.remove('on'); }
+  }, t + 150)); });
+  PLAY.tms.push(setTimeout(() => { stopPlay(); render(); }, last + 900));
+}
+function stopPlay(){ if(!PLAY.on) return; PLAY.tms.forEach(clearTimeout); PLAY.tms = []; PLAY.on = false; Object.keys(VOICES).filter(k => k[0] === 'r').forEach(k => noteOff(k)); }
+
+/* ---------- クレジット ---------- */
+const CREDIT = `<div class="mucr"><h2 class="dlgT">♪ 音の クレジット</h2>
+  <p>ピアノ：Salamander Grand Piano V3 / Alexander Holm<br><small>CC BY 3.0（creativecommons.org/licenses/by/3.0）</small></p>
+  <p>けんばんハーモニカ：Harmonium samples / tonejs-instruments (nbrosowsky)<br><small>CC BY 3.0 ／ 1オクターブ 上げて 使用</small></p></div>`;
+
+/* ===================== タッチ ===================== */
+function onClick(e){
+  const b = e.target.closest('[data-a]'); if(!b) return; const a = b.dataset.a, m = MS();
+  switch(a){
+    case 'close': snd('tap'); close(); try{ show('subject'); }catch(er){} break;
+    case 'top': go('top'); break;
+    case 'inst': if(m.inst !== b.dataset.v){ m.inst = b.dataset.v; try{ persist(); }catch(er){} allOff(); PTR.clear(); snd('tap'); render(); ctx(); preload(m.inst); } break;
+    case 'free': ctx(); preload(m.inst); go('free'); break;
+    case 'soon': snd('tap'); try{ toast('もうすぐ できるよ！ いまは「じゆうに ひく」で あそんでね'); }catch(er){} break;
+    case 'credit': try{ dialog(CREDIT, [{label:'とじる', cls:'white', v:1}]); }catch(er){} break;
+    case 'oct': { const L = isTab() ? 'tab' : 'ph'; m.oct = Math.max(OCT_MIN, Math.min(OCT_MAX(L), m.oct + (+b.dataset.v))); allOff(); PTR.clear(); try{ persist(); }catch(er){} snd('tap'); render(); break; }
+    case 'label': m.label = {doremi:'abc', abc:'none', none:'doremi'}[m.label]; try{ persist(); }catch(er){} render(); break;
+    case 'recStart': ctx(); startRec(); break;
+    case 'recStop': stopRec(); render(); break;
+    case 'playStart': ctx(); startPlay(); break;
+    case 'playStop': stopPlay(); render(); break;
+  }
+}
+
+/* ===================== 入口（べんきょうの 教科えらび） ===================== */
+function addEntry(){
+  try{
+    const g = document.querySelector('#scr-subject .subjGrid'); if(!g || document.getElementById('subjMusic')) return;
+    const b = document.createElement('button'); b.className = 'subjCard mu'; b.id = 'subjMusic';
+    b.innerHTML = `<h3>おんがく</h3><img alt="" src="${IMG}mu_melodica.webp"/><ul><li>けんばんハーモニカ</li><li>ピアノ</li><li>じゆうに ひく</li></ul>`;
+    b.onclick = () => { snd('tap'); open(); }; g.appendChild(b);
+  }catch(e){ console.warn('music entry', e); }
+}
+addEntry();
+/* せってい画面に クレジット */
+try{ const st = document.querySelector('#scr-settings .card'); if(st && !document.getElementById('muCredit')){ const d = document.createElement('div'); d.className = 'setSec'; d.id = 'muCredit'; d.innerHTML = `<h3>🎵 おんがくの 音（クレジット）</h3><div style="font-size:13px;line-height:1.7">ピアノ：Salamander Grand Piano V3 / Alexander Holm（CC BY 3.0）<br>けんばんハーモニカ：Harmonium samples / tonejs-instruments・nbrosowsky（CC BY 3.0、1オクターブ上げて使用）</div>`; st.appendChild(d); } }catch(e){}
+try{ const _show = show; show = function(){ if(ROOT) close(); return _show.apply(this, arguments); }; }catch(e){}
+window.__mu80 = {open, close, noteOn, noteOff, BUF};
+
+/* ===================== 見た目 ===================== */
+const css = document.createElement('style');
+css.textContent = `
+body.mu80on{overflow:hidden}
+.subjCard.mu{background:linear-gradient(180deg,#E8F2FF,#fff)}.subjCard.mu h3{background:#D3E6FF;color:#2361B8}
+#mu80{position:fixed;inset:0;z-index:66;opacity:0;transition:opacity .2s;background:#F6EFD9;overflow:hidden;color:#4A3420;font-family:'Zen Maru Gothic',sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#mu80.show{opacity:1}
+#mu80 .muw{position:absolute;inset:0;display:flex;flex-direction:column;padding:calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom))}
+#mu80 .mubg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}
+#mu80 .muw>*:not(.mubg){position:relative;z-index:1}
+#mu80 button{font-family:inherit;color:inherit;cursor:pointer}
+#mu80 img{-webkit-user-drag:none;pointer-events:none}
+#mu80 .hzR{display:inline-block;position:relative;padding-top:.5em;white-space:nowrap}#mu80 .hzRt{position:absolute;left:50%;top:0;transform:translateX(-50%);font-size:.46em;line-height:1;white-space:nowrap}
+/* ヘッダー */
+#mu80 .muhd{display:flex;align-items:center;gap:8px;min-height:52px;flex:none}
+#mu80 .muback{flex:none;border:3px solid #fff;border-radius:99px;background:linear-gradient(180deg,#7C83E8,#5258C8);color:#fff;font-weight:900;font-size:16px;padding:6px 14px;box-shadow:0 3px 0 #3B3F9A;white-space:nowrap}
+#mu80 .mutt{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px}
+#mu80 .mutt b{background:linear-gradient(180deg,#FFF8E8,#F3DDB0);border:3px solid #8E5A2A;border-radius:14px;padding:4px 16px;font-size:clamp(18px,5.4vw,28px);font-weight:900;color:#5A3414;white-space:nowrap;box-shadow:0 3px 0 #6E4220}
+#mu80 .mutt i{font-style:normal;font-weight:900;font-size:22px;color:#E0457B;text-shadow:0 2px 0 #fff}#mu80 .mutt i:last-child{color:#2F86E8}
+#mu80 .musp{width:44px;flex:none}
+#mu80 .muinfo{flex:none;width:40px;height:40px;border-radius:50%;border:3px solid #fff;background:#FFE7A6;font-weight:900;font-size:18px;font-style:italic;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+/* ===== トップ ===== */
+#mu80 .mutop{flex:1;min-height:0;display:grid;gap:8px;grid-template-rows:minmax(110px,1fr) auto auto auto;padding:6px 6px 4px;margin:0 -6px;overflow-y:auto;overflow-x:hidden}
+#mu80 .mustage{position:relative;min-height:110px;display:flex;align-items:flex-end;justify-content:center;gap:4%}
+#mu80 .mubear{height:min(100%,240px);max-height:30vh;width:auto;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25));animation:muSw 1.6s ease-in-out infinite;transform-origin:50% 100%}
+#mu80 .mupl{height:min(92%,220px);max-height:27vh;width:auto;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25));animation:muBo 1.2s ease-in-out infinite}
+@keyframes muSw{50%{transform:rotate(-4deg)}}@keyframes muBo{50%{transform:translateY(-6px)}}
+#mu80 .mubub{position:absolute;left:4px;top:6px;background:#fff;border:3px solid #7A5A3A;border-radius:18px;padding:5px 10px;font-weight:900;font-size:13px;line-height:1.4;box-shadow:0 3px 6px rgba(0,0,0,.15)}
+#mu80 .mucards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#mu80 .mucard{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;border:4px solid #fff;border-radius:20px;padding:8px 6px;box-shadow:0 4px 0 rgba(0,0,0,.15);min-width:0;transition:transform .12s}
+#mu80 .mucard.mh{background:linear-gradient(160deg,#DFF5E6,#C4ECD2)}#mu80 .mucard.pf{background:linear-gradient(160deg,#FFE3EC,#FBC9DA)}
+#mu80 .mucard img{height:clamp(54px,9vh,92px);width:auto;max-width:100%;object-fit:contain}
+#mu80 .mucard b{font-size:clamp(14px,4.2vw,20px);font-weight:900;white-space:nowrap}#mu80 .mucard.mh b{color:#257A44}#mu80 .mucard.pf b{color:#B22A5C}
+#mu80 .mucard small{font-size:11px;font-weight:800;opacity:.75;white-space:nowrap}
+#mu80 .mucard.on{border-color:#FFD34D;box-shadow:0 0 0 3px #FFB800,0 0 18px rgba(255,190,0,.7);transform:translateY(-2px)}
+#mu80 .mucard em{position:absolute;top:-10px;right:-4px;background:#FFB800;color:#fff;font-style:normal;font-weight:900;font-size:11px;border-radius:99px;padding:1px 8px;border:2px solid #fff}
+#mu80 .mumodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#mu80 .mumode{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;border:4px solid #fff;border-radius:18px;padding:6px 4px;box-shadow:0 4px 0 rgba(0,0,0,.15);min-width:0}
+#mu80 .mumode.doremi{background:linear-gradient(160deg,#FFF6CC,#FFE7A0)}#mu80 .mumode.rhythm{background:linear-gradient(160deg,#DDF0FF,#BFE2FF)}#mu80 .mumode.free{background:linear-gradient(160deg,#EEE4FF,#DCCBFF)}
+#mu80 .mumode img{height:clamp(30px,5.5vh,56px);width:auto;max-width:90%;object-fit:contain}
+#mu80 .mumode b{font-size:clamp(12px,3.6vw,17px);font-weight:900;white-space:normal;text-align:center;line-height:1.2;word-break:keep-all}
+#mu80 .mumode small{font-size:10px;font-weight:800;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#mu80 .mumode.soon{filter:saturate(.55)}#mu80 .mumode em{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#8E8A80;color:#fff;font-style:normal;font-size:10px;font-weight:900;border-radius:99px;padding:0 8px;white-space:nowrap}
+#mu80 .mumode.free{animation:muGl 1.8s ease-in-out infinite}@keyframes muGl{50%{box-shadow:0 4px 0 rgba(0,0,0,.15),0 0 14px rgba(150,110,255,.8)}}
+#mu80 .mustrip{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:6px;background:rgba(255,250,238,.95);border:3px solid #E8D6B0;border-radius:99px;padding:4px 12px}
+#mu80 .mustrip>span{color:#FFB800;font-size:20px}#mu80 .mustrip b{font-size:13px;white-space:nowrap}#mu80 .mustrip i{height:10px;background:#E4DED2;border-radius:6px;overflow:hidden}#mu80 .mustrip u{display:block;height:100%;background:#40C057}
+#mu80 .mustrip em{font-style:normal;font-weight:900}#mu80 .mustrip small{grid-column:1/-1;text-align:center;font-size:10px;font-weight:800;opacity:.65;margin-top:-2px}
+/* ===== じゆうに ひく ===== */
+#mu80 .muinst{flex:none;display:flex;gap:4px}
+#mu80 .muinst button{width:48px;height:42px;border-radius:14px;border:3px solid #fff;background:rgba(255,255,255,.75);padding:2px;display:flex;align-items:center;justify-content:center}
+#mu80 .muinst button img{max-width:100%;max-height:100%}#mu80 .muinst button.on{background:#FFE7A6;box-shadow:0 0 0 3px #FFB800}
+#mu80 .mufree{flex:1;min-height:0;display:grid;gap:6px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(80px,1fr) auto 0 auto;position:relative}
+#mu80 .muside{position:relative;display:flex;align-items:flex-end;justify-content:center;min-height:0}
+#mu80 .mupl2{height:100%;max-height:200px;width:auto;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.35))}
+#mu80 .mubub2{position:absolute;right:4%;top:8%;background:#fff;border:3px solid #7A5A3A;border-radius:18px;padding:5px 10px;font-weight:900;font-size:13px;line-height:1.4;text-align:center}
+#mu80 .muctl{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+#mu80 .muoct{display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.9);border-radius:99px;padding:3px}
+#mu80 .muoct button{border:0;border-radius:99px;background:#6FB6FF;color:#fff;font-weight:900;font-size:14px;padding:6px 12px;white-space:nowrap}#mu80 .muoct button:disabled{background:#C9C4BA}
+#mu80 .muoct span{font-weight:900;font-size:14px;min-width:6.5em;text-align:center;white-space:nowrap}
+#mu80 .murow{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+#mu80 .mulab,#mu80 .murb{border:3px solid #fff;border-radius:99px;padding:5px 12px;font-weight:900;font-size:14px;white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+#mu80 .mulab{background:#FFF6CC}#mu80 .mulab b{color:#E0457B}
+#mu80 .murb.rec{background:#FF6B6B;color:#fff}#mu80 .murb.play{background:#40C057;color:#fff}#mu80 .murb.stop{background:#555;color:#fff;animation:muRc 1s infinite}
+@keyframes muRc{50%{background:#E03131}}
+#mu80 .mufl{position:relative;height:0;overflow:visible;z-index:3;pointer-events:none}
+#mu80 .mufn{position:absolute;bottom:4px;transform:translateX(-50%);font-weight:900;font-size:26px;text-shadow:0 0 4px #fff,0 0 8px #fff,0 2px 0 #fff;animation:muFn .9s ease-out forwards;white-space:nowrap}
+@keyframes muFn{from{opacity:1;transform:translate(-50%,0) scale(.8)}to{opacity:0;transform:translate(-50%,-70px) scale(1.25)}}
+/* けんばん */
+#mu80 .mukbw{position:relative;border-radius:18px;padding:10px 8px 8px;height:clamp(200px,40vh,330px);box-shadow:0 6px 14px rgba(0,0,0,.35)}
+#mu80 .mukbw.pf{background:linear-gradient(180deg,#2A2320,#120E0C);border-top:6px solid #C9A05A}
+#mu80 .mukbw.mh{background:linear-gradient(180deg,#5AB2FF,#2878D8);border:3px solid #1F5FAE}
+#mu80 .mupipe{position:absolute;left:-2px;top:-18px;width:60px;height:22px;border:5px solid #F2EEE6;border-bottom:0;border-radius:30px 30px 0 0;z-index:-1}
+#mu80 .mukb{position:relative;height:100%;touch-action:none}
+#mu80 .muk{position:absolute;top:0;box-sizing:border-box}
+#mu80 .muk.w{height:100%;background:linear-gradient(180deg,#fff 70%,#F2EEE8);border:2px solid #3A2E28;border-radius:0 0 10px 10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:8px}
+#mu80 .muk.w:after{content:'';position:absolute;left:6%;right:6%;bottom:4px;height:5px;border-radius:3px;background:var(--c)}
+#mu80 .muk.w span{font-weight:900;font-size:clamp(14px,4.2vw,22px);color:var(--c);text-shadow:0 1px 0 rgba(0,0,0,.12);margin-bottom:8px;white-space:nowrap}
+#mu80 .muk.w small{position:absolute;top:4px;font-size:10px;font-weight:900;color:#B5ABA0}
+#mu80 .muk.b{height:58%;background:linear-gradient(180deg,#3A3633,#121010);border-radius:0 0 7px 7px;z-index:2;border:2px solid #000;box-shadow:inset 0 -6px 0 rgba(255,255,255,.12)}
+#mu80 .muk.w.on{background:linear-gradient(180deg,#fff,var(--c));transform:translateY(2px)}
+#mu80 .muk.w.on span{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+#mu80 .muk.b.on{background:linear-gradient(180deg,#6B6560,#3A3633);transform:translateY(2px)}
+/* クレジット */
+.mucr p{font-size:14px;line-height:1.7;margin:8px 0}.mucr small{color:#8A7B6C}
+/* ===== iPad横 ===== */
+#mu80.tab .muw{padding:calc(10px + env(safe-area-inset-top)) 18px 14px}
+#mu80.tab .mutop{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);grid-template-rows:auto auto 1fr;align-content:center;grid-template-areas:'st cd' 'st md' 'st sp';gap:14px;overflow:hidden}
+#mu80.tab .mustage{grid-area:st;min-height:0}#mu80.tab .mucards{grid-area:cd}#mu80.tab .mumodes{grid-area:md}#mu80.tab .mustrip{grid-area:sp;align-self:start}
+#mu80.tab .mustage{overflow:visible;gap:0;padding-top:70px}#mu80.tab .mustage{justify-content:space-evenly;padding-left:3%}#mu80.tab .mubear{width:52%;height:auto;max-height:62vh;object-fit:contain}#mu80.tab .mupl{width:42%;height:auto;max-height:50vh;object-fit:contain}#mu80.tab .muback{font-size:20px;padding:8px 18px}#mu80.tab .mutt b{font-size:30px}#mu80.tab .muinst button{width:60px;height:52px}
+#mu80.tab .mubub{font-size:17px;top:4%;left:6%}
+#mu80.tab .mucard{padding:14px 10px}#mu80.tab .mucard img{height:clamp(90px,17vh,150px)}#mu80.tab .mucard b{font-size:24px}#mu80.tab .mucard small{font-size:13px}
+#mu80.tab .mumode{padding:10px 6px}#mu80.tab .mumode img{height:clamp(50px,9vh,80px)}#mu80.tab .mumode b{font-size:17px}#mu80.tab .mumode small{font-size:12px}
+#mu80.tab .mustrip b{font-size:15px}
+#mu80.tab .mufree{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:minmax(0,1fr) 0 auto;grid-template-areas:'sd ct' 'fl fl' 'kb kb';gap:10px}
+#mu80.tab .muside{grid-area:sd}#mu80.tab .muctl{grid-area:ct;justify-content:center;gap:12px}#mu80.tab .mufl{grid-area:fl}#mu80.tab .mukbw{grid-area:kb;height:clamp(240px,46vh,420px)}
+#mu80.tab .mupl2{max-height:34vh}#mu80.tab .muoct button,#mu80.tab .muoct span,#mu80.tab .mulab,#mu80.tab .murb{font-size:18px}#mu80.tab .mubub2{font-size:16px}
+#mu80.tab .muk.w span{font-size:22px}#mu80.tab .mufn{font-size:34px}
+@media (max-height:700px){#mu80.ph .mubub{font-size:11px}#mu80.ph .mucard small,#mu80.ph .mumode small{display:none}#mu80.ph .mukbw{height:clamp(170px,38vh,280px)}}
+`;
+document.head.appendChild(css);
+})();
