@@ -16106,7 +16106,8 @@ function render(keep){
 const bg = (k, L) => `<div class="hybg" style="background-image:url('${IMG}hy_${k}_${L === 'tab' ? 'tab' : 'sp'}.webp')"></div>`;
 const head = (title, right) => `<header class="hyhd"><button class="hyback" data-a="${V.s === 'top' ? 'close' : 'quit'}">‹ ${V.s === 'top' ? 'もどる' : 'やめる'}</button>
   <div class="hyttl"><i></i><b>${title}</b><i></i></div>${right || `<div class="hypt"><span>P</span><b>${nf(bal())}</b></div>`}</header>`;
-const voiceBtn = () => canTalk ? `<button class="hyvo ${HS().voice ? 'on' : ''}" data-a="voice" title="読み上げ">${HS().voice ? '🔊' : '🔇'}</button>` : '';
+const icI = k => `<img class="hyic" src="${IMG}hy_ic_${k}.webp" alt="">`;
+const voiceBtn = () => canTalk ? `<button class="hyvo ${HS().voice ? 'on' : ''}" data-a="voice" title="読み上げ">${icI(HS().voice ? 'voice' : 'mute')}</button>` : '';
 
 /* ===================== ① 選択画面（暗記グラフ） ===================== */
 function donut(n){
@@ -16149,7 +16150,7 @@ function poemSheet(no){
     <div class="hysh-h"><span class="no">${no}${R('番', 'ばん')}</span><b>${X(p.au)}</b><em class="s${st}">${lab}</em></div>
     <div class="hysh-k">${X(p.k1)}<br>${X(p.k2)}</div><div class="hysh-h2">${X(p.h1)}　${X(p.h2)}</div>
     <p class="hysh-m">${X(p.mean)}</p><small>${R('連続', 'れんぞく')}${R('正解', 'せいかい')} ${r.c}${R('回', 'かい')}（${CFG.master}${R('回', 'かい')}で「${R('覚', 'おぼ')}えた」）</small>
-    <div class="hysh-b">${canTalk ? `<button class="hybtn y" data-a="sayPoem" data-no="${no}">🔊 ${R('聞', 'き')}く</button>` : ''}<button class="hybtn" data-a="closePoem">とじる</button></div></div></div>`;
+    <div class="hysh-b">${canTalk ? `<button class="hybtn y" data-a="sayPoem" data-no="${no}">${icI('voice')}${R('聞', 'き')}く</button>` : ''}<button class="hybtn" data-a="closePoem">とじる</button></div></div></div>`;
 }
 
 /* ===================== 出題づくり ===================== */
@@ -16230,7 +16231,7 @@ function hon(L){
   const bub = r.done ? (r.got ? (r.early ? (r.pos <= Math.ceil(r.kamiLen / 3) ? 'すごい はやわざ！<br>おみごと！' : 'はやどり！<br>おみごと！') : 'とれたね！<br>つぎは もっと 早く！') : r.timeout ? 'この札だったよ' : 'つぎは とれるよ！') : r.ote ? 'おてつき！<br>もう一度 さがそう' : r.pos < 0 ? 'かまえて…' : 'どの札かな？<br>タッチしてね';
   return `${bg('hon', L)}${head(T_HON, `<div class="hyrt">${voiceBtn()}<div class="hypt star"><span>★</span><b>${nf(Q.pts)}</b></div></div>`)}
   <div class="hyhon">${prog}
-    <div class="hyrd"><div class="hyrdh">${canTalk && HS().voice ? '🔊' : '📜'} ${R('読', 'よ')}み${R('上', 'あ')}げ${r.done ? '' : '中…'}${r.done ? '' : '<span id="hynow" class="hynow"></span>'}</div><div id="hyread" class="hyread"></div><div class="hyrbw"><i id="hyrb"></i></div></div>
+    <div class="hyrd"><div class="hyrdh">${canTalk && HS().voice ? icI('voice') : ''}<span class="hyrdt">${R('読', 'よ')}み${R('上', 'あ')}げ${r.done ? '' : '中…'}</span>${r.done ? '' : '<span id="hynow" class="hynow"></span>'}</div><div id="hyread" class="hyread"></div><div class="hyrbw"><i id="hyrb"></i></div></div>
     <div class="hybub hybub2">${bub}</div>
     <div class="hycards">${cards}</div>
     ${r.done ? resultPanel(p, r.got, r.got ? (r.pt || 0) : 0, r.at) : ''}
@@ -16272,7 +16273,7 @@ function shimo(L){
   return `${bg('shimo', L)}${head(L === 'tab' ? T_SHIMO : T_SHIMO_S, `<div class="hyrt">${voiceBtn()}<div class="hypt star"><span>★</span><b>${nf(Q.pts)}</b></div></div>`)}
   <div class="hyshi">${prog}
     <div class="hykami"><em>${R('上', 'かみ')}の${R('句', 'く')}</em><div class="kt">${kami}</div>
-      <div class="kb">${canTalk ? `<button class="hymini" data-a="sayKami">🔊</button>` : ''}${r.done || r.hint ? '' : `<button class="hymini" data-a="hint">💡 ヒント</button>`}</div></div>
+      <div class="kb">${canTalk ? `<button class="hymini ic" data-a="sayKami" title="聞く">${icI('voice')}</button>` : ''}${r.done || r.hint ? '' : `<button class="hymini" data-a="hint">${icI('hint')}ヒント</button>`}</div></div>
     <div class="hyask">🌸 ${R('下', 'しも')}の${R('句', 'く')}は どれかな？</div>
     <div class="hycards">${cards}</div>
     ${r.done ? '' : `<button class="hybtn big blue hyok" data-a="decide" ${r.sel ? '' : 'disabled'}>けってい</button>`}
@@ -16332,7 +16333,7 @@ function onClick(e){
     case 'sayPoem': { hush(); const p = HY[no - 1]; say(p.k1 + ' ' + p.k2, 0.8); break; }
     case 'startHon': snd('tap'); startQuiz('hon'); break;
     case 'startShimo': snd('tap'); startQuiz('shimo'); break;
-    case 'voice': HS().voice = HS().voice ? 0 : 1; if(!HS().voice) hush(); else unlockTalk(); try{ persist(); }catch(e2){} b.classList.toggle('on', !!HS().voice); b.textContent = HS().voice ? '🔊' : '🔇'; break;
+    case 'voice': HS().voice = HS().voice ? 0 : 1; if(!HS().voice) hush(); else unlockTalk(); try{ persist(); }catch(e2){} b.classList.toggle('on', !!HS().voice); b.innerHTML = icI(HS().voice ? 'voice' : 'mute'); break;
     case 'take': take(no); break;
     case 'pick': pick(no); break;
     case 'decide': decide(); break;
@@ -16577,4 +16578,20 @@ document.head.appendChild(css);
 #hy77.ph .hyc2{display:flex;flex-direction:column}
 #hy77.ph .hybars{height:clamp(52px,15vh,150px)!important}
 #hy77.ph .hylg{gap:6px;font-size:11px}
+`; document.head.appendChild(c); })();
+
+/* v7.7e：上の句ラベル・アイコンを イラストに */
+(function(){ const c = document.createElement('style'); c.textContent = `
+#hy77 .hyic{width:1.25em;height:1.25em;object-fit:contain;vertical-align:middle;flex:none;pointer-events:none}
+#hy77 .hyvo{display:flex;align-items:center;justify-content:center;padding:0;line-height:0}
+#hy77 .hyvo .hyic{width:26px;height:26px;display:block;margin:0}
+#hy77 .hymini{display:inline-flex;align-items:center;justify-content:center;gap:3px;line-height:1.2}
+#hy77 .hymini.ic{padding:2px 10px}#hy77 .hymini.ic .hyic{width:22px;height:22px}
+#hy77 .hymini .hyic{width:20px;height:20px}
+#hy77 .hybtn .hyic{width:22px;height:22px;margin-right:4px}
+#hy77 .hyrdh{display:flex;align-items:center;gap:4px}#hy77 .hyrdh .hyic{width:18px;height:18px}#hy77 .hyrdh .hynow{margin-left:auto;float:none;white-space:nowrap}#hy77 .hyrdt{white-space:nowrap}
+#hy77 .hykami{margin-top:14px}
+#hy77 .hykami em{top:-16px;line-height:1.2;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+#hy77 .hykami .kt{padding-top:16px!important}
+#hy77.tab .hykami{margin-top:22px}
 `; document.head.appendChild(c); })();
