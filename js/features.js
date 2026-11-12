@@ -16078,7 +16078,7 @@ function unlockTalk(){ if(!canTalk || !HS().voice) return; try{ const u = new Sp
 const snd = t => { try{ sound(t); }catch(e){} };
 
 /* ---------- 文字 ---------- */
-const R = (k, y) => `<ruby>${k}<rt>${y}</rt></ruby>`;
+const R = (k, y) => `<span class="hzR">${k}<span class="hzRt">${y}</span></span>`;
 const X = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
 const T_HON = R('本番', 'ほんばん') + 'モード', T_SHIMO = R('下', 'しも') + 'の' + R('句', 'く') + 'を' + R('当', 'あ') + 'てるモード';
 const T_SHIMO_S = R('下', 'しも') + 'の' + R('句', 'く') + 'を' + R('当', 'あ') + 'てる';
@@ -16129,14 +16129,14 @@ function top(L){
   return `${bg('sel', L)}${head(T_TITLE)}
   <div class="hytop">
     <section class="hyp hyc1"><h3>🌸 ${R('暗記', 'あんき')}できた${R('歌', 'うた')}</h3><div class="hydnw">${donut(n)}</div></section>
-    <div class="hybub hybub1">${msg}</div>
-    <section class="hyp hyc2"><div class="hyc2h"><h3>🌸 ${R('歌', 'うた')}ごとの${R('習得', 'しゅうとく')}${R('状況', 'じょうきょう')}</h3>
+    <div class="hyside"><div class="hybub hybub1">${msg}</div>${L === 'tab' ? '' : `<img class="hyusa" src="${IMG}hy_usagi.webp" alt="">`}</div>
+    <section class="hyp hyc2"><div class="hyc2h"><h3>🌸 ${R('歌', 'うた')}ごとの${R('習得状況', 'しゅうとくじょうきょう')}</h3>
       <div class="hylg"><span><i class="s2"></i>${R('覚', 'おぼ')}えた</span><span><i class="s1"></i>もう${R('少', 'すこ')}し</span><span><i class="s0"></i>まだ</span></div></div>
       <div class="hybars">${bars()}</div><div class="hyax"><span>1</span><span>25</span><span>50</span><span>75</span><span>100(${R('番', 'ばん')})</span></div>
       <div class="hyrng"><small>${R('出題', 'しゅつだい')}する${R('範囲', 'はんい')}</small><div>${chips}</div></div></section>
     <div class="hymodes">
-      <button class="hymb hon" data-a="startHon"><span class="ic"><i></i><i></i><i></i></span><div><b>${T_HON}</b><small><span class="d">${R('読', 'よ')}み${R('上', 'あ')}げを${R('聞', 'き')}いて ${R('正', 'ただ')}しい${R('札', 'ふだ')}をとろう</span><span class="p">${R('上', 'かみ')}の${R('句', 'く')}で <em>${ptOf(CFG.baseH)}〜${ptOf(CFG.baseH + CFG.early)}pt</em> ${R('下', 'しも')}の${R('句', 'く')}は <em>${ptOf(CFG.shimoH)}pt</em></span></small></div><u>›</u></button>
-      <button class="hymb shi" data-a="startShimo"><span class="ic q"><i>?</i></span><div><b>${T_SHIMO}</b><small><span class="d">${R('上', 'かみ')}の${R('句', 'く')}を${R('見', 'み')}て ${R('下', 'しも')}の${R('句', 'く')}を${R('思', 'おも')}い${R('出', 'だ')}そう</span><span class="p">1${R('問', 'もん')} <em>${ptOf(CFG.baseS)}pt</em></span></small></div><u>›</u></button>
+      <button class="hymb hon" data-a="startHon"><span class="ic"><i></i><i></i><i></i></span><div><b>${T_HON}</b><small class="ph1"><span>${R('上', 'かみ')}の${R('句', 'く')} <em>${ptOf(CFG.baseH)}〜${ptOf(CFG.baseH + CFG.early)}pt</em></span><span>${R('下', 'しも')}の${R('句', 'く')} <em>${ptOf(CFG.shimoH)}pt</em></span></small><small class="tb1"><span class="d">${R('読', 'よ')}み${R('上', 'あ')}げを${R('聞', 'き')}いて ${R('正', 'ただ')}しい${R('札', 'ふだ')}をとろう</span><span class="p">${R('上', 'かみ')}の${R('句', 'く')}で <em>${ptOf(CFG.baseH)}〜${ptOf(CFG.baseH + CFG.early)}pt</em> ${R('下', 'しも')}の${R('句', 'く')}は <em>${ptOf(CFG.shimoH)}pt</em></span></small></div><u>›</u></button>
+      <button class="hymb shi" data-a="startShimo"><span class="ic q"><i>?</i></span><div><b>${L === 'tab' ? T_SHIMO : R('下', 'しも') + 'の' + R('句', 'く') + 'モード'}</b><small class="ph1"><span>${R('上', 'かみ')}の${R('句', 'く')}から ${R('思', 'おも')}い${R('出', 'だ')}す</span><span>1${R('問', 'もん')} <em>${ptOf(CFG.baseS)}pt</em></span></small><small class="tb1"><span class="d">${R('上', 'かみ')}の${R('句', 'く')}を${R('見', 'み')}て ${R('下', 'しも')}の${R('句', 'く')}を${R('思', 'おも')}い${R('出', 'だ')}そう</span><span class="p">1${R('問', 'もん')} <em>${ptOf(CFG.baseS)}pt</em></span></small></div><u>›</u></button>
       <div class="hymul">まちLv${tLv()} ボーナス ×${m}　・　1${R('回', 'かい')} ${CFG.per}${R('首', 'しゅ')}</div>
     </div>
   </div>
@@ -16368,6 +16368,8 @@ body.hy77on{overflow:hidden}
 #hy77 .hybg{position:absolute;inset:0;background-size:cover;background-position:center bottom;z-index:0}
 #hy77 .hyw>*:not(.hybg){position:relative;z-index:1}
 #hy77 ruby rt{font-size:.5em;font-weight:700}
+#hy77 .hzR{display:inline-block;position:relative;padding-top:.5em;line-height:inherit;text-indent:0;white-space:nowrap}
+#hy77 .hzRt{position:absolute;left:50%;top:0;transform:translateX(-50%);font-size:.46em;font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.02em;pointer-events:none;color:inherit;opacity:.9}
 #hy77 button{font-family:inherit;color:inherit;cursor:pointer}
 /* ヘッダー */
 #hy77 .hyhd{display:flex;align-items:center;gap:8px;min-height:52px;flex:none}
@@ -16376,8 +16378,8 @@ body.hy77on{overflow:hidden}
 #hy77 .hyttl b{background:linear-gradient(180deg,#FFFBEF,#F6E7C4);border:3px solid #C9A05A;border-left:0;border-right:0;padding:6px 14px;font-size:clamp(15px,4.6vw,24px);font-weight:900;color:#3A2A18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-shadow:0 3px 6px rgba(0,0,0,.15)}
 #hy77 .hyttl i{width:12px;align-self:stretch;background:linear-gradient(90deg,#8E2A2A,#C94A3A,#8E2A2A);border-radius:6px;margin:-3px 0;flex:none}
 #hy77 .hypt{flex:none;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.92);border:3px solid #FFD66B;border-radius:99px;padding:3px 10px 3px 4px;font-weight:900}
-#hy77 .hypt span{width:24px;height:24px;border-radius:50%;background:#FFC93C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
-#hy77 .hypt.star{background:#3E5A3A;border-color:#C9A05A;color:#fff}#hy77 .hypt.star span{background:none;color:#FFD34D;font-size:20px}
+#hy77 .hypt>span{width:24px;height:24px;border-radius:50%;background:#FFC93C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
+#hy77 .hypt.star{background:#3E5A3A;border-color:#C9A05A;color:#fff}#hy77 .hypt.star>span{background:none;color:#FFD34D;font-size:20px}
 #hy77 .hyrt{flex:none;display:flex;align-items:center;gap:6px}
 #hy77 .hyvo{width:40px;height:40px;border-radius:50%;border:3px solid #fff;background:#E9E3D6;font-size:18px;box-shadow:0 2px 0 rgba(0,0,0,.15)}#hy77 .hyvo.on{background:#FFE7A6}
 /* 共通パネル */
@@ -16398,14 +16400,14 @@ body.hy77on{overflow:hidden}
 #hy77 .hydnw{position:relative;width:min(34vw,24vh,150px);aspect-ratio:1}
 #hy77 .hydn{width:100%;height:100%}
 #hy77 .hydnt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
-#hy77 .hydnt b{font-size:clamp(26px,9vw,46px);color:#2E8C46;font-weight:900}#hy77 .hydnt i{width:40%;height:2px;background:#4A3420;margin:3px 0;transform:rotate(-12deg)}#hy77 .hydnt span{font-size:clamp(15px,4.4vw,22px);font-weight:900}
+#hy77 .hydnt b{font-size:clamp(26px,9vw,46px);color:#2E8C46;font-weight:900}#hy77 .hydnt i{width:40%;height:2px;background:#4A3420;margin:3px 0;transform:rotate(-12deg)}#hy77 .hydnt>span{font-size:clamp(15px,4.4vw,22px);font-weight:900}
 #hy77 .hybub1{grid-area:bub;align-self:start;margin-top:12px;position:relative}
 #hy77 .hybub1:after{content:'';position:absolute;left:50%;bottom:-12px;border:9px solid transparent;border-top-color:#7A5A3A;transform:translateX(-50%)}
 #hy77 .hyc2{grid-area:c2;display:flex;flex-direction:column;gap:4px}
 #hy77 .hyc2h{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
-#hy77 .hylg{display:flex;gap:8px;font-size:12px;font-weight:800}#hy77 .hylg span{display:flex;align-items:center;gap:3px;white-space:nowrap}#hy77 .hylg i{width:12px;height:12px;border-radius:50%}
+#hy77 .hylg{display:flex;gap:8px;font-size:12px;font-weight:800}#hy77 .hylg>span{display:flex;align-items:flex-end;gap:0;white-space:nowrap}#hy77 .hylg i{width:12px;height:12px;border-radius:50%}
 #hy77 .s2{--c:#3DB35A}#hy77 .s1{--c:#F2C53D}#hy77 .s0{--c:#B9B4AA}
-#hy77 .hylg i,#hy77 .hyb{background:var(--c)}
+#hy77 .hylg i{margin-right:3px;align-self:center}#hy77 .hylg i,#hy77 .hyb{background:var(--c)}
 #hy77 .hybars{height:clamp(70px,13vh,130px);display:flex;align-items:flex-end;gap:1px;border-left:2px solid #CDBFA5;border-bottom:2px solid #CDBFA5;padding:2px 1px 0}
 #hy77 .hyb{flex:1;min-width:0;border:0;border-radius:2px 2px 0 0;padding:0}
 #hy77 .hyb.dim{opacity:.3}
@@ -16418,7 +16420,7 @@ body.hy77on{overflow:hidden}
 #hy77 .hymb.hon{background:linear-gradient(135deg,#FF8FAE,#EE4F7E);color:#fff}
 #hy77 .hymb.shi{background:linear-gradient(135deg,#7CC3FF,#2F86E8);color:#fff}
 #hy77 .hymb>div{flex:1;min-width:0}#hy77 .hymb b{display:block;font-size:clamp(16px,4.6vw,22px);font-weight:900;text-shadow:0 2px 0 rgba(0,0,0,.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#hy77 .hymb small span{display:block}#hy77 .hymb small{display:block;font-size:12px;font-weight:800;line-height:1.45;overflow-wrap:anywhere}#hy77 .hymb em{font-style:normal;background:rgba(255,255,255,.3);border-radius:6px;padding:0 4px}
+#hy77 .hymb small>span{display:block}#hy77 .hymb small{display:block;font-size:12px;font-weight:800;line-height:1.45;overflow-wrap:anywhere}#hy77 .hymb em{font-style:normal;background:rgba(255,255,255,.3);border-radius:6px;padding:0 4px}
 #hy77 .hymb u{text-decoration:none;font-size:26px;font-weight:900}
 #hy77 .hymb .ic{flex:none;width:52px;height:56px;position:relative}
 #hy77 .hymb .ic i{position:absolute;width:30px;height:42px;background:#FFFBEF;border:3px solid #3E7A4A;border-radius:5px;top:6px;left:10px;font-style:normal}
@@ -16488,7 +16490,7 @@ body.hy77on{overflow:hidden}
 #hy77 .hyresc h2{margin:0;text-align:center;font-size:24px;font-weight:900}
 #hy77 .hyrs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 #hy77 .hyrs>div{background:#fff;border-radius:14px;padding:6px;text-align:center;border:2px solid #EFE3C8}#hy77 .hyrs small{display:block;font-size:11px;font-weight:900;color:#7A6A55}
-#hy77 .hyrs b{font-size:clamp(20px,6vw,28px);font-weight:900}#hy77 .hyrs b span{font-size:.55em}#hy77 .hyrs b.pt{color:#E0457B}
+#hy77 .hyrs b{font-size:clamp(20px,6vw,28px);font-weight:900}#hy77 .hyrs b>span{font-size:.55em}#hy77 .hyrs b.pt{color:#E0457B}
 #hy77 .hyrl{list-style:none;margin:0;padding:0;overflow:auto;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
 #hy77 .hyrl li{display:flex;align-items:center;gap:5px;background:#fff;border-radius:10px;padding:3px 6px;font-size:13px;font-weight:800;min-width:0}
 #hy77 .hyrl li>span{background:#8E2A2A;color:#fff;border-radius:6px;padding:0 5px;font-size:11px}
@@ -16499,8 +16501,7 @@ body.hy77on{overflow:hidden}
 /* こくご画面の 入口 */
 .modeBtn.hy77btn{background:linear-gradient(90deg,#F4E1FF,#FFF4E6);color:#7A3A8E}
 /* ===== スマホ縦：キャラの いる 場所を あける ===== */
-#hy77.ph.s-top .hybg{background-position:72% bottom}
-#hy77.ph.s-top .hymodes{max-width:64%}
+#hy77.ph.s-top .hybg{background-size:auto 190%;background-position:28% top}
 #hy77.ph .hymb .ic{display:none}#hy77.ph .hymb small .d{display:none}#hy77.ph .hymb{min-height:64px;padding:6px 10px}#hy77.ph .hymb b{font-size:clamp(15px,4.4vw,19px)}
 #hy77.ph.s-hon .hybg{background-position:70% top}
 #hy77.ph.s-shimo .hybg{background-position:75% bottom}
@@ -16551,3 +16552,29 @@ body.hy77on{overflow:hidden}
 `;
 document.head.appendChild(css);
 })();
+
+/* v7.7d：スマホ縦 トップ うさぎを 画面の 中に・ボタン文字 整理 */
+(function(){ const c = document.createElement('style'); c.textContent = `
+#hy77 .hyside{grid-area:bub;min-width:0}
+#hy77 .hymb small.ph1{display:none}
+#hy77.ph .hymb small.tb1{display:none}
+#hy77.ph .hymb small.ph1{display:block}
+#hy77.ph .hymb small.ph1>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hy77.ph .hymb b{white-space:nowrap!important}
+#hy77.ph .hytop{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)!important;grid-template-areas:'c1 bub' 'c2 c2' 'md md'!important}
+#hy77.ph .hyc1{flex-direction:column!important;gap:2px!important;padding:6px 8px!important}
+#hy77.ph .hyc1 h3{font-size:14px!important}
+#hy77.ph .hydnw{width:min(26vw,13vh,104px)!important}
+#hy77.ph .hyside{display:flex;align-items:flex-end;justify-content:flex-end;gap:2px;position:relative}
+#hy77.ph .hybub1{grid-area:auto;margin:0 0 auto;align-self:center;font-size:12px!important;padding:6px 8px!important;flex:1;min-width:0;position:relative}
+#hy77.ph .hybub1:after{left:auto!important;right:-12px;top:50%;bottom:auto!important;transform:translateY(-50%)!important;border:7px solid transparent!important;border-left-color:#7A5A3A!important}
+#hy77.ph .hyusa{height:clamp(110px,19vh,170px);width:auto;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25));animation:hyUsa 2.4s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes hyUsa{50%{transform:translateY(-3px) rotate(-2deg)}}
+#hy77.ph .hymb{padding:6px 8px!important;min-height:58px!important}
+#hy77.ph .hymb small.ph1{font-size:11px}
+#hy77.ph .hytop{grid-template-rows:auto auto 1fr!important;height:100%}
+#hy77.ph .hymodes{align-self:end}
+#hy77.ph .hyc2{display:flex;flex-direction:column}
+#hy77.ph .hybars{height:clamp(52px,15vh,150px)!important}
+#hy77.ph .hylg{gap:6px;font-size:11px}
+`; document.head.appendChild(c); })();
