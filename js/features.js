@@ -476,9 +476,9 @@ function twAsk(m,f,resume){
     const fin=v=>{ if(end) return; end=true; clearInterval(tm); $('#dlg').classList.remove('show'); res(v); };
     dialog(`<div class="twQHead">${twImg('tower_big','twQTower')}<div><b>${f}<small>かい</small></b><span>${'★'.repeat(twBand(f))}${'☆'.repeat(4-twBand(f))}</span></div><div class="twTime"><i id="${id}b" style="width:${left/sec*100}%"></i><em id="${id}">${left}</em></div></div>${resume!=null?'<div class="hisTag51 resume61">⏸ やめた ときの 問題の つづきだよ（のこり じかんも そのまま）</div>':''}${hx?`<div class="hisTag51">✏️ ひっさん タイム ＋${hx}びょう</div>`:''}${m.html}${m.say&&!/data-say/.test(m.html)?sayBtn(m.say):''}`,
       m.opts.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'ここで やめる（つぎも この 問題から）',cls:'white twQuit',v:'__quit'}]),'wide quiz towerQuiz').then(v=>{ if(end) return; end=true; clearInterval(tm);
-        if(v==='__quit'||v==null) return res('quit'); const ok=v===ans; sound(ok?'ok':'ng'); if(m.wk&&ok)delWeak(m.wk); if(m.kq)addStat(m.kq,'read',ok,1); persist(); res(ok?'ok':'ng'); });
+        if(v==='__quit'||v==null) return res('quit'); const ok=v===ans; try{ window.recAns && recAns(ok,{src:'tower',kq:!!m.kq}); }catch(e){} sound(ok?'ok':'ng'); if(m.wk&&ok)delWeak(m.wk); if(m.kq)addStat(m.kq,'read',ok,1); persist(); res(ok?'ok':'ng'); });
     const tm=setInterval(()=>{ left--; try{ const P=save.tower&&save.tower.pend; if(P){ P.left=left; persist(); } }catch(e){} const e=$('#'+id), b=$('#'+id+'b'); if(e) e.textContent=Math.max(0,left); if(b){ b.style.width=Math.max(0,left/sec*100)+'%'; b.classList.toggle('hurry',left<=5); }
-      if(left<=0){ sound('ng'); fin('time'); } },1000);
+      if(left<=0){ try{ window.recAns && recAns(false,{src:'tower'}); }catch(e){} sound('ng'); fin('time'); } },1000);
   });
 }
 /* ---------- ロビー ---------- */
@@ -1000,7 +1000,7 @@ async function trainQuiz(id){
  if(tqBusy)return;tqBusy=true;
  try{const it=ITEM(id),Q=choice(TQ)(),D=save.tq=save.tq&&save.tq.d===dayKey()?save.tq:{d:dayKey(),n:0};
   const v=await dialog(`<div class="tqHead">${picHTML(it)}<b>🚃 ${esc(it?.name||'電車')}の クイズ</b></div>${tqImg(Q.img)}<div class="tqQ">${Q.q}</div>${Q.say?sayBtn(Q.say):''}`,Q.o.map(o=>({label:esc(o),cls:'white big',v:o})).concat([{label:'やめる',cls:'white',v:null}]),'wide quiz tqDlg');
-  if(v==null)return;const ok=v===Q.a;sound(ok?'ok':'ng');
+  if(v==null)return;const ok=v===Q.a;try{ window.recAns && recAns(ok,{src:'train'}); }catch(e){} sound(ok?'ok':'ng');
   if(ok){const give=D.n<10;D.n++;persist();if(give)givePts(8,'電車クイズ せいかい');confetti(600);
    await dialog(`${tqImg(Q.img)}<h2 class="dlgT">せいかい！</h2><p class="dlgP">${give?'<span class="coin sm">P</span> ポイント ゲット！':'きょうの ポイントは おしまい。でも べんきょうに なったね！'}<br><small>電車を タッチすると また 出るよ（ポイントは 1日10回まで）</small></p>`,[{label:'やったー',cls:'gold',v:1}]);}
   else await dialog(`${tqImg(Q.img)}<h2 class="dlgT">おしい！</h2><p class="dlgP">こたえは <b>${esc(Q.a)}</b> だったよ。</p>`,[{label:'つぎは がんばる',cls:'gold',v:1}]);
@@ -6856,7 +6856,7 @@ function pitch(){
 }
 async function answer(v){
   if(!G || G.busy) return; G.busy = true; clearTimeout(TIMER); const wasZone = G.zone;
-  const m = G.q, ok = v!=null && String(v)===String(m.ansF || m.ans), frac = Math.min(1, (performance.now() - G.t0)/1000/m.timeLimit);
+  const m = G.q, ok = v!=null && String(v)===String(m.ansF || m.ans); try{ window.recAns && recAns(ok,{src:'stadium'}); }catch(e){} const frac = Math.min(1, (performance.now() - G.t0)/1000/m.timeLimit);
   const ball = G.$('.bbBall618'), cs = getComputedStyle(ball); ball.style.transition = 'none'; ball.style.left = cs.left; ball.style.top = cs.top; ball.style.transform = cs.transform;
   G.$('.bbPanel618').querySelectorAll('button').forEach(b => { b.disabled = true; if(b.dataset.a===String(m.ansF || m.ans)) b.classList.add('ok'); else if(b.dataset.a===String(v)) b.classList.add('ng'); });
   const r = batter(), st = G.stats[r.id] || (G.stats[r.id] = {hits:0, rbi:0, hr:0});
@@ -8147,7 +8147,7 @@ function askQ(m, head, mode, opt={}){
       p.querySelectorAll('.op631').forEach(b => b.onclick = () => pick(b.dataset.o, b));
       p.querySelectorAll('[data-qt]').forEach(b => b.onclick = () => { const r = opt.onTool && opt.onTool(b.dataset.qt, m); if(r){ r.forEach(o => removed.add(o)); draw(hint); } });
     };
-    const finish = (out) => { clearInterval(timer); QUITFN = null; res(out); };
+    const finish = (out) => { clearInterval(timer); QUITFN = null; if(!out.quit) try{ window.recAns && recAns(!!out.ok); }catch(e){} res(out); };
     QUITFN = QUITOK ? () => finish({quit:true}) : null;
     let lock = false;
     const pick = (v, btn) => {
@@ -9624,7 +9624,7 @@ async function startTrip(cid){
           <div class="ops636">${q.opts.map(o => `<button type="button" class="op636" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
           ${q.st && !hinted ? `<button type="button" class="hb636" data-q="hint"><img src="${X(HANA())}" alt=""> ヒント（ポイント はんぶん）</button>` : ''}
         </div></div>`;
-        ROOT.querySelectorAll('.op636').forEach(b => b.onclick = () => { const v = b.dataset.o, good = v===q.ans; b.classList.add(good ? 'ok' : 'ng'); ROOT.querySelectorAll('.op636').forEach(x => x.disabled = true); setTimeout(() => res({ok:good, v}), good ? 650 : 450); sound(good ? 'ok' : 'ng'); if(good){ const f = ROOT.querySelector('.fu636'); if(f) f.classList.add('show'); } });
+        ROOT.querySelectorAll('.op636').forEach(b => b.onclick = () => { const v = b.dataset.o, good = v===q.ans; try{ window.recAns && recAns(good,{src:'eki'}); }catch(e){} b.classList.add(good ? 'ok' : 'ng'); ROOT.querySelectorAll('.op636').forEach(x => x.disabled = true); setTimeout(() => res({ok:good, v}), good ? 650 : 450); sound(good ? 'ok' : 'ng'); if(good){ const f = ROOT.querySelector('.fu636'); if(f) f.classList.add('show'); } });
         const qb = ROOT.querySelector('[data-q="quit"]'); if(qb) qb.onclick = async () => { const v = await dialog('<h2 class="dlgT">とちゅうで おりる？</h2><p class="dlgP">ここまでの ポイントは もらえるよ。<br>（きっぷは もどらないよ）</p>', [{label:'のりつづける', cls:'gold', v:0}, {label:'おりる', cls:'white', v:1}]); if(v) res({quit:true}); };
         const hb = ROOT.querySelector('[data-q="hint"]'); if(hb) hb.onclick = () => { hinted = true; const st = SI(q.st); let m;
           if(q.kind==='pref' || Math.random() < .5){ const wrong = q.opts.filter(o => o!==q.ans); shuffle(wrong).slice(0,2).forEach(o => removed.add(o)); m = 'こたえを 2つに しぼったよ'; }
@@ -10368,7 +10368,7 @@ async function quiz(){
           <div class="qt644">${X(q[0])}</div>
           <div class="op644">${opts.map(o => `<button type="button" data-o="${X(o)}" ${removed.has(o) ? 'disabled' : ''}>${X(o)}</button>`).join('')}</div>
           ${hinted ? '' : `<button type="button" class="ht644" data-z="hint">${P.guides.map(g => `<img src="${X(artSrc(g)||'')}" alt="">`).join('')}<span>ヒント：2つに しぼる（ポイント はんぶん）</span></button>`}</div></div>`;
-      ROOT.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const ok = b.dataset.o === q[1]; b.classList.add(ok ? 'ok' : 'ng'); ROOT.querySelectorAll('[data-o]').forEach(x => x.disabled = true); sound(ok ? 'ok' : 'ng'); setTimeout(() => res({ok, v:b.dataset.o}), ok ? 600 : 450); });
+      ROOT.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const ok = b.dataset.o === q[1]; try{ window.recAns && recAns(ok,{src:'zoo'}); }catch(e){} b.classList.add(ok ? 'ok' : 'ng'); ROOT.querySelectorAll('[data-o]').forEach(x => x.disabled = true); sound(ok ? 'ok' : 'ng'); setTimeout(() => res({ok, v:b.dataset.o}), ok ? 600 : 450); });
       const h = ROOT.querySelector('[data-z="hint"]'); if(h) h.onclick = () => { hinted = true; shuffle([q[2], q[3], q[6]].filter(Boolean)).slice(0, 2).forEach(x => removed.add(x)); sound('tap'); draw(); };
       ROOT.querySelector('[data-z="town"]').onclick = () => res({quit:true});
     };
@@ -12247,7 +12247,7 @@ function quiz(){
   </div>`;
 }
 function answer(o){
-  if(!Q || Q.ans !== null) return; const q = QS[Q.ids[Q.n]], h = HS(); Q.ans = o; const right = o === q[3];
+  if(!Q || Q.ans !== null) return; const q = QS[Q.ids[Q.n]], h = HS(); Q.ans = o; const right = o === q[3]; try{ window.recAns && recAns(right,{src:'hospital'}); }catch(e){}
   h.seen.q[Q.ids[Q.n]] = (h.seen.q[Q.ids[Q.n]] || 0) + 1; Q.log[Q.n] = right;
   if(right){ const pt = Math.max(1, Math.ceil(CFG.pt[q[1]] / (Q.hint ? 2 : 1))); Q.ok++; Q.pts += pt;
     try{ addPoints(pt, '病院 クイズ', true); }catch(e){}
@@ -13387,7 +13387,7 @@ function ptMult(q, preview){
   if(preview ? Q.streak >= 2 || Q.fever : Q.streak >= 3) m *= 1.5; return Math.round(m * 100) / 100;
 }
 function answer(o){
-  if(!Q || Q.ans !== null) return; const id = Q.ids[Q.n], q = QS[id], y = YS(); Q.ans = o; const right = o === q[3];
+  if(!Q || Q.ans !== null) return; const id = Q.ids[Q.n], q = QS[id], y = YS(); Q.ans = o; const right = o === q[3]; try{ window.recAns && recAns(right,{src:'yuen'}); }catch(e){}
   y.seen[id] = (y.seen[id] || 0) + 1; Q.log[Q.n] = right; Q.burst = false;
   if(right){
     Q.streak++; if(Q.streak >= 3) Q.fever = true;
@@ -13583,7 +13583,7 @@ document.addEventListener('click', async e => {
   const t = e.target.closest('[data-y]'); if(!t || t.disabled) return; const a = t.dataset.y;
   if(a === 'town'){ if(!(await leaveQuiz())) return; return close(); }
   if(a === 'top' || a === 'select' || a === 'map' || a === 'rally' || a === 'shop' || a === 'pqsel' || a === 'tanken'){ Q = null; TKO = null; return go(a); }
-  if(a === 'tka'){ const t = TK(); if(t.done || !TKO || TKO.ok) return; const q = NAZO[t.ids[t.n]], o = t2o(e); if(o === q[1]){ TKO.ok = true; snd('ok'); } else { TKO.sel.push(o); t.miss++; snd('ng'); } persist(); return render(); }
+  if(a === 'tka'){ const t = TK(); if(t.done || !TKO || TKO.ok) return; const q = NAZO[t.ids[t.n]], o = t2o(e); if(o === q[1]){ TKO.ok = true; try{ window.recAns && recAns(!TKO.sel.length,{src:'yuen'}); }catch(e){} snd('ok'); } else { TKO.sel.push(o); t.miss++; snd('ng'); } persist(); return render(); }
   if(a === 'tkn'){ const t = TK(); if(!TKO || !TKO.ok) return; if(t.n < 2){ t.n++; TKO = null; persist(); snd('tap'); return render(); } return tankenClear(); }
   if(a === 'locked'){ const r = RD(t.dataset.r); snd('ng'); return toast(`🔒 ${plain(r.rb)}は ランク${r.rank}「${RANKS[r.rank - 1].n}」で 乗れるよ`); }
   if(a === 'board'){ const r = RD(t.dataset.r); if(!r || (r.id !== 'secret' && !unlocked(r))) return; if(r.id === 'secret' && YS().daily.secret !== 'on') return; return go('board', {ride:r.id, gate:0}); }
@@ -14515,7 +14515,7 @@ function quiz(){
   return `<div class="apq tab"><header class="aphd">${bk}<h2>${title}</h2>${prog}${chips()}</header><div class="apqm"><div class="apql">${quizScene()}${hint}</div><div class="apqr">${qbox}<div class="apops">${opts}</div>${fb}</div></div></div>`;
 }
 function answer(o){
-  if(!Q || Q.ans !== null) return; const q = cur(), A = AS(); Q.ans = o; Q.tries++; const right = o === q.a;
+  if(!Q || Q.ans !== null) return; const q = cur(), A = AS(); Q.ans = o; Q.tries++; const right = o === q.a; try{ window.recAns && recAns(right,{src:'airport'}); }catch(e){}
   A.seen[q.k] = (A.seen[q.k] || 0) + 1; Q.last = null;
   if(right){
     delete A.miss[q.k]; A.right++; if(Q.tries === 1 && Q.mode !== 'back') Q.firstOk++;
@@ -15358,7 +15358,7 @@ document.addEventListener('click', async e => {
   if(a === 'depart') return depart();
   if(a === 'skipgate'){ return go('fly'); }
   if(a === 'fans'){
-    const f = V.fq; if(!f || f.ans !== null) return; f.ans = t.dataset.o; const ok = f.ans === f.q.a; AS().seen[f.q.k] = (AS().seen[f.q.k] || 0) + 1;
+    const f = V.fq; if(!f || f.ans !== null) return; f.ans = t.dataset.o; const ok = f.ans === f.q.a; try{ window.recAns && recAns(ok,{src:'airport'}); }catch(e){} AS().seen[f.q.k] = (AS().seen[f.q.k] || 0) + 1;
     if(ok){ if(AS().trip){ AS().trip.inOk = true; } gain(10, 3, '空港機内クイズ'); snd('ok'); delete AS().miss[f.q.k]; } else { AS().miss[f.q.k] = dayNo(); snd('ng'); }
     persist(); const el = ROOT.querySelector('#apfq'); if(el) el.innerHTML = flyCard(); ROOT.querySelectorAll('.apchips').forEach(c => c.outerHTML = chips()); return checkRank();
   }
@@ -16048,7 +16048,7 @@ const learned = () => HY.filter(p => stOf(p.no) === 2).length;
 function mark(no, ok){
   const m = HS().m, r = m[no] || (m[no] = {c:0, b:0, n:0});
   r.n++; r.c = ok ? r.c + 1 : 0; r.b = Math.max(r.b, r.c);
-  try{ const d = dayRec(); d.n++; if(ok) d.c++; }catch(e){}
+  try{ window.recAns ? recAns(ok,{src:'hyakunin'}) : (d => { d.n++; if(ok) d.c++; })(dayRec()); }catch(e){}
 }
 const RANGES = [['all', '全部', 1, 100], ['1', '1〜20', 1, 20], ['2', '21〜40', 21, 40], ['3', '41〜60', 41, 60], ['4', '61〜80', 61, 80], ['5', '81〜100', 81, 100]];
 const rngOf = () => RANGES.find(r => r[0] === HS().rng) || RANGES[0];
@@ -16594,4 +16594,129 @@ document.head.appendChild(css);
 #hy77 .hykami em{top:-16px;line-height:1.2;box-shadow:0 2px 0 rgba(0,0,0,.15)}
 #hy77 .hykami .kt{padding-top:16px!important}
 #hy77.tab .hykami{margin-top:22px}
+`; document.head.appendChild(c); })();
+
+
+/* =====================================================================
+   v7.8：① 勉強の まえに おやつを ていあん（その場で たべられる）
+         ② 施設（がっこう・病院・空港 など）の 問題も「きろく」に のこす
+   ===================================================================== */
+const FAC_LBL77 = {hyakunin:'🎴 百人一首', school:'🏫 がっこう', uni:'🎓 大学', eki:'🚉 大きな えき', zoo:'🦁 どうぶつえん・すいぞくかん',
+  hospital:'🏥 病院', yuen:'🎡 ゆうえんち', airport:'✈️ 空港', science:'🔬 科学館', stadium:'⚾ スタジアム', fish:'🎣 つり',
+  hotel:'🏨 ホテル', tower:'🏢 タワー', train:'🚃 電車クイズ', town:'🏘 まちの クイズ', home:'🏠 ホームの クイズ'};
+const FAC_IDS77 = [['hy77','hyakunin'],['stn636','eki'],['zq644','zoo'],['hp651','hospital'],['yu659','yuen'],['ap662','airport'],['sc700','science'],['bb618','stadium'],['fish614','fish'],['htl','hotel']];
+function vis77(id){ const e = document.getElementById(id); return e && e.getClientRects().length > 0 ? e : null; }
+function recSrc77(){
+  const sc = vis77('sc631'); if(sc) return sc.classList.contains('bgU634') ? 'uni' : 'school';
+  for(const [id, k] of FAC_IDS77) if(vis77(id)) return k;
+  try{ return curScreen === 'home' ? 'home' : 'town'; }catch(e){ return 'town'; }
+}
+let REC_T77 = 0;
+/* 施設の 1問を きろく：日べつの 問題数・せいかい数／施設べつの 合計／さいきんの 勉強 */
+function recAns(ok, o){
+  o = o || {}; ok = !!ok;
+  try{
+    const src = o.src || recSrc77(); REC_T77 = Date.now();
+    const d = dayRec(); d.n++; if(ok) d.c++;
+    const F = save.facRec || (save.facRec = {}), f = F[src] || (F[src] = {n:0, c:0, k:0, kc:0});
+    f.n++; if(ok) f.c++; if(o.kq){ f.k++; if(ok) f.kc++; }
+    try{ HIST_LBL['fac_' + src] = FAC_LBL77[src] || '🏘 まちの クイズ'; }catch(e){}
+    const H = save.history, L = H[H.length - 1], now = Date.now();
+    if(L && L.subj === 'fac_' + src && now - L.d < 15 * 60000){ L.n++; if(ok) L.c++; L.d = now; }
+    else { H.push({d:now, mode:'fac', kind:'fac', subj:'fac_' + src, n:1, c:ok ? 1 : 0}); if(H.length > 1000) H.shift(); }
+    try{ checkDaily(); }catch(e){}
+    persist();
+  }catch(e){ console.warn('recAns', e); }
+}
+window.recAns = recAns;
+try{ Object.keys(FAC_LBL77).forEach(k => HIST_LBL['fac_' + k] = FAC_LBL77[k]); }catch(e){}
+
+/* 住民・まちの クイズ（共通の 出題）も きろく */
+try{ const _a = askMQ; askMQ = async function(m, head){ const r = await _a.apply(this, arguments); try{ recAns(r && r.ok, {kq:!!(m && m.kq)}); }catch(e){} return r; }; }catch(e){}
+try{ const _m = miniQuiz; miniQuiz = async function(){ const r = await _m.apply(this, arguments); try{ recAns(r && r.ok); }catch(e){} return r; }; }catch(e){}
+
+/* 「といた 問題」「せいかいりつ」に 施設の 問題も たす（漢字の 問題は もとから 数えて いるので のぞく） */
+try{ const _t = totals; totals = function(){ const t = _t.apply(this, arguments); try{ Object.values(save.facRec || {}).forEach(f => { t.n += f.n - (f.k || 0); t.c += f.c - (f.kc || 0); }); }catch(e){} return t; }; }catch(e){}
+
+/* きろく：施設べつの カード */
+try{
+  const _rr = renderRecord;
+  renderRecord = function(){
+    const o = _rr.apply(this, arguments);
+    try{
+      let box = document.getElementById('recFac');
+      if(!box){ const sc = document.getElementById('recSubj'), card = sc && sc.closest('.card'); if(!card) return o;
+        card.insertAdjacentHTML('afterend', `<div class="card" style="grid-column:1/-1"><div class="secT">🏙 まちの しせつで といた 問題<small>がっこう・病院・空港 など</small></div><div class="rf78" id="recFac"></div></div>`);
+        box = document.getElementById('recFac'); }
+      const F = Object.entries(save.facRec || {}).filter(([, f]) => f.n > 0).sort((a, b) => b[1].n - a[1].n);
+      box.innerHTML = F.length ? F.map(([k, f]) => { const l = FAC_LBL77[k] || k, i = l.split(' ')[0], nm = l.slice(i.length + 1);
+        return `<div class="rf78i"><i>${i}</i><b>${esc(nm)}</b><span>${nf(f.n)}問</span><small>せいかいりつ ${Math.round(f.c / f.n * 100)}%</small></div>`; }).join('')
+        : '<div class="note">まだ ないよ。まちの がっこうや 病院の 問題を といてみよう！</div>';
+    }catch(e){ console.warn('recFac', e); }
+    return o;
+  };
+}catch(e){}
+
+/* 施設で もらった ポイントにも おやつの 倍率を（もとの しくみで 対象外 だった ぶん） */
+try{
+  const _ap = addPoints;
+  addPoints = function(pt, reason, silent){
+    try{
+      const b = buffNow(), r = String(reason || '');
+      if(b && pt > 0 && !STUDY_RX.test(r) && r.indexOf('🍞') < 0 && Date.now() - REC_T77 < 120000 && !/かった|うった|しゅうかく|とれた|あげた|ねがい/.test(r)){
+        const ex = Math.round(pt * (b.m - 1)); if(ex > 0){ pt += ex; reason = `${r}（🍞×${b.m}）`; }
+      }
+    }catch(e){}
+    return _ap.call(this, pt, reason, silent);
+  };
+}catch(e){}
+
+/* ---------- おやつの ていあん ---------- */
+function bestSnack77(){
+  const B = foodBag(); let best = null;
+  Object.keys(B).forEach(id => { if(!(B[id] > 0)) return; const f = FD(id); if(!f || !f.m) return;
+    if(!best || f.m > best.m || (f.m === best.m && (f.min || 0) > (best.min || 0))) best = f; });
+  return best;
+}
+let snkBusy77 = false;
+async function suggestSnack77(tries){
+  tries = tries || 0;
+  try{
+    if(snkBusy77 || buffNow() || !save) return;
+    const s = save.snackAsk || (save.snackAsk = {}), now = Date.now();
+    if(s.day === dayKey() || (s.t && now - s.t < 30 * 60000)) return;
+    const f = bestSnack77(); if(!f) return;
+    const dlg = document.getElementById('dlg');
+    if(dlg && dlg.classList.contains('show')){ if(tries < 6) setTimeout(() => suggestSnack77(tries + 1), 1500); return; }
+    snkBusy77 = true; s.t = now; persist();
+    const B = foodBag(), others = Object.keys(B).filter(id => B[id] > 0 && id !== f.id).length;
+    const v = await dialog(`<div class="dlgArt big"><img src="${esc(artSrc(f.art))}" alt=""></div>
+      <h2 class="dlgT">🍞 おやつで パワーアップ！</h2>
+      <p class="dlgP">いま おやつを たべて いないよ。<br>もっている なかで いちばん ポイントが ふえる<br><b>${esc(f.n)}</b>（もっている ${B[f.id]}こ）を たべると<br>べんきょうの ポイントが <b class="snk78m">×${f.m}</b>（${f.min}分）！</p>`,
+      [{label:`😋 ${esc(f.n)}を たべる`, cls:'gold', v:'eat'}].concat(others ? [{label:'ほかの おやつを えらぶ', cls:'orange', v:'bag'}] : [])
+        .concat([{label:'いまは たべない', cls:'white', v:'no'}, {label:'きょうは もう 出さない', cls:'white', v:'day'}]), 'snk78');
+    if(v === 'eat') await eatFood(f.id);
+    else if(v === 'bag') await openFoodBag();
+    else if(v === 'day'){ s.day = dayKey(); persist(); }
+  }catch(e){ console.warn('snack', e); }
+  finally{ snkBusy77 = false; }
+}
+window.suggestSnack = suggestSnack77;
+/* べんきょうの 画面に 入った とき */
+const STUDY_SCR77 = new Set(['subject', 'kmode', 'ksetup', 'math', 'soc', 'sci', 'ekid', 'eng', 'bun', 'prog']);
+try{ show = (orig => function(name){ const o = orig.apply(this, arguments); if(STUDY_SCR77.has(name)) setTimeout(() => suggestSnack77(), 450); return o; })(show); }catch(e){}
+/* 施設（がっこう・病院・空港 など）を ひらいた とき */
+try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes){ if(n.nodeType === 1 && (n.id === 'sc631' || FAC_IDS77.some(x => x[0] === n.id))){ setTimeout(() => suggestSnack77(), 800); return; } } })
+  .observe(document.body, {childList:true}); }catch(e){}
+
+(function(){ const c = document.createElement('style'); c.textContent = `
+.rf78{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.rf78i{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;align-items:center;background:#FFF9EE;border:2px solid #F0E2C8;border-radius:14px;padding:8px 10px}
+.rf78i i{grid-row:1/4;font-style:normal;font-size:28px;line-height:1}
+.rf78i b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rf78i span{font-size:20px;font-weight:900;color:#E0577A}
+.rf78i small{font-size:11px;color:#8A7B6C;font-weight:700}
+.snk78 .dlgBtns,.snk78 #dlgBtns{display:flex;flex-direction:column;gap:8px}
+.snk78 #dlgBtns .btn{width:100%}
+.snk78 .snk78m{color:#E0577A;font-size:1.25em}
 `; document.head.appendChild(c); })();

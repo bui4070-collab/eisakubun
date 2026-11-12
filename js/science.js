@@ -559,7 +559,7 @@ SCREENS.quiz = function(tab){
 };
 function qAnswer(i){
   if(!Q || Q.ans !== null) return; stopTimers();
-  const it = Q.items[Q.i]; Q.ans = i; const ok = i >= 0 && Q.ch[i] === it.a; Q.ok2 = ok;
+  const it = Q.items[Q.i]; Q.ans = i; const ok = i >= 0 && Q.ch[i] === it.a; Q.ok2 = ok; try{ window.recAns && recAns(ok,{src:'science'}); }catch(e){}
   if(ok){ Q.ok++; Q.streak++; Q.bestStreak = Math.max(Q.bestStreak, Q.streak); const p = CFG.qPt[Q.lv] * (Q.hint ? CFG.hintHalf : 1); Q.base += p; if(Q.streak % 2 === 0) Q.comboPt = Math.min(CFG.comboMax, Q.comboPt + CFG.combo); snd('ok'); }
   else { Q.streak = 0; snd('ng'); }
   Q.res.push({id:it.id, ok, hint:Q.hint}); render();
@@ -1148,8 +1148,8 @@ function labGo(){
 function labChoice(i){
   const m = E.ms[E.i]; if(E.done) return;
   if(m.need){ const n = m.need(E.vals); if(n){ E.msg = {ok:false, t:n}; snd('ng'); return render(); } }
-  E.picked = i; if(i === m.ans){ E.ok++; E.done = true; E.msg = {ok:true, t:m.explain}; snd('ok'); }
-  else { E.tries++; if(E.tries >= 2){ E.done = true; E.msg = {ok:false, t:`こたえ：${m.choices[m.ans]}。${m.explain}`}; } else E.msg = {ok:false, t:m.hintNG || 'もう いちど 考えて みよう！'}; snd('ng'); }
+  E.picked = i; if(i === m.ans){ E.ok++; E.done = true; try{ window.recAns && recAns(!E.tries,{src:'science'}); }catch(e){} E.msg = {ok:true, t:m.explain}; snd('ok'); }
+  else { E.tries++; if(E.tries >= 2){ E.done = true; try{ window.recAns && recAns(false,{src:'science'}); }catch(e){} E.msg = {ok:false, t:`こたえ：${m.choices[m.ans]}。${m.explain}`}; } else E.msg = {ok:false, t:m.hintNG || 'もう いちど 考えて みよう！'}; snd('ng'); }
   render();
 }
 function labNext(){
