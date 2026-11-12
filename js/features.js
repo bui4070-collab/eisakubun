@@ -15905,3 +15905,622 @@ css.textContent += `
 `;
 document.head.appendChild(css);
 })();
+
+/* =====================================================================
+   v7.7 こくご「百人一首」（選択画面＋暗記グラフ／本番モード／下の句を当てるモード）
+   ・百首データ（作者・上の句・下の句・かな・意味）はこのブロック内に収録
+   ・セーブ：save.hyakunin = {m:{番号:{c:連続正解,b:最高,n:回数}}, rng, voice, done, best}
+   ・画像：assets/images/hyakunin/
+   ===================================================================== */
+(function(){
+'use strict';
+/* 百首データ：作者|上の句（漢字）|下の句（漢字）|上の句（かな）|下の句（かな）|意味 */
+const HY_RAW = `天智天皇|秋の田の かりほの庵の 苫をあらみ|わが衣手は 露にぬれつつ|あきのたの かりほのいほの とまをあらみ|わがころもでは つゆにぬれつつ|秋の田の仮小屋で番をしていると、屋根のすき間から露がおちて袖がぬれてしまうよ。
+持統天皇|春過ぎて 夏来にけらし 白妙の|衣ほすてふ 天の香具山|はるすぎて なつきにけらし しろたへの|ころもほすてふ あまのかぐやま|春がすぎて夏が来たらしい。香具山に真っ白な衣がほしてあるよ。
+柿本人麻呂|あしびきの 山鳥の尾の しだり尾の|ながながし夜を ひとりかも寝む|あしびきの やまどりのをの しだりをの|ながながしよを ひとりかもねむ|山鳥の長い尾のように、長い長い秋の夜をひとりでねるのかなあ。
+山部赤人|田子の浦に うち出でてみれば 白妙の|富士の高嶺に 雪は降りつつ|たごのうらに うちいでてみれば しろたへの|ふじのたかねに ゆきはふりつつ|田子の浦に出てながめると、真っ白な富士山の高いところに雪がふりつもっているよ。
+猿丸大夫|奥山に 紅葉踏みわけ 鳴く鹿の|声きく時ぞ 秋は悲しき|おくやまに もみぢふみわけ なくしかの|こゑきくときぞ あきはかなしき|山おくで紅葉をふみわけて鳴く鹿の声を聞くと、秋はさびしいなあと感じるよ。
+中納言家持|かささぎの 渡せる橋に 置く霜の|白きを見れば 夜ぞ更けにける|かささぎの わたせるはしに おくしもの|しろきをみれば よぞふけにける|かささぎの橋のように白い霜を見ると、夜がすっかりふけたとわかるよ。
+安倍仲麿|天の原 ふりさけ見れば 春日なる|三笠の山に 出でし月かも|あまのはら ふりさけみれば かすがなる|みかさのやまに いでしつきかも|大空を見上げると月が出ている。ふるさとの三笠山に出ていたのと同じ月なのだなあ。
+喜撰法師|わが庵は 都のたつみ しかぞすむ|世をうぢ山と 人はいふなり|わがいほは みやこのたつみ しかぞすむ|よをうぢやまと ひとはいふなり|わたしは都の東南の山でのんびりくらしているのに、人は世をいやがって宇治山にいると言うらしい。
+小野小町|花の色は うつりにけりな いたづらに|わが身世にふる ながめせしまに|はなのいろは うつりにけりな いたづらに|わがみよにふる ながめせしまに|花の色があせてしまったように、わたしもぼんやりしているうちに年をとってしまったなあ。
+蝉丸|これやこの 行くも帰るも 別れては|知るも知らぬも 逢坂の関|これやこの ゆくもかへるも わかれては|しるもしらぬも あふさかのせき|これがあの、行く人も帰る人も、出会ってはわかれる逢坂の関なのだなあ。
+参議篁|わたの原 八十島かけて 漕ぎ出でぬと|人には告げよ 海人の釣舟|わたのはら やそしまかけて こぎいでぬと|ひとにはつげよ あまのつりぶね|たくさんの島をめざして舟でこぎ出したと、都の人に伝えておくれ、つり舟の漁師さん。
+僧正遍昭|天つ風 雲の通ひ路 吹きとぢよ|をとめの姿 しばしとどめむ|あまつかぜ くものかよひぢ ふきとぢよ|をとめのすがた しばしとどめむ|空の風よ、雲の通り道をふさいでおくれ。天女のようにまう少女たちを、もう少しとどめたいから。
+陽成院|筑波嶺の 峰より落つる みなの川|恋ぞつもりて 淵となりぬる|つくばねの みねよりおつる みなのがは|こひぞつもりて ふちとなりぬる|筑波山からおちる水がつもって深いふちになるように、わたしの恋も深くなったよ。
+河原左大臣|陸奥の しのぶもぢずり 誰ゆゑに|乱れそめにし われならなくに|みちのくの しのぶもぢずり たれゆゑに|みだれそめにし われならなくに|みちのくのもようのように心がみだれはじめたのは、あなたのせいなのに。
+光孝天皇|君がため 春の野に出でて 若菜つむ|わが衣手に 雪は降りつつ|きみがため はるののにいでて わかなつむ|わがころもでに ゆきはふりつつ|あなたのために春の野で若菜をつんでいると、わたしの袖に雪がふりかかるよ。
+中納言行平|立ち別れ いなばの山の 峰に生ふる|まつとし聞かば 今帰り来む|たちわかれ いなばのやまの みねにおふる|まつとしきかば いまかへりこむ|おわかれして因幡へ行くけれど、あなたが待っていると聞いたら、すぐに帰ってくるよ。
+在原業平朝臣|ちはやぶる 神代も聞かず 竜田川|からくれなゐに 水くくるとは|ちはやぶる かみよもきかず たつたがは|からくれなゐに みづくくるとは|神様の時代にも聞いたことがない。竜田川が紅葉で真っ赤にそまっているなんて。
+藤原敏行朝臣|住の江の 岸に寄る波 よるさへや|夢の通ひ路 人目よくらむ|すみのえの きしによるなみ よるさへや|ゆめのかよひぢ ひとめよくらむ|夢の中の通り道でさえ、あなたは人目をさけて会いに来てくれないのはなぜだろう。
+伊勢|難波潟 短き蘆の ふしの間も|逢はでこの世を 過ぐしてよとや|なにはがた みじかきあしの ふしのまも|あはでこのよを すぐしてよとや|蘆のふしの間のようなほんの少しの時間も会わずに、一生をすごせと言うのですか。
+元良親王|わびぬれば 今はた同じ 難波なる|みをつくしても 逢はむとぞ思ふ|わびぬれば いまはたおなじ なにはなる|みをつくしても あはむとぞおもふ|こまりはててしまった今、身をほろぼしても、あなたに会いたいと思うよ。
+素性法師|今来むと 言ひしばかりに 長月の|有明の月を 待ち出でつるかな|いまこむと いひしばかりに ながつきの|ありあけのつきを まちいでつるかな|すぐ行くよとあなたが言ったので待っていたら、明け方の月が出てしまったよ。
+文屋康秀|吹くからに 秋の草木の しをるれば|むべ山風を 嵐といふらむ|ふくからに あきのくさきの しをるれば|むべやまかぜを あらしといふらむ|ふくとすぐ草や木がしおれるので、山から吹く風を「嵐」と書くのだね。
+大江千里|月見れば 千々にものこそ 悲しけれ|わが身ひとつの 秋にはあらねど|つきみれば ちぢにものこそ かなしけれ|わがみひとつの あきにはあらねど|月を見るといろいろなことが悲しく思える。わたしひとりだけの秋ではないのだけれど。
+菅家|このたびは 幣も取りあへず 手向山|紅葉の錦 神のまにまに|このたびは ぬさもとりあへず たむけやま|もみぢのにしき かみのまにまに|急な旅でおそなえを用意できなかった。手向山の美しい紅葉を、神様どうぞお受け取りください。
+三条右大臣|名にし負はば 逢坂山の さねかづら|人に知られで くるよしもがな|なにしおはば あふさかやまの さねかづら|ひとにしられで くるよしもがな|逢坂山のさねかずらのように、人に知られずあなたに会いに行く方法があればなあ。
+貞信公|小倉山 峰のもみぢ葉 心あらば|今ひとたびの みゆき待たなむ|をぐらやま みねのもみぢば こころあらば|いまひとたびの みゆきまたなむ|小倉山の紅葉よ、心があるなら、天皇がおいでになるまで散らずに待っていておくれ。
+中納言兼輔|みかの原 わきて流るる いづみ川|いつ見きとてか 恋しかるらむ|みかのはら わきてながるる いづみがは|いつみきとてか こひしかるらむ|いつ会ったわけでもないのに、どうしてこんなにあなたが恋しいのだろう。
+源宗于朝臣|山里は 冬ぞさびしさ まさりける|人目も草も かれぬと思へば|やまざとは ふゆぞさびしさ まさりける|ひとめもくさも かれぬとおもへば|山里は冬になるとさびしさがますよ。人も来なくなり、草もかれてしまうから。
+凡河内躬恒|心あてに 折らばや折らむ 初霜の|置きまどはせる 白菊の花|こころあてに をらばやをらむ はつしもの|おきまどはせる しらぎくのはな|あてずっぽうに折ってみようか。白い初霜と見分けがつかない白菊の花を。
+壬生忠岑|有明の つれなく見えし 別れより|暁ばかり 憂きものはなし|ありあけの つれなくみえし わかれより|あかつきばかり うきものはなし|明け方の月がつれなく見えたあのわかれから、夜明けほどつらいものはないよ。
+坂上是則|朝ぼらけ 有明の月と 見るまでに|吉野の里に 降れる白雪|あさぼらけ ありあけのつきと みるまでに|よしののさとに ふれるしらゆき|夜明けに、月の光かと思うほど明るく、吉野の里に白い雪がふりつもっているよ。
+春道列樹|山川に 風のかけたる しがらみは|流れもあへぬ 紅葉なりけり|やまがはに かぜのかけたる しがらみは|ながれもあへぬ もみぢなりけり|山の川に風がかけたせきは、流れきれずにたまった紅葉だったんだね。
+紀友則|ひさかたの 光のどけき 春の日に|しづ心なく 花の散るらむ|ひさかたの ひかりのどけき はるのひに|しづごころなく はなのちるらむ|光がのどかな春の日に、どうして桜の花はおちつかずに散っていくのだろう。
+藤原興風|誰をかも 知る人にせむ 高砂の|松も昔の 友ならなくに|たれをかも しるひとにせむ たかさごの|まつもむかしの ともならなくに|年をとったわたしは、だれを友だちにしたらいいのだろう。高砂の松も昔からの友ではないし。
+紀貫之|人はいさ 心も知らず ふるさとは|花ぞ昔の 香ににほひける|ひとはいさ こころもしらず ふるさとは|はなぞむかしの かににほひける|人の心はわからないけれど、ふるさとの梅の花は昔と同じよいかおりがするよ。
+清原深養父|夏の夜は まだ宵ながら 明けぬるを|雲のいづこに 月宿るらむ|なつのよは まだよひながら あけぬるを|くものいづこに つきやどるらむ|夏の夜はみじかくて、すぐ明けてしまった。月は雲のどこにやどっているのだろう。
+文屋朝康|白露に 風の吹きしく 秋の野は|つらぬきとめぬ 玉ぞ散りける|しらつゆに かぜのふきしく あきののは|つらぬきとめぬ たまぞちりける|白露に風が吹きつける秋の野は、糸を通していない真珠がちらばっているようだね。
+右近|忘らるる 身をば思はず 誓ひてし|人の命の 惜しくもあるかな|わすらるる みをばおもはず ちかひてし|ひとのいのちの をしくもあるかな|わすれられるわたしのことはいい。神にちかったあなたの命が心配だよ。
+参議等|浅茅生の 小野の篠原 しのぶれど|あまりてなどか 人の恋しき|あさぢふの をののしのはら しのぶれど|あまりてなどか ひとのこひしき|がまんしてきたけれど、どうしてこんなにあなたが恋しいのだろう。
+平兼盛|しのぶれど 色に出でにけり わが恋は|ものや思ふと 人の問ふまで|しのぶれど いろにいでにけり わがこひは|ものやおもふと ひとのとふまで|かくしていたのに顔に出てしまった。「なやみごと？」と人に聞かれるほどに。
+壬生忠見|恋すてふ わが名はまだき 立ちにけり|人知れずこそ 思ひそめしか|こひすてふ わがなはまだき たちにけり|ひとしれずこそ おもひそめしか|恋をしているといううわさがもう広まった。ひそかに思いはじめたばかりなのに。
+清原元輔|契りきな かたみに袖を しぼりつつ|末の松山 波越さじとは|ちぎりきな かたみにそでを しぼりつつ|すゑのまつやま なみこさじとは|約束したよね。なみだでぬれた袖をしぼりながら、心変わりしないって。
+権中納言敦忠|逢ひ見ての 後の心に くらぶれば|昔はものを 思はざりけり|あひみての のちのこころに くらぶれば|むかしはものを おもはざりけり|あなたに会ったあとの切ない気持ちにくらべれば、前のなやみなんてなやみじゃなかったなあ。
+中納言朝忠|逢ふことの 絶えてしなくは なかなかに|人をも身をも 恨みざらまし|あふことの たえてしなくは なかなかに|ひとをもみをも うらみざらまし|会うことがまったくなければ、かえってあなたも自分もうらまずにすんだのに。
+謙徳公|あはれとも いふべき人は 思ほえで|身のいたづらに なりぬべきかな|あはれとも いふべきひとは おもほえで|みのいたづらに なりぬべきかな|かわいそうと言ってくれる人も思いうかばず、わたしはむなしくなってしまうのかな。
+曾禰好忠|由良の門を 渡る舟人 かぢを絶え|行くへも知らぬ 恋の道かな|ゆらのとを わたるふなびと かぢをたえ|ゆくへもしらぬ こひのみちかな|かじをなくした舟のように、この恋はどこへ行くのかわからないよ。
+恵慶法師|八重むぐら しげれる宿の さびしきに|人こそ見えね 秋は来にけり|やへむぐら しげれるやどの さびしきに|ひとこそみえね あきはきにけり|草がしげったさびしい家には人は来ないけれど、秋だけはやって来たよ。
+源重之|風をいたみ 岩打つ波の おのれのみ|くだけてものを 思ふころかな|かぜをいたみ いはうつなみの おのれのみ|くだけてものを おもふころかな|岩にあたってくだける波のように、わたしだけが心をくだいてなやんでいるよ。
+大中臣能宣朝臣|みかきもり 衛士のたく火の 夜は燃え|昼は消えつつ ものをこそ思へ|みかきもり ゑじのたくひの よるはもえ|ひるはきえつつ ものをこそおもへ|門番のかがり火のように、夜はもえ、昼は消えそうになって、恋になやんでいるよ。
+藤原義孝|君がため 惜しからざりし 命さへ|長くもがなと 思ひけるかな|きみがため をしからざりし いのちさへ|ながくもがなと おもひけるかな|あなたに会うためならおしくないと思った命なのに、今は長生きしたいと思うよ。
+藤原実方朝臣|かくとだに えやはいぶきの さしも草|さしも知らじな 燃ゆる思ひを|かくとだに えやはいぶきの さしもぐさ|さしもしらじな もゆるおもひを|こんなに思っていると言えない。もえるようなこの思いを、あなたは知らないでしょう。
+藤原道信朝臣|明けぬれば 暮るるものとは 知りながら|なほ恨めしき 朝ぼらけかな|あけぬれば くるるものとは しりながら|なほうらめしき あさぼらけかな|夜が明ければまた日がくれて会えるとわかっていても、夜明けはうらめしいなあ。
+右大将道綱母|嘆きつつ ひとり寝る夜の 明くる間は|いかに久しき ものとかは知る|なげきつつ ひとりぬるよの あくるまは|いかにひさしき ものとかはしる|ひとりで夜明けを待つ時間がどんなに長いか、あなたにはわからないでしょう。
+儀同三司母|忘れじの 行く末までは かたければ|今日を限りの 命ともがな|わすれじの ゆくすゑまでは かたければ|けふをかぎりの いのちともがな|ずっとわすれないという約束はむずかしいから、しあわせな今日のままでいたいな。
+大納言公任|滝の音は 絶えて久しく なりぬれど|名こそ流れて なほ聞こえけれ|たきのおとは たえてひさしく なりぬれど|なこそながれて なほきこえけれ|たきの音はとっくにとだえたけれど、その名前は今も伝わって聞こえてくるよ。
+和泉式部|あらざらむ この世のほかの 思ひ出に|今ひとたびの 逢ふこともがな|あらざらむ このよのほかの おもひでに|いまひとたびの あふこともがな|もうすぐこの世を去るわたし。思い出に、もう一度あなたに会いたいな。
+紫式部|めぐり逢ひて 見しやそれとも わかぬ間に|雲隠れにし 夜半の月かな|めぐりあひて みしやそれとも わかぬまに|くもがくれにし よはのつきかな|久しぶりに会えたのに、雲にかくれる月のように、すぐ帰ってしまったね。
+大弐三位|有馬山 猪名の笹原 風吹けば|いでそよ人を 忘れやはする|ありまやま ゐなのささはら かぜふけば|いでそよひとを わすれやはする|笹原が風でそよそよ鳴るように、そうよ、わたしがあなたをわすれるものですか。
+赤染衛門|やすらはで 寝なましものを 小夜更けて|かたぶくまでの 月を見しかな|やすらはで ねなましものを さよふけて|かたぶくまでの つきをみしかな|来ないとわかっていたらねたのに、待っていたら月がかたむくまで見てしまったよ。
+小式部内侍|大江山 いく野の道の 遠ければ|まだふみも見ず 天の橋立|おほえやま いくののみちの とほければ|まだふみもみず あまのはしだて|大江山をこえる道は遠いので、天の橋立には行ったことも、母の手紙を見たこともないよ。
+伊勢大輔|いにしへの 奈良の都の 八重桜|けふ九重に にほひぬるかな|いにしへの ならのみやこの やへざくら|けふここのへに にほひぬるかな|昔の奈良の都の八重桜が、今日はこの宮中で美しくさいているよ。
+清少納言|夜をこめて 鳥のそら音は はかるとも|よに逢坂の 関はゆるさじ|よをこめて とりのそらねは はかるとも|よにあふさかの せきはゆるさじ|にわとりの鳴きまねでだまそうとしても、逢坂の関はぜったいに通しませんよ。
+左京大夫道雅|今はただ 思ひ絶えなむ とばかりを|人づてならで 言ふよしもがな|いまはただ おもひたえなむ とばかりを|ひとづてならで いふよしもがな|「もうあきらめます」と、それだけを人づてではなく直接伝えたいよ。
+権中納言定頼|朝ぼらけ 宇治の川霧 たえだえに|あらはれわたる 瀬々の網代木|あさぼらけ うぢのかはぎり たえだえに|あらはれわたる せぜのあじろぎ|夜明け、宇治川の霧がとぎれとぎれに晴れて、川の網代木が次々に見えてきたよ。
+相模|恨みわび ほさぬ袖だに あるものを|恋に朽ちなむ 名こそ惜しけれ|うらみわび ほさぬそでだに あるものを|こひにくちなむ なこそをしけれ|なみだでかわかない袖もくやしいのに、恋のうわさで名前がわるくなるのはもっとくやしい。
+前大僧正行尊|もろともに あはれと思へ 山桜|花よりほかに 知る人もなし|もろともに あはれとおもへ やまざくら|はなよりほかに しるひともなし|いっしょにしみじみしておくれ、山桜よ。ここにはおまえのほかに知る人はいないのだから。
+周防内侍|春の夜の 夢ばかりなる 手枕に|かひなく立たむ 名こそ惜しけれ|はるのよの ゆめばかりなる たまくらに|かひなくたたむ なこそをしけれ|春の夜の夢のようなみじかい間のことで、うわさになるのはこまるよ。
+三条院|心にも あらでうき世に ながらへば|恋しかるべき 夜半の月かな|こころにも あらでうきよに ながらへば|こひしかるべき よはのつきかな|この世に長く生きていたら、きっと今夜の月を恋しく思い出すだろう。
+能因法師|嵐吹く 三室の山の もみぢ葉は|竜田の川の 錦なりけり|あらしふく みむろのやまの もみぢばは|たつたのかはの にしきなりけり|嵐がふく三室山の紅葉は、竜田川の水面をかざるにしきになっているよ。
+良暹法師|さびしさに 宿を立ち出でて ながむれば|いづこも同じ 秋の夕暮れ|さびしさに やどをたちいでて ながむれば|いづこもおなじ あきのゆふぐれ|さびしくて家を出てながめると、どこも同じようにさびしい秋の夕ぐれだよ。
+大納言経信|夕されば 門田の稲葉 おとづれて|蘆のまろやに 秋風ぞ吹く|ゆふされば かどたのいなば おとづれて|あしのまろやに あきかぜぞふく|夕方になると田んぼの稲の葉に風がおとずれ、蘆ぶきの小屋にも秋風がふいてくるよ。
+祐子内親王家紀伊|音に聞く 高師の浜の あだ波は|かけじや袖の ぬれもこそすれ|おとにきく たかしのはまの あだなみは|かけじやそでの ぬれもこそすれ|うわさに高いあだ波のようなあなたの言葉は聞かないでおくわ。袖がぬれるといけないから。
+権中納言匡房|高砂の 尾の上の桜 咲きにけり|外山の霞 立たずもあらなむ|たかさごの をのへのさくら さきにけり|とやまのかすみ たたずもあらなむ|遠くの山の上の桜がさいたよ。近くの山の霞よ、どうか桜をかくさないで。
+源俊頼朝臣|憂かりける 人を初瀬の 山おろしよ|はげしかれとは 祈らぬものを|うかりける ひとをはつせの やまおろしよ|はげしかれとは いのらぬものを|つれない人がふり向くようにいのったのに、山おろしのようにはげしくなれとはいのっていないよ。
+藤原基俊|契りおきし させもが露を 命にて|あはれ今年の 秋もいぬめり|ちぎりおきし させもがつゆを いのちにて|あはれことしの あきもいぬめり|約束してくれた言葉をたよりにしていたのに、今年の秋もむなしく過ぎていくなあ。
+法性寺入道前関白太政大臣|わたの原 漕ぎ出でて見れば ひさかたの|雲居にまがふ 沖つ白波|わたのはら こぎいでてみれば ひさかたの|くもゐにまがふ おきつしらなみ|広い海に舟でこぎ出すと、雲と見分けがつかないほど、沖の白波が立っているよ。
+崇徳院|瀬をはやみ 岩にせかるる 滝川の|われても末に 逢はむとぞ思ふ|せをはやみ いはにせかるる たきがはの|われてもすゑに あはむとぞおもふ|岩でわかれた川の流れがまた一つになるように、いつかまたあなたに会おう。
+源兼昌|淡路島 かよふ千鳥の 鳴く声に|幾夜寝覚めぬ 須磨の関守|あはぢしま かよふちどりの なくこゑに|いくよねざめぬ すまのせきもり|淡路島からかよう千鳥の鳴き声で、須磨の関守は何度目をさましたのだろう。
+左京大夫顕輔|秋風に たなびく雲の 絶え間より|もれ出づる月の 影のさやけさ|あきかぜに たなびくくもの たえまより|もれいづるつきの かげのさやけさ|秋風にたなびく雲のすき間から、もれてくる月の光のなんて明るくすんでいること。
+待賢門院堀河|長からむ 心も知らず 黒髪の|乱れて今朝は ものをこそ思へ|ながからむ こころもしらず くろかみの|みだれてけさは ものをこそおもへ|あなたの心が変わらないかわからなくて、今朝はみだれた黒髪のように心がみだれているよ。
+後徳大寺左大臣|ほととぎす 鳴きつる方を ながむれば|ただ有明の 月ぞ残れる|ほととぎす なきつるかたを ながむれば|ただありあけの つきぞのこれる|ほととぎすが鳴いた方を見ると、鳥のすがたはなく、明け方の月だけがのこっていたよ。
+道因法師|思ひわび さても命は あるものを|憂きに堪へぬは 涙なりけり|おもひわび さてもいのちは あるものを|うきにたへぬは なみだなりけり|なやんでも命はあるのに、つらさにたえられずにこぼれるのはなみだだなあ。
+皇太后宮大夫俊成|世の中よ 道こそなけれ 思ひ入る|山の奥にも 鹿ぞ鳴くなる|よのなかよ みちこそなけれ おもひいる|やまのおくにも しかぞなくなる|世の中ににげる道はないのだな。山おくにも、悲しそうに鹿が鳴いているよ。
+藤原清輔朝臣|ながらへば またこのごろや しのばれむ|憂しと見し世ぞ 今は恋しき|ながらへば またこのごろや しのばれむ|うしとみしよぞ いまはこひしき|長生きしたら、今のつらいときもなつかしく思うのかな。昔のつらいころも今は恋しいのだから。
+俊恵法師|夜もすがら もの思ふころは 明けやらで|閨のひまさへ つれなかりけり|よもすがら ものおもふころは あけやらで|ねやのひまさへ つれなかりけり|一晩中なやんでいると、なかなか夜が明けず、寝室のすき間までつれなく思えるよ。
+西行法師|嘆けとて 月やはものを 思はする|かこち顔なる わが涙かな|なげけとて つきやはものを おもはする|かこちがほなる わがなみだかな|月がなげけと言っているのかな。月のせいにしてなみだがこぼれるよ。
+寂蓮法師|村雨の 露もまだひぬ 槙の葉に|霧たちのぼる 秋の夕暮れ|むらさめの つゆもまだひぬ まきのはに|きりたちのぼる あきのゆふぐれ|にわか雨のしずくもかわかない木の葉に、霧が立ちのぼる秋の夕ぐれだよ。
+皇嘉門院別当|難波江の 蘆のかりねの ひとよゆゑ|みをつくしてや 恋ひわたるべき|なにはえの あしのかりねの ひとよゆゑ|みをつくしてや こひわたるべき|みじかい一夜のために、一生をかけて恋しつづけるのかな。
+式子内親王|玉の緒よ 絶えなば絶えね ながらへば|忍ぶることの 弱りもぞする|たまのをよ たえなばたえね ながらへば|しのぶることの よわりもぞする|わたしの命よ、たえるならたえておくれ。長生きしたら、恋をかくす力が弱ってしまうから。
+殷富門院大輔|見せばやな 雄島のあまの 袖だにも|濡れにぞ濡れし 色は変はらず|みせばやな をじまのあまの そでだにも|ぬれにぞぬれし いろはかはらず|見せてあげたいな。漁師の袖でも色は変わらないのに、わたしの袖はなみだで色が変わったよ。
+後京極摂政前太政大臣|きりぎりす 鳴くや霜夜の さむしろに|衣かたしき ひとりかも寝む|きりぎりす なくやしもよの さむしろに|ころもかたしき ひとりかもねむ|こおろぎが鳴く霜の夜、さむいむしろの上で、ひとりさびしくねるのかなあ。
+二条院讃岐|わが袖は 潮干に見えぬ 沖の石の|人こそ知らね 乾く間もなし|わがそでは しほひにみえぬ おきのいしの|ひとこそしらね かわくまもなし|わたしの袖は、しおがひいても見えない沖の石のように、だれにも知られずかわく間もないよ。
+鎌倉右大臣|世の中は 常にもがもな 渚漕ぐ|海人の小舟の 綱手かなしも|よのなかは つねにもがもな なぎさこぐ|あまのをぶねの つなでかなしも|世の中がずっと変わらなければいいな。小舟を綱で引くようすが心にしみるよ。
+参議雅経|み吉野の 山の秋風 小夜更けて|ふるさと寒く 衣打つなり|みよしのの やまのあきかぜ さよふけて|ふるさとさむく ころもうつなり|吉野の山に秋風がふく夜ふけ、昔の都では寒そうに衣を打つ音がひびいているよ。
+前大僧正慈円|おほけなく 憂き世の民に おほふかな|わが立つ杣に 墨染の袖|おほけなく うきよのたみに おほふかな|わがたつそまに すみぞめのそで|身分にあわないけれど、世の中の人々を、わたしの墨染めの袖でつつんで守りたいよ。
+入道前太政大臣|花さそふ 嵐の庭の 雪ならで|ふりゆくものは わが身なりけり|はなさそふ あらしのにはの ゆきならで|ふりゆくものは わがみなりけり|嵐が花を雪のように散らすけれど、ふりゆく（年をとる）のはわたし自身なのだなあ。
+権中納言定家|来ぬ人を まつほの浦の 夕なぎに|焼くや藻塩の 身もこがれつつ|こぬひとを まつほのうらの ゆふなぎに|やくやもしほの みもこがれつつ|来ない人を待つわたしは、焼かれる藻塩のように、身もこがれる思いだよ。
+従二位家隆|風そよぐ ならの小川の 夕暮れは|みそぎぞ夏の しるしなりける|かぜそよぐ ならのをがはの ゆふぐれは|みそぎぞなつの しるしなりける|夕ぐれの小川は秋のようにすずしいけれど、みそぎの行事が夏のしるしだね。
+後鳥羽院|人もをし 人も恨めし あぢきなく|世を思ふゆゑに もの思ふ身は|ひともをし ひともうらめし あぢきなく|よをおもふゆゑに ものおもふみは|人をいとしく思ったり、うらめしく思ったり。世の中を思うから、わたしはなやむのだよ。
+順徳院|ももしきや 古き軒端の しのぶにも|なほあまりある 昔なりけり|ももしきや ふるきのきばの しのぶにも|なほあまりある むかしなりけり|宮中の古い軒のしのぶ草を見ても、しのびきれないほど昔がなつかしいよ。`;
+
+const IMG = './assets/images/hyakunin/';
+const HY = HY_RAW.trim().split('\n').map((l, i) => { const r = l.split('|'); return {no:i + 1, au:r[0], k1:r[1], k2:r[2], h1:r[3], h2:r[4], mean:r[5]}; });
+/* 決まり字（お と を は 同じ音として あつかう） */
+(function(){
+  const nz = s => s.replace(/ /g, '').replace(/を/g, 'お');
+  const K = HY.map(p => nz(p.h1));
+  HY.forEach((p, i) => { const k = K[i]; let n = 1; for(; n <= k.length; n++){ const pre = k.slice(0, n); if(K.every((o, j) => j === i || !o.startsWith(pre))) break; } p.kim = Math.min(n, k.length); });
+})();
+const CFG = {per:10, cps:400, wait:5000, baseH:30, early:10, baseS:20, lvRate:0.2, master:3, comp:20000};
+const FUR_ID = 'hy_karuta';
+
+/* ---------- 家に かざる ごほうび（横から・上から） ---------- */
+try{
+  DEFAULT_ART[FUR_ID] = IMG + 'hy_fur_karuta.webp';
+  DEFAULT_ART['ft_' + FUR_ID] = IMG + 'hy_fur_karuta_top.webp';
+  if(!FURNITURE.some(f => f.id === FUR_ID)) FURNITURE.push({id:FUR_ID, name:'百人一首の 金びょうぶ', art:FUR_ID, type:'fur', price:0, lv:1, sty:30, know:0.02, special:true, ev:'hyakunin'});
+  try{ FOOT[FUR_ID] = [2, 1]; }catch(e){}
+  try{ ZUKAN_INFO[FUR_ID] = '百人一首を 100首 ぜんぶ おぼえた 人だけが もらえる、さくらの 金びょうぶと かるた台。'; }catch(e){}
+}catch(e){ console.warn('hyakunin fur', e); }
+
+/* ---------- セーブ ---------- */
+function HS(){
+  const s = save.hyakunin || (save.hyakunin = {});
+  s.m = s.m || {}; s.rng = s.rng || 'all'; if(s.voice === undefined) s.voice = 1; s.done = s.done || 0; s.plays = s.plays || 0;
+  return s;
+}
+const rec = no => HS().m[no] || {c:0, b:0, n:0};
+const stOf = no => { const c = rec(no).c; return c >= CFG.master ? 2 : c > 0 ? 1 : 0; };     // 2 覚えた／1 もう少し／0 まだ
+const learned = () => HY.filter(p => stOf(p.no) === 2).length;
+function mark(no, ok){
+  const m = HS().m, r = m[no] || (m[no] = {c:0, b:0, n:0});
+  r.n++; r.c = ok ? r.c + 1 : 0; r.b = Math.max(r.b, r.c);
+  try{ const d = dayRec(); d.n++; if(ok) d.c++; }catch(e){}
+}
+const RANGES = [['all', '全部', 1, 100], ['1', '1〜20', 1, 20], ['2', '21〜40', 21, 40], ['3', '41〜60', 41, 60], ['4', '61〜80', 61, 80], ['5', '81〜100', 81, 100]];
+const rngOf = () => RANGES.find(r => r[0] === HS().rng) || RANGES[0];
+const inRng = () => { const r = rngOf(); return HY.filter(p => p.no >= r[2] && p.no <= r[3]); };
+
+/* ---------- ポイント（まちレベルで ふえる） ---------- */
+const tLv = () => { try{ return townLevel(); }catch(e){ try{ return (save.town?.lv || 0) + 1; }catch(e2){ return 1; } } };
+const mul = () => Math.round((1 + CFG.lvRate * (tLv() - 1)) * 10) / 10;
+const ptOf = b => Math.max(1, Math.round(b * mul()));
+function give(p, why){ try{ return givePts(p, why); }catch(e){ try{ return addPoints(p, why); }catch(e2){ return 0; } } }
+const bal = () => { try{ return save.points.bal; }catch(e){ return 0; } };
+
+/* ---------- 読み上げ（音声） ---------- */
+const canTalk = 'speechSynthesis' in window;
+let jaVoice = null;
+function pickJa(){ try{ const vs = speechSynthesis.getVoices(); jaVoice = vs.find(v => /ja[-_]JP/i.test(v.lang) && /Kyoko|O-ren|Google|Nanami|Haruka/i.test(v.name)) || vs.find(v => /^ja/i.test(v.lang)) || null; }catch(e){} }
+if(canTalk){ pickJa(); try{ speechSynthesis.addEventListener('voiceschanged', pickJa); }catch(e){} }
+/* 歴史的かなづかいを 読みやすく（読み上げ用だけ） */
+const sayFix = t => t.replace(/てふ/g, 'ちょう').replace(/けふ/g, 'きょう').replace(/ゐ/g, 'い').replace(/ゑ/g, 'え')
+  .replace(/ふ(?=$|らむ|なり|まで|ころ|と|ゆゑ)/g, 'う').replace(/へ(?=$|ば)/g, 'え').replace(/ひ(?=$|て|し|ぞ|そ|け|た|出|わ)/g, 'い');
+function say(text, rate){
+  if(!canTalk || !HS().voice) return;
+  try{ const u = new SpeechSynthesisUtterance(sayFix(text)); u.lang = 'ja-JP'; u.rate = rate || 0.8; u.pitch = 1.05; if(jaVoice) u.voice = jaVoice; speechSynthesis.speak(u); }catch(e){}
+}
+function hush(){ try{ canTalk && speechSynthesis.cancel(); }catch(e){} }
+function unlockTalk(){ if(!canTalk || !HS().voice) return; try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'ja-JP'; speechSynthesis.speak(u); }catch(e){} }
+const snd = t => { try{ sound(t); }catch(e){} };
+
+/* ---------- 文字 ---------- */
+const R = (k, y) => `<ruby>${k}<rt>${y}</rt></ruby>`;
+const X = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c]));
+const T_HON = R('本番', 'ほんばん') + 'モード', T_SHIMO = R('下', 'しも') + 'の' + R('句', 'く') + 'を' + R('当', 'あ') + 'てるモード';
+const T_SHIMO_S = R('下', 'しも') + 'の' + R('句', 'く') + 'を' + R('当', 'あ') + 'てる';
+const T_TITLE = R('百人一首', 'ひゃくにんいっしゅ');
+
+/* ---------- 画面の しくみ ---------- */
+const isTab = () => innerWidth >= 900 && innerWidth >= innerHeight;
+let ROOT = null, V = {s:'top'}, Q = null, FX = [], TK = 0;
+function root(){ if(ROOT && document.body.contains(ROOT)) return ROOT; ROOT = document.createElement('div'); ROOT.id = 'hy77'; document.body.appendChild(ROOT); ROOT.addEventListener('click', onClick); return ROOT; }
+function clearT(){ FX.forEach(clearTimeout); FX = []; clearInterval(TK); TK = 0; }
+function later(f, ms){ FX.push(setTimeout(f, ms)); }
+function open(){ HS(); V = {s:'top'}; Q = null; root(); document.body.classList.add('hy77on'); requestAnimationFrame(() => ROOT && ROOT.classList.add('show')); render(); }
+function close(){ clearT(); hush(); if(!ROOT) return; const r = ROOT; ROOT = null; Q = null; r.classList.remove('show'); document.body.classList.remove('hy77on'); setTimeout(() => r.remove(), 220); try{ persist(); }catch(e){} try{ show('kmode'); }catch(e){} }
+function go(s, o){ clearT(); hush(); V = Object.assign({}, o || {}, {s}); render(); }
+let rzT = 0; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if(ROOT && V.s !== 'hon') render(); else if(ROOT) render(true); }, 150); });
+
+function render(keep){
+  if(!ROOT) return;
+  const L = isTab() ? 'tab' : 'ph';
+  ROOT.className = `show ${L} s-${V.s}`;
+  const f = {top, hon, shimo, res}[V.s] || top;
+  ROOT.innerHTML = `<div class="hyw">${f(L)}</div>`;
+  if(V.s === 'hon' && Q) paintHon();
+}
+const bg = (k, L) => `<div class="hybg" style="background-image:url('${IMG}hy_${k}_${L === 'tab' ? 'tab' : 'sp'}.webp')"></div>`;
+const head = (title, right) => `<header class="hyhd"><button class="hyback" data-a="${V.s === 'top' ? 'close' : 'quit'}">‹ ${V.s === 'top' ? 'もどる' : 'やめる'}</button>
+  <div class="hyttl"><i></i><b>${title}</b><i></i></div>${right || `<div class="hypt"><span>P</span><b>${nf(bal())}</b></div>`}</header>`;
+const voiceBtn = () => canTalk ? `<button class="hyvo ${HS().voice ? 'on' : ''}" data-a="voice" title="読み上げ">${HS().voice ? '🔊' : '🔇'}</button>` : '';
+
+/* ===================== ① 選択画面（暗記グラフ） ===================== */
+function donut(n){
+  const r = 52, c = 2 * Math.PI * r, p = n / 100;
+  return `<svg viewBox="0 0 128 128" class="hydn"><circle cx="64" cy="64" r="${r}" fill="none" stroke="#E4E0D8" stroke-width="16"/>
+    <circle cx="64" cy="64" r="${r}" fill="none" stroke="#3DB35A" stroke-width="16" stroke-linecap="round" stroke-dasharray="${(c * p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 64 64)"/></svg>
+    <div class="hydnt"><b>${n}</b><i></i><span>100</span></div>`;
+}
+function bars(){
+  const r = rngOf();
+  return HY.map(p => { const st = stOf(p.no), c = Math.min(CFG.master, rec(p.no).c), h = st === 0 ? 22 : 30 + c / CFG.master * 70;
+    const dim = p.no < r[2] || p.no > r[3] ? ' dim' : '';
+    return `<button class="hyb s${st}${dim}" data-a="poem" data-no="${p.no}" style="height:${h}%" aria-label="${p.no}番"></button>`; }).join('');
+}
+function top(L){
+  const n = learned(), left = 100 - n, rng = rngOf();
+  const msg = n >= 100 ? '100首 コンプリート！<br>すごいね！' : n === 0 ? 'まずは 1首から<br>おぼえよう！' : `あと<b>${left}</b>首で<br>コンプリート！`;
+  const chips = RANGES.map(r => `<button class="hyrc ${r[0] === rng[0] ? 'on' : ''}" data-a="rng" data-v="${r[0]}">${r[1]}</button>`).join('');
+  const m = mul();
+  return `${bg('sel', L)}${head(T_TITLE)}
+  <div class="hytop">
+    <section class="hyp hyc1"><h3>🌸 ${R('暗記', 'あんき')}できた${R('歌', 'うた')}</h3><div class="hydnw">${donut(n)}</div></section>
+    <div class="hybub hybub1">${msg}</div>
+    <section class="hyp hyc2"><div class="hyc2h"><h3>🌸 ${R('歌', 'うた')}ごとの${R('習得', 'しゅうとく')}${R('状況', 'じょうきょう')}</h3>
+      <div class="hylg"><span><i class="s2"></i>${R('覚', 'おぼ')}えた</span><span><i class="s1"></i>もう${R('少', 'すこ')}し</span><span><i class="s0"></i>まだ</span></div></div>
+      <div class="hybars">${bars()}</div><div class="hyax"><span>1</span><span>25</span><span>50</span><span>75</span><span>100(${R('番', 'ばん')})</span></div>
+      <div class="hyrng"><small>${R('出題', 'しゅつだい')}する${R('範囲', 'はんい')}</small><div>${chips}</div></div></section>
+    <div class="hymodes">
+      <button class="hymb hon" data-a="startHon"><span class="ic"><i></i><i></i><i></i></span><div><b>${T_HON}</b><small><span class="d">${R('読', 'よ')}み${R('上', 'あ')}げを${R('聞', 'き')}いて ${R('正', 'ただ')}しい${R('札', 'ふだ')}をとろう</span><span class="p">1${R('枚', 'まい')} <em>${ptOf(CFG.baseH)}pt</em>＋はやどり <em>${ptOf(CFG.early)}pt</em></span></small></div><u>›</u></button>
+      <button class="hymb shi" data-a="startShimo"><span class="ic q"><i>?</i></span><div><b>${T_SHIMO}</b><small><span class="d">${R('上', 'かみ')}の${R('句', 'く')}を${R('見', 'み')}て ${R('下', 'しも')}の${R('句', 'く')}を${R('思', 'おも')}い${R('出', 'だ')}そう</span><span class="p">1${R('問', 'もん')} <em>${ptOf(CFG.baseS)}pt</em></span></small></div><u>›</u></button>
+      <div class="hymul">まちLv${tLv()} ボーナス ×${m}　・　1${R('回', 'かい')} ${CFG.per}${R('首', 'しゅ')}</div>
+    </div>
+  </div>
+  ${V.poem ? poemSheet(V.poem) : ''}`;
+}
+function poemSheet(no){
+  const p = HY[no - 1], st = stOf(no), r = rec(no);
+  const lab = ['まだ', 'もう少し', '覚えた'][st];
+  return `<div class="hymask" data-a="closePoem"><div class="hysheet" data-stop="1">
+    <div class="hysh-h"><span class="no">${no}${R('番', 'ばん')}</span><b>${X(p.au)}</b><em class="s${st}">${lab}</em></div>
+    <div class="hysh-k">${X(p.k1)}<br>${X(p.k2)}</div><div class="hysh-h2">${X(p.h1)}　${X(p.h2)}</div>
+    <p class="hysh-m">${X(p.mean)}</p><small>${R('連続', 'れんぞく')}${R('正解', 'せいかい')} ${r.c}${R('回', 'かい')}（${CFG.master}${R('回', 'かい')}で「${R('覚', 'おぼ')}えた」）</small>
+    <div class="hysh-b">${canTalk ? `<button class="hybtn y" data-a="sayPoem" data-no="${no}">🔊 ${R('聞', 'き')}く</button>` : ''}<button class="hybtn" data-a="closePoem">とじる</button></div></div></div>`;
+}
+
+/* ===================== 出題づくり ===================== */
+const shuf = a => { a = a.slice(); for(let i = a.length - 1; i > 0; i--){ const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function pickList(weak){
+  const pool = inRng();
+  const w = p => weak ? [6, 3, 1][stOf(p.no)] : [3, 2, 1][stOf(p.no)];
+  const out = [], rest = pool.slice();
+  while(out.length < Math.min(CFG.per, pool.length)){
+    const tot = rest.reduce((a, p) => a + w(p), 0); let x = Math.random() * tot, k = 0;
+    for(; k < rest.length - 1; k++){ x -= w(rest[k]); if(x <= 0) break; }
+    out.push(rest.splice(k, 1)[0].no);
+  }
+  return out;
+}
+function choices(no){
+  const pool = inRng().map(p => p.no).filter(n => n !== no);
+  const all = (pool.length >= 3 ? pool : HY.map(p => p.no).filter(n => n !== no));
+  /* 1まいは 上の句の はじめが にている 札（むずかしさ） */
+  const k = HY[no - 1].h1[0], near = shuf(all.filter(n => HY[n - 1].h1[0] === k)).slice(0, 1);
+  const rest = shuf(all.filter(n => !near.includes(n))).slice(0, 3 - near.length);
+  return shuf([no, ...near, ...rest]);
+}
+function startQuiz(mode){
+  try{ checkDaily(); }catch(e){}
+  unlockTalk();
+  Q = {mode, list:pickList(mode === 'shimo'), i:0, pts:0, ok:0, log:[]};
+  HS().plays++; try{ persist(); }catch(e){}
+  if(mode === 'hon') newHon(); else newShimo();
+}
+
+/* ===================== ② 本番モード ===================== */
+function newHon(){
+  const no = Q.list[Q.i];
+  Q.r = {no, cards:choices(no), pos:-8, miss:{}, ote:false, done:false, got:0, early:false, timeout:false};
+  go('hon');
+  later(() => tickStart(), 300);
+}
+function readText(p){ return p.h1 + '　' + p.h2; }
+function tickStart(){
+  const r = Q && Q.r; if(!r) return;
+  const p = HY[r.no - 1], full = readText(p), heads = [];
+  /* 句の はじめの 位置 → その句を 読み上げる */
+  let idx = 0; const ks = (p.k1 + ' ' + p.k2).split(' ');
+  full.split(/[ 　]/).forEach((ph, i) => { heads.push([idx, ks[i] || ph]); idx += ph.length + 1; });
+  r.pos = 0; r.len = full.length; r.kamiLen = p.h1.length;
+  { const bb = ROOT && ROOT.querySelector('.hybub2'); if(bb && !r.ote) bb.innerHTML = 'どの札かな？<br>タッチしてね'; }
+  const step = () => {
+    if(!Q || !Q.r || Q.r !== r || r.done) return;
+    const h = heads.find(x => x[0] === r.pos); if(h) say(h[1], 0.78);
+    r.pos++; paintRead();
+    if(r.pos >= r.len){ clearInterval(TK); TK = 0; later(() => { if(Q && Q.r === r && !r.done) honTimeout(); }, CFG.wait); }
+  };
+  step(); TK = setInterval(step, CFG.cps);
+}
+function paintRead(){
+  if(!ROOT || !Q || !Q.r) return; const r = Q.r, p = HY[r.no - 1], el = ROOT.querySelector('#hyread'); if(!el) return;
+  const full = readText(p), n = Math.max(0, Math.min(r.pos, full.length));
+  const shown = full.slice(0, n), [a, b] = [shown.slice(0, p.h1.length), shown.slice(p.h1.length + 1)];
+  el.innerHTML = `<div class="k1">${X(a)}${r.done ? '' : '<i class="cur"></i>'}</div>${b ? `<div class="k2">${X(b)}</div>` : ''}`;
+  const bar = ROOT.querySelector('#hyrb'); if(bar) bar.style.width = (n / full.length * 100) + '%';
+}
+function hon(L){
+  const r = Q.r, p = HY[r.no - 1];
+  const prog = `<div class="hyprog"><span>${Q.i + 1} / ${Q.list.length}${R('首', 'しゅ')}</span><div>${Q.list.map((x, i) => `<i class="${i < Q.i ? (Q.log[i] ? 'ok' : 'ng') : i === Q.i ? 'cur' : ''}"></i>`).join('')}</div></div>`;
+  const cards = r.cards.map(no => { const c = HY[no - 1];
+    const cls = r.done && no === r.no ? 'ans' : r.miss[no] ? 'miss' : '';
+    return `<button class="hycard ${cls}" data-a="take" data-no="${no}"><span>${X(c.h2.replace(/ /g, ''))}</span></button>`; }).join('');
+  const bub = r.done ? (r.got ? (r.early ? 'はやどり！<br>おみごと！' : 'おみごと！') : r.timeout ? 'この札だったよ' : 'つぎは とれるよ！') : r.ote ? 'おてつき！<br>もう一度 さがそう' : r.pos < 0 ? 'かまえて…' : 'どの札かな？<br>タッチしてね';
+  return `${bg('hon', L)}${head(T_HON, `<div class="hyrt">${voiceBtn()}<div class="hypt star"><span>★</span><b>${nf(Q.pts)}</b></div></div>`)}
+  <div class="hyhon">${prog}
+    <div class="hyrd"><div class="hyrdh">${canTalk && HS().voice ? '🔊' : '📜'} ${R('読', 'よ')}み${R('上', 'あ')}げ${r.done ? '' : '中…'}</div><div id="hyread" class="hyread"></div><div class="hyrbw"><i id="hyrb"></i></div></div>
+    <div class="hybub hybub2">${bub}</div>
+    <div class="hycards">${cards}</div>
+    ${r.done ? resultPanel(p, r.got, r.got ? (r.pt || 0) : 0) : ''}
+  </div>`;
+}
+function paintHon(){ paintRead(); }
+function resultPanel(p, ok, pt){
+  return `<div class="hyfb ${ok ? 'ok' : 'ng'}"><div class="hyfbh">${ok ? '⭕ せいかい' : '❌ ざんねん'}${pt ? `<em>+${nf(pt)}pt</em>` : ''}</div>
+    <div class="hyfbk"><small>${p.no}${R('番', 'ばん')}　${X(p.au)}</small><b>${X(p.k1)}</b><b>${X(p.k2)}</b></div>
+    <p>${X(p.mean)}</p><button class="hybtn big" data-a="next">${Q.i + 1 >= Q.list.length ? 'けっかを 見る' : 'つぎへ'} ›</button></div>`;
+}
+function take(no){
+  const r = Q && Q.r; if(!r || r.done || r.pos < 0) return;
+  if(no === r.no){
+    r.done = true; r.got = !r.ote; clearT(); hush();
+    if(r.got){ r.early = r.pos <= r.kamiLen; const pt = ptOf(CFG.baseH) + (r.early ? ptOf(CFG.early) : 0); r.pt = pt; give(pt, '百人一首 本番'); Q.pts += pt; Q.ok++; snd('ok'); }
+    else snd('tap');
+    mark(r.no, r.got); Q.log[Q.i] = r.got; try{ persist(); }catch(e){}
+    render(); paintFull();
+  } else {
+    if(r.miss[no]) return; r.miss[no] = 1; r.ote = true; snd('ng');
+    const b = ROOT.querySelector(`.hycard[data-no="${no}"]`); if(b) b.classList.add('miss');
+    const bb = ROOT.querySelector('.hybub2'); if(bb) bb.innerHTML = 'おてつき！<br>もう一度 さがそう';
+  }
+}
+function paintFull(){ if(!Q || !Q.r) return; Q.r.pos = 999; paintRead(); }
+function honTimeout(){ const r = Q.r; r.done = true; r.timeout = true; r.got = 0; mark(r.no, false); Q.log[Q.i] = false; snd('ng'); try{ persist(); }catch(e){} render(); paintFull(); }
+
+/* ===================== ③ 下の句を当てるモード ===================== */
+function newShimo(){ const no = Q.list[Q.i]; Q.r = {no, cards:choices(no), sel:0, done:false, got:0, hint:false}; go('shimo'); later(() => { const p = HY[no - 1]; say(p.k1, 0.85); }, 350); }
+function shimo(L){
+  const r = Q.r, p = HY[r.no - 1];
+  const prog = `<div class="hyprog"><span>${Q.i + 1} / ${Q.list.length}${R('問', 'もん')}</span><div>${Q.list.map((x, i) => `<i class="${i < Q.i ? (Q.log[i] ? 'ok' : 'ng') : i === Q.i ? 'cur' : ''}"></i>`).join('')}</div></div>`;
+  const cards = r.cards.map(no => { const c = HY[no - 1];
+    const cls = r.done ? (no === r.no ? 'ans' : no === r.sel ? 'miss' : 'off') : no === r.sel ? 'sel' : '';
+    return `<button class="hycard ${cls}" data-a="pick" data-no="${no}"><span>${X(c.h2.replace(/ /g, ''))}</span></button>`; }).join('');
+  const kami = p.h1.split(' ').map(x => `<span>${X(x)}</span>`).join('');
+  const bub = r.done ? (r.got ? 'せいかい！<br>よく 覚えてたね' : 'これで 覚えよう！') : r.hint ? `${p.no}番 ${X(p.au)}<br>の 歌だよ` : '思い出して<br>みよう！';
+  return `${bg('shimo', L)}${head(L === 'tab' ? T_SHIMO : T_SHIMO_S, `<div class="hyrt">${voiceBtn()}<div class="hypt star"><span>★</span><b>${nf(Q.pts)}</b></div></div>`)}
+  <div class="hyshi">${prog}
+    <div class="hykami"><em>${R('上', 'かみ')}の${R('句', 'く')}</em><div class="kt">${kami}</div>
+      <div class="kb">${canTalk ? `<button class="hymini" data-a="sayKami">🔊</button>` : ''}${r.done || r.hint ? '' : `<button class="hymini" data-a="hint">💡 ヒント</button>`}</div></div>
+    <div class="hyask">🌸 ${R('下', 'しも')}の${R('句', 'く')}は どれかな？</div>
+    <div class="hycards">${cards}</div>
+    ${r.done ? '' : `<button class="hybtn big blue hyok" data-a="decide" ${r.sel ? '' : 'disabled'}>けってい</button>`}
+    <div class="hybub hybub3">${bub}</div>
+    ${r.done ? resultPanel(p, r.got, r.pt || 0) : ''}
+  </div>`;
+}
+function pick(no){ const r = Q && Q.r; if(!r || r.done) return; r.sel = no; snd('tap'); render(); }
+function decide(){
+  const r = Q && Q.r; if(!r || r.done || !r.sel) return; r.done = true; r.got = r.sel === r.no;
+  if(r.got){ const pt = ptOf(CFG.baseS); r.pt = pt; give(pt, '百人一首 下の句'); Q.pts += pt; Q.ok++; snd('ok'); } else snd('ng');
+  mark(r.no, r.got); Q.log[Q.i] = r.got; try{ persist(); }catch(e){}
+  hush(); const p = HY[r.no - 1]; say(p.k1 + ' ' + p.k2, 0.85);
+  render();
+}
+
+/* ===================== 結果 ===================== */
+function next(){
+  if(!Q) return; Q.i++;
+  if(Q.i >= Q.list.length){ go('res'); later(checkComplete, 500); return; }
+  Q.mode === 'hon' ? newHon() : newShimo();
+}
+function res(L){
+  const rows = Q.list.map((no, i) => { const p = HY[no - 1]; return `<li class="${Q.log[i] ? 'ok' : 'ng'}"><b>${Q.log[i] ? '⭕' : '❌'}</b><span>${no}</span><div>${X(p.k1.split(' ')[0])}…<small>${X(p.au)}</small></div><em class="s${stOf(no)}"></em></li>`; }).join('');
+  const k = Q.mode === 'hon' ? 'hon' : 'shimo';
+  return `${bg(k === 'hon' ? 'hon' : 'shimo', L)}${head(Q.mode === 'hon' ? T_HON : (L === 'tab' ? T_SHIMO : T_SHIMO_S))}
+  <div class="hyres"><div class="hyp hyresc"><h2>けっか</h2>
+    <div class="hyrs"><div><small>${R('正解', 'せいかい')}</small><b>${Q.ok}<span>/${Q.list.length}</span></b></div><div><small>もらった ポイント</small><b class="pt">+${nf(Q.pts)}</b></div><div><small>${R('暗記', 'あんき')}できた${R('歌', 'うた')}</small><b>${learned()}<span>/100</span></b></div></div>
+    <ul class="hyrl">${rows}</ul>
+    <div class="hyrb"><button class="hybtn big" data-a="${Q.mode === 'hon' ? 'startHon' : 'startShimo'}">もう一度</button><button class="hybtn big white" data-a="toTop">${R('選択', 'せんたく')}画面へ</button></div></div></div>`;
+}
+async function checkComplete(){
+  const s = HS(); if(s.done || learned() < 100) return;
+  s.done = Date.now();
+  give(CFG.comp, '百人一首 100首 コンプリート');
+  try{ const H = ensureHome(); H.inv[FUR_ID] = (H.inv[FUR_ID] || 0) + 1; }catch(e){}
+  try{ discover && discover(FUR_ID); }catch(e){}
+  try{ persist(); }catch(e){}
+  snd('fan');
+  try{ await dialog(`<div class="hydlg"><img src="${IMG}hy_fur_karuta.webp" alt=""><h2 class="dlgT">百人一首 100首 コンプリート！</h2>
+    <p class="dlgP">100首 ぜんぶ 覚えたね！ すごい！<br><b>${nf(CFG.comp)}ポイント</b> と<br>「百人一首の 金びょうぶ」を もらったよ。<br>わたしの家に かざってね！</p></div>`, [{label:'やったー！', cls:'pink', v:true}]); }catch(e){}
+  if(V.s === 'res') render();
+}
+
+/* ===================== タッチ ===================== */
+function onClick(e){
+  const b = e.target.closest('[data-a]'); if(!b) return;
+  if(b.dataset.a === 'closePoem' && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
+  const a = b.dataset.a, no = +b.dataset.no || 0;
+  switch(a){
+    case 'close': snd('tap'); close(); break;
+    case 'quit': if(V.s === 'res' || confirm('とちゅうで やめますか？（ここまでの ポイントは もらえます）')){ Q = null; go('top'); } break;
+    case 'toTop': Q = null; go('top'); break;
+    case 'rng': HS().rng = b.dataset.v; snd('tap'); try{ persist(); }catch(e2){} render(); break;
+    case 'poem': V.poem = no; snd('tap'); render(); break;
+    case 'closePoem': V.poem = 0; hush(); render(); break;
+    case 'sayPoem': { hush(); const p = HY[no - 1]; say(p.k1 + ' ' + p.k2, 0.8); break; }
+    case 'startHon': snd('tap'); startQuiz('hon'); break;
+    case 'startShimo': snd('tap'); startQuiz('shimo'); break;
+    case 'voice': HS().voice = HS().voice ? 0 : 1; if(!HS().voice) hush(); else unlockTalk(); try{ persist(); }catch(e2){} b.classList.toggle('on', !!HS().voice); b.textContent = HS().voice ? '🔊' : '🔇'; break;
+    case 'take': take(no); break;
+    case 'pick': pick(no); break;
+    case 'decide': decide(); break;
+    case 'hint': if(Q && Q.r){ Q.r.hint = true; snd('tap'); render(); } break;
+    case 'sayKami': if(Q && Q.r){ hush(); say(HY[Q.r.no - 1].k1, 0.85); } break;
+    case 'next': snd('tap'); next(); break;
+  }
+}
+
+/* ===================== 入口（こくご画面） ===================== */
+function addEntry(){
+  try{
+    const box = document.querySelector('#scr-kmode .modeBtns');
+    if(box && !document.getElementById('goHyaku')){
+      const b = document.createElement('button'); b.className = 'modeBtn hy77btn'; b.id = 'goHyaku';
+      b.innerHTML = `<img alt="" src="${IMG}hy_fur_karuta.webp"/><div><b>百人一首</b><span>読み上げで 札とり・下の句あて（${learned()}/100首）</span></div>`;
+      b.onclick = () => { snd('tap'); open(); }; box.appendChild(b);
+    }
+    const ul = document.querySelector('#subjKanji ul'); if(ul && !ul.querySelector('.hyli')){ const li = document.createElement('li'); li.className = 'hyli'; li.textContent = '百人一首'; ul.appendChild(li); }
+  }catch(e){ console.warn('hyakunin entry', e); }
+}
+addEntry();
+document.addEventListener('click', e => { if(e.target.closest('#subjKanji')) setTimeout(() => { addEntry(); const s = document.querySelector('#goHyaku span'); if(s) s.textContent = `読み上げで 札とり・下の句あて（${learned()}/100首）`; }, 60); }, true);
+window.__hy77 = {open, close, data:HY, learned};
+
+/* ===================== 見た目 ===================== */
+const css = document.createElement('style');
+css.textContent = `
+body.hy77on{overflow:hidden}
+#hy77{position:fixed;inset:0;z-index:66;opacity:0;transition:opacity .2s;background:#F6EFD9;overflow:hidden;color:#4A3420;font-family:'Zen Maru Gothic',sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#hy77.show{opacity:1}
+#hy77 .hyw{position:absolute;inset:0;display:flex;flex-direction:column;padding:calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom))}
+#hy77 .hybg{position:absolute;inset:0;background-size:cover;background-position:center bottom;z-index:0}
+#hy77 .hyw>*:not(.hybg){position:relative;z-index:1}
+#hy77 ruby rt{font-size:.5em;font-weight:700}
+#hy77 button{font-family:inherit;color:inherit;cursor:pointer}
+/* ヘッダー */
+#hy77 .hyhd{display:flex;align-items:center;gap:8px;min-height:52px;flex:none}
+#hy77 .hyback{flex:none;border:3px solid #fff;border-radius:99px;background:linear-gradient(180deg,#7C83E8,#5258C8);color:#fff;font-weight:900;font-size:16px;padding:6px 14px;box-shadow:0 3px 0 #3B3F9A;white-space:nowrap}
+#hy77 .hyttl{flex:1;min-width:0;display:flex;align-items:center;justify-content:center}
+#hy77 .hyttl b{background:linear-gradient(180deg,#FFFBEF,#F6E7C4);border:3px solid #C9A05A;border-left:0;border-right:0;padding:6px 14px;font-size:clamp(15px,4.6vw,24px);font-weight:900;color:#3A2A18;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-shadow:0 3px 6px rgba(0,0,0,.15)}
+#hy77 .hyttl i{width:12px;align-self:stretch;background:linear-gradient(90deg,#8E2A2A,#C94A3A,#8E2A2A);border-radius:6px;margin:-3px 0;flex:none}
+#hy77 .hypt{flex:none;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.92);border:3px solid #FFD66B;border-radius:99px;padding:3px 10px 3px 4px;font-weight:900}
+#hy77 .hypt span{width:24px;height:24px;border-radius:50%;background:#FFC93C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
+#hy77 .hypt.star{background:#3E5A3A;border-color:#C9A05A;color:#fff}#hy77 .hypt.star span{background:none;color:#FFD34D;font-size:20px}
+#hy77 .hyrt{flex:none;display:flex;align-items:center;gap:6px}
+#hy77 .hyvo{width:40px;height:40px;border-radius:50%;border:3px solid #fff;background:#E9E3D6;font-size:18px;box-shadow:0 2px 0 rgba(0,0,0,.15)}#hy77 .hyvo.on{background:#FFE7A6}
+/* 共通パネル */
+#hy77 .hyp{background:rgba(255,252,242,.94);border:3px solid #9FC48E;border-radius:20px;box-shadow:0 4px 10px rgba(60,40,10,.18);padding:10px 12px;min-width:0}
+#hy77 .hyp h3{margin:0;font-size:16px;font-weight:900;white-space:nowrap}
+#hy77 .hybub{background:#fff;border:3px solid #7A5A3A;border-radius:22px;padding:8px 12px;font-weight:900;font-size:15px;line-height:1.45;text-align:center;box-shadow:0 3px 6px rgba(0,0,0,.15);pointer-events:none}
+#hy77 .hybub b{color:#E0457B;font-size:1.3em}
+#hy77 .hybtn{border:3px solid #fff;border-radius:18px;background:linear-gradient(180deg,#FF9DB4,#EE5D88);color:#fff;font-weight:900;font-size:16px;padding:8px 18px;box-shadow:0 4px 0 #C23E68;white-space:nowrap}
+#hy77 .hybtn.big{font-size:19px;padding:10px 24px;min-height:52px}
+#hy77 .hybtn.blue{background:linear-gradient(180deg,#6FB6FF,#2E7CE0);box-shadow:0 4px 0 #1D5AAE}
+#hy77 .hybtn.white{background:#fff;color:#7A4A2A;border-color:#E9D2A6;box-shadow:0 4px 0 #D8BE8A}
+#hy77 .hybtn.y{background:linear-gradient(180deg,#FFD978,#F2A93A);box-shadow:0 4px 0 #C77C14}
+#hy77 .hybtn:disabled{filter:grayscale(.8);opacity:.6}
+#hy77 .hybtn:active,#hy77 .hymb:active,#hy77 .hycard:active{transform:translateY(2px)}
+/* ===== ① 選択画面 ===== */
+#hy77 .hytop{flex:1;min-height:0;display:grid;gap:8px;grid-template-columns:minmax(0,1fr) minmax(0,.62fr);grid-template-rows:auto auto auto 1fr;grid-template-areas:'c1 bub' 'c2 c2' 'md md' 'md md';padding-top:6px}
+#hy77 .hyc1{grid-area:c1;display:flex;flex-direction:column;align-items:center;gap:4px}
+#hy77 .hydnw{position:relative;width:min(34vw,24vh,150px);aspect-ratio:1}
+#hy77 .hydn{width:100%;height:100%}
+#hy77 .hydnt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+#hy77 .hydnt b{font-size:clamp(26px,9vw,46px);color:#2E8C46;font-weight:900}#hy77 .hydnt i{width:40%;height:2px;background:#4A3420;margin:3px 0;transform:rotate(-12deg)}#hy77 .hydnt span{font-size:clamp(15px,4.4vw,22px);font-weight:900}
+#hy77 .hybub1{grid-area:bub;align-self:start;margin-top:12px;position:relative}
+#hy77 .hybub1:after{content:'';position:absolute;left:50%;bottom:-12px;border:9px solid transparent;border-top-color:#7A5A3A;transform:translateX(-50%)}
+#hy77 .hyc2{grid-area:c2;display:flex;flex-direction:column;gap:4px}
+#hy77 .hyc2h{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+#hy77 .hylg{display:flex;gap:8px;font-size:12px;font-weight:800}#hy77 .hylg span{display:flex;align-items:center;gap:3px;white-space:nowrap}#hy77 .hylg i{width:12px;height:12px;border-radius:50%}
+#hy77 .s2{--c:#3DB35A}#hy77 .s1{--c:#F2C53D}#hy77 .s0{--c:#B9B4AA}
+#hy77 .hylg i,#hy77 .hyb{background:var(--c)}
+#hy77 .hybars{height:clamp(70px,13vh,130px);display:flex;align-items:flex-end;gap:1px;border-left:2px solid #CDBFA5;border-bottom:2px solid #CDBFA5;padding:2px 1px 0}
+#hy77 .hyb{flex:1;min-width:0;border:0;border-radius:2px 2px 0 0;padding:0}
+#hy77 .hyb.dim{opacity:.3}
+#hy77 .hyax{display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:#7A6A55;padding:0 2px}
+#hy77 .hyrng{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px}#hy77 .hyrng small{font-size:12px;font-weight:900;white-space:nowrap}
+#hy77 .hyrng>div{display:flex;gap:4px;flex-wrap:wrap}
+#hy77 .hyrc{border:2px solid #D9C7A2;background:#fff;border-radius:99px;padding:2px 8px;font-size:12px;font-weight:900;white-space:nowrap}#hy77 .hyrc.on{background:#3DB35A;border-color:#2E8C46;color:#fff}
+#hy77 .hymodes{grid-area:md;display:flex;flex-direction:column;gap:8px;min-width:0}
+#hy77 .hymb{display:flex;align-items:center;gap:10px;border:4px solid #fff;border-radius:22px;padding:8px 10px;text-align:left;min-height:74px;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+#hy77 .hymb.hon{background:linear-gradient(135deg,#FF8FAE,#EE4F7E);color:#fff}
+#hy77 .hymb.shi{background:linear-gradient(135deg,#7CC3FF,#2F86E8);color:#fff}
+#hy77 .hymb>div{flex:1;min-width:0}#hy77 .hymb b{display:block;font-size:clamp(16px,4.6vw,22px);font-weight:900;text-shadow:0 2px 0 rgba(0,0,0,.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hy77 .hymb small span{display:block}#hy77 .hymb small{display:block;font-size:12px;font-weight:800;line-height:1.45;overflow-wrap:anywhere}#hy77 .hymb em{font-style:normal;background:rgba(255,255,255,.3);border-radius:6px;padding:0 4px}
+#hy77 .hymb u{text-decoration:none;font-size:26px;font-weight:900}
+#hy77 .hymb .ic{flex:none;width:52px;height:56px;position:relative}
+#hy77 .hymb .ic i{position:absolute;width:30px;height:42px;background:#FFFBEF;border:3px solid #3E7A4A;border-radius:5px;top:6px;left:10px;font-style:normal}
+#hy77 .hymb .ic i:nth-child(1){transform:rotate(-16deg);left:2px}#hy77 .hymb .ic i:nth-child(3){transform:rotate(16deg);left:18px}
+#hy77 .hymb .ic.q i{left:11px;transform:none;color:#2F86E8;font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center;border-color:#2F86E8}
+#hy77 .hymul{font-size:12px;font-weight:900;background:rgba(255,255,255,.88);border-radius:99px;padding:3px 10px;align-self:flex-start;white-space:nowrap}
+/* 歌の シート */
+#hy77 .hymask{position:absolute;inset:0;z-index:20;background:rgba(40,30,20,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+#hy77 .hysheet{background:#FFFBEF;border:4px solid #C9A05A;border-radius:24px;padding:14px 16px;width:min(460px,100%);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:8px}
+#hy77 .hysh-h{display:flex;align-items:center;gap:8px}#hy77 .hysh-h .no{background:#8E2A2A;color:#fff;border-radius:10px;padding:2px 8px;font-weight:900}
+#hy77 .hysh-h b{flex:1;min-width:0;font-size:17px;overflow-wrap:anywhere}#hy77 .hysh-h em{font-style:normal;background:var(--c);color:#fff;border-radius:99px;padding:1px 10px;font-weight:900;font-size:13px}
+#hy77 .hysh-k{font-family:'Kiwi Maru',serif;font-size:20px;line-height:1.7;font-weight:500}
+#hy77 .hysh-h2{font-size:13px;color:#7A6A55;font-weight:700}
+#hy77 .hysh-m{margin:0;background:#F3EAD3;border-radius:12px;padding:8px 10px;font-size:14px;font-weight:700;line-height:1.6}
+#hy77 .hysheet>small{font-size:12px;font-weight:800;color:#7A6A55}
+#hy77 .hysh-b{display:flex;gap:8px;justify-content:flex-end}
+/* 進みぐあい */
+#hy77 .hyprog{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.92);border-radius:99px;padding:3px 12px;align-self:center;font-weight:900;font-size:14px;white-space:nowrap}
+#hy77 .hyprog>div{display:flex;gap:4px}#hy77 .hyprog i{width:12px;height:12px;border-radius:50%;background:#D7D2C8}
+#hy77 .hyprog i.cur{background:#2EA6D8;box-shadow:0 0 0 3px rgba(46,166,216,.3)}#hy77 .hyprog i.ok{background:#3DB35A}#hy77 .hyprog i.ng{background:#E35A6A}
+/* 札 */
+#hy77 .hycards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-height:0}
+#hy77 .hycard{position:relative;container-type:size;border:0;padding:0;border-radius:10px;background:#3E7A4A;box-shadow:0 5px 0 #2A5734,0 6px 12px rgba(0,0,0,.25);min-height:0;transition:transform .15s,filter .2s}
+#hy77 .hycard>span{position:absolute;inset:7%;background:#FFFBEF radial-gradient(#F0E3C2 1px,transparent 1.5px) 0 0/9px 9px;border-radius:4px;writing-mode:vertical-rl;text-orientation:upright;display:flex;align-items:center;justify-content:center;font-family:'Kiwi Maru','Zen Maru Gothic',serif;font-weight:500;color:#2A1E12;font-size:min(15cqh,20cqw);line-height:1.25;letter-spacing:.04em;padding:6% 4%;overflow:hidden;word-break:break-all}
+#hy77 .hycard.sel{transform:translateY(-4px);box-shadow:0 0 0 5px #FFD34D,0 0 22px 6px rgba(255,211,77,.8)}
+#hy77 .hycard.miss{filter:grayscale(1) brightness(.85);opacity:.6;pointer-events:none}
+#hy77 .hycard.off{filter:grayscale(.6);opacity:.55}
+#hy77 .hycard.ans{box-shadow:0 0 0 5px #FF5D8F,0 0 24px 8px rgba(255,93,143,.6);animation:hyPop .5s}
+@keyframes hyPop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+/* ===== ② 本番 ===== */
+#hy77 .hyhon,#hy77 .hyshi{flex:1;min-height:0;display:grid;gap:8px;padding-top:6px}
+#hy77 .hyhon{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:'pg pg' 'rd bub' 'rd .' 'cd cd'}
+#hy77 .hyhon .hyprog{grid-area:pg}
+#hy77 .hyrd{grid-area:rd;background:rgba(255,255,255,.95);border:3px solid #3E5A3A;border-radius:20px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;align-self:start;box-shadow:0 4px 10px rgba(0,0,0,.18)}
+#hy77 .hyrdh{font-size:13px;font-weight:900;color:#2E6FB5}
+#hy77 .hyread{min-height:3.6em;font-family:'Kiwi Maru',serif;font-weight:500;letter-spacing:.06em}
+#hy77 .hyread .k1{font-size:clamp(18px,5.4vw,30px);line-height:1.3}#hy77 .hyread .k2{font-size:clamp(14px,4vw,20px);color:#7A5A3A;line-height:1.3}
+#hy77 .hyread .cur{display:inline-block;width:3px;height:1em;background:#E0457B;vertical-align:-2px;margin-left:2px;animation:hyBl .8s infinite}
+@keyframes hyBl{50%{opacity:0}}
+#hy77 .hyrbw{height:5px;background:#E4E0D8;border-radius:3px;overflow:hidden}#hy77 .hyrbw i{display:block;height:100%;width:0;background:#E0457B;transition:width .3s linear}
+#hy77 .hybub2{grid-area:bub;align-self:start;font-size:14px;position:relative}
+#hy77 .hybub2:after{content:'';position:absolute;right:30%;bottom:-12px;border:9px solid transparent;border-top-color:#7A5A3A}
+#hy77 .hyhon .hycards{grid-area:cd;align-self:end;height:min(100%,62vh);grid-template-rows:repeat(2,minmax(0,1fr))}
+/* 結果パネル（1首ごと） */
+#hy77 .hyfb{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:min(520px,calc(100% - 8px));z-index:10;background:#FFFBEF;border:4px solid #3DB35A;border-radius:22px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:6px;animation:hyUp .25s}
+#hy77 .hyfb.ng{border-color:#E35A6A}
+@keyframes hyUp{from{transform:translate(-50%,30px);opacity:0}}
+#hy77 .hyfbh{font-size:20px;font-weight:900;display:flex;align-items:center;gap:10px}#hy77 .hyfbh em{font-style:normal;background:#FFD34D;border-radius:99px;padding:0 10px;font-size:16px}
+#hy77 .hyfbk{display:flex;flex-direction:column;font-family:'Kiwi Maru',serif}#hy77 .hyfbk small{font-family:'Zen Maru Gothic';font-weight:800;color:#7A6A55}#hy77 .hyfbk b{font-weight:500;font-size:clamp(15px,4.4vw,19px);line-height:1.5}
+#hy77 .hyfb p{margin:0;background:#F3EAD3;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:700;line-height:1.55}
+#hy77 .hyfb .hybtn{align-self:flex-end}
+/* ===== ③ 下の句 ===== */
+#hy77 .hyshi{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr) auto;grid-template-areas:'pg' 'km' 'ask' 'cd' 'ok'}
+#hy77 .hyshi .hyprog{grid-area:pg}
+#hy77 .hykami{grid-area:km;background:rgba(255,252,242,.95);border:3px solid #9FC48E;border-radius:20px;padding:10px 12px 8px;position:relative;box-shadow:0 4px 10px rgba(0,0,0,.15)}
+#hy77 .hykami em{position:absolute;left:10px;top:-14px;background:#3E8A4E;color:#fff;font-style:normal;font-weight:900;border-radius:99px;padding:1px 12px;font-size:14px}
+#hy77 .hykami .kt{display:flex;flex-wrap:wrap;gap:0 .8em;font-family:'Kiwi Maru',serif;font-weight:500;font-size:clamp(19px,5.6vw,30px);line-height:1.45;padding-top:4px}
+#hy77 .hykami .kb{display:flex;gap:6px;justify-content:flex-end}
+#hy77 .hymini{border:2px solid #D9C7A2;background:#fff;border-radius:99px;padding:2px 10px;font-weight:900;font-size:13px;white-space:nowrap}
+#hy77 .hyask{grid-area:ask;justify-self:center;background:linear-gradient(90deg,#FFD0DD,#FFE6EE,#FFD0DD);border:3px solid #fff;border-radius:99px;padding:4px 20px;font-weight:900;font-size:clamp(15px,4.4vw,20px);white-space:nowrap;box-shadow:0 3px 6px rgba(0,0,0,.12)}
+#hy77 .hyshi .hycards{grid-area:cd;width:72%;grid-template-rows:repeat(2,minmax(0,1fr))}
+#hy77 .hyshi .hyok{grid-area:ok;width:68%;justify-self:start}
+#hy77 .hybub3{position:absolute;right:4px;bottom:calc(30% + 6px);font-size:13px;max-width:30%}
+/* ===== 結果 ===== */
+#hy77 .hyres{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:6px 0}
+#hy77 .hyresc{width:min(560px,100%);max-height:100%;display:flex;flex-direction:column;gap:8px;border-color:#C9A05A}
+#hy77 .hyresc h2{margin:0;text-align:center;font-size:24px;font-weight:900}
+#hy77 .hyrs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#hy77 .hyrs>div{background:#fff;border-radius:14px;padding:6px;text-align:center;border:2px solid #EFE3C8}#hy77 .hyrs small{display:block;font-size:11px;font-weight:900;color:#7A6A55}
+#hy77 .hyrs b{font-size:clamp(20px,6vw,28px);font-weight:900}#hy77 .hyrs b span{font-size:.55em}#hy77 .hyrs b.pt{color:#E0457B}
+#hy77 .hyrl{list-style:none;margin:0;padding:0;overflow:auto;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+#hy77 .hyrl li{display:flex;align-items:center;gap:5px;background:#fff;border-radius:10px;padding:3px 6px;font-size:13px;font-weight:800;min-width:0}
+#hy77 .hyrl li>span{background:#8E2A2A;color:#fff;border-radius:6px;padding:0 5px;font-size:11px}
+#hy77 .hyrl li div{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Kiwi Maru',serif}#hy77 .hyrl li small{font-family:'Zen Maru Gothic';color:#7A6A55;margin-left:4px;font-size:11px}
+#hy77 .hyrl li em{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none}
+#hy77 .hyrb{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.hydlg{text-align:center}.hydlg img{width:180px;max-width:60%;height:auto}
+/* こくご画面の 入口 */
+.modeBtn.hy77btn{background:linear-gradient(90deg,#F4E1FF,#FFF4E6);color:#7A3A8E}
+/* ===== スマホ縦：キャラの いる 場所を あける ===== */
+#hy77.ph.s-top .hybg{background-position:72% bottom}
+#hy77.ph.s-top .hymodes{max-width:64%}
+#hy77.ph .hymb .ic{display:none}#hy77.ph .hymb small .d{display:none}#hy77.ph .hymb{min-height:64px;padding:6px 10px}#hy77.ph .hymb b{font-size:clamp(15px,4.4vw,19px)}
+#hy77.ph.s-hon .hybg{background-position:70% top}
+#hy77.ph.s-shimo .hybg{background-position:75% bottom}
+@media (max-width:380px){#hy77 .hymb .ic{display:none}#hy77 .hylg{font-size:11px}}
+@media (max-height:700px){#hy77 .hymb{min-height:60px;padding:5px 8px}#hy77 .hymb small{display:none}#hy77 .hybars{height:60px}#hy77 .hydnw{width:min(28vw,19vh)}}
+/* ===== iPad横 ===== */
+#hy77.tab .hyw{padding:calc(10px + env(safe-area-inset-top)) 18px 14px}
+#hy77.tab .hyttl b{font-size:26px;padding:6px 30px}
+#hy77.tab .hytop{grid-template-columns:minmax(0,.62fr) minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;grid-template-areas:'bub c1 c2' '. c1 c2' '. md md';gap:14px;padding-top:10px}
+#hy77.tab .hyc1{justify-content:center;padding:16px}#hy77.tab .hydnw{width:min(19vw,34vh,240px)}
+#hy77.tab .hyc1 h3,#hy77.tab .hyc2 h3{font-size:19px}
+#hy77.tab .hyc2{justify-content:center;padding:14px}#hy77.tab .hybars{height:min(30vh,240px)}
+#hy77.tab .hybub1{font-size:18px;margin-top:4vh}
+#hy77.tab .hymodes{flex-direction:row;flex-wrap:wrap;align-items:stretch}#hy77.tab .hymb{flex:1 1 0;min-height:96px}#hy77.tab .hymul{flex-basis:100%;align-self:center}
+#hy77.tab .hymb small{font-size:13px}
+#hy77.tab.s-top .hybg{background-position:left bottom}
+#hy77.tab .hyhon{grid-template-columns:minmax(0,.36fr) minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:'pg pg' 'bub rd' '. rd' '. cd';gap:12px}
+#hy77.tab .hyrd{padding:10px 18px}#hy77.tab .hyread .k1{font-size:34px}#hy77.tab .hyread .k2{font-size:22px}
+#hy77.tab .hybub2{font-size:16px;margin-top:4px}#hy77.tab .hybub2:after{right:auto;left:40%}
+#hy77.tab .hyhon .hycards{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:1fr;height:min(100%,44vh);gap:16px}
+#hy77.tab.s-hon .hybg{background-position:left center}
+#hy77.tab .hyshi{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:'pg pg' 'km ask' 'km cd' 'bb ok';gap:12px 18px}
+#hy77.tab .hykami{align-self:start;margin-top:10px}#hy77.tab .hykami .kt{flex-direction:column;font-size:34px}
+#hy77.tab .hyshi .hycards{width:100%}
+#hy77.tab .hyshi .hyok{width:100%}
+#hy77.tab .hybub3{right:auto;left:30%;bottom:34%;max-width:22%;font-size:16px}
+#hy77.tab.s-shimo .hybg{background-position:left bottom}
+#hy77.tab .hyfb{left:auto;right:18px;transform:none;bottom:14px;width:min(520px,48%)}
+#hy77.tab .hyfb{animation:none}
+`;
+document.head.appendChild(css);
+})();
