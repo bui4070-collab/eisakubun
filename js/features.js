@@ -16024,7 +16024,7 @@ const HY = HY_RAW.trim().split('\n').map((l, i) => { const r = l.split('|'); ret
   const K = HY.map(p => nz(p.h1));
   HY.forEach((p, i) => { const k = K[i]; let n = 1; for(; n <= k.length; n++){ const pre = k.slice(0, n); if(K.every((o, j) => j === i || !o.startsWith(pre))) break; } p.kim = Math.min(n, k.length); });
 })();
-const CFG = {per:10, cps:400, wait:5000, baseH:30, early:10, baseS:20, lvRate:0.2, master:3, comp:20000};
+const CFG = {per:10, cps:400, wait:5000, baseH:30, early:20, shimoH:5, lateH:2, baseS:20, lvRate:0.2, master:3, comp:20000};
 const FUR_ID = 'hy_karuta';
 
 /* ---------- 家に かざる ごほうび（横から・上から） ---------- */
@@ -16112,7 +16112,7 @@ const voiceBtn = () => canTalk ? `<button class="hyvo ${HS().voice ? 'on' : ''}"
 function donut(n){
   const r = 52, c = 2 * Math.PI * r, p = n / 100;
   return `<svg viewBox="0 0 128 128" class="hydn"><circle cx="64" cy="64" r="${r}" fill="none" stroke="#E4E0D8" stroke-width="16"/>
-    <circle cx="64" cy="64" r="${r}" fill="none" stroke="#3DB35A" stroke-width="16" stroke-linecap="round" stroke-dasharray="${(c * p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 64 64)"/></svg>
+    ${n > 0 ? '' : '<!--'}<circle cx="64" cy="64" r="${r}" fill="none" stroke="#3DB35A" stroke-width="16" stroke-linecap="round" stroke-dasharray="${(c * p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 64 64)"/>${n > 0 ? '' : '-->'}</svg>
     <div class="hydnt"><b>${n}</b><i></i><span>100</span></div>`;
 }
 function bars(){
@@ -16135,7 +16135,7 @@ function top(L){
       <div class="hybars">${bars()}</div><div class="hyax"><span>1</span><span>25</span><span>50</span><span>75</span><span>100(${R('番', 'ばん')})</span></div>
       <div class="hyrng"><small>${R('出題', 'しゅつだい')}する${R('範囲', 'はんい')}</small><div>${chips}</div></div></section>
     <div class="hymodes">
-      <button class="hymb hon" data-a="startHon"><span class="ic"><i></i><i></i><i></i></span><div><b>${T_HON}</b><small><span class="d">${R('読', 'よ')}み${R('上', 'あ')}げを${R('聞', 'き')}いて ${R('正', 'ただ')}しい${R('札', 'ふだ')}をとろう</span><span class="p">1${R('枚', 'まい')} <em>${ptOf(CFG.baseH)}pt</em>＋はやどり <em>${ptOf(CFG.early)}pt</em></span></small></div><u>›</u></button>
+      <button class="hymb hon" data-a="startHon"><span class="ic"><i></i><i></i><i></i></span><div><b>${T_HON}</b><small><span class="d">${R('読', 'よ')}み${R('上', 'あ')}げを${R('聞', 'き')}いて ${R('正', 'ただ')}しい${R('札', 'ふだ')}をとろう</span><span class="p">${R('上', 'かみ')}の${R('句', 'く')}で <em>${ptOf(CFG.baseH)}〜${ptOf(CFG.baseH + CFG.early)}pt</em> ${R('下', 'しも')}の${R('句', 'く')}は <em>${ptOf(CFG.shimoH)}pt</em></span></small></div><u>›</u></button>
       <button class="hymb shi" data-a="startShimo"><span class="ic q"><i>?</i></span><div><b>${T_SHIMO}</b><small><span class="d">${R('上', 'かみ')}の${R('句', 'く')}を${R('見', 'み')}て ${R('下', 'しも')}の${R('句', 'く')}を${R('思', 'おも')}い${R('出', 'だ')}そう</span><span class="p">1${R('問', 'もん')} <em>${ptOf(CFG.baseS)}pt</em></span></small></div><u>›</u></button>
       <div class="hymul">まちLv${tLv()} ボーナス ×${m}　・　1${R('回', 'かい')} ${CFG.per}${R('首', 'しゅ')}</div>
     </div>
@@ -16188,6 +16188,14 @@ function newHon(){
   go('hon');
   later(() => tickStart(), 300);
 }
+/* 本番の ポイント：上の句の とちゅうは 早いほど 高い（50→30）。下の句に 入ると 5、読み終わりは 2 */
+function honBase(r){
+  if(!r || r.pos < 0) return CFG.baseH + CFG.early;
+  if(r.pos <= r.kamiLen){ const f = Math.max(0, Math.min(1, (r.pos - 1) / Math.max(1, r.kamiLen - 1))); return Math.round(CFG.baseH + CFG.early * (1 - f)); }
+  if(r.pos < r.len) return CFG.shimoH;
+  return CFG.lateH;
+}
+const honPt = r => ptOf(honBase(r));
 function readText(p){ return p.h1 + '　' + p.h2; }
 function tickStart(){
   const r = Q && Q.r; if(!r) return;
@@ -16210,7 +16218,8 @@ function paintRead(){
   const full = readText(p), n = Math.max(0, Math.min(r.pos, full.length));
   const shown = full.slice(0, n), [a, b] = [shown.slice(0, p.h1.length), shown.slice(p.h1.length + 1)];
   el.innerHTML = `<div class="k1">${X(a)}${r.done ? '' : '<i class="cur"></i>'}</div>${b ? `<div class="k2">${X(b)}</div>` : ''}`;
-  const bar = ROOT.querySelector('#hyrb'); if(bar) bar.style.width = (n / full.length * 100) + '%';
+  const bar = ROOT.querySelector('#hyrb'); if(bar){ bar.style.width = (n / full.length * 100) + '%'; bar.classList.toggle('lo', r.pos > r.kamiLen); }
+  const nw = ROOT.querySelector('#hynow'); if(nw && !r.done){ const k = r.pos > r.kamiLen; nw.className = 'hynow' + (k ? ' lo' : ''); nw.innerHTML = `いま とると <b>${nf(honPt(r))}</b>pt${k ? '<small>（下の句は へるよ）</small>' : ''}`; }
 }
 function hon(L){
   const r = Q.r, p = HY[r.no - 1];
@@ -16218,18 +16227,18 @@ function hon(L){
   const cards = r.cards.map(no => { const c = HY[no - 1];
     const cls = r.done && no === r.no ? 'ans' : r.miss[no] ? 'miss' : '';
     return `<button class="hycard ${cls}" data-a="take" data-no="${no}"><span>${X(c.h2.replace(/ /g, ''))}</span></button>`; }).join('');
-  const bub = r.done ? (r.got ? (r.early ? 'はやどり！<br>おみごと！' : 'おみごと！') : r.timeout ? 'この札だったよ' : 'つぎは とれるよ！') : r.ote ? 'おてつき！<br>もう一度 さがそう' : r.pos < 0 ? 'かまえて…' : 'どの札かな？<br>タッチしてね';
+  const bub = r.done ? (r.got ? (r.early ? (r.pos <= Math.ceil(r.kamiLen / 3) ? 'すごい はやわざ！<br>おみごと！' : 'はやどり！<br>おみごと！') : 'とれたね！<br>つぎは もっと 早く！') : r.timeout ? 'この札だったよ' : 'つぎは とれるよ！') : r.ote ? 'おてつき！<br>もう一度 さがそう' : r.pos < 0 ? 'かまえて…' : 'どの札かな？<br>タッチしてね';
   return `${bg('hon', L)}${head(T_HON, `<div class="hyrt">${voiceBtn()}<div class="hypt star"><span>★</span><b>${nf(Q.pts)}</b></div></div>`)}
   <div class="hyhon">${prog}
-    <div class="hyrd"><div class="hyrdh">${canTalk && HS().voice ? '🔊' : '📜'} ${R('読', 'よ')}み${R('上', 'あ')}げ${r.done ? '' : '中…'}</div><div id="hyread" class="hyread"></div><div class="hyrbw"><i id="hyrb"></i></div></div>
+    <div class="hyrd"><div class="hyrdh">${canTalk && HS().voice ? '🔊' : '📜'} ${R('読', 'よ')}み${R('上', 'あ')}げ${r.done ? '' : '中…'}${r.done ? '' : '<span id="hynow" class="hynow"></span>'}</div><div id="hyread" class="hyread"></div><div class="hyrbw"><i id="hyrb"></i></div></div>
     <div class="hybub hybub2">${bub}</div>
     <div class="hycards">${cards}</div>
-    ${r.done ? resultPanel(p, r.got, r.got ? (r.pt || 0) : 0) : ''}
+    ${r.done ? resultPanel(p, r.got, r.got ? (r.pt || 0) : 0, r.at) : ''}
   </div>`;
 }
 function paintHon(){ paintRead(); }
-function resultPanel(p, ok, pt){
-  return `<div class="hyfb ${ok ? 'ok' : 'ng'}"><div class="hyfbh">${ok ? '⭕ せいかい' : '❌ ざんねん'}${pt ? `<em>+${nf(pt)}pt</em>` : ''}</div>
+function resultPanel(p, ok, pt, at){
+  return `<div class="hyfb ${ok ? 'ok' : 'ng'}"><div class="hyfbh">${ok ? '⭕ せいかい' : '❌ ざんねん'}${pt ? `<em>+${nf(pt)}pt</em>` : ''}</div>${ok && at ? `<div class="hyat">${at}</div>` : ''}
     <div class="hyfbk"><small>${p.no}${R('番', 'ばん')}　${X(p.au)}</small><b>${X(p.k1)}</b><b>${X(p.k2)}</b></div>
     <p>${X(p.mean)}</p><button class="hybtn big" data-a="next">${Q.i + 1 >= Q.list.length ? 'けっかを 見る' : 'つぎへ'} ›</button></div>`;
 }
@@ -16237,7 +16246,7 @@ function take(no){
   const r = Q && Q.r; if(!r || r.done || r.pos < 0) return;
   if(no === r.no){
     r.done = true; r.got = !r.ote; clearT(); hush();
-    if(r.got){ r.early = r.pos <= r.kamiLen; const pt = ptOf(CFG.baseH) + (r.early ? ptOf(CFG.early) : 0); r.pt = pt; give(pt, '百人一首 本番'); Q.pts += pt; Q.ok++; snd('ok'); }
+    if(r.got){ r.early = r.pos <= r.kamiLen; const pt = honPt(r); r.pt = pt; r.at = r.early ? `上の句の ${r.pos}文字目で とった！` : r.pos < r.len ? '下の句で とったので すこしだけ' : '読み終わってから とったので すこしだけ'; give(pt, '百人一首 本番'); Q.pts += pt; Q.ok++; snd('ok'); }
     else snd('tap');
     mark(r.no, r.got); Q.log[Q.i] = r.got; try{ persist(); }catch(e){}
     render(); paintFull();
@@ -16496,7 +16505,27 @@ body.hy77on{overflow:hidden}
 #hy77.ph.s-hon .hybg{background-position:70% top}
 #hy77.ph.s-shimo .hybg{background-position:75% bottom}
 @media (max-width:380px){#hy77 .hymb .ic{display:none}#hy77 .hylg{font-size:11px}}
-@media (max-height:700px){#hy77 .hymb{min-height:60px;padding:5px 8px}#hy77 .hymb small{display:none}#hy77 .hybars{height:60px}#hy77 .hydnw{width:min(28vw,19vh)}}
+#hy77 .hynow{float:right;background:#FFF0B3;border-radius:99px;padding:0 8px;color:#7A4A0A;font-size:12px}#hy77 .hynow b{font-size:15px;color:#E0457B}#hy77 .hynow.lo{background:#E9E3D6;color:#7A6A55}#hy77 .hynow.lo b{color:#7A6A55}#hy77 .hynow small{font-size:10px}
+#hy77 .hyrbw i.lo{background:#B9B4AA}
+#hy77 .hyat{font-size:13px;font-weight:900;color:#2E8C46}
+/* スマホ縦：1画面に おさめる（入らない 小さい 画面は 縦スクロール） */
+#hy77.ph .hytop{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;grid-template-rows:auto auto auto;align-content:start;padding-bottom:6px;overscroll-behavior:contain}
+#hy77.ph.s-top .hymodes{max-width:none;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+#hy77.ph .hymodes .hymul{grid-column:1/-1}
+#hy77.ph .hymb{min-height:62px;padding:6px 8px;gap:4px}
+#hy77.ph .hymb b{font-size:clamp(13px,3.9vw,17px);white-space:normal;line-height:1.25}
+#hy77.ph .hymb small{font-size:10.5px}
+#hy77.ph .hymb u{font-size:20px}
+#hy77.ph .hyrng>div{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}#hy77.ph .hyrng>div::-webkit-scrollbar{display:none}
+#hy77.ph .hyrng{flex-wrap:nowrap}
+#hy77.ph .hyc1{flex-direction:row;justify-content:center;gap:10px}#hy77.ph .hyc1 h3{font-size:14px;white-space:nowrap;text-align:center;line-height:1.5}
+#hy77.ph .hydnw{width:min(30vw,17vh,128px)}
+#hy77.ph .hybars{height:clamp(56px,11vh,110px)}
+#hy77.ph .hyc2{padding:8px 10px}
+@media (max-height:760px){#hy77.ph .hyhd{min-height:46px}#hy77.ph .hyback{font-size:14px;padding:4px 10px}#hy77.ph .hyc1{padding:6px 10px}#hy77.ph .hydnw{width:min(26vw,14vh,110px)}#hy77.ph .hybars{height:52px}#hy77.ph .hyc2 h3{font-size:14px}#hy77.ph .hymb small .p{font-size:10px}#hy77.ph .hybub1{font-size:13px;padding:6px 8px}}
+@media (max-height:600px){#hy77.ph .hymb small{display:none}#hy77.ph .hymb{min-height:50px}#hy77.ph .hyc2h .hylg{display:none}#hy77.ph .hyax{display:none}}
+/* 本番・下の句：低い 画面で 札が つぶれない ように */
+@media (max-height:700px){#hy77.ph .hyrd{padding:5px 10px}#hy77.ph .hyread{min-height:2.6em}#hy77.ph .hyread .k1{font-size:18px}#hy77.ph .hyread .k2{font-size:13px}#hy77.ph .hyprog{padding:1px 10px;font-size:12px}#hy77.ph .hyprog i{width:9px;height:9px}#hy77.ph .hycards{gap:7px}#hy77.ph .hykami .kt{font-size:18px}#hy77.ph .hybtn.big{min-height:44px;padding:6px 18px;font-size:17px}#hy77.ph .hyfb p{display:none}}
 /* ===== iPad横 ===== */
 #hy77.tab .hyw{padding:calc(10px + env(safe-area-inset-top)) 18px 14px}
 #hy77.tab .hyttl b{font-size:26px;padding:6px 30px}
