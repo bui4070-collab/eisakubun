@@ -1,18 +1,19 @@
-まなびタウン しせつBGM：コントラバス（13）・サックス（12）の音
+まなびタウン しせつBGM：クラリネット（11）・チェロ（13）の音
 
 ■ アップロード先
- assets/audio/music/ に 25ファイル
+ assets/audio/music/ に 24ファイル
 
-■ コントラバス（cb_）
- cb_Fs1 / G1 / As1 / C2 / D2 / E2 / Fs2 / Gs2 / A2 / Cs3 / E3 / Gs3 / B3
- ・pptx の 13ファイル（ぜんぶ ちがう 高さ）を すべて 使用。長さ 3秒
+■ クラリネット（cl_）
+ cl_D3 / F3 / As3 / D4 / F4 / As4 / D5 / F5 / As5 / D6 / F6
+ ・pptx の 11ファイル（3半音おき、重なり なし）を すべて 使用。長さ 3.5秒
 
-■ サックス（sx_）
- sx_Cs3 / E3 / G3 / As3 / Cs4 / E4 / G4 / As4 / Cs5 / E5 / G5 / A5
- ・pptx の 32ファイル（C#3〜A5 半音ずつ）から 3半音おきに 12音。長さ 3.5秒（のばす 音は くりかえし）
+■ チェロ（vc_）
+ vc_C2 / Ds2 / F2 / G2 / As2 / Cs3 / E3 / G3 / As3 / Cs4 / E4 / G4 / C5
+ ・pptx の 37ファイル（C2〜C5）から 2〜3半音おきに 13音。長さ 2.4秒（のばす 音は アプリで くりかえし）
+ ・同じ 高さに 見える ファイルが 3組 あった（弓の 向き ちがい と 思われる）ので、それは 使わず
 
 ■ 加工（共通）
  1つずつ 音の高さを 測って 確認 → 最初の 無音を カット、最後で 小さく、音量を そろえ（−1dB）、mp3 モノラル 96kbps
 
 ■ クレジット
- Contrabass / Saxophone samples: tonejs-instruments / nbrosowsky (CC BY 3.0)
+ Clarinet / Cello samples: tonejs-instruments / nbrosowsky (CC BY 3.0)
