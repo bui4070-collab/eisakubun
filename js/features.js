@@ -16731,6 +16731,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
    v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    v8.3 伴奏（ドラム・ベース・ギター・もっきん）
+   v9.3 リズムゲームに「lulu.」サビ（最高むずかしさ・本物の 音源つき）［著作権あり：公開前に けす］／ひくい 音の 修正
    v9.2 BGM に 強弱・イントロ・周回ごとの かわりかた（ゆうえんちは 作りなおし）／トルコ行進曲を ながく／リズムゲームの 曲を ふやした
    v9.1 しせつ BGM ぜんぶ（だいがく・くうこう・ゆうえんち・そうごうびょういん・スタジアム を 追加／がっこうは 2きょく）
    v9.0 しせつ BGM（6しせつ・楽器の 音で 演奏）
@@ -16794,16 +16795,17 @@ const VOICES = {};
 function noteOn(inst, m, key){
   const ac = ctx(); if(!ac) return; key = key || ('k' + m);
   noteOff(key, true);
-  const s = nearest(inst, m), buf = BUF[inst + s], g = ac.createGain(), t = ac.currentTime;
+  const mm = (inst === 'pf' && m < 48) ? m + 12 * Math.ceil((48 - m) / 12) : m;       // ひくい 音は 1オクターブずつ 上げて ならす（サンプルは ド3〜）
+  const s = nearest(inst, mm), buf = BUF[inst + s], g = ac.createGain(), t = ac.currentTime;
   g.connect(MASTER);
   if(buf){
-    const src = ac.createBufferSource(); src.buffer = buf; src.playbackRate.value = Math.pow(2, (m - s) / 12);
+    const src = ac.createBufferSource(); src.buffer = buf; src.playbackRate.value = Math.pow(2, (mm - s) / 12);
     if(inst === 'mh'){ src.loop = true; src.loopStart = 0.9; src.loopEnd = Math.min(buf.duration - 0.35, 2.9); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.75, t + 0.025); }
     else g.gain.setValueAtTime(0.95, t);
     src.connect(g); src.start(t); VOICES[key] = {src, g, inst};
   } else {
     loadOne(inst, s);
-    const o = ac.createOscillator(); o.type = inst === 'mh' ? 'sawtooth' : 'triangle'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    const o = ac.createOscillator(); o.type = inst === 'mh' ? 'sawtooth' : 'triangle'; o.frequency.value = 440 * Math.pow(2, (mm - 69) / 12);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(inst === 'mh' ? 0.12 : 0.3, t + 0.02);
     if(inst === 'pf') g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
     o.connect(g); o.start(t); VOICES[key] = {src:o, g, inst};
@@ -17146,6 +17148,43 @@ const SONGS = [
   {id:'elise', t:'エリーゼのために', g:'クラシック・ベートーヴェン', d:3, bpm:120, lo:60,
    n:'E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:2 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:2 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:3'}
 ];
+
+/* =====================================================================================
+   ★★★ [著作権あり・公開するときは ここから ★END まで ぜんぶ けす] ★★★
+   Mrs. GREEN APPLE「lulu.」サビ（ピアノ楽譜どおり）＋ 本物の 音源（assets/audio/music/cr_lulu_chorus.mp3）
+   ・家庭内で つかう ためだけ。ネットで 公開する ときは CR_SHOW を false にするか、この ブロックと 音源ファイルを けす
+   ===================================================================================== */
+const CR_SHOW = true;                       // [CR] ← 公開するときは false（曲と 音源が まったく でなくなる）
+const CR_RH = [[67,0,0.5,0],[69,0.5,0.5,0],[71,1,0.5,0],[72,1.5,0.5,0],[71,2,0.5,0],[64,2,0.5,1],[60,2,0.5,1],[69,3,0.5,0],[67,3.5,0.5,0],[67,4,0.5,0],[62,4,0.5,1],[59,4,0.5,1],[67,6.5,0.5,0],[67,7,0.5,0],[67,7.5,0.5,0],[79,8,1,0],[76,8,1,1],[71,8,1,1],[79,9,1,0],[76,9,1,1],[71,9,1,1],[79,10,1,0],[76,10,1,1],[71,10,1,1],[79,11,1,0],[76,11,1,1],[71,11,1,1],[79,12,1,0],[74,12,1,1],[69,12,1,1],[79,13,1,0],[74,13,1,1],[69,13,1,1],[78,14,1.5,0],[74,14,1.5,1],[69,14,1.5,1],[79,15.5,2.5,0],[76,15.5,2.5,1],[71,15.5,2.5,1],[74,18,0.333,0],[76,18.333,0.333,0],[78,18.667,0.333,0],[79,19,0.25,0],[81,19.25,0.25,0],[83,19.5,0.25,0],[84,19.75,0.25,0],[86,20,0.25,0],[84,20.25,0.25,0],[83,20.5,0.25,0],[81,20.75,0.25,0],[79,21,1,0],[71,22,0.5,0],[67,22,0.5,1],[62,22,0.5,1],[69,22.5,0.5,0],[67,23,0.5,0],[67,23.5,0.5,0],[79,24,1,0],[76,24,1,1],[71,24,1,1],[79,25,1,0],[76,25,1,1],[71,25,1,1],[79,26,1,0],[76,26,1,1],[71,26,1,1],[79,27,1,0],[76,27,1,1],[71,27,1,1],[79,28,0.5,0],[74,28,0.5,1],[69,28,0.5,1],[74,29,1,0],[76,30,1.5,0],[74,31.5,2.5,0],[71,31.5,2.5,1],[67,31.5,2.5,1],[74,34,0.333,0],[76,34.333,0.333,0],[78,34.667,0.333,0],[79,35,0.25,0],[81,35.25,0.25,0],[83,35.5,0.25,0],[84,35.75,0.25,0],[86,36,0.25,0],[84,36.25,0.25,0],[83,36.5,0.25,0],[81,36.75,0.25,0],[79,37,0.5,0],[67,37.5,0.5,0],[71,38,0.5,0],[67,38,0.5,1],[62,38,0.5,1],[69,38.5,0.5,0],[67,39,1,0],[79,40,1,0],[76,40,1,1],[71,40,1,1],[79,41,1,0],[76,41,1,1],[71,41,1,1],[79,42,1,0],[76,42,1,1],[71,42,1,1],[78,43,1,0],[74,43,1,1],[69,43,1,1],[79,44,1,0],[72,44,1,1],[67,44,1,1],[79,45,1,0],[78,46,1,0],[75,46,1,1],[69,46,1,1],[75,47,1,0],[75,48,1,0],[69,48,1,1],[66,48,1,1],[78,49,2,0],[75,49,2,1],[69,49,2,1],[79,51,3,0],[76,51,3,1],[71,51,3,1],[83,54,1,0],[76,54,1,1],[71,54,1,1],[79,55,1,0],[64,56,1,0],[60,56,1,1],[55,56,1,1],[67,57,1,0],[83,58,1,0],[71,58,1,1],[84,59,1,0],[72,59,1,1],[69,60,1,0],[66,60,1,1],[60,60,1,1],[83,61,1,0],[71,61,1,1],[81,62,1,0],[69,62,1,1],[79,63,1,0],[67,63,1,1],[71,64,1,0],[67,64,1,1],[62,64,1,1],[72,65,1,0],[67,65,1,1],[64,65,1,1],[74,66,1,0],[67,66,1,1],[62,66,1,1],[76,67,1,0],[67,67,1,1],[64,67,1,1],[78,68,0.667,0],[69,68,0.667,1],[66,68,0.667,1],[79,68.667,0.667,0],[67,68.667,0.667,1],[81,69.333,0.667,0],[69,69.333,0.667,1],[83,70,1.5,0],[74,70,1.5,1],[71,70,1.5,1],[81,71.5,0.5,0],[69,71.5,0.5,1],[79,72,1.5,0],[71,72,1.5,1],[67,72,1.5,1],[79,73.5,0.5,0],[67,73.5,0.5,1],[83,74,1.5,0],[74,74,1.5,1],[71,74,1.5,1],[79,75.5,0.5,0],[67,75.5,0.5,1],[86,76,1.5,0],[79,76,1.5,1],[74,76,1.5,1],[86,77.5,0.5,0],[74,77.5,0.5,1],[86,78,1.5,0],[74,78,1.5,1],[83,79.5,0.25,0],[81,79.75,0.25,0],[79,80,0.5,0],[76,80,0.5,1],[71,80,0.5,1],[79,80.5,1.5,0],[81,82,1.5,0],[78,82,1.5,1],[74,82,1.5,1],[69,82,1.5,1],[84,83.5,0.5,0],[72,83.5,0.5,1],[83,84,2,0],[79,84,2,1],[74,84,2,1],[71,84,2,1],[83,86,1.5,0],[79,86,1.5,1],[74,86,1.5,1],[79,87.5,0.5,0],[74,88,2,0],[71,88,2,1],[67,88,2,1],[62,88,2,1],[83,90,1.5,0],[79,90,1.5,1],[74,90,1.5,1],[71,90,1.5,1],[79,91.5,0.5,0],[86,92,2,0],[83,92,2,1],[79,92,2,1],[74,92,2,1],[84,94,0.667,0],[72,94,0.667,1],[84,94.667,0.667,0],[72,94.667,0.667,1],[83,95.333,0.667,0],[71,95.333,0.667,1],[84,96,1.333,0],[76,96,1.333,1],[72,96,1.333,1],[86,97.333,0.667,0],[74,97.333,0.667,1],[83,98,0.667,0],[71,98,0.667,1],[81,98.667,0.667,0],[69,98.667,0.667,1],[79,99.333,0.667,0],[67,99.333,0.667,1],[81,100,2,0],[78,100,2,1],[74,100,2,1],[69,100,2,1],[83,102,1.333,0],[74,102,1.333,1],[71,102,1.333,1],[81,103.333,0.667,0],[72,103.333,0.667,1],[69,103.333,0.667,1],[79,104,1.333,0],[74,104,1.333,1],[71,104,1.333,1],[67,104,1.333,1],[79,105.333,0.667,0],[67,105.333,0.667,1],[81,106,0.667,0],[76,106,0.667,1],[72,106,0.667,1],[69,106,0.667,1],[81,106.667,0.667,0],[69,106.667,0.667,1],[88,107.333,0.667,0],[76,107.333,0.667,1],[86,108,1.333,0],[83,108,1.333,1],[79,108,1.333,1],[74,108,1.333,1],[86,109.333,0.667,0],[74,109.333,0.667,1],[86,110,0.667,0],[74,110,0.667,1],[83,110.667,0.667,0],[71,110.667,0.667,1],[81,111.333,0.667,0],[69,111.333,0.667,1],[79,112,0.667,0],[76,112,0.667,1],[71,112,0.667,1],[67,112,0.667,1],[79,112.667,0.667,0],[67,112.667,0.667,1],[79,113.333,0.667,0],[67,113.333,0.667,1],[81,114,0.667,0],[78,114,0.667,1],[75,114,0.667,1],[69,114,0.667,1],[81,114.667,0.667,0],[69,114.667,0.667,1],[84,115.333,0.667,0],[72,115.333,0.667,1],[83,116,1.333,0],[79,116,1.333,1],[74,116,1.333,1],[71,116,1.333,1],[74,117.333,0.667,0],[86,118,1.333,0],[79,118,1.333,1],[74,118,1.333,1],[83,119.333,0.333,0],[81,119.667,0.333,0],[79,120,2,0],[72,120,2,1],[67,120,2,1],[86,122,1.333,0],[79,122,1.333,1],[74,122,1.333,1],[83,123.333,0.333,0],[81,123.667,0.333,0],[79,124,2,0],[74,124,2,1],[67,124,2,1],[76,126,0.667,0],[74,126,0.667,1],[69,126,0.667,1],[76,126.667,0.667,0],[74,127.333,0.667,0],[76,128,2,0],[71,128,2,1],[67,128,2,1],[64,130,2,0],[59,130,2,1],[55,130,2,1],[67,132,1.5,0],[63,132,1.5,1],[60,132,1.5,1],[57,132,1.5,1],[69,133.5,0.5,0],[81,134,1.5,0],[76,135.5,0.5,0]];                       // [CR] みぎて（ト音記号）[音, はじまる拍, ながさ, 和音の 2つめ いこう=1]
+const CR_LH = [[48,0,0.5],[36,0,0.5],[45,2,0.5],[33,2,0.5],[43,4,0.5],[31,4,0.5],[43,6,0.75],[38,6.75,0.75],[31,7.5,0.5],[48,8,1.5],[36,8,1.5],[59,9.5,1],[55,9.5,1],[48,10.5,0.5],[36,11,1],[50,12,1.5],[38,12,1.5],[50,13.5,0.5],[57,14,2],[54,14,2],[52,16,1.5],[40,16,1.5],[52,17.5,0.5],[59,18,1],[55,18,1],[43,19,1],[31,19,1],[43,20,2],[31,20,2],[47,22,2],[35,22,2],[48,24,1.5],[36,24,1.5],[59,25.5,1],[55,25.5,1],[48,26.5,0.5],[36,27,1],[50,28,1.5],[38,28,1.5],[50,29.5,0.5],[57,30,2],[54,30,2],[43,32,1.5],[31,32,1.5],[59,33.5,1.5],[55,33.5,1.5],[50,33.5,1.5],[43,35,0.5],[31,35,0.5],[45,35.5,0.5],[33,35.5,0.5],[47,36,1.5],[35,36,1.5],[47,37.5,1],[47,38.5,0.5],[35,39,1],[48,40,1.5],[36,40,1.5],[59,41.5,1],[55,41.5,1],[48,42.5,0.5],[36,42.5,0.5],[47,43,1],[35,43,1],[45,44,2],[33,44,2],[42,46,2],[30,46,2],[47,48,1.5],[35,48,1.5],[47,49.5,0.5],[57,50,1],[54,50,1],[47,51,1],[52,52,1],[40,52,1],[52,53,1],[51,54,1],[39,54,1],[51,55,1],[45,56,1],[33,56,1],[45,57,1],[33,57,1],[45,58,1],[33,58,1],[45,59,1],[33,59,1],[50,60,1],[38,60,1],[50,61,1],[38,61,1],[50,62,1],[38,62,1],[50,63,1],[38,63,1],[43,64,1],[31,64,1],[45,65,1],[33,65,1],[47,66,1],[35,66,1],[48,67,1],[36,67,1],[50,68,0.667],[38,68,0.667],[50,68.667,0.667],[38,68.667,0.667],[50,69.333,0.667],[38,69.333,0.667],[43,72,2],[31,72,2],[45,74,2],[33,74,2],[47,76,2],[35,76,2],[48,80,2],[36,80,2],[50,82,2],[38,82,2],[43,84,2],[31,84,2],[40,88,2],[42,90,2],[30,90,2],[43,92,1.333],[31,92,1.333],[31,93.333,0.667],[43,94,0.667],[38,94.667,0.667],[31,95.333,0.667],[48,96,2],[36,96,2],[49,98,2],[37,98,2],[50,100,1.333],[38,100,1.333],[38,101.333,2.667],[43,104,2],[31,104,2],[45,106,2],[33,106,2],[47,108,1.333],[35,108,1.333],[35,109.333,0.667],[47,110,0.667],[42,110.667,0.667],[35,111.333,0.667],[48,112,2],[36,112,2],[47,114,2],[35,114,2],[52,116,1.333],[40,116,1.333],[40,117.333,0.667],[52,118,0.667],[47,118.667,0.667],[40,119.333,0.667],[45,120,2],[33,120,2],[45,122,2],[33,122,2],[47,124,2],[35,124,2],[47,126,2],[35,126,2],[48,128,2],[36,128,2],[48,130,2],[36,130,2],[50,132,4],[38,132,4]];                       // [CR] ひだりて（ヘ音記号）[音, はじまる拍, ながさ]
+if(CR_SHOW){ const hi = 88;
+  SONGS.push({id:'lulu', t:'lulu.（サビ）', g:'Mrs. GREEN APPLE ©著作権あり（公開のときは けす）', d:4, bpm:175.1, lo:55, hi, beats:136, cr:1, free:1, au:'cr_lulu_chorus.mp3',
+    notes:CR_RH.map(([m, b, d, h2]) => ({m, b, d, h2:!!h2})), lh:CR_LH.map(([m, b, d]) => ({m, b, d}))}); }
+/* 本物の 音源：ゲーム（はやさ 100%）と おてほん で ながす。まってくれる・ゆっくり・ばんそう なし では ながさない */
+const CRAU = {buf:{}, load:{}, run:null};
+function crPre(s){
+  if(!s || !s.au || CRAU.buf[s.au] || CRAU.load[s.au] || !ctx()) return;
+  CRAU.load[s.au] = fetch(SND + s.au).then(r => { if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(decode)
+    .then(b => { CRAU.buf[s.au] = b; delete CRAU.load[s.au]; }).catch(e => { delete CRAU.load[s.au]; console.warn('cr audio', e); });
+}
+function crAuStop(fade){
+  const r = CRAU.run; if(!r) return; CRAU.run = null; if(G) G.auOn = false;
+  try{ const t = AC.currentTime; if(fade){ r.g.gain.cancelScheduledValues(t); r.g.gain.setValueAtTime(r.g.gain.value, t); r.g.gain.linearRampToValueAtTime(0, t + fade); r.src.stop(t + fade + 0.03); } else r.src.stop(); }catch(e){}
+}
+function crAuInit(s, o){
+  crAuStop(); G.au = null; G.auOn = false;
+  if(!s.au || o.sp !== 1 || o.md === 'wait' || (o.bgm || 'all') !== 'all') return;
+  G.au = s.au; crPre(s);
+}
+function crAuTick(){
+  if(!G || !G.au || G.auOn || G.paused || G.over || G.md === 'wait') return;
+  const buf = CRAU.buf[G.au]; if(!buf || !AC || AC.state !== 'running' || !MASTER) return;
+  if(G.clock < -0.45 || G.clock > buf.duration - 0.3) return;
+  const src = AC.createBufferSource(), g = AC.createGain(); src.buffer = buf; g.gain.value = 0.9; src.connect(g); g.connect(MASTER);
+  src.start(AC.currentTime + Math.max(0, -G.clock), Math.max(0, G.clock)); CRAU.run = {src, g}; G.auOn = true;     // 曲の 0びょう ＝ ゲームの 0びょう
+}
+setTimeout(() => { try{ const d = document.querySelector('#muCredit div'); if(d && CR_SHOW) d.insertAdjacentHTML('beforeend', '<br>lulu.（サビ）：Mrs. GREEN APPLE（作詞・作曲 大森元貴）。家庭内で つかう ためだけ ／ 楽譜は ピアノ アレンジ（結菜）をもとに 作成'); }catch(e){} }, 1200);
+/* ★END [著作権あり] ★ */
 SONGS.sort((a, b) => a.d - b.d);
 const DIFF = {1:['かんたん', 30, '#40C057'], 2:['ふつう', 50, '#339AF0'], 3:['むずかしい', 80, '#E0457B'], 4:['ちょう むずかしい', 120, '#8E44AD']};
 const SPEEDS = [0.5, 0.75, 1];
@@ -17162,7 +17201,7 @@ function parseSong(s){
 }
 function SG(){ const m = MS(); m.songs = m.songs || {}; return m.songs; }
 const songRec = id => SG()[id] || {st:0, hi:0, n:0};
-const songOpen = s => { const L = SONGS.filter(x => x.d === s.d), i = L.indexOf(s); if(s.d === 4 && i <= 0) return SONGS.some(x => x.d === 3 && songRec(x.id).st >= 1); return i <= 0 || songRec(L[i - 1].id).st >= 1; };
+const songOpen = s => { if(s.free) return true; const L = SONGS.filter(x => x.d === s.d), i = L.indexOf(s); if(s.d === 4 && i <= 0) return SONGS.some(x => x.d === 3 && songRec(x.id).st >= 1); return i <= 0 || songRec(L[i - 1].id).st >= 1; };
 const cleared = () => SONGS.filter(s => songRec(s.id).st >= 1).length;
 const starSum = () => SONGS.reduce((a, s) => a + songRec(s.id).st, 0);
 let G = null, RAF = 0;
@@ -17221,7 +17260,7 @@ function bgPlay(inst, m, when, dur, vol){
   src.connect(g); g.connect(b); src.start(t); if(dur) src.stop(t + dur + 0.15);
   BGS.add(src); src.onended = () => BGS.delete(src);
 }
-function bgStopAll(){ BGS.forEach(s => { try{ s.stop(); }catch(e){} }); BGS.clear(); }
+function bgStopAll(){ BGS.forEach(s => { try{ s.stop(); }catch(e){} }); BGS.clear(); try{ crAuStop(); }catch(e){} }     // [CR]
 /* 曲の 伴奏を イベントの ならびに する（t は 拍） */
 function buildBgm(s, mode){
   const C = CHORDS[s.id]; if(!C || mode === 'off') return [];
@@ -17301,7 +17340,8 @@ function sel(L){
 function setSheet(id){
   const s = SONGS.find(x => x.id === id), m = MS(), o = m.rgo || (m.rgo = {sp:1, md:'play'}), r = songRec(id); if(!o.bgm) o.bgm = 'all'; if(!o.vw) o.vw = 'fall'; if(!o.hd) o.hd = 'r';
   const seg = (k, arr) => arr.map(([v, t]) => `<button class="${o[k] === v ? 'on' : ''}" data-a="rgOpt" data-k="${k}" data-v="${v}">${t}</button>`).join('');
-  const base = DIFF[s.d][1], tab = isTab(), canLH = m.inst === 'pf' && tab && CHORDS[s.id];
+  const base = DIFF[s.d][1], tab = isTab(), canLH = m.inst === 'pf' && tab && (CHORDS[s.id] || s.lh);
+  try{ crPre(s); }catch(e){}     // [CR]
   return `<div class="rgmask" data-a="rgClose"><div class="rgsheet" data-stop="1">
     <h3>${s.t}</h3><p class="rgsub">${DIFF[s.d][0]}・${INST[m.inst].n}・${parseSong(s).length}こ の 音</p>
     <div class="rgopt"><small>はやさ</small><div class="seg">${seg('sp', [[0.5, 'ゆっくり 50%'], [0.75, '75%'], [1, 'ふつう 100%']])}</div></div>
@@ -17310,6 +17350,7 @@ function setSheet(id){
     ${m.inst === 'pf' ? `<div class="rgopt"><small>て</small><div class="seg s2">${seg('hd', [['r', 'みぎて'], ['lr', 'りょうて（左手は ベース）']])}</div>${o.hd === 'lr' && !canLH ? '<small class="rgwarn">りょうては iPad よこむき で ひけるよ</small>' : ''}</div>` : ''}
     <div class="rgopt"><small>ばんそう</small><div class="seg">${seg('bgm', [['all', 'あり'], ['drum', 'ドラムだけ'], ['off', 'なし']])}</div></div>
     <p class="rgnote">${o.vw === 'score' ? 'がくふの 音ふが 右から 左へ ながれるよ。けんばんには 名前も 色も ないよ。音ふを 読んで ひいてね！<br>' : ''}${o.md === 'wait' ? '正しい けんばんを おすまで 音ふが とまって まってくれるよ（★なし・ポイント はんぶん）' : o.md === 'auto' ? `${INST[m.inst].who}が ひいて みせるよ。けんばんの 光り方を 見てね（ポイントなし）` : o.sp < 1 ? `ゆっくりは ★2 まで。★3 は 100% で ねらおう！（${ptOf(base)}〜${ptOf(base * 1.3)}pt）` : `★の 数で ポイントが ふえるよ（${ptOf(base)}〜${ptOf(base * 1.6)}pt）${r.st < 3 ? `・はじめての ★3で ＋${ptOf(100)}` : ''}`}<br>ながい 音ふは おしつづけると ボーナス！</p>
+    ${s.au ? `<p class="rgnote">🎵 本物の 音源つき（<b>はやさ 100%</b>の「ゲーム」「おてほん」で ながれるよ）${s.lh ? '<br>🖐 いちばん むずかしい：iPad よこむきで「りょうて」だと 楽譜どおり！' : ''}</p>` : ''}
     <div class="rgbtns"><button class="drnext white" data-a="rgClose">やめる</button><button class="drnext" data-a="rgStart">スタート！</button></div>
   </div></div>`;
 }
@@ -17372,7 +17413,10 @@ function rgStart(id){
     notes:s.notes.map((n, i) => ({m:n.m, t:n.b * spb, b:n.b, dur:n.d * spb, db:n.d, j:null, el:null, h2:n.h2})), end:s.beats * spb, lastA:null, bgi:0,
     holdB:0, holdOk:0, breath:1, suu:0};
   /* りょうて（ピアノ・iPad）：コードの ねいろ を 左手で */
-  if(m.inst === 'pf' && o.hd === 'lr' && isTab() && CHORDS[id]){
+  if(m.inst === 'pf' && o.hd === 'lr' && isTab() && s.lh){          // [CR] 楽譜どおりの 左手
+    s.lh.forEach(n => G.notes.push({m:n.m, t:n.b * spb, b:n.b, dur:n.d * spb, db:n.d, j:null, el:null, lh:true}));
+    G.notes.sort((a, b) => a.t - b.t || (a.lh ? -1 : 1)); G.lh = true;
+  } else if(m.inst === 'pf' && o.hd === 'lr' && isTab() && CHORDS[id]){
     const C = CHORDS[id], B = C.bt || 4, pk = C.pk || 0, last = s.notes[s.notes.length - 1].b;
     C.c.split('|').forEach((bar, i) => { const chs = bar.trim().split(/\s+/), seg = B / chs.length;
       chs.forEach((ch, j) => { const b = pk + i * B + j * seg; if(b >= last) return; const r = chordPcs(ch)[0];
@@ -17386,7 +17430,8 @@ function rgStart(id){
       if(p && p.m === n.m && Math.abs(p.t + p.dur - n.t) < 0.01) n.tu = true;
       if(!nx || nx.t - (n.t + n.dur) > 0.01 || n.db >= LONG_B) n.br = true; });
   }
-  bgStopAll(); bgPreload(); G.bg = [-4, -3, -2, -1].map(b => ({b, inst:'dr', m:'stick', dur:0, vol:b === -4 ? 0.95 : 0.7})).concat(buildBgm(s, o.bgm || 'all'));
+  bgStopAll(); try{ crAuInit(s, o); }catch(e){}     // [CR]
+  bgPreload(); G.bg = [-4, -3, -2, -1].map(b => ({b, inst:'dr', m:'stick', dur:0, vol:b === -4 ? 0.95 : 0.7})).concat(buildBgm(s, o.bgm || 'all'));
   V = {s:'play'}; render(); measure(); cancelAnimationFrame(RAF); RAF = requestAnimationFrame(t => { G.last = t; RAF = requestAnimationFrame(loop); });
 }
 function measure(){
@@ -17474,7 +17519,7 @@ function loop(now){
   const adv = G.clock - before;
   /* カウント */
   const beat = Math.floor(G.clock / G.spb);
-  bgSchedule();
+  bgSchedule(); try{ crAuTick(); }catch(e){}     // [CR]
   if(G.clock < 0 && beat > G.tick && beat >= -4){ G.tick = beat; if(!BUF.drstick) tickSound(beat === -4); const c = ROOT.querySelector('#rgcnt'); if(c){ c.textContent = -beat; c.classList.remove('go'); void c.offsetWidth; c.classList.add('go'); } }
   /* おてほん */
   if(G.md === 'auto') for(const n of G.notes){ if(n.j) continue; if(n.t > G.clock) break;
@@ -17525,7 +17570,7 @@ function loop(now){
 document.addEventListener('visibilitychange', () => { if(document.hidden && G && !G.over && V.s === 'play'){ rgPause(true); } });
 function rgPause(on){ if(!G) return; if(on) G.notes.forEach(n => { if(n.hold === true) holdEnd(n, false); }); G.paused = on; allOff(); bgRewind(); const p = ROOT && ROOT.querySelector('#rgpause'); if(p) p.hidden = !on; }
 function rgFinish(){
-  cancelAnimationFrame(RAF); allOff(); const s = SONGS.find(x => x.id === G.id), N = G.notes.length; G.over = true; G.score = Math.round(G.score);
+  cancelAnimationFrame(RAF); allOff(); try{ crAuStop(0.5); }catch(e){}     // [CR] const s = SONGS.find(x => x.id === G.id), N = G.notes.length; G.over = true; G.score = Math.round(G.score);
   const acc = (G.cnt.p * ACC.p + G.cnt.g * ACC.g + G.cnt.ok * ACC.ok) / N;
   let st = acc >= 0.95 ? 3 : acc >= 0.8 ? 2 : acc >= 0.6 ? 1 : 0; if(G.sp < 1) st = Math.min(st, 2);
   const r = SG()[G.id] || (SG()[G.id] = {st:0, hi:0, n:0}); G.res = {acc, st, pt:0, best:false, first3:false, unlock:null};
