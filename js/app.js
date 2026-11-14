@@ -1719,7 +1719,11 @@ function rehouse(){
 }
 const homeless = () => save.town.res.filter(r => !r.home);
 /* ---------- 計算 ---------- */
-const effAb = (r,k) => (r.ab[k]||0) * (1 + TOWN_RULES.starRate*(r.star-1));
+/* v9.2 のうりょくの じょうげん（レア度べつ）：ふつう 50／ちょっとレア 100／レア 150／ちょうレア 300 */
+const AB_CAP = {1:50, 2:100, 3:150, 4:300};
+const abCap = r => { const s = SP(r.sp); return AB_CAP[(s && s.rar) || 1] || 50; };
+const effAb = (r,k) => Math.min(abCap(r), (r.ab[k]||0) * (1 + TOWN_RULES.starRate*(r.star-1)));
+const abFull = (r,k) => (r.ab[k]||0) >= abCap(r) || effAb(r,k) >= abCap(r) - 1e-6;
 function townTotals(){ const tot = {}; ABILITIES.forEach(a => tot[a.id] = 0); (save.town?.res||[]).forEach(r => ABILITIES.forEach(a => tot[a.id] += effAb(r,a.id))); return tot; }
 function townCalc(){
   const t = save.town, tot = townTotals(), R = TOWN_RULES;
@@ -2184,7 +2188,8 @@ async function canHoldVehicle(it){
    ===================================================================== */
 const stars = n => '★'.repeat(n) + '<i>' + '★'.repeat(Math.max(0, TOWN_RULES.maxStar-n)) + '</i>';
 function abBars(r){
-  return ABILITIES.map(a => { const v = effAb(r,a.id); return `<div class="abRow"><span>${a.i} ${a.n}</span><div class="abBar"><i style="width:${clamp(v/15*100,4,100)}%"></i></div><b>${Math.round(v*10)/10}</b></div>`; }).join('');
+  const mx = abCap(r);
+  return ABILITIES.map(a => { const v = effAb(r,a.id), full = v >= mx - 1e-6; return `<div class="abRow ${full ? 'abMax' : ''}"><span>${a.i} ${a.n}</span><div class="abBar"><i style="width:${clamp(v/mx*100,4,100)}%"></i></div><b>${full ? 'MAX' : Math.round(v*10)/10}</b></div>`; }).join('');
 }
 function homeLabel(r){ if(!r.home) return '<div class="rHome none">🏚️ すむ 家が ないよ</div>'; const it = ITEM(save.town.cells[r.home]); return `<div class="rHome">🏠 ${esc(it?.name||'')}に すんでいる</div>`; }
 function renderResidents(){
