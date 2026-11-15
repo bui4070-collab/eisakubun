@@ -16731,6 +16731,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
    v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    v8.3 伴奏（ドラム・ベース・ギター・もっきん）
+   v9.4.1 けっか がめん（せいかいりつ NaN・★・ポイント）の ふぐあいを しゅうせい
    v9.4 サビの きらきら えんしゅつ／トルコ行進曲を 楽譜どおりに／おとの ずれ ちょうせい（ほんものの 音源の 曲）
    v9.2 BGM に 強弱・イントロ・周回ごとの かわりかた（ゆうえんちは 作りなおし）／トルコ行進曲を ながく／リズムゲームの 曲を ふやした
    v9.1 しせつ BGM ぜんぶ（だいがく・くうこう・ゆうえんち・そうごうびょういん・スタジアム を 追加／がっこうは 2きょく）
@@ -17687,7 +17688,8 @@ function loop(now){
 document.addEventListener('visibilitychange', () => { if(document.hidden && G && !G.over && V.s === 'play'){ rgPause(true); } });
 function rgPause(on){ if(!G) return; if(on) G.notes.forEach(n => { if(n.hold === true) holdEnd(n, false); }); G.paused = on; allOff(); bgRewind(); const p = ROOT && ROOT.querySelector('#rgpause'); if(p) p.hidden = !on; }
 function rgFinish(){
-  cancelAnimationFrame(RAF); allOff(); try{ crAuStop(0.5); }catch(e){}     // [CR] const s = SONGS.find(x => x.id === G.id), N = G.notes.length; G.over = true; G.score = Math.round(G.score);
+  cancelAnimationFrame(RAF); allOff(); try{ crAuStop(0.5); }catch(e){}     // [CR]
+  const s = SONGS.find(x => x.id === G.id), N = G.notes.length; G.over = true; G.score = Math.round(G.score);
   const acc = (G.cnt.p * ACC.p + G.cnt.g * ACC.g + G.cnt.ok * ACC.ok) / N;
   let st = acc >= 0.95 ? 3 : acc >= 0.8 ? 2 : acc >= 0.6 ? 1 : 0; if(G.sp < 1) st = Math.min(st, 2);
   const r = SG()[G.id] || (SG()[G.id] = {st:0, hi:0, n:0}); G.res = {acc, st, pt:0, best:false, first3:false, unlock:null};
