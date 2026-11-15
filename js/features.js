@@ -2065,7 +2065,7 @@ miniQuiz = (orig => async function(who, title){
 function hintIntro(r){
   if(!r) return '';
   if(isHuman(r)) return choice(['わたしの ひらめき、きいてね！','ここが ポイントだよ！','いっしょに かんがえよ！']);
-  const N = named(r); if(N && N.cheer) return choice({'はかせ':['ホッホー、ヒントじゃ'],'マリン':['Here is a hint！ ヒントだよ'],'モグ':['ていしゃえきの あんないです'],'ツバサ':['ヒントの てがみを どうぞ'],'ラクタ':['ちずの ヒントを あげよう'],'ミミ':['ぴょんっと ヒントだよ']}[r.name] || ['ヒントだよ']);
+  const N = named(r); if(N && N.cheer) return choice({'はかせ':['ホッホー、ヒントじゃ'],'マリン':['Here is a hint！ ヒントだよ'],'モグ':['ていしゃえきの あんないです'],'ツバサ':['ヒントの てがみを どうぞ'],'ラクタ':['ちずの ヒントを あげよう'],'ネジ':['ねじを まいて ヒントだよ'],'ミミ':['ぴょんっと ヒントだよ']}[r.name] || ['ヒントだよ']);
   return speak(r, fill(choice(P(traitOf(r).hint)), r));
 }
 const _dialog53 = dialog;
@@ -2141,6 +2141,7 @@ function hanaExtra(r){
   if(st.ch4) L.push('マリンさんに「Good morning」の はつおん、ほめられたんだ！');
   if(st.ch5) L.push('ツバサさんが、わたしにも てがみを とどけてくれたの！', 'にがて大王さんの にっき… ずっと 気に なってるんだ');
   if(st.ch6) L.push('ラクタさんが、この まちの ちずを かいてくれたよ。わたしの 家も のってた！', 'にがて大王さんと、いつか ともだちに なれるかな');
+  if(st.ch7) L.push('ネジさんが ね、ぜんまいの おとを きかせて くれたの。ちくたく ちくたく って、いい おとだったよ', 'マシンの おくの ふるい 紙に かいてあった ちいさな 木と ひかる たね…。あれは なんだったのかな');
   return L;
 }
 girlLine = (orig => function(r){
@@ -16731,6 +16732,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
    v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    v8.3 伴奏（ドラム・ベース・ギター・もっきん）
+   v9.6 ものがたり だい7しょう（Lv18「からくりの くにと わすれんぼうマシン」）・おんがく・さしえ・ネジ
    v9.5 ものがたり 7つ（プロローグ＋第1〜6しょう）の おんがくを オリジナルの 曲に さしかえ
    v9.4.2 リズムゲームの カクカク たいさく（音ふを がめんに でる ぶんだけ つくる）／「ちがう けんばん」の ひょうじを なくした
    v9.4.1 けっか がめん（せいかいりつ NaN・★・ポイント）の ふぐあいを しゅうせい
@@ -18524,7 +18526,10 @@ const ST_DEF = {
     th:"1_1 5_1 1'_1 3'_1|6_1 3'_1.5 6'_.5 5'_1|4'_1.5 6'_.5 4'_1 1'_1|5'_1 2'_1 7_1 2'_1|3'_1 5'_.5 3'_.5 1'_1 5_1|3'_1 7'_1 5'_1.5 3'_.5|6'_1 4'_.5 6'_.5 1'_1 4_1|5_1 7_.5 2'_.5 5'_1 r_.5 7,_.5"},
   ch6:{n:'さばくの たびの テーマ', key:2, bpm:108,
     ch:'0|1|0|7|0|1|10|0',
-    th:"5_1 1'_.5 b2'_.5 3'_1 1'_1|b2'_1 4'_1 b6'_1 4'_1|3'_1 5'_.5 3'_.5 1'_1 5_1|5'_1 2'_.5 7_.5 5_1 7_1|5_.5 1'_.5 3'_1 5'_1 3'_1|b2'_1 4'_1 b6'_.5 4'_.5 b2'_1|b7_1 2'_1 4'_1 2'_1|1'_2 r_1.5 5_.5"}
+    th:"5_1 1'_.5 b2'_.5 3'_1 1'_1|b2'_1 4'_1 b6'_1 4'_1|3'_1 5'_.5 3'_.5 1'_1 5_1|5'_1 2'_.5 7_.5 5_1 7_1|5_.5 1'_.5 3'_1 5'_1 3'_1|b2'_1 4'_1 b6'_.5 4'_.5 b2'_1|b7_1 2'_1 4'_1 2'_1|1'_2 r_1.5 5_.5"},
+  ch7:{n:'からくりの テーマ', key:3, bpm:112,
+    ch:'0maj7|5maj7|9m7|7|0maj7|5maj7|7sus4 7|0maj7',
+    th:"5_.5 1'_.5 5_.5 1'_.5 3'_1 1'_1|6_.5 1'_.5 6_.5 1'_.5 4'_1 3'_1|3'_.5 5'_.5 3'_.5 5'_.5 6'_1 5'_1|2'_1 7_.5 2'_.5 5'_2|5_.5 1'_.5 5_.5 1'_.5 3'_.5 5'_.5 3'_.5 1'_.5|6_.5 1'_.5 4'_.5 6'_.5 4'_1 1'_1|5'_1 2'_1 7_1 2'_1|1'_2 r_1 5_.5 7_.5"}
 };
 /* ばめん（mood）ごとの アレンジ：t＝テンポ ばいりつ、inst＝つかう 楽器、g＝音量、rv＝リバーブ、lv＝A／A' の 大きさ */
 const ST_MOOD = {
@@ -18537,7 +18542,7 @@ const ST_MOOD = {
   wind:  {t:.6,  style:'wind',   inst:['vc', 'hn', 'hp', 'vn'],                               g:1.9,  rv:[3.6, .45], lv:[.9, 1.0]}
 };
 const ST_MOODS = {pro:['box', 'bright', 'dark', 'wind', 'warm', 'lively', 'theme'], ch1:['warm', 'bright', 'dark', 'lively', 'theme'], ch2:['warm', 'bright', 'dark', 'lively', 'theme'],
-  ch3:['warm', 'bright', 'dark', 'lively', 'theme'], ch4:['warm', 'bright', 'dark', 'lively', 'theme'], ch5:['warm', 'bright', 'dark', 'lively', 'theme'], ch6:['warm', 'bright', 'dark', 'lively', 'theme']};
+  ch3:['warm', 'bright', 'dark', 'lively', 'theme'], ch4:['warm', 'bright', 'dark', 'lively', 'theme'], ch5:['warm', 'bright', 'dark', 'lively', 'theme'], ch6:['warm', 'bright', 'dark', 'lively', 'theme'], ch7:['warm', 'bright', 'dark', 'lively', 'theme']};
 const stM0 = T => 60 + T >= 62 ? 60 + T : 72 + T;                     // テーマの「ド」の たかさ（D4〜B4 あたり）
 /* テーマ → [[{m, b, d}…]（1小節ごと）] 。dark は 3・6・7 を 半音 さげて 1オクターブ 下へ */
 function stTheme(sid, mood){
@@ -18643,11 +18648,26 @@ const ST_STYLE = {
     const pcs = ctones(c, 84); B.n('hp', pcs[(sb * 2) % pcs.length], 1 + (sb % 3) * .9, 2, .07); if(sb % 2) B.n('hp', pcs[(sb * 2 + 1) % pcs.length], 3.2, 2, .05);
   }
 };
+/* だい7しょう「からくりの くに」：どの アレンジにも「ちくたく」（とけい・ぜんまい）の おとを かさねる */
+const ST_XY = [67, 72, 79, 84, 91, 96, 103, 108];
+const stXy = m => { for(const d of [0, 12, -12, 24]){ const x = m + d; if(x >= 67 && x <= 108 && Math.min(...ST_XY.map(q => Math.abs(q - x))) <= 3) return x; } return 0; };
+const stTick = (base, mood) => function(B, i, ch, v, sec){
+  base.call(this, B, i, ch, v, sec);
+  const c = ch[0], si = B.si;
+  if(mood === 'bright' || mood === 'lively' || mood === 'theme'){        // もっきんの ちく・たく
+    const t = ctones(c, 84), st = mood === 'lively' ? .5 : 1;
+    for(let b = 0, k = 0; b < 4 - 1e-6; b += st, k++){ const on = Math.abs(b % 1) < 1e-6, m = stXy(t[(k * 2 + (on ? 0 : 1)) % t.length]); if(m) B.n('xy', m, b, 0, on ? (si ? .1 : .075) : .05); }
+  }else if(mood === 'dark'){                                              // とけいの はりの おと
+    for(let b = 0; b < 4; b++) B.n('dr', 'stick', b, 0, b === 0 ? .16 : .1);
+  }else if(mood === 'warm'){                                              // オルゴールの ぜんまい
+    const a = ctones(c, 72); for(let b = 0; b < 4; b++) B.n('vb', a[(b * 2) % a.length], b + .5, 0, .09);
+  }
+};
 function stBuild(sid, mood){
   const D = ST_DEF[sid], P = ST_MOOD[mood]; if(!D || !P) return null;
   const dark = mood === 'dark', m8 = stMelStr(stTheme(sid, mood)), c8 = stChordStr(sid, dark);
   const sec = mood === 'wind' ? [{c:c8, m:'', lv:P.lv[0]}, {c:c8, m:'', lv:P.lv[1]}] : [{c:c8, m:m8, lv:P.lv[0]}, {c:c8, m:m8, lv:P.lv[1]}];
-  return {name:D.n + '（' + mood + '）', bpm:Math.round(D.bpm * P.t), gain:P.g, rv:P.rv, inst:P.inst, sec, loopFrom:0, sw8:(mood === 'lively' || mood === 'bright' || mood === 'theme') && D.sw ? D.sw : undefined, bar:ST_STYLE[P.style], story:sid, mood};
+  return {name:D.n + '（' + mood + '）', bpm:Math.round(D.bpm * P.t), gain:P.g * (sid === 'ch7' ? .92 : 1), rv:P.rv, inst:(sid === 'ch7' ? [...new Set(P.inst.concat(['xy', 'dr', 'vb']))] : P.inst), sec, loopFrom:0, sw8:(mood === 'lively' || mood === 'bright' || mood === 'theme') && D.sw ? D.sw : undefined, bar:(sid === 'ch7' ? stTick(ST_STYLE[P.style], mood) : ST_STYLE[P.style]), story:sid, mood};
 }
 Object.keys(ST_MOODS).forEach(sid => ST_MOODS[sid].forEach(mood => { FSONG['st_' + sid + '_' + mood] = stBuild(sid, mood); }));
 const FKEY_LABEL = {home:'わたしのおうち', school:'がっこう', uni:'だいがく', aqua:'すいぞくかん', zoo:'どうぶつえん', sci:'かがくかん', hotel:'ホテル', hosp:'そうごうびょういん', airport:'くうこう', yuen:'ゆうえんち'};
@@ -19244,3 +19264,135 @@ setTimeout(() => { try{ abClampAll(); persist(); }catch(e){} }, 1500);
 (function(){ const c = document.createElement('style'); c.textContent = `.abRow.abMax b{color:#E0457B;font-size:.8em;white-space:nowrap}.abRow.abMax .abBar i{background:linear-gradient(90deg,#FFD54A,#FF8FB1)}`; document.head.appendChild(c); })();
 try{ const d = document.querySelector('#muCredit div'); if(d) d.insertAdjacentHTML('beforeend', '<br>リズムゲームの 曲（v9.2）：ホットクロスバン・フレール・ジャック・ゆかいな まきば・ボートを こごう・ハッピーバースデー・きよしこのよる・うんめい・エリーゼのために・トルコ行進曲は、せかいの みんよう・クラシック（著作権の きれた 曲）'); }catch(e){}
 try{ const d = document.querySelector('#muCredit div'); if(d) d.insertAdjacentHTML('beforeend', '<br>トルコ行進曲（v9.4）：モーツァルト作曲（パブリックドメイン）／楽譜 Mutopia Project「Rondo Alla Turca」（Mutopia-2015/08/13-108・パブリックドメイン）'); }catch(e){}
+
+/* =====================================================================
+   v9.6 ものがたり だい7しょう（Lv18）「からくりの くにと わすれんぼうマシン」
+   ・つなぎ：ちずの ない くに（だい6しょう）→ からくりの くに →（つぎは Lv24）
+   ・けらい：ガチャガチャ／もんだい：プログラミング（くりかえし・もし〜なら・じゅんばん・バグ）
+   ・なかま：ハリネズミの「ネジ」／にっきの かわりに「ふるい せっけい図」（ちいさな 木と ひかる たね）
+   ・さしえ：assets/images/v53/c7_1〜c7_6.jpg（1100×733）
+   ===================================================================== */
+(function(){
+'use strict';
+try{
+  /* ---------- さしえ ---------- */
+  ['c7_1', 'c7_2', 'c7_3', 'c7_4', 'c7_5', 'c7_6'].forEach(k => { DEFAULT_ART[k] = './assets/images/v53/' + k + '.jpg'; });
+
+  /* ---------- もんだい（プログラミング） ---------- */
+  const SEQS = [   // [題, [ただしい じゅんばん…]]
+    ['てを あらう', ['みずを だす', 'せっけんで あらう', 'みずで ながす', 'タオルで ふく']],
+    ['カレーを つくる', ['やさいを きる', 'なべで いためる', 'みずと ルーを いれる', 'おさらに よそう']],
+    ['あさの したく', ['おきる', 'かおを あらう', 'ふくを きる', 'いえを でる']],
+    ['はみがき', ['はぶらしに ペーストを つける', 'はを みがく', 'くちを ゆすぐ', 'はぶらしを あらう']],
+    ['ロボットの うごき', ['でんげんを いれる', 'めいれいを うけとる', 'うごく', 'でんげんを きる']],
+    ['はたけの しごと', ['たねを まく', 'みずを やる', 'めが でる', 'みが なる']]
+  ];
+  const IFS = [    // [もし…, はい, いいえ, いま, こたえ, [にせもの…]]
+    ['もし あめなら かさを もつ。そうでなければ ぼうしを かぶる', 'かさ', 'ぼうし', 'はれ', 'ぼうし', ['かさ', 'ながぐつ', 'マフラー']],
+    ['もし あめなら かさを もつ。そうでなければ ぼうしを かぶる', 'かさ', 'ぼうし', 'あめ', 'かさ', ['ぼうし', 'ながぐつ', 'マフラー']],
+    ['もし しんごうが あかなら とまる。そうでなければ すすむ', 'とまる', 'すすむ', 'あお', 'すすむ', ['とまる', 'ジャンプ', 'うしろへ']],
+    ['もし しんごうが あかなら とまる。そうでなければ すすむ', 'とまる', 'すすむ', 'あか', 'とまる', ['すすむ', 'ジャンプ', 'うしろへ']],
+    ['もし ひとが きたら ドアが ひらく。そうでなければ ドアは しまったまま', 'ひらく', 'しまったまま', 'ひとが いない', 'しまったまま', ['ひらく', 'ならす', 'ひかる']],
+    ['もし くらいなら でんきが つく。そうでなければ きえている', 'つく', 'きえている', 'くらい', 'つく', ['きえている', 'ならす', 'こわれる']]
+  ];
+  const WORDS7 = [
+    ['プログラムの まちがいの ことを なんと いう？', 'バグ', ['ノイズ', 'エラーおん', 'ウイルス']],
+    ['プログラムの まちがいを 見つけて なおす ことは？', 'デバッグ', ['ダウンロード', 'ログイン', 'コピー']],
+    ['めいれいを 上から じゅんばんに じっこうする ことを なんと いう？', 'じゅんじ', ['くりかえし', 'ぶんき', 'へんすう']],
+    ['おなじ めいれいを なんども くりかえす しくみは？', 'くりかえし', ['じゅんじ', 'じょうけんぶんき', 'へんすう']],
+    ['「もし 〜なら」で うごきを かえる しくみは？', 'じょうけんぶんき', ['くりかえし', 'じゅんじ', 'ちょくせん']],
+    ['しんごうきが あお→き→あか を ずっと くりかえすのは どの しくみ？', 'くりかえし', ['じょうけんぶんき', 'じゅんじ', 'ちょくせん']]
+  ];
+  const nopts = (v, n) => { const s = new Set([v]); let g = 0; while(s.size < (n || 4) && g++ < 60){ const w = v + choice([-4, -3, -2, -1, 1, 2, 3, 4]); if(w > 0) s.add(w); } return shuffle([...s]); };
+  function ch7Q(k){
+    const used = CHS.usedK || (CHS.usedK = new Set());
+    const fresh = key => { if(used.has(key)) return false; used.add(key); return true; };
+    if(k === 0){                                            /* くりかえし */
+      for(let t = 0; t < 12; t++){
+        const a = ri(2, 5), b = ri(2, 4), w = choice([['👏', 'てを たたく'], ['🦘', 'ジャンプ する'], ['🔔', 'ベルを ならす'], ['⭐', 'ほしを だす'], ['🔧', 'ねじを まわす']]);
+        if(!fresh('r' + a + 'x' + b + w[0])) continue;
+        return {html:`<small>マシンの めいれい（くりかえし）</small>🔁「${w[0]} ×${b}」を ${a}かい くりかえす。<br>${w[0]}は ぜんぶで なんこ？`, v:a * b, opts:nopts(a * b)};
+      }
+    }
+    if(k === 1){                                            /* もし〜なら */
+      for(let t = 0; t < 12; t++){
+        if(Math.random() < .5){
+          const n = ri(1, 9), th = ri(3, 7), big = n > th; if(n === th) continue; if(!fresh('n' + n + 'x' + th)) continue;
+          return {html:`<small>マシンの めいれい（もし〜なら）</small>もし ${n}が ${th}より おおきければ「ピンポン」、<br>そうでなければ「ブー」。<br>${n}の ときの こたえは？`, v:big ? 'ピンポン' : 'ブー', opts:shuffle(['ピンポン', 'ブー', 'ポーン', 'シーン'])};
+        }
+        const q = choice(IFS); if(!fresh('i' + q[0] + q[3])) continue;
+        return {html:`<small>マシンの めいれい（もし〜なら）</small>${q[0]}。<br>いま「${q[3]}」。ロボットは どうなる？`, v:q[4], opts:shuffle([q[4]].concat(q[5].slice(0, 3)))};
+      }
+    }
+    /* k=2：じゅんばん・バグ・ことば */
+    for(let t = 0; t < 14; t++){
+      const r = Math.random();
+      if(r < .34){                                           /* バグを なおす（かずの ならび） */
+        const a = ri(1, 6), st = choice([1, 2, 3, 5]); if(!fresh('b' + a + 'x' + st)) continue;
+        const L = [0, 1, 2, 3, 4].map(i => a + st * i), v = L[3]; L[3] = '？';
+        return {html:`<small>マシンの バグ（まちがい さがし）</small>ロボットが ${L.join('、')} と かぞえて いる。<br>バグを なおすには「？」に なにを いれる？`, v, opts:nopts(v)};
+      }
+      if(r < .7){                                            /* じゅんばん */
+        const q = choice(SEQS), steps = q[1], kind = choice(['first', 'last', 'second']); if(!fresh('s' + q[0] + kind)) continue;
+        const v = kind === 'first' ? steps[0] : kind === 'last' ? steps[steps.length - 1] : steps[1], word = kind === 'first' ? 'いちばん さいしょは？' : kind === 'last' ? 'いちばん さいごは？' : '2ばんめは？';
+        const mix = shuffle(steps.slice());
+        return {html:`<small>マシンの じゅんばん</small>「${q[0]}」の てじゅんを ならべかえて しまった！<br>ただしい じゅんばんで、${word}`, v, opts:mix};
+      }
+      const w = choice(WORDS7); if(!fresh('w' + w[0])) continue;
+      return {html:`<small>プログラミングの ことば</small>${w[0]}`, v:w[1], opts:shuffle([w[1]].concat(w[2]))};
+    }
+    const a = ri(2, 5), b = ri(2, 4);
+    return {html:`<small>マシンの めいれい（くりかえし）</small>🔁「⭐ ×${b}」を ${a}かい くりかえす。<br>⭐は ぜんぶで なんこ？`, v:a * b, opts:nopts(a * b)};
+  }
+
+  /* ---------- ものがたり ---------- */
+  CHAPTERS.ch7 = {no:7, lv:18, title:'からくりの くにと わすれんぼうマシン', cover:'c7_5', hp:'ガチャガチャ ⚙️', beat:'ガチャガチャから ぜんまいを とりもどした',
+    quiz(k){ return ch7Q(k); },
+    pages:[
+      {fx:25, img:'c7_1', mood:'bright', who:'ハナ',     txt:'{kun}、見て！ まちが「からくりの王国」に なったよ。ちへいせんの むこうから、はぐるまの おとが ここまで きこえてくる！'},
+      {fx:78, img:'c7_1', mood:'warm',   who:'シマくん', txt:'あれが「からくりの くに」だよ。ぜんまいと はぐるまで うごく ふしぎな しかけが、ぜんぶ ともだちなんだ！'},
+      {fx:15, img:'c7_2', mood:'lively', who:'ハナ',     txt:'わあ、はぐるまの まちだ！ ……あれ？ みんな ぴたっと とまってる。おんがくも、じかんも、うごいてないよ…'},
+      {fx:60, img:'c7_2', mood:'dark',   who:'シマくん', txt:'まん中の「じかんの とう」の おくから、わすれんぼうの きりが でてる…！ ぼく、いやな よかんが するよ。'},
+      {fx:78, img:'c7_3', mood:'dark', sfx:'knock', txt:'「ガチャガチャ〜！ このマシンは ぼくのもんね。ぜーんぶの『じゅんばん』を バラバラにして、みんな うごけなく してやる〜」 にがて大王の けらい、ガチャガチャが あらわれました。'},
+      {fx:20, img:'c7_3', mood:'dark',   who:'シマくん', txt:'プログラムは「じゅんばん」「くりかえし」「もし〜なら」で できてるよ。もんだいを といて、マシンに ただしい めいれいを おくろう！ {kun}、いくよ！', quiz:1},
+      {fx:40, img:'c7_4', mood:'lively', sfx:'light', who:'シマくん', txt:'ひかりよ、ぜんまいに なれ〜っ！ 「ガチャ……ガチャ〜ん!? ねじが とれる〜」 とまっていた はぐるまが、いっせいに まわりだしたよ！'},
+      {fx:65, img:'c7_5', mood:'bright', who:'ネジ',     txt:'たすかったよ〜！ ぼくは からくりの くにの ぜんまいし、ハリネズミの ネジ。マシンを なおそうとして、ずっと とじこめられてたんだ。'},
+      {fx:40, img:'c7_5', mood:'theme',  who:'ネジ',     txt:'おれいに {kun}の まちに ひっこして、からくりや プログラムの つくりかたを みんなに おしえるよ！ よろしくね！'},
+      {fx:35, img:'c7_6', mood:'dark',   who:'ハナ',     txt:'マシンの おくに、ふるい せっけい図が はってある…。はしっこに、こどもが かいたような ちいさな もじが いっぱい。'},
+      {fx:75, img:'c7_6', mood:'warm',   who:'ハナ',     txt:'「じゅんばんに かんがえるのが にがてで、きかいに ぜんぶ まかせようと した」…そんな きもちが にじんでる。にがて大王さん、ほんとうは がんばりたかったのかな。'},
+      {fx:80, img:'c7_6', mood:'warm',   who:'シマくん', txt:'せっけい図の すみに、ちいさな「木」と ひかる「たね」の え…。まなびの 木と かんけいが あるのかも。まちを「たいようの まち」（Lv24）に したら、マシンの おくの とびらを あけに いこう！', fin:1}
+    ]};
+  if(!CH_ORDER.includes('ch7')) CH_ORDER.push('ch7');
+
+  /* ---------- ごほうび：ネジが ひっこして くる ---------- */
+  const G7 = {pt:600, sp:'hedgehog', name:'ネジ', star:3, line:'\uD83D\uDD27 ハリネズミの「ネジ」が ひっこしてきたよ！'};
+  chReward = (orig => function(id){
+    if(id !== 'ch7') return orig.apply(this, arguments);
+    save.story = save.story || {}; const key = id + 'gift';
+    if(save.story[key]) return '\uD83C\uDF81 ごほうびは もう もらったよ';
+    save.story[key] = 1;
+    let out = `\uD83C\uDF81 ごほうび：${G7.pt}pt`; addPoints(G7.pt, 'ものがたり だい7しょう', true);
+    const t = save.town, c = townCalc(), sp = SPECIES.find(s => s.id === G7.sp), h = sp && findHome(sp);
+    if(sp && h && nonHuman().length < c.maxRes){ const r = newResident(sp); r.name = G7.name; r.home = h.key; r.star = Math.max(r.star || 1, G7.star); t.res.push(r); discover(r.sp); out += '<br>' + G7.line; }
+    else { t.bag.goldletter = (t.bag.goldletter || 0) + 1; out += `<br>✨ きらきらレター ×1（${sp ? esc(homeName(sp.home)) : '家'}が あいたら よんでね）`; }
+    t.bag.rankbook = (t.bag.rankbook || 0) + 1; t.bag.letter = (t.bag.letter || 0) + 1;
+    out += '<br>\uD83D\uDCD8 ランクアップの本 ×1<br>✉️ おまねきレター ×1';
+    persist(); try{ updatePill(); }catch(e){}
+    return out;
+  })(chReward);
+
+  /* ---------- ネジの せいかく・ものがたり・セリフ ---------- */
+  const V53 = window.__v53;
+  if(V53 && V53.NAMED) V53.NAMED['ネジ|hedgehog'] = {
+    town:'ぜんまいの おとを きくと、むねが わくわく するんだ|ねじは まわしすぎても、ゆるすぎても ダメ。ちょうどいいが だいじなんだよ|ぼくの ハリは、はぐるまみたいで かっこいいでしょ？|「じゅんばん」を まもると、きかいは ぜったい うらぎらないんだ|まちがい（バグ）は わるものじゃ ないよ。なおせば もっと よくなるんだ|{kun}の まちにも、からくりの しかけを つくりたいな|ひとつ ひとつの ぶひんが あつまって、おおきな うごきに なるんだよ',
+    home:'いらっしゃい！ ぶひんが ちらかってるけど、きにしないでね|ここは ぼくの こうぼうさ。ぜんまいの おとが きこえるかい？|おちゃでも どうぞ。あっ、ねじは たべものじゃ ないよ！',
+    visit:'{kun}の へやの とけい、ちょっと 見せて？ ちょうせい したいな|おじゃまします。この いえの ドア、ちょっと きしむね。あぶら さして あげようか',
+    cheer:'ねじを まいて おうえんだ！|じゅんばんに かんがえれば、きっと とける！',
+    story:['ぼくは、からくりの くにで ぜんまいを まく しごとを していたんだ','でも、ガチャガチャに マシンを とめられて、くにじゅうの はぐるまが とまっちゃった…','{kun}の ひかりが ぜんまいを まいてくれた とき、くにが また うごきだしたんだ','ゆめは、せかいじゅうの こどもに「つくる たのしさ」を おしえる こと','{kun}、ありがとう。ぼくの いちばん だいじな ぜんまい、{kun}に あずけるね']};
+
+  /* ---------- つぎの ものがたり（Lv24・Lv27・Lv30）の よこく ---------- */
+  if(window.CH_PLAN53){ const P = window.CH_PLAN53;
+    P.splice(0, P.length, {lv:24, t:'（じゅんびちゅう）', s:'ぜんぶの きょうか'}, {lv:27, t:'（じゅんびちゅう）', s:'ぜんぶの きょうか'}, {lv:30, t:'まなびの 木と にがて大王（さいしゅうしょう）', s:'ぜんぶの きょうか'}); }
+  window.__ch7 = {ch7Q, G7};
+}catch(e){ console.warn('ch7 story', e); }
+})();
