@@ -16732,6 +16732,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
    v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    v8.3 伴奏（ドラム・ベース・ギター・もっきん）
+   v9.7 カノン：添付の がくふ（中級・61小節）で 作りなおし
    v9.6 ものがたり だい7しょう（Lv18「からくりの くにと わすれんぼうマシン」）・おんがく・さしえ・ネジ
    v9.5 ものがたり 7つ（プロローグ＋第1〜6しょう）の おんがくを オリジナルの 曲に さしかえ
    v9.4.2 リズムゲームの カクカク たいさく（音ふを がめんに でる ぶんだけ つくる）／「ちがう けんばん」の ひょうじを なくした
@@ -17130,9 +17131,8 @@ const SONGS = [
    n:'C4:1 E4:1 F4:1 G4:5 C4:1 E4:1 F4:1 G4:5 C4:1 E4:1 F4:1 G4:2 E4:2 C4:2 E4:2 D4:5 E4:1 E4:1 D4:1 C4:3 C4:1 E4:2 G4:2 G4:1 F4:5 E4:1 F4:1 G4:2 E4:2 C4:2 D4:2 C4:4'},
   {id:'minuet', t:'メヌエット ト長調', g:'クラシック', d:3, bpm:104, lo:65,
    n:'D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 F#4:1 G4:.5 A4:.5 B4:.5 G4:.5 A4:3 D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 A4:1 B4:.5 A4:.5 G4:.5 F#4:.5 G4:3'},
-  {id:'canon', t:'カノン（わおん）', g:'クラシック・2つ いじょう 同時に おす', d:3, bpm:72, lo:57,
-   n:'E5+C5:2 D5+B4:2 C5+A4:2 B4+G4:2 A4+F4:2 G4+E4:2 A4+F4:2 B4+G4:2 C5+E4:1 B4:1 A4+D4:1 G4:1 F4:1 E4+C4:1 F4:1 D4+B3:1 C4+A3:1 E4:1 G4+E4:1 F4:1 E4:1 C4:1 E4:1 D4+B3:1 E5+C5:2 D5+B4:2 C5+A4:2 B4+G4:2 A4+F4:2 G4+E4:2 A4+F4:2 B4+G4:2 C5+G4+E4:4'},
-  {id:'acha', t:'アチャパチャノチャ', g:'せかいの うた（北欧の 民謡）', d:1, bpm:112, lo:60,
+  {id:'canon', t:'カノン（中級）', g:'クラシック・パッヘルベル・和音と 16分音ふ', d:3, bpm:84, lo:62, fold:[62, 83], fx:[{b:64, t:'うたいだし！', lv:1}, {b:128, t:'16ぶんおんぷ！', lv:2}, {b:208, t:'クライマックス！', lv:2}],
+   n:'F#5+D5+A4:2 E5+C#5+A4:2 D5+B4+F#4:2 C#5+A4+F#4:2 B4+G4+D4:2 A4+F#4+D4:2 B4+G4+D4:2 C#5+A4+E4:2 D5+A4+F#4:2 C#5+A4+E4:2 B4+F#4+D4:2 A4+F#4+C#4:2 G4+D4+B3:2 F#4+D4+A3:2 G4+D4+B3:2 E4+C#4:2 D4:1 F#4:1 A4:1 G4:1 F#4:1 D4:1 F#4:1 E4:1 D4:1 B3:1 D4:1 A4:1 G4:1 B4:1 A4:1 G4:1 F#4:1 D4:1 E4:1 C#5:1 D5:1 F#5:1 A5:1 A4:1 B4:1 G4:1 A4:1 F#4:1 D4:1 D5:1 D5:1.5 C#5:.5 D5+F#4:.5 C#5:.5 D5:.5 D4:.5 C#4:.5 A4:.5 E4:.5 F#4:.5 D4:.5 D5:.5 C#5:.5 B4:.5 C#5:.5 F#5:.5 A5:.5 B5:.5 G5+B4:.5 F#5:.5 E5:.5 G5:.5 F#5:.5 E5:.5 D5:.5 C#5:.5 B4:.5 A4:.5 G4:.5 F#4:.5 E4:.5 G4:.5 F#4:.5 E4:.5 D4:.5 E4:.5 F#4:.5 G4:.5 A4:.5 E4:.5 A4:.5 G4:.5 F#4:.5 B4:.5 A4:.5 G4:.5 A4:.5 G4:.5 F#4:.5 E4:.5 D4:.5 B4:.5 B4+G4:.5 C#5:.5 D5:.5 C#5:.5 B4:.5 A4:.5 G4:.5 F#4:.5 E4:.5 B4:.5 A4:.5 B4:.5 A4+C#4:.5 G4:.5 F#4:1 F#5+D5:1 E5+C#5:2 R:1 D5+B4:1 F#5+A4:2 B5_2+G5:1 D5:1 A5_2+F#5:1 D5:1 B5_2+G5:1 D5:1 C#6_2+A5:1 E5:1 D6+F#5:.5 R:.5 D5+F#4:1 C#5_2+A4:.5 E4:.5 A4:.5 G4:.5 F#4:1 B4+D4:1 D5_2+A4:.5 G4:.5 F#4:.5 E4:.5 B4+G4:2 D5+F#4:1 A4:1 B4+G4_2:1 D5:1 E5+C#5_2:1 A5:1 A5:.5 F#5:.25 G5:.25 A5:.5 F#5:.25 G5:.25 A5:.25 A4:.25 B4:.25 C#5:.25 D5:.25 E5:.25 F#5:.25 G5:.25 F#5:.5 D5:.25 E5:.25 F#5:.5 F#4:.25 G4:.25 A4:.25 B4:.25 A4:.25 G4:.25 A4:.25 F#4:.25 G4:.25 A4:.25 G4:.5 B4:.25 A4:.25 G4:.5 F#4:.25 E4:.25 F#4:.25 E4:.25 D4:.25 E4:.25 F#4:.25 G4:.25 A4:.25 B4:.25 G4:.5 B4:.25 A4:.25 B4:.5 C#5:.25 D5:.25 A4:.25 B4:.25 C#5:.25 D5:.25 E5:.25 F#5:.25 G5:.25 A5:.25 F#5:.5 D5:.25 E5:.25 F#5:.5 E5:.25 D5:.25 E5:.25 C#5:.25 D5:.25 E5:.25 F#5:.25 E5:.25 D5:.25 C#5:.25 D5:.5 B4:.25 C#5:.25 D5:.5 D4:.25 E4:.25 F#4:.25 G4:.25 F#4:.25 E4:.25 F#4:.25 D5:.25 C#5:.25 D5:.25 B4:.5 D5:.25 C#5:.25 B4:.5 A4:.25 G4:.25 A4:.25 G4:.25 F#4:.25 G4:.25 A4:.25 B4:.25 C#5:.25 D5:.25 B4:.5 D5:.25 C#5:.25 D5:.5 C#5:.25 B4:.25 C#5:.25 D5:.25 E5:.25 D5:.25 C#5:.25 D5:.25 B4:.25 C#5:.25 D5:1.5 F#5:.5 F#5+C#5_2:.5 G5:.5 F#5:.5 E5:.5 D5+B4_2:1.5 D5:.5 D5+A4_2:.5 E5:.5 D5:.5 C#5:.5 B4+G4:2 D5+F#4:2 D5+B4_2:.5 C5:.5 B4:.5 C5:.5 A4_1.5+D4:1 C#4:.5 A4:.5 A4+F#4:1.5 A5+F#5:.5 A5+F#5:.5 B5+G5:.5 A5+F#5:.5 G5+E5:.5 F#5+D5:1.5 F#5+D5:.5 F#5+D5:.5 G5+E5:.5 F#5+D5:.5 E5:.5 D5+B4:.5 C5:.5 B4:.5 C5:.5 A4+F#4:1.5 A4:.5 G4+B3:1 D5+B4:1 D5+B4:1.5 C#5:.5 D5+F#4:2 A5_1.5+C#5_2:1.5 G5:.5 F#5_2+D5:1 D5:1 F#5_1.5+A4_2:1.5 E5:.5 D5+B4:1 B4+G4:.5 C#5:.5 D5+F#4_2:.5 C#5:.5 B4:.5 A4:.5 B4+G4:1 G5+B4:1 E5+C#5:1 C#6+E5:1 D5+F#4:.5 C#5:.5 D5:.5 D4:.5 C#4:.5 A4:.5 E4:.5 F#4:.5 D4:.5 D5:.5 C#5:.5 B4:.5 C#5:.5 F#5:.5 A5:.5 B5:.5 G5:.5 F#5:.5 E5:.5 G5:.5 F#5:.5 E5:.5 D5:.5 C#5:.5 B4:.5 A4:.5 G4:.5 F#4:.5 E4:.5 G4:.5 F#4:.5 E4:.5 D5:.5 E5:.5 F#5:.5 G5:.5 A5:.5 E5:.5 A5:.5 G5:.5 F#5:.5 B5:.5 A5:.5 G5:.5 A5:.5 G5:.5 F#5:.5 E5:.5 D5:.5 B4:.5 B4:.5 C#5:.5 D5:.5 C#5:.5 B4:.5 A4:.5 G4+B3:1 D5+B4:1 D5:1.5 C#5:.5 D5+F#4:4'},  {id:'acha', t:'アチャパチャノチャ', g:'せかいの うた（北欧の 民謡）', d:1, bpm:112, lo:60,
    n:'G4:1 G4:.5 G4:.5 G4:1 B4:1 A4:1 A4:.5 A4:.5 A4:1 C5:1 B4:1 B4:.5 B4:.5 A4:1 A4:.5 A4:.5 G4:1 G4:.5 G4:.5 G4:1 R:1 B4:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 D5:3 C5:1 A4:1 A4:.5 A4:.5 A4:1 A4:.5 A4:.5 C5:3 B4:1 G4:1 G4:.5 G4:.5 G4:1 B4:1 A4:1 A4:.5 A4:.5 A4:1 C5:1 B4:1 B4:.5 B4:.5 A4:1 A4:.5 A4:.5 G4:1 G4:.5 G4:.5 G4:1 R:1'},
   {id:'hotcross', t:'ホットクロスバン', g:'せかいの うた', d:1, bpm:96, lo:60,
    n:'E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 E4:1 D4:1 C4:2'},
@@ -17262,7 +17262,7 @@ const PC = {C:0, D:2, E:4, F:5, G:7, A:9, B:11};
 function parseSong(s){
   if(s.notes) return s.notes; let t = 0; const a = [];
   s.n.trim().split(/\s+/).forEach(x => { const [nms, b] = x.split(':'), d = +b;
-    if(nms !== 'R') nms.split('+').forEach((nm, k) => { const m = 12 * (+nm.slice(-1) + 1) + PC[nm[0]] + (nm[1] === '#' ? 1 : 0); a.push({m, b:t, d, h2:k > 0}); });   // 「E5+C5」は 同時に おす
+    if(nms !== 'R') nms.split('+').forEach((nm0, k) => { const [nm, od] = nm0.split('_'); const m = 12 * (+nm.slice(-1) + 1) + PC[nm[0]] + (nm[1] === '#' ? 1 : 0); a.push({m, b:t, d:od ? +od : d, h2:k > 0}); });   // 「B5_2」＝その音だけ 2拍   // 「E5+C5」は 同時に おす
     t += d; });
   s.beats = t; s.hi = Math.max(...a.map(n => n.m)); return s.notes = a;
 }
@@ -17291,7 +17291,7 @@ const CHORDS = {
   jingle:{st:'pop', c:'C|C|C|C|F|C|D|G|C|C|C|C|F|C|G|C'},
   saints:{st:'march', pk:3, c:'C|C|C|C|C|C|G|G|C|C7|F|F|C|C G|C'},
   minuet:{st:'waltz', bt:3, c:'G|G|C|G|Am|G|D|D|G|G|C|G|Am|G|D|G'},
-  canon:{st:'soft', c:'C G|Am Em|F C|F G|C G|Am Em|F C|F G|C G|Am Em|F C|F G|C'},
+  canon:{st:'soft', c:'D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D A|Bm F#m|G D|G A|D'},
   acha:{st:'pop', c:'G|D7|D7|G|G|G|D7|D7|G|D7|D7|G'},
   hotcross:{st:'soft', c:'C|C|C G|C|C|C|C G|C'},
   frere:{st:'soft', c:'C|C|C|C|C|C|G C|G C|C|C|C|C|C|C|G C|G C'},
@@ -17439,7 +17439,7 @@ function rgKb(L){
   const s = SONGS.find(x => x.id === G.id), m = MS(), score = G.vw === 'score';
   const notesLo = Math.min(...G.notes.map(n => n.m)), notesHi = Math.max(...G.notes.map(n => n.m));
   let lo = Math.min(s.lo, notesLo); while(isBlack(lo)) lo--;
-  let need = 0; for(let k = lo; k <= notesHi; k++) if(!isBlack(k)) need++;
+  const hiN = notesHi + (isBlack(notesHi) ? 1 : 0); let need = 0; for(let k = lo; k <= hiN; k++) if(!isBlack(k)) need++;
   const wn = Math.max(L === 'tab' ? 15 : 8, need), W = [];
   for(let k = lo; W.length < wn; k++) if(!isBlack(k)) W.push(k);
   const hi = W[W.length - 1], w = 100 / W.length; G.range = [lo, hi];
@@ -17486,6 +17486,9 @@ function rgStart(id){
     notes:s.notes.map((n, i) => ({m:n.m, t:n.b * spb, b:n.b, dur:n.d * spb, db:n.d, j:null, el:null, h2:n.h2})), end:s.beats * spb, lastA:null, bgi:0,
     holdB:0, holdOk:0, breath:1, suu:0};
   G.fx = s.fx ? s.fx.slice().sort((a, b) => a.b - b.b) : null; G.fxi = 0; G.hot = 0;
+  /* v9.7 スマホ：音域が ひろい 曲は はみだす 音を オクターブ うごかして けんばんを 大きく */
+  if(!isTab() && s.fold){ const [fa, fb] = s.fold, seen = new Set();
+    G.notes = G.notes.filter(n => { while(n.m < fa) n.m += 12; while(n.m > fb) n.m -= 12; const k = n.t.toFixed(3) + ':' + n.m; if(seen.has(k)) return false; seen.add(k); return true; }); }
   /* りょうて（ピアノ・iPad）：コードの ねいろ を 左手で */
   if(m.inst === 'pf' && o.hd === 'lr' && isTab() && s.lh){          // [CR] 楽譜どおりの 左手
     s.lh.forEach(n => G.notes.push({m:n.m, t:n.b * spb, b:n.b, dur:n.d * spb, db:n.d, j:null, el:null, lh:true}));
