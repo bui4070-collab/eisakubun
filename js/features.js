@@ -16731,6 +16731,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
    v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    v8.3 伴奏（ドラム・ベース・ギター・もっきん）
+   v9.5 ものがたり 7つ（プロローグ＋第1〜6しょう）の おんがくを オリジナルの 曲に さしかえ
    v9.4.2 リズムゲームの カクカク たいさく（音ふを がめんに でる ぶんだけ つくる）／「ちがう けんばん」の ひょうじを なくした
    v9.4.1 けっか がめん（せいかいりつ NaN・★・ポイント）の ふぐあいを しゅうせい
    v9.4 サビの きらきら えんしゅつ／トルコ行進曲を 楽譜どおりに／おとの ずれ ちょうせい（ほんものの 音源の 曲）
@@ -18489,6 +18490,166 @@ const FBB = {
   /* 強弱を つけたぶん へった 平均の 大きさを もどす */
   Object.entries({home:1.1, school:1.1, aqua:1.2, zoo:1.1, sci:1.12, hotel:1.15, school2:1.5, uni:1.3, airport:1.45, hosp:1.25, bb_play:1.07}).forEach(([k, g]) => { FSONG[k].gain = g; });
 }
+/* =====================================================================
+   v9.5 ものがたりの おんがく（7つの ものがたり：プロローグ＋第1〜6しょう）
+   ・ぜんぶ オリジナルの 曲。ミセスの 曲は「どんな ふんいきか」（ピアノが ひっぱる リズム・シンコペ・
+     サビで ぐっと もりあがる 強弱・ストリングスの ひろがり）だけを 参考に しました（メロディーは にていません）
+   ・1つの ものがたりに 1つの「テーマ」（ひかりの モチーフ）。ばめん（page の mood）ごとに
+     おなじ テーマを ちがう アレンジで ながす：
+       warm＝やさしい／bright＝ひかる あさ／dark＝ぴんち（短調）／lively＝ぎゃくてん（はやい・ドラム）／
+       theme＝おいわい（ぜんぶの 楽器）／box＝オルゴール（プロローグの はじめ）／wind＝きり（プロローグ）
+   ・楽器の 音（ピアノ・ハープ・フルート など）は しせつの BGM と おなじ 音源。音が そろうまでは これまでの おとで ながれる
+   ===================================================================== */
+const ST_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], ST_MAJ = [0, 2, 4, 5, 7, 9, 11];
+/* key＝ドの 音（0=C…11=B）／bpm／ch＝コード（ドから なんはん上＋しゅるい。| で 1小節・スペースで 1小節 2コード）
+   th＝テーマ（ドレミの 番号。' が 1オクターブ 上・, が 下。b/# で 半音。_のあとが 拍の ながさ。r は 休み） */
+const ST_DEF = {
+  pro:{n:'ひかりの テーマ', key:7, bpm:104,
+    ch:'0maj7|7|9m7|5maj7|0maj7|7|5maj7|7sus4 7',
+    th:"5_1 1'_1.5 2'_.5 3'_1|2'_1.5 1'_.5 7_1 5_1|6_1 1'_.5 3'_1.5 1'_1|4'_1 3'_.5 2'_.5 1'_2|5_.5 5_.5 1'_1 3'_1 5'_1|5'_1 4'_.5 3'_.5 2'_1 7_1|1'_1 4'_1.5 3'_.5 6_1|2'_1 5_1 7_1 r_.5 5_.5"},
+  ch1:{n:'きりの はしの テーマ', key:5, bpm:96,
+    ch:'5maj7|7|4m7|9m7|5maj7|7|0maj7|0maj7',
+    th:"6_.5 1'_.5 6_.5 1'_.5 4'_2|5'_.5 2'_.5 7_.5 2'_.5 5'_2|3'_1 5'_.5 3'_.5 7_2|6_1 3'_1 1'_.5 6_.5 1'_1|6_.5 1'_.5 6_.5 1'_.5 4'_1 6'_1|5'_1 4'_.5 3'_.5 2'_1 7_1|1'_1.5 3'_.5 5'_1 3'_1|1'_2 r_1 4_.5 5_.5"},
+  ch2:{n:'ことばの もりの テーマ', key:2, bpm:92,
+    ch:'9m7|5maj7|0maj7|7|9m7|5maj7|7|0maj7',
+    th:"6_1 6_.5 r_.5 3'_1 1'_1|4'_1.5 3'_.5 1'_1 6_1|5_1 1'_1 3'_1.5 2'_.5|2'_2 7_1 5_1|6_1 6_.5 r_.5 3'_1 5'_1|6'_1.5 5'_.5 4'_1 3'_1|2'_1 7_.5 2'_.5 5'_2|3'_1.5 2'_.5 1'_2"},
+  ch3:{n:'トンネルの えきの テーマ', key:9, bpm:118,
+    ch:'0maj7|7|9m7|4m7|5maj7|0maj7|5maj7|7',
+    th:"5_.5 5_.5 1'_.5 1'_.5 3'_1 5'_1|5'_.5 5'_.5 2'_.5 2'_.5 7_1 2'_1|6_.5 6_.5 1'_.5 1'_.5 3'_1 6'_1|3'_.5 3'_.5 5'_.5 5'_.5 7'_1 5'_1|4'_.5 4'_.5 6'_.5 6'_.5 4'_1 1'_1|5_.5 5_.5 1'_.5 1'_.5 3'_1.5 1'_.5|4'_1 6'_1 4'_1 1'_1|2'_.5 2'_.5 7_.5 7_.5 5_1 r_.5 5_.5"},
+  ch4:{n:'みなとの とうだいの テーマ', key:10, bpm:100, sw:.67,
+    ch:'0maj7|5maj7|0maj7|7|9m7|5maj7|7|0maj7',
+    th:"1'_1.5 2'_.5 3'_1 5'_1|4'_1.5 3'_.5 1'_1 6_1|5_1 1'_1.5 3'_.5 5'_1|5'_2 2'_1 7_1|6_1 3'_1.5 1'_.5 6_1|4'_1 6'_1.5 5'_.5 4'_1|5'_1 2'_.5 2'_.5 7_1 5_1|1'_2 r_1 5_.5 7_.5"},
+  ch5:{n:'そらの おしろの テーマ', key:4, bpm:112,
+    ch:'0maj7|9m7|5maj7|7|0maj7|4m7|5maj7|7sus4 7',
+    th:"1_1 5_1 1'_1 3'_1|6_1 3'_1.5 6'_.5 5'_1|4'_1.5 6'_.5 4'_1 1'_1|5'_1 2'_1 7_1 2'_1|3'_1 5'_.5 3'_.5 1'_1 5_1|3'_1 7'_1 5'_1.5 3'_.5|6'_1 4'_.5 6'_.5 1'_1 4_1|5_1 7_.5 2'_.5 5'_1 r_.5 7,_.5"},
+  ch6:{n:'さばくの たびの テーマ', key:2, bpm:108,
+    ch:'0|1|0|7|0|1|10|0',
+    th:"5_1 1'_.5 b2'_.5 3'_1 1'_1|b2'_1 4'_1 b6'_1 4'_1|3'_1 5'_.5 3'_.5 1'_1 5_1|5'_1 2'_.5 7_.5 5_1 7_1|5_.5 1'_.5 3'_1 5'_1 3'_1|b2'_1 4'_1 b6'_.5 4'_.5 b2'_1|b7_1 2'_1 4'_1 2'_1|1'_2 r_1.5 5_.5"}
+};
+/* ばめん（mood）ごとの アレンジ：t＝テンポ ばいりつ、inst＝つかう 楽器、g＝音量、rv＝リバーブ、lv＝A／A' の 大きさ */
+const ST_MOOD = {
+  warm:  {t:.84, style:'warm',   inst:['hp', 'pf', 'vc', 'fl', 'vn'],                         g:1.45, rv:[2.4, .3],  lv:[.9, 1.06]},
+  bright:{t:1.0, style:'bright', inst:['pf', 'gn', 'bs', 'dr', 'fl', 'xy', 'vb'],             g:1.3,  rv:[1.5, .22], lv:[.92, 1.08]},
+  dark:  {t:.7,  style:'dark',   inst:['vc', 'bs', 'pf', 'hn', 'vn', 'dr'],                   g:1.25,  rv:[2.8, .34], lv:[.9, 1.05]},
+  lively:{t:1.3, style:'lively', inst:['pf', 'gn', 'bs', 'dr', 'xy', 'fl', 'vn'],             g:1.0,  rv:[1.2, .18], lv:[.95, 1.12]},
+  theme: {t:.98, style:'theme',  inst:['pf', 'vn', 'hn', 'fl', 'vb', 'hp', 'bs', 'dr', 'vc'], g:1.05, rv:[2.2, .28], lv:[.95, 1.12]},
+  box:   {t:.82, style:'box',    inst:['vb', 'hp', 'vc'],                                     g:1.9,  rv:[3.0, .4],  lv:[.9, 1.0]},
+  wind:  {t:.6,  style:'wind',   inst:['vc', 'hn', 'hp', 'vn'],                               g:1.9,  rv:[3.6, .45], lv:[.9, 1.0]}
+};
+const ST_MOODS = {pro:['box', 'bright', 'dark', 'wind', 'warm', 'lively', 'theme'], ch1:['warm', 'bright', 'dark', 'lively', 'theme'], ch2:['warm', 'bright', 'dark', 'lively', 'theme'],
+  ch3:['warm', 'bright', 'dark', 'lively', 'theme'], ch4:['warm', 'bright', 'dark', 'lively', 'theme'], ch5:['warm', 'bright', 'dark', 'lively', 'theme'], ch6:['warm', 'bright', 'dark', 'lively', 'theme']};
+const stM0 = T => 60 + T >= 62 ? 60 + T : 72 + T;                     // テーマの「ド」の たかさ（D4〜B4 あたり）
+/* テーマ → [[{m, b, d}…]（1小節ごと）] 。dark は 3・6・7 を 半音 さげて 1オクターブ 下へ */
+function stTheme(sid, mood){
+  const D = ST_DEF[sid], M0 = stM0(D.key), dark = mood === 'dark', box = mood === 'box';
+  const res = D.th.split('|').map((bar, bi) => { let b = 0; const out = [];
+    bar.trim().split(/\s+/).forEach(tk => { const m = /^([b#]?)([1-7r])([',]*)_([\d.]+)$/.exec(tk); if(!m) throw new Error('story theme ' + sid + ' bar' + (bi + 1) + ': ' + tk);
+      const d = +m[4]; if(m[2] !== 'r'){ const deg = +m[2]; let acc = m[1] === 'b' ? -1 : m[1] === '#' ? 1 : 0;
+        if(dark && !m[1] && (deg === 3 || deg === 6 || (deg === 7 && bi < 7))) acc = -1;
+        let n = M0 + ST_MAJ[deg - 1] + acc; for(const ch of m[3]) n += ch === "'" ? 12 : -12; if(dark) n -= 12; if(box) n += 12; out.push({m:n, b, d}); }
+      b += d; });
+    if(Math.abs(b - 4) > 1e-6) throw new Error('story theme ' + sid + ' bar' + (bi + 1) + ' = ' + b + ' beats');
+    return out; });
+  if(dark){ const all = [].concat(...res); if(Math.max(...all.map(n => n.m)) > 72 && Math.min(...all.map(n => n.m)) - 12 >= 40) all.forEach(n => { n.m -= 12; }); }
+  return res;
+}
+const stMelStr = bars => bars.map(bar => bar.map(n => ST_NAMES[n.m % 12] + (Math.floor(n.m / 12) - 1) + '@' + n.b + ':' + n.d).join(' ')).join(' | ');
+function stChordStr(sid, dark){
+  const D = ST_DEF[sid], T = D.key, name = off => ST_NAMES[(T + off) % 12];
+  return D.ch.split('|').map((bar, bi) => bar.trim().split(/\s+/).map(tk => { const m = /^(\d+)(.*)$/.exec(tk); let off = +m[1], q = m[2];
+    if(dark && !/sus/.test(q)){ const last = bi === 7, MAP = {0:[0, 'm7'], 2:[2, 'm7b5'], 4:[3, 'maj7'], 5:[5, 'm7'], 7:[7, null], 9:[8, 'maj7'], 11:[10, '']}, mp = MAP[off];
+      if(mp){ q = mp[1] === null ? (last ? '7' : 'm') : mp[1]; off = mp[0]; } }
+    return name(off) + q; }).join(' ')).join('|');
+}
+/* ---------- アレンジ ---------- */
+/* ホルンの 音は 50〜62（サンプルが ある ところ）に おさめる */
+const stHn = (c, k) => { const t = chordInfo(c), m = inRange((t.r + t.iv[Math.min(k, t.iv.length - 1)]) % 12, 50); return m > 62 ? m - 12 : m; };
+const stCh = (ch, f) => ch.forEach((c, j) => f(c, j * 4 / ch.length, 4 / ch.length, j));
+const ST_STYLE = {
+  /* やさしい：ハープの アルペジオ・チェロの ながい 音・フルートの メロディー（A'では バイオリンが かさなる） */
+  warm(B, i, ch, v, sec){
+    const S = this, si = B.si, sb = B.sb, M = S.melo[B.pos] || [];
+    stCh(ch, (c, o, L) => {
+      const a = ctones(c, 55); for(let k = 0; k < L * 2; k++){ const x = [0, 1, 2, 3, 2, 1, 2, 3][k % 8]; B.n('hp', a[x % a.length] + (x >= a.length ? 12 : 0) + 12, o + k * .5, 1.8, k % 4 === 0 ? .17 : .12); }
+      if(L >= 2) B.n('vc', rootM(c, 36), o, L * .98, .2, {att:.5});
+      const vo = voicing(c, 58, S.lastV); S.lastV = vo; if(si === 1 || sb % 2 === 0) vo.forEach((m, k) => B.n('pf', m, o + k * .03, L * .95, .1));
+    });
+    M.forEach(([m, b0, d]) => { B.n('fl', m, b0, d * .95, si ? .3 : .34, {att:.06}); if(si === 1) B.n('vn', m, b0, d * .95, .2, {att:.08}); });
+  },
+  /* あさの ひかり：ピアノの アルベルティ・ギターの うらうち・かるい ドラム・フルート＋もっきん */
+  bright(B, i, ch, v, sec){
+    const S = this, si = B.si, M = S.melo[B.pos] || [];
+    stCh(ch, (c, o, L) => {
+      const vo = voicing(c, 60, S.lastV); S.lastV = vo; const r = rootM(c, 33);
+      for(let k = 0; k < L * 2; k++){ const x = [0, 2, 1, 2][k % 4]; B.n('pf', vo[x % vo.length], o + k * .5, .9, k % 4 === 0 ? .15 : .1); }
+      B.n('bs', r, o, L * .45, .42); if(L >= 2) B.n('bs', r + 7 > 52 ? r : r + 7, o + 2 * (L / 4) * 1, L * .4, .32);
+      if(si === 1) for(let k = 0; k < L; k++){ voicing(c, 54).slice(0, 3).forEach((m, q) => B.n('gn', m, o + k + .5 + q * .012, .45, .1)); }
+    });
+    [0, 2].forEach(k => B.n('dr', 'kick', k, 0, k ? .2 : .28)); [1, 3].forEach(k => B.n('dr', si ? 'snare' : 'stick', k, 0, si ? .2 : .17));
+    for(let k = 0; k < 4; k += .5) B.n('dr', 'hhc', k, 0, k % 1 ? .06 : .1); if(si === 1 && B.sb === 0) B.n('dr', 'crash', 0, 0, .22);
+    M.forEach(([m, b0, d]) => { B.n('fl', m, b0, d * .92, .3, {att:.04}); if(si === 1 || m > 79) B.n('xy', m + 12 > 100 ? m : m + 12, b0, 0, .12); });
+  },
+  /* ぴんち：チェロの メロディー・ひくい ひびき・ホルンの ながい 音・ときどき ティンパニ（トム） */
+  dark(B, i, ch, v, sec){
+    const S = this, si = B.si, sb = B.sb, M = S.melo[B.pos] || [];
+    stCh(ch, (c, o, L) => {
+      B.n('bs', rootM(c, 31), o, L * .95, .5); if(sb % 2 === 0 || si === 1){ const vo = voicing(c, 52, S.lastV); S.lastV = vo; vo.slice(0, 3).forEach((m, k) => B.n('pf', m < 47 ? m + 12 : m, o + k * .02, L * .9, .13)); }
+      B.n('hn', stHn(c, 1), o, L * .98, .13 + si * .04, {att:.7}); if(si === 1) B.n('hn', stHn(c, 2), o, L * .98, .1, {att:.9});
+    });
+    if(sb % 2 === 0){ B.n('dr', 'toml', 0, 0, .26 + si * .08); if(si === 1) B.n('dr', 'toml', 2.5, 0, .2); } if(si === 1 && sb % 4 === 3){ B.n('dr', 'tomh', 3, 0, .22); B.n('dr', 'toml', 3.5, 0, .26); }
+    M.forEach(([m, b0, d]) => B.n('vc', m, b0, d * .95, .42, {att:.05}));
+    if(si === 1 && sb % 2 === 1){ const t = ctones(ch[0], 69); B.n('vn', t[t.length - 1], 0, 3.8, .09, {att:1}); }
+  },
+  /* ぎゃくてん：はやい テンポ・ピアノの シンコペ・はずむ ベース・ロックの ドラム・もっきん＋フルート */
+  lively(B, i, ch, v, sec){
+    const S = this, si = B.si, sb = B.sb, M = S.melo[B.pos] || [];
+    stCh(ch, (c, o, L) => {
+      const vo = voicing(c, 60, S.lastV); S.lastV = vo; const r = rootM(c, 33);
+      [[0, .9, .3], [1.5, .5, .24], [2.5, .5, .24], [3.5, .4, .2]].forEach(([b0, d, g]) => { if(b0 < L) vo.forEach((m, k) => B.n('pf', m, o + b0 + k * .012, d, g)); });
+      [[0, r, .5], [.5, r + 12 > 55 ? r : r + 12, .36], [1.5, r, .4], [2, r + 7 > 55 ? r : r + 7, .36], [3.5, r + 12 > 55 ? r : r + 12, .3]].forEach(([b0, m, g]) => { if(b0 < L) B.n('bs', m, o + b0, .4, g); });
+      if(si === 1) [0, 1.5, 3].forEach(b0 => { if(b0 < L) voicing(c, 52).slice(0, 3).forEach((m, k) => B.n('gn', m, o + b0 + k * .012, .5, .1)); });
+    });
+    [0, 2.5, 3.5].forEach(k => B.n('dr', 'kick', k, 0, k === 0 ? .5 : .34)); [1, 3].forEach(k => B.n('dr', 'snare', k, 0, .42));
+    for(let k = 0; k < 4; k += .5) B.n('dr', k === 3.5 ? 'hho' : 'hhc', k, 0, k % 1 ? .1 : .16);
+    if(sb === 0) B.n('dr', 'crash', 0, 0, si ? .4 : .3); if(sb === 7){ [2.5, 3, 3.25, 3.5, 3.75].forEach((k, q) => B.n('dr', 'snare', k, 0, .2 + q * .06)); }
+    M.forEach(([m, b0, d]) => { B.n('xy', m + 12 > 100 ? m : m + 12, b0, 0, .22); B.n('fl', m, b0, d * .9, .3, {att:.03}); if(si === 1) B.n('vn', m, b0, d * .9, .2, {att:.05}); });
+    if(sb === 7) ctones(ch[ch.length - 1], 72).slice(0, 4).forEach((m, k) => B.n('pf', m, 3 + k * .2, .3, .18 + k * .03));
+  },
+  /* おいわい：ぜんぶの 楽器・たっぷりの ひびき・バイオリンの メロディーに 3度の ハモり */
+  theme(B, i, ch, v, sec){
+    const S = this, si = B.si, sb = B.sb, M = S.melo[B.pos] || [];
+    stCh(ch, (c, o, L) => {
+      const vo = voicing(c, 58, S.lastV); S.lastV = vo; const r = rootM(c, 33);
+      for(let k = 0; k < L; k++) vo.forEach((m, q) => B.n('pf', m, o + k + q * .015, .9, k ? .13 : .2));
+      B.n('bs', r, o, L * .9, .5); const a = ctones(c, 52); for(let k = 0; k < L * 2; k++){ const x = [0, 1, 2, 1][k % 4]; B.n('hp', a[x % a.length] + 12, o + k * .5, 1.4, .1); }
+      B.n('vc', rootM(c, 36), o, L * .98, .2, {att:.4}); B.n('hn', stHn(c, 1), o, L * .98, .12, {att:.5});
+    });
+    [0, 2].forEach(k => B.n('dr', 'kick', k, 0, .4)); [1, 3].forEach(k => B.n('dr', 'snare', k, 0, .34)); for(let k = 0; k < 4; k += .5) B.n('dr', 'hhc', k, 0, k % 1 ? .08 : .13); if(sb === 0) B.n('dr', 'crash', 0, 0, si ? .42 : .32);
+    M.forEach(([m, b0, d]) => { B.n('vn', m, b0, d * .95, .34, {att:.05}); B.n('fl', m, b0, d * .95, .22, {att:.05}); B.n('vb', m, b0, 0, .14);
+      if(si === 1){ const t = chordInfo(ch[Math.min(ch.length - 1, Math.floor(b0 / (4 / ch.length)))]); let best = -1;       // メロディーの 3〜9半音 下の コードの 音（ハモり）
+        t.iv.forEach(x => { const pc = (t.r + x) % 12, h = m - 3 - ((m - 3 - pc) % 12 + 12) % 12; if(h >= m - 9 && h > best) best = h; }); if(best > 0) B.n('vn', best, b0, d * .95, .2, {att:.06}); } });
+  },
+  /* オルゴール：たかい ビブラフォンの メロディー・ハープ・ひくい チェロ */
+  box(B, i, ch, v, sec){
+    const S = this, M = S.melo[B.pos] || [];
+    stCh(ch, (c, o, L) => { const a = ctones(c, 52); for(let k = 0; k < L; k++) B.n('hp', a[(k * 2) % a.length] + 12, o + k, 2, .13); if(L >= 2) B.n('vc', rootM(c, 36), o, L * .9, .12, {att:.8}); });
+    M.forEach(([m, b0, d]) => B.n('vb', m > 89 ? m - 12 : m, b0, 0, .2));
+  },
+  /* きり：ながい 低い 音・ホルンの もや・ハープの ひかりの つぶ・バイオリンの たかい 音 */
+  wind(B, i, ch, v, sec){
+    const c = ch[0], sb = B.sb;
+    if(sb % 2 === 0){ B.n('vc', rootM(c, 36), 0, 7.6, .2, {att:1.6}); B.n('vc', rootM(c, 36) + 7, 0, 7.6, .12, {att:2}); B.n('hn', stHn(c, 1), .5, 7, .1, {att:2}); }
+    if(sb % 4 === 1){ const t = ctones(c, 79); B.n('vn', t[1] || t[0], 0, 6, .07, {att:1.8}); }
+    const pcs = ctones(c, 84); B.n('hp', pcs[(sb * 2) % pcs.length], 1 + (sb % 3) * .9, 2, .07); if(sb % 2) B.n('hp', pcs[(sb * 2 + 1) % pcs.length], 3.2, 2, .05);
+  }
+};
+function stBuild(sid, mood){
+  const D = ST_DEF[sid], P = ST_MOOD[mood]; if(!D || !P) return null;
+  const dark = mood === 'dark', m8 = stMelStr(stTheme(sid, mood)), c8 = stChordStr(sid, dark);
+  const sec = mood === 'wind' ? [{c:c8, m:'', lv:P.lv[0]}, {c:c8, m:'', lv:P.lv[1]}] : [{c:c8, m:m8, lv:P.lv[0]}, {c:c8, m:m8, lv:P.lv[1]}];
+  return {name:D.n + '（' + mood + '）', bpm:Math.round(D.bpm * P.t), gain:P.g, rv:P.rv, inst:P.inst, sec, loopFrom:0, sw8:(mood === 'lively' || mood === 'bright' || mood === 'theme') && D.sw ? D.sw : undefined, bar:ST_STYLE[P.style], story:sid, mood};
+}
+Object.keys(ST_MOODS).forEach(sid => ST_MOODS[sid].forEach(mood => { FSONG['st_' + sid + '_' + mood] = stBuild(sid, mood); }));
 const FKEY_LABEL = {home:'わたしのおうち', school:'がっこう', uni:'だいがく', aqua:'すいぞくかん', zoo:'どうぶつえん', sci:'かがくかん', hotel:'ホテル', hosp:'そうごうびょういん', airport:'くうこう', yuen:'ゆうえんち'};
 /* ---------- どこに いるか ---------- */
 function facKey(){
@@ -18537,7 +18698,11 @@ const PAN = {ep:-.15, pf:-.2, gt:.35, gn:.3, bs:0, cb:0, dr:0, fl:.2, sx:.12, cl
 function fbStart(key, o){
   o = o || {};
   const S = FSONG[key]; if(!S || !ctx()) return false;
-  fbStop(!o.soft);                       // soft ＝ ふるい 曲を ゆっくり きえさせながら つぎの 曲へ
+  if(o.xf && FB){                          // xf ＝ at の じかんまで ふるい 曲を ならして、そこから ふわっと きりかえる
+    const old = FB, at = Math.max(AC.currentTime, o.at || 0); FB = null; old.stop = true; clearInterval(old.timer);
+    try{ const g = old.out.gain; g.cancelScheduledValues(AC.currentTime); g.setValueAtTime(g.value, at); g.linearRampToValueAtTime(0, at + (o.fade || .5)); }catch(e){}
+    setTimeout(() => { old.set.forEach(x => { try{ x.stop(); }catch(e){} }); old.set.clear(); try{ old.out.disconnect(); }catch(e){} }, (at - AC.currentTime) * 1000 + ((o.fade || .5) + .6) * 1000);
+  } else fbStop(!o.soft);                // soft ＝ ふるい 曲を ゆっくり きえさせながら つぎの 曲へ
   const out = AC.createGain(); out.gain.value = o.g0 || 0; out.connect(MASTER);
   let pre = out;
   if(S.lofi){ const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3600; lp.Q.value = .5; lp.connect(out); pre = lp; }
@@ -18601,7 +18766,7 @@ function fbStart(key, o){
         break; }
       const ff = F.sched(F.next, F.bar); F.next += spb() * bpb * (ff || 1); F.bar++; } }, 60);
   FB = F;
-  if(o.manual){ const t = AC.currentTime, gv = (o.vol != null ? o.vol : .4) * (S.gain || 1); out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(gv, t + .12); }
+  if(o.manual){ const t = AC.currentTime, ta = Math.max(t, o.at || 0), gv = (o.vol != null ? o.vol : .4) * (S.gain || 1); out.gain.setValueAtTime(0, t); out.gain.setValueAtTime(0, ta); out.gain.linearRampToValueAtTime(gv, ta + (o.fadeIn || .12)); }
   return true;
 }
 function fbStop(now){
@@ -18674,6 +18839,73 @@ try{
   /* スタジアムが ある まちは あらかじめ よみこんでおく（がめんに はいった しゅんかんから なる） */
   setTimeout(() => { try{ if(save.town && save.town.cells && Object.keys(save.town.cells).some(k => save.town.cells[k] === 'stadium')) ['bb_play', 'bb_chance', 'bb_win', 'bb_lose'].forEach(fbLoad); }catch(e){} }, 9000);
 }catch(e){ console.warn('fbgm stadium', e); }
+/* =====================================================================
+   v9.5 ものがたり：おんがくの きりかえ（app.js の musicPlay／musicHalt／sfx2 を つつんで つかう）
+   ・page の mood が かわるたびに、その ものがたり（CHS.id ／ プロローグ）の おなじ 名前の 曲へ
+     つぎの 小節の あたまで ふわっと きりかえる
+   ・音が そろうまでは これまでの おとで ながし、そろったら きりかえる
+   ・「きらきら」「ファンファーレ」の 効果音は ものがたりの 調に あわせる
+   ===================================================================== */
+const STP = {key:null, want:null, poll:null, vol:.3, pre:{}};
+const stSid = () => (typeof CHS !== 'undefined' && CHS && CHS.id) || 'pro';
+const stKey = (sid, mood) => 'st_' + sid + '_' + mood;
+const stOn = () => { try{ return !!(save.settings.sound && SM.on); }catch(e){ return false; } };
+function stPreload(sid){
+  if(!ST_MOODS[sid] || STP.pre[sid]) return; STP.pre[sid] = 1;
+  ST_MOODS[sid].forEach((m, i) => setTimeout(() => { try{ fbLoad(stKey(sid, m)); }catch(e){} }, i * 400));
+}
+function stClear(){ if(STP.poll){ clearInterval(STP.poll); STP.poll = null; } STP.want = null; }
+function stSwitch(key){
+  musicHalt0();                                                         // これまでの（ピコピコ）おとは とめる
+  const o = {fk:'story', manual:true, vol:STP.vol, fade:.5, fadeIn:.35};
+  if(FB && FB.fk === 'story' && !FB.stop){ o.xf = true; o.at = FB.next; }   // つぎの 小節の あたまで ふわっと
+  if(fbStart(key, o)) STP.key = key;
+}
+function stWait(key){
+  if(STP.want === key && STP.poll) return; stClear(); STP.want = key; let n = 0;
+  STP.poll = setInterval(() => { n++;
+    const sh = document.getElementById('story');
+    if(!stOn() || STP.want !== key || n > 300 || !sh || !sh.classList.contains('show')){ stClear(); return; }
+    if(AC && fbReady(key)){ stClear(); if(!(FB && FB.fk === 'story' && FB.key === key)) stSwitch(key); } }, 400);
+}
+function stStop(){ stClear(); STP.key = null; if(FB && FB.fk === 'story') fbStop(false); }
+/* かえす：true ＝ あたらしい 曲を ならした（または じゅんびちゅうで これまでの おとを ならす ひつよう なし → false） */
+function stPlay(mood){
+  if(!stOn()) return false;
+  const sid = stSid(), key = stKey(sid, mood);
+  if(!FSONG[key]){ if(FB && FB.fk === 'story') stStop(); return false; }
+  if(FB && FB.fk === 'story' && FB.key === key){ stClear(); return true; }
+  fbLoad(key);
+  if(AC && fbReady(key)){ stClear(); stSwitch(key); return true; }
+  stWait(key); return false;
+}
+function stDuck(sec){
+  try{ if(!(FB && FB.fk === 'story')) return; const g = FB.out.gain, t = AC.currentTime, cur = g.value;
+    g.cancelScheduledValues(t); g.setValueAtTime(cur, t); g.linearRampToValueAtTime(cur * .35, t + .2); g.setValueAtTime(cur * .35, t + sec); g.linearRampToValueAtTime(cur, t + sec + .9); }catch(e){}
+}
+let musicPlay0 = null, musicHalt0 = null;
+try{
+  if(typeof musicPlay === 'function' && typeof musicHalt === 'function'){
+    musicPlay0 = musicPlay; musicHalt0 = musicHalt;
+    musicPlay = function(mood){ if(stPlay(mood)) return; return musicPlay0.apply(this, arguments); };
+    musicHalt = function(){ stStop(); return musicHalt0.apply(this, arguments); };
+  }
+  if(typeof storyOpen === 'function') storyOpen = (orig => function(){ try{ stPreload(stSid()); }catch(e){} return orig.apply(this, arguments); })(storyOpen);
+  if(typeof sfx2 === 'function') sfx2 = (orig => function(k){
+    try{
+      if((k === 'light' || k === 'fanfare') && FB && FB.fk === 'story' && FB.S && FB.S.story && stOn()){
+        const T = ST_DEF[FB.S.story].key, c = smCtx(), t = SM.ctx.currentTime, f = m => 440 * Math.pow(2, (m - 69) / 12);
+        SM.master.gain.cancelScheduledValues(t); SM.master.gain.setValueAtTime(Math.max(SM.master.gain.value, .6), t);
+        if(k === 'light'){ const b = T <= 6 ? 84 + T : 72 + T; [0, 4, 7, 12, 16].forEach((o, i) => nt(f(b + o), t + i * .07, .9, 'sine', .06)); }
+        else { const b = T <= 7 ? 72 + T : 60 + T; [[0, 0], [4, .15], [7, .3], [12, .45], [7, .75], [12, .9]].forEach(([o, d], i) => { nt(f(b + o), t + d, i === 5 ? 1.2 : .18, 'square', .05); nt(f(b + o) / 2, t + d, i === 5 ? 1.2 : .18, 'triangle', .07); }); stDuck(2.6); }
+        return;
+      }
+    }catch(e){}
+    return orig.apply(this, arguments); })(sfx2);
+}catch(e){ console.warn('story music hook', e); }
+/* つぎの しょうが とどく まえに 音を よみこんでおく */
+setInterval(() => { try{ if(typeof chNext === 'function' && typeof chOpen === 'function'){ const id = chNext(); if(id && chOpen(id)) stPreload(id); } }catch(e){} }, 6000);
+window.__stmusic = {play:stPlay, stop:stStop, sid:stSid, key:stKey, songs:ST_DEF, moods:ST_MOODS, preload:stPreload};
 window.__fbgm = {start:fbStart, stop:fbStop, key:facKey, ready:fbReady, load:fbLoad, songs:FSONG, stadium:fbStadium};
 
 window.__mu80 = {open, close, noteOn, noteOff, BUF};
