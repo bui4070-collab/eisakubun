@@ -16731,6 +16731,7 @@ try{ new MutationObserver(ms => { for(const m of ms) for(const n of m.addedNodes
    v8.1 STEP2：ドレミを おぼえる（ふくろう先生・3ステージ）
    v8.2 STEP3：リズムゲーム（曲えらび・プレイ・結果、8曲）
    v8.3 伴奏（ドラム・ベース・ギター・もっきん）
+   v9.4.2 リズムゲームの カクカク たいさく（音ふを がめんに でる ぶんだけ つくる）／「ちがう けんばん」の ひょうじを なくした
    v9.4.1 けっか がめん（せいかいりつ NaN・★・ポイント）の ふぐあいを しゅうせい
    v9.4 サビの きらきら えんしゅつ／トルコ行進曲を 楽譜どおりに／おとの ずれ ちょうせい（ほんものの 音源の 曲）
    v9.2 BGM に 強弱・イントロ・周回ごとの かわりかた（ゆうえんちは 作りなおし）／トルコ行進曲を ながく／リズムゲームの 曲を ふやした
@@ -17513,7 +17514,14 @@ function measure(){
     const st = ROOT.querySelector('#rgstaff'); if(st){ st.style.top = (G.base - gap * 4) + 'px'; st.style.height = (gap * 4) + 'px'; st.querySelectorAll('i').forEach((l, i) => l.style.top = (i * gap - 1) + 'px'); const cl = st.querySelector('svg'); cl.style.height = (gap * 7.2) + 'px'; cl.style.top = (-gap * 1.6) + 'px'; }
     const sb = ROOT.querySelector('#rgstaffB'); if(sb){ sb.style.top = (G.baseB - gap * 4) + 'px'; sb.style.height = (gap * 4) + 'px'; sb.querySelectorAll('i').forEach((l, i) => l.style.top = (i * gap - 1) + 'px'); const cl = sb.querySelector('svg'); cl.style.height = (gap * 3.2) + 'px'; cl.style.top = (-gap * 0.1) + 'px'; }
     const vl = ROOT.querySelector('.rgvline'); if(vl) vl.style.left = G.jx + 'px'; }
-  box.innerHTML = ''; G.notes.forEach(n => { const p = G.pos[n.m], d = document.createElement('div'), long = n.db >= LONG_B;
+  box.innerHTML = ''; G.box = box; G.sc = sc; G.lab = lab; G.act = []; G.pool = []; G.ni = 0; G.fxW = 0; if(G.ui == null) G.ui = 0;
+  G.notes.forEach(n => { n.el = null; });
+  G.win = sc ? (G.fw + 30 - G.jx) / G.ppb * G.spb : LEAD + 0.3;          // この 時間いない（びょう）に くる 音ふだけ がめんに おく
+  actUpdate();
+}
+/* 音ふ 1こ ぶんの 見た目を つくる（つかいまわす 入れもの d に） */
+function fillEl(n, d){ const p = G.pos[n.m], sc = G.sc, lab = G.lab, long = n.db >= LONG_B;
+  d.style.cssText = ''; n._vis = 0; n._h = -1;
     if(sc){
       const step = n.lh ? stepB(n.m) : stepOf(n.m), y = (n.lh ? G.baseB : G.base) - step * G.gap / 2, sh = isBlack(n.m);
       d.className = 'rgs' + (long ? ' long' : '') + (n.lh ? ' lh' : '') + (n.db >= 3.9 ? ' whole' : '');
@@ -17527,20 +17535,34 @@ function measure(){
       d.innerHTML = `<span>${lab === 'none' ? '' : nameOf(n.m, lab)}</span>${G.mh && n.f ? `<em class="fg">${n.f}</em>` : ''}${n.tu ? '<em class="tu">トゥ</em>' : ''}${n.br ? '<em class="brk">V</em>' : ''}${n.mv ? '<em class="mv">て</em>' : ''}`;
       if(p){ d.style.left = (p.x + p.w * 0.08) + 'px'; d.style.width = (p.w * 0.84) + 'px'; }
     }
-    if(n.j && !n.hold) d.style.display = 'none'; box.appendChild(d); n.el = d; });
 }
+/* 先頭の 「まだ ひいて いない 音ふ」の いち */
+function uiAdv(){ const N = G.notes; let i = G.ui | 0; while(i < N.length && N[i].j) i++; G.ui = i; return i; }
+/* がめんに でる じかんに なった 音ふに 入れものを わりあてる */
+function actUpdate(){
+  const N = G.notes;
+  while(G.ni < N.length && N[G.ni].t - G.clock <= G.win){
+    const n = N[G.ni++]; if(n.j && !n.hold) continue;
+    let d = G.pool.pop(); if(!d){ d = document.createElement('div'); G.box.appendChild(d); }
+    fillEl(n, d); if(n.hold) d.classList.add('holding'); n.el = d; G.act.push(n); }
+}
+/* 入れものを かえす（ひいた・みのがした 音ふ） */
+function relEl(n){ const d = n.el; n.el = null; if(!d) return; d.style.display = ''; d.style.visibility = 'hidden'; d.className = ''; G.pool.push(d); }
 function keyEl(m){ return ROOT && ROOT.querySelector(`#mukb .muk[data-m="${m}"]`); }
 function flashKey(m, cls){ const k = keyEl(m); if(!k) return; k.classList.remove('jp', 'jg', 'jo', 'jx'); void k.offsetWidth; k.classList.add(cls); setTimeout(() => k.classList.remove(cls), 300); }
-function showJ(t, cls){ const e = ROOT && ROOT.querySelector('#rgjd'); if(!e) return; e.className = 'rgjd ' + cls; e.textContent = t; void e.offsetWidth; e.classList.add('go'); }
+function showJ(t, cls){ const e = ROOT && ROOT.querySelector('#rgjd'); if(!e) return; const jk = t + '|' + cls; if(G && G.jf === G.last && G.jk === jk) return; if(G){ G.jf = G.last; G.jk = jk; }
+  e.className = 'rgjd ' + cls; e.textContent = t; void e.offsetWidth; e.classList.add('go'); }
 /* キラキラ */
 function sparkle(m, kind){
   const fx = ROOT && ROOT.querySelector('#rgfx'), p = G && G.pos && G.pos[m]; if(!fx || !p) return;
+  const busy = G.spkN | 0; if(busy > 44) return;          // いちどに でる キラキラが おおすぎる ときは だしすぎない
   const x = G.vw === 'score' ? G.jx : p.x + p.w / 2, y = G.vw === 'score' ? (G.lh && m < 60 ? G.baseB - stepB(m) * G.gap / 2 : G.base - stepOf(m) * G.gap / 2) : G.fh - 10;
-  const n = kind === 'p' ? 10 : kind === 'h' ? 14 : 6, col = {p:['#FFE066', '#FF8FAE', '#fff'], g:['#FFB86B', '#FFE066'], ok:['#9CD3FF'], h:['#FFE066', '#7BD88F', '#B49CFF', '#fff']}[kind] || ['#fff'];
-  for(let i = 0; i < n; i++){ const s = document.createElement('i'), a = Math.PI * 2 * i / n + Math.random() * 0.5, r = 30 + Math.random() * (kind === 'h' ? 60 : 40);
+  const n0 = kind === 'p' ? 10 : kind === 'h' ? 14 : 6, n = busy > 20 ? Math.min(n0, 3) : busy > 10 ? Math.min(n0, 6) : n0, col = {p:['#FFE066', '#FF8FAE', '#fff'], g:['#FFB86B', '#FFE066'], ok:['#9CD3FF'], h:['#FFE066', '#7BD88F', '#B49CFF', '#fff']}[kind] || ['#fff'];
+  const made = []; for(let i = 0; i < n; i++){ const s = document.createElement('i'), a = Math.PI * 2 * i / n + Math.random() * 0.5, r = 30 + Math.random() * (kind === 'h' ? 60 : 40);
     s.className = 'spk' + (i % 3 === 0 ? ' st' : ''); s.style.left = x + 'px'; s.style.top = y + 'px'; s.style.setProperty('--x', Math.cos(a) * r + 'px'); s.style.setProperty('--y', Math.sin(a) * r - 20 + 'px');
-    s.style.setProperty('--c', col[i % col.length]); s.style.animationDelay = (Math.random() * 0.08) + 's'; fx.appendChild(s); setTimeout(() => s.remove(), 750); }
-  if(kind === 'p' || kind === 'h'){ const ring = document.createElement('i'); ring.className = 'spr'; ring.style.left = x + 'px'; ring.style.top = y + 'px'; fx.appendChild(ring); setTimeout(() => ring.remove(), 600); }
+    s.style.setProperty('--c', col[i % col.length]); s.style.animationDelay = (Math.random() * 0.08) + 's'; fx.appendChild(s); made.push(s); }
+  if((kind === 'p' || kind === 'h') && busy <= 20){ const ring = document.createElement('i'); ring.className = 'spr'; ring.style.left = x + 'px'; ring.style.top = y + 'px'; fx.appendChild(ring); made.push(ring); }
+  const GG = G; GG.spkN = (GG.spkN | 0) + made.length; setTimeout(() => { made.forEach(e => e.remove()); GG.spkN -= made.length; }, 800);
 }
 function scoreUI(){ const sc = ROOT && ROOT.querySelector('#rgscore'), cb = ROOT && ROOT.querySelector('#rgcombo');
   if(sc) sc.textContent = nf(Math.round(G.score)); if(cb) cb.innerHTML = G.combo >= 3 ? `<b>${G.combo}</b> コンボ！` : ''; }
@@ -17565,12 +17587,13 @@ function rgRelease(m){
 }
 function rgHit(m){
   if(!G || G.over || G.paused || G.md === 'auto' || G.clock < -0.3) return;
-  let best = null;
-  for(const n of G.notes){ if(n.j) continue; const dt = Math.abs(n.t - G.clock); if(n.t - G.clock > JW.ok) break;
+  const N = G.notes; let best = null;
+  for(let i = uiAdv(); i < N.length; i++){ const n = N[i]; if(n.j) continue; const dt = Math.abs(n.t - G.clock); if(n.t - G.clock > JW.ok) break;
     if(n.m === m && dt <= JW.ok && (!best || dt < Math.abs(best.t - G.clock))) best = n; }
-  if(G.md === 'wait'){ const nx = G.notes.find(n => !n.j && n.m === m && n.t - G.clock <= JW.ok); if(nx){ judge(nx, 'p'); return; } }
+  if(G.md === 'wait'){ let nx = null; for(let i = G.ui; i < N.length; i++){ const n = N[i]; if(n.t - G.clock > JW.ok) break; if(!n.j && n.m === m){ nx = n; break; } } if(nx){ judge(nx, 'p'); return; } }
   if(best){ const dt = Math.abs(best.t - G.clock); judge(best, dt <= JW.p ? 'p' : dt <= JW.g ? 'g' : 'ok'); }
-  else if(G.notes.some(n => !n.j && Math.abs(n.t - G.clock) <= JW.ok)){ G.combo = 0; flashKey(m, 'jx'); showJ('ちがう けんばん', 'x'); scoreUI(); }
+  else { let near = false; for(let i = G.ui; i < N.length; i++){ const n = N[i]; if(n.t - G.clock > JW.ok) break; if(!n.j && Math.abs(n.t - G.clock) <= JW.ok){ near = true; break; } }
+    if(near){ G.combo = 0; flashKey(m, 'jx'); scoreUI(); } }          // 「ちがう けんばん」の もじは だしません（コンボは きれます）
 }
 function tickSound(hi){ const ac = ctx(); if(!ac) return; const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
   o.frequency.value = hi ? 1568 : 1046; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t + 0.1); }
@@ -17585,15 +17608,16 @@ function tickSound(hi){ const ac = ctx(); if(!ac) return; const o = ac.createOsc
 @keyframes crBan{0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-6deg)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.18) rotate(2deg)}30%{transform:translate(-50%,-50%) scale(1) rotate(0)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-58%) scale(1.06)}}
 #mu80 .crfl{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 40%,rgba(255,244,190,.95),rgba(255,214,102,.5) 35%,rgba(255,214,102,0) 70%);opacity:0;animation:crFl .9s ease-out forwards}
 @keyframes crFl{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
-#mu80 .crst{position:absolute;pointer-events:none;width:var(--s,16px);height:var(--s,16px);margin:calc(var(--s,16px) / -2) 0 0 calc(var(--s,16px) / -2);background:var(--c);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;will-change:transform,opacity;animation:crTw var(--d,1.1s) ease-in-out forwards}
+#mu80 .crst{position:absolute;pointer-events:none;width:var(--s,16px);height:var(--s,16px);margin:calc(var(--s,16px) / -2) 0 0 calc(var(--s,16px) / -2);background:var(--c);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);opacity:0;animation:crTw var(--d,1.1s) ease-in-out forwards}
 @keyframes crTw{0%{opacity:0;transform:scale(.2) rotate(0)}35%{opacity:1;transform:scale(1) rotate(60deg)}100%{opacity:0;transform:translate(var(--x,0px),var(--y,-30px)) scale(.3) rotate(160deg)}}
-#mu80 .rgfield.crhot{box-shadow:inset 0 0 36px rgba(255,214,102,.55),inset 0 0 90px rgba(255,143,177,.25);animation:crGl 1.4s ease-in-out infinite alternate}
-@keyframes crGl{0%{box-shadow:inset 0 0 26px rgba(255,214,102,.35),inset 0 0 70px rgba(255,143,177,.15)}100%{box-shadow:inset 0 0 46px rgba(255,214,102,.7),inset 0 0 110px rgba(255,143,177,.35)}}
+#mu80 .rgfield.crhot:after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;box-shadow:inset 0 0 40px rgba(255,214,102,.7),inset 0 0 100px rgba(255,143,177,.35);animation:crGl 1.4s ease-in-out infinite alternate}
+@keyframes crGl{0%{opacity:.45}100%{opacity:1}}
 `; document.head.appendChild(st); })();
 const FX_COL = ['#FFE066', '#FF8FAE', '#FFFFFF', '#9CD3FF', '#B49CFF', '#7BD88F'];
 function fxField(){ return ROOT && ROOT.querySelector('#rgfx'); }
 function fxStars(n, burst){
-  const f = fxField(); if(!f) return; const W = f.clientWidth || 300, H = f.clientHeight || 400;
+  const f = fxField(); if(!f) return; const room = 56 - (G.starN | 0); if(room <= 0) return; n = Math.min(n, room);
+  if(!G.fxW){ G.fxW = f.clientWidth || 300; G.fxH = f.clientHeight || 400; } const W = G.fxW, H = G.fxH, made = []; let dmax = 0;
   for(let i = 0; i < n; i++){
     const e = document.createElement('i'); e.className = 'crst';
     const s = 10 + Math.random() * (burst ? 22 : 14), d = (burst ? 0.9 : 0.8) + Math.random() * 0.9;
@@ -17601,8 +17625,9 @@ function fxStars(n, burst){
     e.style.setProperty('--s', s + 'px'); e.style.setProperty('--d', d + 's'); e.style.setProperty('--c', FX_COL[(Math.random() * FX_COL.length) | 0]);
     e.style.setProperty('--x', ((Math.random() - 0.5) * (burst ? 160 : 50)) + 'px'); e.style.setProperty('--y', (-(burst ? 40 : 20) - Math.random() * (burst ? 90 : 40)) + 'px');
     e.style.animationDelay = (Math.random() * (burst ? 0.35 : 0.2)) + 's';
-    f.appendChild(e); setTimeout(() => e.remove(), (d + 0.7) * 1000);
+    f.appendChild(e); made.push(e); if(d > dmax) dmax = d;
   }
+  const GG = G; GG.starN = (GG.starN | 0) + made.length; setTimeout(() => { made.forEach(e => e.remove()); GG.starN -= made.length; }, (dmax + 0.7) * 1000);
 }
 function fxBurst(ev){
   const f = fxField(); if(!f) return; const lv = ev.lv || 1;
@@ -17623,6 +17648,8 @@ function fxTick(){
 }
 function loop(now){
   if(!G || G.over || !ROOT){ return; }
+  if(!G.act) measure();
+  if(!G.act){ RAF = requestAnimationFrame(loop); return; }
   const acT = (AC && AC.state === 'running') ? AC.currentTime : null;
   const rafDt = Math.min(0.1, (now - G.last) / 1000); let dt = rafDt;
   if(acT != null && G.lastA != null){ const ad = acT - G.lastA; if(ad > 0){ dt = Math.min(0.1, ad); G.stall = 0; } else { G.stall = (G.stall || 0) + rafDt; dt = G.stall > 0.25 ? rafDt : 0; } }
@@ -17630,7 +17657,7 @@ function loop(now){
   const before = G.clock;
   if(!G.paused){
     let nc = G.clock + dt;
-    if(G.md === 'wait'){ const nx = G.notes.find(n => !n.j); if(nx && nc >= nx.t){ nc = Math.max(G.clock, nx.t); const k = keyEl(nx.m); if(k && !k.classList.contains('wt')) k.classList.add('wt'); } }
+    if(G.md === 'wait'){ const nx = G.notes[uiAdv()]; if(nx && nc >= nx.t){ nc = Math.max(G.clock, nx.t); const k = keyEl(nx.m); if(k && !k.classList.contains('wt')) k.classList.add('wt'); } }
     G.clock = nc;
   }
   const adv = G.clock - before;
@@ -17640,22 +17667,22 @@ function loop(now){
   if(G.clock < 0 && beat > G.tick && beat >= -4){ G.tick = beat; if(!BUF.drstick) tickSound(beat === -4); const c = ROOT.querySelector('#rgcnt'); if(c){ c.textContent = -beat; c.classList.remove('go'); void c.offsetWidth; c.classList.add('go'); } }
   try{ fxTick(); }catch(e){}
   /* おてほん */
-  if(G.md === 'auto') for(const n of G.notes){ if(n.j) continue; if(n.t > G.clock) break;
+  if(G.md === 'auto') for(let i = uiAdv(); i < G.notes.length; i++){ const n = G.notes[i]; if(n.j) continue; if(n.t > G.clock) break;
     n.j = 'p'; G.cnt.p++; const key = 'a' + n.m + n.t, long = n.db >= LONG_B;
     if(long){ n.hold = 'auto'; n.hs = n.t; n.el && n.el.classList.add('holding'); } else if(n.el) n.el.style.display = 'none';
     sparkle(n.m, 'p');
     noteOn(MS().inst, n.m, key); const k = keyEl(n.m); if(k){ k.classList.add('on'); }
     setTimeout(() => { noteOff(key); if(k) k.classList.remove('on'); }, Math.max(120, n.dur * 1000 * 0.9)); }
   /* ながおし */
-  for(const n of G.notes){ if(!n.hold) continue; const te = n.t + n.dur;
+  for(const n of G.act){ if(!n.hold) continue; const te = n.t + n.dur;
     if(n.hold === 'auto'){ if(G.clock >= te){ n.hold = false; if(n.el) n.el.style.display = 'none'; } continue; }
     const gain = Math.max(0, Math.min(adv, te - (G.clock - adv))) / G.spb;
     if(gain > 0){ G.holdB += gain; G.score += gain * HOLD_SC; }
     if(G.clock >= te) holdEnd(n, true); }
-  if(adv > 0 && G.notes.some(n => n.hold === true)) scoreUI();
+  if(adv > 0 && G.act.some(n => n.hold === true)) scoreUI();
   /* 見のがし */
-  if(G.md === 'play') for(const n of G.notes){ if(n.j) continue; if(G.clock - n.t <= JW.ok) break; judge(n, 'miss'); }
-  if(G.md === 'wait') ROOT.querySelectorAll('#mukb .muk.wt').forEach(k => { const nx = G.notes.find(n => !n.j); if(!nx || +k.dataset.m !== nx.m || G.clock < nx.t) k.classList.remove('wt'); });
+  if(G.md === 'play') for(let i = uiAdv(); i < G.notes.length; i++){ const n = G.notes[i]; if(n.j) continue; if(G.clock - n.t <= JW.ok) break; judge(n, 'miss'); }
+  if(G.md === 'wait') ROOT.querySelectorAll('#mukb .muk.wt').forEach(k => { const nx = G.notes[uiAdv()]; if(!nx || +k.dataset.m !== nx.m || G.clock < nx.t) k.classList.remove('wt'); });
   /* いき（けんハモ） */
   if(G.mh && G.clock > 0 && adv > 0){
     const playing = G.notes.some(n => (n.hold === true) || (n.j && n.j !== 'miss' && G.clock >= n.t && G.clock <= n.t + n.dur));
@@ -17664,24 +17691,27 @@ function loop(now){
       const s = ROOT.querySelector('#rgsuu'); if(s){ s.textContent = 'すって！'; s.classList.remove('go'); void s.offsetWidth; s.classList.add('go'); } }
     const b = ROOT.querySelector('#rgbreath'); if(b){ b.style.width = G.breath * 100 + '%'; b.classList.toggle('lo', G.breath < 0.25); }
   }
-  /* 音ふを うごかす */
+  /* 音ふを うごかす（がめんに でる 音ふだけ。つかい おわった 入れものは かえす） */
+  actUpdate();
+  const act = G.act; let w = 0;
   if(G.vw === 'score'){
-    const span = G.fw - G.jx;
-    for(const n of G.notes){ if(!n.el || (n.j && !n.hold)) continue; const until = n.t - G.clock;
-      let x = G.jx + (until / G.spb) * G.ppb;
-      if(x > G.fw + 30){ n.el.style.visibility = 'hidden'; continue; }
+    for(let i = 0; i < act.length; i++){ const n = act[i];
+      if(n.j && !n.hold){ relEl(n); continue; } act[w++] = n;
+      const until = n.t - G.clock; let x = G.jx + (until / G.spb) * G.ppb;
       if(n.hold){ x = G.jx; const tl = n.el.querySelector('.tl'); if(tl) tl.style.width = Math.max(0, (n.t + n.dur - G.clock) / G.spb * G.ppb) + 'px'; }
-      n.el.style.visibility = 'visible'; n.el.style.transform = `translateX(${x}px)`; }
+      if(!n._vis){ n._vis = 1; n.el.style.visibility = 'visible'; } n.el.style.transform = `translateX(${x}px)`; }
   } else {
     const hy = G.fh - 6;
-    for(const n of G.notes){ if(!n.el || (n.j && !n.hold)) continue; const until = n.t - G.clock;
-      if(until > LEAD + 0.3){ n.el.style.visibility = 'hidden'; continue; }
-      const long = n.db >= LONG_B;
+    for(let i = 0; i < act.length; i++){ const n = act[i];
+      if(n.j && !n.hold){ relEl(n); continue; } act[w++] = n;
+      const until = n.t - G.clock, long = n.db >= LONG_B;
       let y = hy - (until / LEAD) * hy, h = long ? Math.max(34, Math.min(hy * 1.5, n.dur / LEAD * hy - 6)) : 34;
       if(n.hold){ const rest = Math.max(0, (n.t + n.dur - G.clock) / LEAD * hy); y = hy; h = Math.max(14, rest); }
-      n.el.style.visibility = 'visible'; n.el.style.height = h + 'px'; n.el.style.transform = `translateY(${y - h}px)`; }
+      if(n._h !== h){ n._h = h; n.el.style.height = h + 'px'; }
+      if(!n._vis){ n._vis = 1; n.el.style.visibility = 'visible'; } n.el.style.transform = `translateY(${y - h}px)`; }
   }
-  const pb = ROOT.querySelector('#rgpb'); if(pb) pb.style.width = Math.max(0, Math.min(100, G.clock / G.end * 100)) + '%';
+  act.length = w;
+  const pb = ROOT.querySelector('#rgpb'); if(pb){ const pw = Math.round(Math.max(0, Math.min(100, G.clock / G.end * 100)) * 10) / 10; if(pw !== G.pbw){ G.pbw = pw; pb.style.width = pw + '%'; } }
   if(G.clock > G.end + 0.8 && G.notes.every(n => n.j && !n.hold)){ rgFinish(); return; }
   RAF = requestAnimationFrame(loop);
 }
