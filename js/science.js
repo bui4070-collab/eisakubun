@@ -3408,7 +3408,7 @@ function openBig(key, star, filt){
 }
 
 /* ---------------- ダイアログの 絵を さしかえる ---------------- */
-function mount(host){
+function mount(host, opt){
   if(host.dataset.m25ok) return; host.dataset.m25ok = '1';
   const key = host.dataset.m25, star = +host.dataset.m25s || 1, D = DATA[key], img = host.querySelector(':scope > img.rb');
   if(!D || !img) return;
@@ -3427,8 +3427,10 @@ function mount(host){
     const inst = makeInst(D, host, box, cv);
     if(!inst){ box.replaceWith(img); return; }
     inst.fail = () => { inst.dispose(); if(box.isConnected) box.replaceWith(img); };
-    const z = document.createElement('span'); z.className = 'm25zoom'; z.textContent = '🔍 おおきく'; host.appendChild(z);
-    box.addEventListener('click', () => openBig(key, star, filt));
+    if(!(opt && opt.noZoom)){
+      const z = document.createElement('span'); z.className = 'm25zoom'; z.innerHTML = '<img src="./assets/images/oshiro/ic2_zoom.webp" alt="" style="width:1.3em;height:1.3em;object-fit:contain;vertical-align:-.35em;margin-right:2px" onerror="this.remove()">おおきく'; host.appendChild(z);
+      box.addEventListener('click', () => openBig(key, star, filt));
+    }
     INST.add(inst); if(!rafOn){ rafOn = true; requestAnimationFrame(loop); }
   }).catch(e => console.warn('res25d load', e));
 }
@@ -3476,7 +3478,7 @@ openResident = function(id){
   try{ const r = save.town.res.find(x => x.id === id); CTX = r ? {r, used:false} : null; }catch(e){ CTX = null; }
   try{ return _or.apply(this, arguments); } finally { CTX = null; }
 };
-window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size};
+window.__res25d = {keyOf, mount, DATA: () => Object.keys(DATA), active: () => INST.size};
 })();
 
 
@@ -3484,7 +3486,7 @@ window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size
 
 
 /* =====================================================================
-   v10.5：おしろ STEP1〜4（ぎょうじ・ぎょくざのま）
+   v10.6：おしろ（絵文字を イラストに・ぎょくざのまの 2.5D）
    STEP1：おしろトップ 2.5D ・ おふれ ・ おしろコイン
    STEP2：ぞうちく（5つの パーツ × 3だんかい）・ おしろの しんか（木の とりで → 石の おしろ → きらきらの おしろ）
    v10.1 の なおし
@@ -3502,6 +3504,21 @@ const OI = './assets/images/oshiro/';
 const TAU = Math.PI * 2, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const H = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const nfm = n => (typeof nf === 'function' ? nf(n) : String(n));
+/* v10.6：絵文字の かわりに つかう イラスト（assets/images/oshiro/ic2_〇〇.webp・ic_〇〇.webp） */
+const ICP = {coin:'ic_coin', ofure:'ic_ofure', zouchiku:'ic_zouchiku', chizu:'ic_chizu', gyouji:'ic_gyouji', gyokuza:'ic_gyokuza', compass:'ic_compass'};
+const icSrc = k => OI + (ICP[k] || 'ic2_' + k) + '.webp';
+const IC = (k, cls = '') => `<img class="osIc ${cls}" src="${icSrc(k)}" alt="" draggable="false">`;
+const ICIMG = {};
+const icImg = k => { if(!ICIMG[k]){ const im = new Image(); im.src = icSrc(k); ICIMG[k] = im; } return ICIMG[k]; };
+function otoast(k, msg){
+  try{
+    const t = document.getElementById('toast'); if(!t){ toast(msg); return; }
+    t.innerHTML = IC(k, 'osTIc') + String(msg).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    t.classList.add('show'); clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('show'), 2200);
+  }catch(e){ try{ toast(msg); }catch(_){} }
+}
+(function(){ const c = document.createElement('style'); c.textContent = `.osIc{display:inline-block;width:1.3em;height:1.3em;object-fit:contain;vertical-align:-.3em;margin-right:.18em;flex:none;pointer-events:none}
+#toast .osTIc{width:1.5em;height:1.5em;vertical-align:-.4em;margin-right:.3em}`; document.head.appendChild(c); })();
 const hasCastle = () => { try{ return Object.values(save.town.cells || {}).includes('castle'); }catch(e){ return false; } };
 
 /* ---------- アイコン（SVG：まんなかに そろう） ---------- */
@@ -3525,13 +3542,13 @@ const daysLeft = () => { const d = new Date(); return 7 - (d.getDay() + 6) % 7; 
 const NI = '<ruby>日<rt>にち</rt></ruby>';
 /* n：[かんたん, ふつう, むずかしい] の もくひょう */
 const MS = {
-  study:{ic:'✏️', n:[10,20,35],     t:n => `べんきょうで せいかいを ${n}かい しよう`},
-  days: {ic:'📅', n:[2,3,5],        t:n => `${n}${NI} べんきょうしよう`},
-  pt:   {ic:'🪙', n:[300,800,1500], t:n => `ポイントを ${n}pt あつめよう`},
-  visit:{ic:'🏠', n:[5,10,20],      t:n => `まちの たてものを ${n}かい たずねよう`},
-  music:{ic:'🎵', n:[1,3,5],        t:n => `おんがくを ${n}きょく クリアしよう`},
-  buy:  {ic:'🛒', n:[1,3,5],        t:n => `ショップで ${n}かい かいものしよう`},
-  talk: {ic:'💬', n:[2,4,6],        t:n => `じゅうみんと ${n}かい おはなししよう`}
+  study:{ic:'pencil', n:[10,20,35],     t:n => `べんきょうで せいかいを ${n}かい しよう`},
+  days: {ic:'calendar', n:[2,3,5],        t:n => `${n}${NI} べんきょうしよう`},
+  pt:   {ic:'coin', n:[300,800,1500], t:n => `ポイントを ${n}pt あつめよう`},
+  visit:{ic:'house', n:[5,10,20],      t:n => `まちの たてものを ${n}かい たずねよう`},
+  music:{ic:'note', n:[1,3,5],        t:n => `おんがくを ${n}きょく クリアしよう`},
+  buy:  {ic:'cart', n:[1,3,5],        t:n => `ショップで ${n}かい かいものしよう`},
+  talk: {ic:'talk', n:[2,4,6],        t:n => `じゅうみんと ${n}かい おはなししよう`}
 };
 const RW = [10, 20, 30], BONUS = 20;
 function seeded(str){ let h = 2166136261; for(const c of str){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; }
@@ -3554,7 +3571,7 @@ function count(id, n = 1){
   try{
     const o = ensureWeek(); o.cnt[id] = (o.cnt[id] || 0) + n;
     const m = o.ms.find(x => x.id === id);
-    if(m && !m.got && (o.cnt[id] - n) < m.goal && o.cnt[id] >= m.goal){ setTimeout(() => { try{ toast('🏰 おふれ たっせい！ おしろで ごほうびを うけとろう'); }catch(e){} }, 700); }
+    if(m && !m.got && (o.cnt[id] - n) < m.goal && o.cnt[id] >= m.goal){ setTimeout(() => { otoast('castle', 'おふれ たっせい！ おしろで ごほうびを うけとろう'); }, 700); }
   }catch(e){}
 }
 
@@ -3693,7 +3710,7 @@ css.textContent = `
 .osCard.got .osChk{border-color:#36A85C;background:#E3F5E7}
 .osTx{min-width:0}
 .osTx b{display:block;font-size:16px;font-weight:900;line-height:1.5;overflow-wrap:anywhere}
-.osTx b i{font-style:normal;margin-right:4px}
+.osTx b .osIc{width:1.35em;height:1.35em}
 .osTx ruby rt{font-size:.55em}
 .osPb{height:10px;border-radius:99px;background:#F1E6D2;overflow:hidden;margin:5px 0 2px}
 .osPb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FFD36B,#F28F1C);transition:width .4s}
@@ -3758,7 +3775,7 @@ function root(){
     <div class="osPg osOf"><div class="osPgBg"></div><div class="osOfSay"><b>ハナ</b><span></span></div><div class="osHanaBox"><canvas></canvas><span class="osHanaTap">タッチで ひょうじょうが かわるよ</span></div>
       <div class="osScroll"><div class="osHd"></div><div class="osList"></div></div></div>
     <div class="osPg osZc"></div>
-    <div class="osBar"><button class="osRb" data-o="back" aria-label="もどる">${SVG.back}</button><div class="osTtl">🏰 おしろ</div><div class="osSp"></div>
+    <div class="osBar"><button class="osRb" data-o="back" aria-label="もどる">${SVG.back}</button><div class="osTtl">${IC('castle')}おしろ</div><div class="osSp"></div>
       <button class="osBld" data-o="bld" aria-label="グレードアップ">${SVG.bld}<span>グレードアップ</span></button>
       <div class="osCoin"><img src="${OI}ic_coin.webp" alt=""><b>0</b></div></div>`;
   document.body.appendChild(el);
@@ -3802,7 +3819,7 @@ function refresh(){
   R.bld.style.display = KEY ? '' : 'none';
 }
 function say(txt){ const s = R.say; s.querySelector('span').textContent = txt; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); if(!isL() && R.el.classList.contains('show')) setTimeout(place, 0); }
-function setTitle(t){ R.ttl.textContent = t; }
+function setTitle(k, t){ R.ttl.innerHTML = IC(k) + H(t); }
 
 function openOshiro(key){
   root(); KEY = key || null;
@@ -3816,7 +3833,7 @@ function closePages(){
   R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false;
   if(OFH){ OFH.dispose(); OFH = null; }
   closeMap(); closeGy(); closeGz();
-  setTitle('🏰 おしろ' + stageSuffix());
+  setTitle('castle', 'おしろ');
 }
 function closeOshiro(){
   if(!R) return; closePages(); R.el.classList.remove('show'); if(ST) ST.pause();
@@ -3869,13 +3886,13 @@ function cardHTML(m, i){
   const p = prog(m), ok = isOk(m), st = m.got ? 'got' : ok ? 'ok' : '';
   const rw = `<span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${m.rw}</span>`;
   return `<div class="osCard ${st}"><div class="osChk">${m.got ? SVG.check : ''}</div>
-    <div class="osTx"><b><i>${MS[m.id].ic}</i>${MS[m.id].t(m.goal)}</b><div class="osPb"><i style="width:${Math.round(p / m.goal * 100)}%"></i></div><small>${p} / ${m.goal}${m.got ? '　うけとりずみ' : ''}</small></div>
+    <div class="osTx"><b>${IC(MS[m.id].ic)}${MS[m.id].t(m.goal)}</b><div class="osPb"><i style="width:${Math.round(p / m.goal * 100)}%"></i></div><small>${p} / ${m.goal}${m.got ? '　うけとりずみ' : ''}</small></div>
     ${ok ? `<button class="osRw get" data-o="get:${i}">${rw}<small>うけとる</small></button>` : `<div class="osRw">${rw}<small>${m.got ? 'もらったよ' : 'ごほうび'}</small></div>`}</div>`;
 }
 function renderOfure(){
   const o = ensureWeek(), all = o.ms.every(m => m.got), st = R.ofList.scrollTop;
   const bn = `<div class="osBn ${o.bonus ? 'got' : all ? 'ok' : ''}"><div class="osChk">${o.bonus ? SVG.check : ''}</div>
-    <div class="osTx"><b><i>👑</i>3つ ぜんぶ たっせいで ボーナス！</b><small>${o.ms.filter(m => m.got).length} / 3</small></div>
+    <div class="osTx"><b>${IC('crown')}3つ ぜんぶ たっせいで ボーナス！</b><small>${o.ms.filter(m => m.got).length} / 3</small></div>
     ${all && !o.bonus ? `<button class="osRw get" data-o="bonus"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>うけとる</small></button>`
       : `<div class="osRw"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>${o.bonus ? 'もらったよ' : 'ボーナス'}</small></div>`}</div>`;
   R.ofHd.innerHTML = `<b>こんしゅうの おふれ</b><small>のこり ${daysLeft()}<ruby>日<rt>にち</rt></ruby></small>`;
@@ -3884,7 +3901,7 @@ function renderOfure(){
 }
 function openOfure(){
   R.zc.classList.remove('show'); ZC.open = false;
-  R.of.classList.add('show'); setTitle('📜 おふれ'); renderOfure(); R.ofList.scrollTop = 0; ofSay(hanaOfLine());
+  R.of.classList.add('show'); setTitle('ofure', 'おふれ'); renderOfure(); R.ofList.scrollTop = 0; ofSay(hanaOfLine());
   if(ST) ST.pause();
   if(!OFH) OFH = HimeView(R.hanaBox, R.hanaBox.querySelector('canvas'), {onPose:id => { const L = HANA_OF[id] || HANA_OF.normal; ofSay(L[Math.floor(Math.random() * L.length)]); }});
 }
@@ -3911,7 +3928,7 @@ function getReward(i, btn){
   m.got = 1; persist(); btn.disabled = true; try{ sound('fan'); }catch(e){}
   if(OFH) OFH.pose('laugh');
   const mb = roleOf('minister') ? Math.max(1, Math.round(m.rw * .1)) : 0;
-  flyCoins(btn, m.rw, () => { addCoin(m.rw + mb, mb ? `おふれ たっせい（📜大臣 +${mb}）` : 'おふれ たっせい'); if(mb) try{ toast(`📜 大臣の ${roleOf('minister').name}の おかげで +${mb}`); }catch(e){} renderOfure(); refresh(); if(o.ms.every(x => x.got)) ofSay('3つ ぜんぶ たっせい！ ボーナスも もらおう！'); });
+  flyCoins(btn, m.rw, () => { addCoin(m.rw + mb, mb ? `おふれ たっせい（大臣 +${mb}）` : 'おふれ たっせい'); if(mb) otoast('ofure', `大臣の ${roleOf('minister').name}の おかげで +${mb}`); renderOfure(); refresh(); if(o.ms.every(x => x.got)) ofSay('3つ ぜんぶ たっせい！ ボーナスも もらおう！'); });
 }
 function getBonus(btn){
   const o = ensureWeek(); if(o.bonus || !o.ms.every(m => m.got)) return;
@@ -4255,7 +4272,7 @@ function zcRenderCastle(){
     ib.appendChild(b);
   });
   const stEl = R.zc.querySelector('.zcStage');
-  stEl.innerHTML = `🏰 ${STAGE_N[st]}<i>${st < 3 ? (st === 1 ? 'ぜんぶ ★2 で しんか' : `ぜんぶ ★3 ＋ まち Lv${TOWN_LV3} で しんか`) : 'さいこうの おしろ！'}</i>`;
+  stEl.innerHTML = `${IC('castle')}${STAGE_N[st]}<i>${st < 3 ? (st === 1 ? 'ぜんぶ ★2 で しんか' : `ぜんぶ ★3 ＋ まち Lv${TOWN_LV3} で しんか`) : 'さいこうの おしろ！'}</i>`;
 }
 function zcRenderPanel(){
   const coin = O().coin;
@@ -4263,7 +4280,7 @@ function zcRenderPanel(){
     const lv = lvOf(p.k), c = costOf(p.k), can = lv < 3 && coin >= c;
     const btn = lv >= 3 ? `<button class="zcBtn mx" disabled>★ さいだい</button>`
       : `<button class="zcBtn ${can ? '' : 'ng'}" data-o="zbuild:${p.k}"><img src="${OI}ic_coin.webp" alt="">${c}　${lv ? 'レベルアップ' : 'たてる'}</button>`;
-    return `<div class="zcCard ${ZC.sel === p.k ? 'sel' : ''} ${lv >= 3 ? 'max' : ''}" data-k="${p.k}" data-o="zsel:${p.k}"><img src="${OI}${p.ic}.webp" alt=""><b>${p.n}</b><span class="st">${starStr(lv)}</span><small>${lv >= 3 ? '✨ 見た目が かわったよ！' : lv === 2 ? 'つぎの ★3で 見た目が かわる！' : lv ? `レベル ${lv} / 3　${p.d}` : `まだ ないよ　${p.d}`}</small>${btn}</div>`;
+    return `<div class="zcCard ${ZC.sel === p.k ? 'sel' : ''} ${lv >= 3 ? 'max' : ''}" data-k="${p.k}" data-o="zsel:${p.k}"><img src="${OI}${p.ic}.webp" alt=""><b>${p.n}</b><span class="st">${starStr(lv)}</span><small>${lv >= 3 ? `${IC('sparkle')}見た目が かわったよ！` : lv === 2 ? 'つぎの ★3で 見た目が かわる！' : lv ? `レベル ${lv} / 3　${p.d}` : `まだ ないよ　${p.d}`}</small>${btn}</div>`;
   }).join('');
   const box = R.zc.querySelector('.zcCards'), sl = box.scrollLeft, stp = box.scrollTop;
   box.innerHTML = cards; box.scrollLeft = sl; box.scrollTop = stp;
@@ -4313,7 +4330,7 @@ function zcPlace(){
 }
 function openZc(){
   R.of.classList.remove('show'); if(OFH){ OFH.dispose(); OFH = null; }
-  P(); R.zc.innerHTML = zcHTML(); R.zc.classList.add('show'); ZC.open = true; setTitle('🔨 ぞうちく');
+  P(); R.zc.innerHTML = zcHTML(); R.zc.classList.add('show'); ZC.open = true; setTitle('zouchiku', 'ぞうちく');
   if(ST) ST.pause();
   const first = PARTS.find(p => lvOf(p.k) < 3 && O().coin >= costOf(p.k)) || PARTS.find(p => lvOf(p.k) < 3) || PARTS[0];
   ZC.sel = first.k; zcPlace(); zcRenderPanel();
@@ -4329,7 +4346,7 @@ function zcFx(k, big){
 function zcLook(k){
   const box = R.zc.querySelector('.zcImgBox'), I = CINFO[castleStage()]; if(!box || !I.hot[k]) return;
   const [x, y] = I.hot[k], g = document.createElement('i'); g.className = 'zcGlow'; g.style.left = x + '%'; g.style.top = y + '%'; box.appendChild(g); setTimeout(() => g.remove(), 1500);
-  const t = document.createElement('i'); t.className = 'zcNew'; t.textContent = '✨ 見た目が かわった！'; t.style.left = x + '%'; t.style.top = (y - 6) + '%'; box.appendChild(t); setTimeout(() => t.remove(), 2700);
+  const t = document.createElement('i'); t.className = 'zcNew'; t.innerHTML = IC('sparkle') + '見た目が かわった！'; t.style.left = x + '%'; t.style.top = (y - 6) + '%'; box.appendChild(t); setTimeout(() => t.remove(), 2700);
 }
 function zcBuild(k, btn){
   if(ZC.busy) return;
@@ -4348,7 +4365,7 @@ function zcBuild(k, btn){
     const after = castleStage();
     if(look && after === before){ zcDrawCastle(true); zcLook(k); try{ confetti(1200); }catch(e){} }
     zcRenderCastle(); zcRenderPanel(); refresh();
-    zcSay(look ? `${p.n}が ★3！ 見た目が りっぱに かわったぞ！ ✨` : `${p.n}が ${lv ? `★${lv + 1}に なった` : 'できあがった'}ぞ！ ${lv + 1 === 2 ? 'あと ひとつで 見た目が かわるぞ' : ''}`);
+    zcSay(look ? `${p.n}が ★3！ 見た目が りっぱに かわったぞ！` : `${p.n}が ${lv ? `★${lv + 1}に なった` : 'できあがった'}ぞ！ ${lv + 1 === 2 ? 'あと ひとつで 見た目が かわるぞ' : ''}`);
     ZC.busy = false;
     if(after > before){ O().stage = after; persist(); evolve(before, after, preKeys); }
   }, 900);
@@ -4469,14 +4486,14 @@ function mpImg(o){
   if(o.id === 'castle'){
     const st = castleStage(), key = 'castle_' + st + ':' + (st >= 3 ? '' : lv3Keys().join(','));
     if(MP.img[key]) return MP.img[key];
-    const rec = MP.img[key] = {im:null, ok:false, err:false, emo:'🏰'};
+    const rec = MP.img[key] = {im:null, ok:false, err:false, emo:'castle'};
     castleCanvas(st).then(cv => { rec.im = cv; rec.ok = true; mpReq(); }).catch(() => { rec.err = true; mpReq(); });
     return rec;
   }
   const key = o.it.art || '';
   if(MP.img[key]) return MP.img[key];
   const src = o.id === 'castle' ? `${OI}castle_${castleStage()}.webp` : (o.it.img || (typeof artSrc === 'function' ? artSrc(o.it.art) : ''));
-  const rec = {im:null, ok:false, err:!src, emo:o.it.emoji || '🏠'};
+  const rec = {im:null, ok:false, err:!src, emo:'house'};
   if(src){ const im = new Image(); im.onload = () => { rec.ok = true; mpReq(); }; im.onerror = () => { rec.err = true; mpReq(); }; im.src = src; rec.im = im; }
   MP.img[key] = rec; return rec;
 }
@@ -4559,7 +4576,7 @@ function drawObjs(c, D){
     const o = L.o, b = spriteBox(o);
     c.fillStyle = 'rgba(40,60,20,.22)'; c.beginPath(); c.ellipse(b.cx, b.ay - 2, b.w * .42, b.w * .2, 0, 0, TAU); c.fill();
     if(b.im.ok) c.drawImage(b.im.im, b.x, b.y, b.w, b.h);
-    else if(b.im.err){ c.font = `${Math.round(b.w * .6)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText(b.im.emo, b.cx, b.ay - 4); }
+    else if(b.im.err){ const fi = icImg(b.im.emo); if(fi.complete && fi.naturalWidth){ const fw = b.w * .7; c.drawImage(fi, b.cx - fw / 2, b.ay - fw - 2, fw, fw); } else fi.onload = mpReq; }
     if(MP.sel && MP.sel.k === o.k){ c.strokeStyle = 'rgba(255,214,74,.95)'; c.lineWidth = 5; diamond(c, o.x, o.y, o.w, o.h); c.stroke(); }
     MP.boxes.push({o, b});
   }
@@ -4572,7 +4589,7 @@ function drawObjs(c, D){
     c.fillStyle = o.id === 'castle' ? '#F2557E' : '#2E8BD6'; c.strokeStyle = '#fff'; c.lineWidth = 3 * s;
     c.beginPath(); c.arc(0, 0, r, Math.PI * .8, Math.PI * .2); c.lineTo(0, r * 1.7); c.closePath(); c.fill(); c.stroke();
     c.fillStyle = '#fff'; c.font = `900 ${Math.round(r * .95)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(o.id === 'castle' ? '♛' : o.g ? '★' + (o.g > 1 ? o.g : '') : '•', 0, 1);
+    if(o.id === 'castle'){ const ci = icImg('crown'); if(ci.complete && ci.naturalWidth) c.drawImage(ci, -r * .75, -r * .75, r * 1.5, r * 1.5); else ci.onload = mpReq; } else c.fillText(o.g ? '★' + (o.g > 1 ? o.g : '') : '•', 0, 1);
     c.restore();
   });
 }
@@ -4632,7 +4649,7 @@ function mpSelect(o){
   const info = (() => { try{ return (window.ZUKAN_INFO && ZUKAN_INFO[o.id]) || ''; }catch(e){ return ''; } })();
   const d = mpDir(o);
   const el = document.createElement('div'); el.className = 'mpCard';
-  el.innerHTML = `${src ? `<img src="${H(src)}" alt="">` : `<span class="mpEmo">${H(o.it.emoji || '🏠')}</span>`}
+  el.innerHTML = `${src ? `<img src="${H(src)}" alt="">` : `<img src="${icSrc('house')}" alt="">`}
     <div><b>${H(o.id === 'castle' ? STAGE_N[castleStage()] : o.it.name)}</b>${o.it.cat === 'deco' || o.id === 'castle' ? '' : `<span class="st">${starS(o.g)}</span>`}
       <small>${d ? `おしろから 見て <b style="display:inline;font-size:12px;color:#C2457A">${d}</b> に あるよ` : o.id === 'castle' ? 'ここが ハナの おしろ！' : ''}${info ? '<br>' + H(info).slice(0, 40) : ''}</small></div>
     <div class="mpBtns">${o.id === 'castle' ? '' : `<button class="mpGo" data-o="mz:go">いく</button>`}</div>
@@ -4657,16 +4674,16 @@ function mpQuiz(){
   const old = R.el.querySelector('.mpQz'); if(old) old.remove();
   const C = MP.D && MP.D.castle;
   const wrap = document.createElement('div'); wrap.className = 'mpQz';
-  if(!C){ wrap.innerHTML = `<div class="mpQzIn"><h3>🧭 ほうがく クイズ</h3><p>まちに おしろを おくと<br>クイズが できるよ！<small>おしろを まんなかに して ほうがくを かんがえるよ</small></p><div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
+  if(!C){ wrap.innerHTML = `<div class="mpQzIn"><h3>${IC('compass')}ほうがく クイズ</h3><p>まちに おしろを おくと<br>クイズが できるよ！<small>おしろを まんなかに して ほうがくを かんがえるよ</small></p><div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
     R.el.querySelector('.osMp').appendChild(wrap); return; }
   const cand = MP.D.objs.filter(o => o !== C && o.kind !== 'deco' && o.kind !== 'conn' && (mpDirKey(o) || '').length === 1);
-  if(!cand.length){ wrap.innerHTML = `<div class="mpQzIn"><h3>🧭 ほうがく クイズ</h3><p>おしろの まわりに たてものを ふやすと<br>クイズが できるよ！</p><div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
+  if(!cand.length){ wrap.innerHTML = `<div class="mpQzIn"><h3>${IC('compass')}ほうがく クイズ</h3><p>おしろの まわりに たてものを ふやすと<br>クイズが できるよ！</p><div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
     R.el.querySelector('.osMp').appendChild(wrap); return; }
   const o = cand[Math.floor(Math.random() * cand.length)], ans = mpDirKey(o);
   MP.qz = {o, ans};
   const src = o.it.img || artSrc(o.it.art);
-  wrap.innerHTML = `<div class="mpQzIn"><h3>🧭 ほうがく クイズ</h3>
-    <div class="mpQzPic"><img src="${OI}castle_${castleStage()}.webp" alt=""><span>→</span>${src ? `<img src="${H(src)}" alt="">` : `<span>${H(o.it.emoji || '🏠')}</span>`}</div>
+  wrap.innerHTML = `<div class="mpQzIn"><h3>${IC('compass')}ほうがく クイズ</h3>
+    <div class="mpQzPic"><img src="${OI}castle_${castleStage()}.webp" alt=""><span>→</span>${src ? `<img src="${H(src)}" alt="">` : `<img src="${icSrc('house')}" alt="">`}</div>
     <p>「${H(o.it.name)}」は<br>おしろから 見て どっちの ほうがく？<small>ちずの ほういじしん（ピンクが きた）を 見て かんがえよう</small></p>
     <div class="mpQzOpts">${['n','e','s','w'].map(k => `<button data-o="mz:ans:${k}">${DIRN[k]}</button>`).join('')}</div>
     <div class="mpQzRes"></div><div class="mpQzLeft">${qzLeft() > 0 ? `きょう コインが もらえる のこり ${qzLeft()}かい` : 'きょうの コインは おしまい（クイズは つづけられるよ）'}</div>
@@ -4699,7 +4716,7 @@ function mpGo(){
     if(!c){ if(n > 0) setTimeout(() => tryFind(n - 1), 200); return; }
     try{ c.scrollIntoView({block:'center', inline:'center', behavior:'smooth'}); }catch(e){ c.scrollIntoView(); }
     c.classList.add('mpFlash'); setTimeout(() => c.classList.remove('mpFlash'), 2200);
-    try{ toast(`🗺️ ${o.it.name}に ついたよ！`); }catch(e){}
+    otoast('chizu', `${o.it.name}に ついたよ！`);
   };
   setTimeout(() => tryFind(10), 250);
 }
@@ -4712,7 +4729,7 @@ function openMap(){
   if(!pg){ pg = document.createElement('div'); pg.className = 'osPg osMp'; R.el.insertBefore(pg, R.el.querySelector('.osBar')); }
   pg.innerHTML = mpHTML(); pg.classList.add('show'); MP.open = true; MP.sel = null;
   MP.cv = pg.querySelector('canvas'); MP.ctx = MP.cv.getContext('2d'); mpBind();
-  setTitle('🗺️ まちのちず'); if(ST) ST.pause();
+  setTitle('chizu', 'まちのちず'); if(ST) ST.pause();
   requestAnimationFrame(() => { mpFit(); setTimeout(hideHint, 4000); });
 }
 function closeMap(){ const pg = R && R.el.querySelector('.osMp'); if(pg){ pg.classList.remove('show'); pg.innerHTML = ''; } MP.open = false; MP.cv = null; MP.qz = null; }
@@ -4758,7 +4775,8 @@ css5.textContent = `
 .gyWalker{position:absolute;bottom:0;animation:gyWalk var(--d) linear forwards}
 .gyWalker .rpic{height:100%;animation:gyHop .36s ease-in-out infinite alternate}
 .gyWalker .rpic>img.rb{height:100%;width:auto}
-.gyWalker i{position:absolute;left:50%;top:-18px;transform:translateX(-50%);font-style:normal;font-size:16px}
+.gyWalker i{position:absolute;left:50%;top:-26px;transform:translateX(-50%);font-style:normal;font-size:20px;line-height:1}
+.gyWalker i .osIc{margin:0}
 @keyframes gyWalk{from{transform:translateX(-120%)}to{transform:translateX(calc(var(--w) + 20%))}}
 @keyframes gyHop{to{translate:0 -10%;rotate:4deg}}
 /* えらぶ パネル */
@@ -4766,7 +4784,8 @@ css5.textContent = `
 #osr .gyCard{position:relative;flex-direction:column;gap:3px;padding:10px 8px 9px;border-radius:18px;background:rgba(255,252,244,.96);border:3px solid #F2C94C;box-shadow:0 5px 0 #C99A4E,0 6px 16px rgba(0,0,0,.35);min-width:0}
 #osr .gyCard:active{transform:translateY(3px);box-shadow:0 2px 0 #C99A4E}
 #osr .gyCard b{font-size:16px;font-weight:900;color:#6B4423;white-space:nowrap}
-#osr .gyCard i{font-style:normal;font-size:30px;line-height:1}
+#osr .gyCard i{font-style:normal;line-height:1;display:flex;align-items:center;justify-content:center;height:40px}
+#osr .gyCard .gyBig{width:40px;height:40px;margin:0;vertical-align:0}
 #osr .gyCard small{font-size:11px;font-weight:800;color:#8A7560;line-height:1.35}
 #osr .gyCard em{font-style:normal;font-size:11px;font-weight:900;color:#fff;background:#E9557F;border-radius:999px;padding:1px 8px;margin-top:2px}
 #osr .gyCard.done em{background:#36A85C}
@@ -4791,6 +4810,8 @@ css5.textContent = `
 #osr .gzPed{position:absolute;z-index:4;transform:translate(-50%,-100%);flex-direction:column;justify-content:flex-end;gap:2px;padding:0;background:transparent}
 .gzPed .gzWho{height:var(--ph);display:flex;align-items:flex-end;justify-content:center}
 .gzPed .gzWho .rpic{height:100%}.gzPed .gzWho .rpic>img.rb{height:100%;width:auto}
+.gzPed .gzWho .m25box{pointer-events:none}.gzPed .gzWho .m25cv{pointer-events:none!important}
+.gzPed .gzLock .gzLkI{width:22px;height:22px;margin:0}
 .gzPed .gzPlus{width:var(--pp);height:var(--pp);border-radius:50%;background:radial-gradient(circle,#FFF6C8,#FFD24A);border:3px solid #fff;color:#7A4A00;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 0 rgba(255,214,74,.6);animation:zcGlow 1.4s ease-in-out infinite;margin-bottom:6px}
 .gzPed .gzPlus svg{width:55%;height:55%}
 .gzPed .gzLock{width:var(--pp);height:var(--pp);border-radius:50%;background:rgba(80,60,60,.55);color:#fff;font-weight:900;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:6px;line-height:1.2}
@@ -4825,18 +4846,18 @@ function wkStreak(){
   return n;
 }
 const GYEV = [
-  {k:'concert', n:'音楽会',   ic:'🎻', d:'オーケストラの えんそう', can:() => true, need:'いつでも', per:'day', rw:5},
-  {k:'hanabi',  n:'花火大会', ic:'🎆', d:'おふれ ぜんぶを 3週 れんぞく', can:() => wkStreak() >= 3, need:() => `おふれ ぜんぶ たっせい ${wkStreak()}/3週`, per:'week', rw:10},
-  {k:'parade',  n:'パレード', ic:'🎉', d:'じゅうみん 8人いじょう', can:() => resList().length >= 8, need:() => `じゅうみん ${resList().length}/8人`, per:'day', rw:5}
+  {k:'concert', n:'音楽会',   ic:'violin', d:'オーケストラの えんそう', can:() => true, need:'いつでも', per:'day', rw:5},
+  {k:'hanabi',  n:'花火大会', ic:'gyouji', d:'おふれ ぜんぶを 3週 れんぞく', can:() => wkStreak() >= 3, need:() => `おふれ ぜんぶ たっせい ${wkStreak()}/3週`, per:'week', rw:10},
+  {k:'parade',  n:'パレード', ic:'party', d:'じゅうみん 8人いじょう', can:() => resList().length >= 8, need:() => `じゅうみん ${resList().length}/8人`, per:'day', rw:5}
 ];
 const gyGot = ev => { const g = GD().gy[ev.k]; return ev.per === 'week' ? g === weekKey() : g === dayKey(); };
 const gyBadge = () => GYEV.some(ev => ev.can() && !gyGot(ev));
 /* ---------- やくしょく ---------- */
 const ROLES = [
-  {k:'minister',  n:'大臣',   ic:'📜', d:'おふれの ごほうび +10%'},
-  {k:'carpenter', n:'大工',   ic:'🔨', d:'ぞうちくの コイン −10%'},
-  {k:'band',      n:'楽団長', ic:'🎼', d:'おんがくの ポイント +10%'},
-  {k:'chef',      n:'料理長', ic:'🍳', d:'1日1かい おしろで コイン +3'}
+  {k:'minister',  n:'大臣',   ic:'ofure', d:'おふれの ごほうび +10%'},
+  {k:'carpenter', n:'大工',   ic:'zouchiku', d:'ぞうちくの コイン −10%'},
+  {k:'band',      n:'楽団長', ic:'baton', d:'おんがくの ポイント +10%'},
+  {k:'chef',      n:'料理長', ic:'pan', d:'1日1かい おしろで コイン +3'}
 ];
 const slotN = () => [0, 2, 3, 4][castleStage()] || 2;
 function roleOf(k){ const o = GD(), i = ROLES.findIndex(r => r.k === k); if(i < 0 || i >= slotN()) return null; const r = resById(o.roles[k]); return r || null; }
@@ -4844,13 +4865,13 @@ const gzBadge = () => resList().length > 0 && ROLES.slice(0, slotN()).some(r => 
 /* 楽団長：おんがくの ポイント +10% */
 const _apGz = addPoints;
 addPoints = function(pt, reason){
-  try{ if(pt > 0 && /おんがく/.test(String(reason || '')) && roleOf('band')){ const ex = Math.max(1, Math.round(pt * .1)); pt += ex; reason = `${reason}（🎼楽団長 +${ex}）`; } }catch(e){}
+  try{ if(pt > 0 && /おんがく/.test(String(reason || '')) && roleOf('band')){ const ex = Math.max(1, Math.round(pt * .1)); pt += ex; reason = `${reason}（楽団長 +${ex}）`; } }catch(e){}
   const a = Array.from(arguments); a[0] = pt; a[1] = reason; return _apGz.apply(this, a);
 };
 /* 料理長：1日1かい */
 function chefDaily(){
   try{ const o = GD(), r = roleOf('chef'); if(!r || o.chefDay === dayKey()) return; o.chefDay = dayKey(); persist();
-    setTimeout(() => { addCoin(3, '料理長の おべんとう'); refresh(); try{ toast(`🍳 料理長の ${r.name}が おべんとうを くれたよ！ おしろコイン +3`); }catch(e){} }, 900); }catch(e){}
+    setTimeout(() => { addCoin(3, '料理長の おべんとう'); refresh(); otoast('pan', `料理長の ${r.name}が おべんとうを くれたよ！ おしろコイン +3`); }, 900); }catch(e){}
 }
 
 /* =====================================================================
@@ -4907,8 +4928,8 @@ const CHD = [['F'],['Bb','Gm'],['F','Dm'],['C7'],['F'],['Bb','F'],['C7'],['F','C
 function chordPcs(ch){ const r = (NN[ch[0]] + (ch[1] === 'b' ? -1 : ch[1] === '#' ? 1 : 0) + 12) % 12, mi = /m/.test(ch.slice(1)), sv = /7/.test(ch);
   const a = [r, (r + (mi ? 3 : 4)) % 12, (r + 7) % 12]; if(sv) a.push((r + 10) % 12); return a; }
 const voice = (pcs, lo) => pcs.map(pc => { let m = lo - (lo % 12) + pc; if(m < lo) m += 12; return m; }).sort((a, b) => a - b);
-const SEC = [{b:0, n:'🎺 ファンファーレ', who:'トランペット・ホルン・ティンパニ', x:[.5, .62]}, {b:4, n:'🎻 おまつりの テーマ', who:'バイオリン・フルート', x:[.32, .62]},
-  {b:12, n:'🎷 ホルンと チェロの うた', who:'ホルン・チェロ', x:[.82, .55]}, {b:20, n:'🎆 みんなで フィナーレ', who:'ぜんいん！', x:[.5, 1.1]}];
+const SEC = [{b:0, ic:'trumpet', n:'ファンファーレ', who:'トランペット・ホルン・ティンパニ', x:[.5, .62]}, {b:4, ic:'violin', n:'おまつりの テーマ', who:'バイオリン・フルート', x:[.32, .62]},
+  {b:12, ic:'horn', n:'ホルンと チェロの うた', who:'ホルン・チェロ', x:[.82, .55]}, {b:20, ic:'gyouji', n:'みんなで フィナーレ', who:'ぜんいん！', x:[.5, 1.1]}];
 async function preload(){
   const s = new Set(), add = (k, m) => s.add(k + '|' + (typeof m === 'string' ? m : nearS(k, m)));
   MEL.flat().forEach(([p]) => { const m = PN(p); if(m == null) return; ['tp', 'vn'].forEach(k => add(k, m)); add('fl', m + 12); add('hn', m - 12); add('vc', m - 12); add('gl', m + 24); });
@@ -4979,14 +5000,14 @@ function openGy(){
   const pg = pgEl('osGy'), L = isL(), key = L ? 'gy_bg_l' : 'gy_bg_p';
   pg.innerHTML = `<div class="gyBg" style="background-image:url(${OI}${key}.webp)"></div><div class="gyBox"><img class="bgi" src="${OI}${key}.webp" alt=""><canvas class="gyFw"></canvas><div class="gyParade"></div></div>
     <div class="gySay"><b>ねこの 指揮者</b><span>今夜は おしろの ぎょうじ！ どれを ひらきますか？</span></div><div class="gyMenu"></div>`;
-  pg.classList.add('show'); GY.open = true; GY.mode = null; setTitle('🎆 ぎょうじ'); if(ST) ST.pause();
+  pg.classList.add('show'); GY.open = true; GY.mode = null; setTitle('gyouji', 'ぎょうじ'); if(ST) ST.pause();
   gyRender(); gyPlace();
 }
 function gyRender(){
   const m = R.el.querySelector('.osGy .gyMenu'); if(!m) return;
   m.innerHTML = GYEV.map(ev => { const can = ev.can(), got = gyGot(ev), need = typeof ev.need === 'function' ? ev.need() : ev.need;
-    return `<button class="gyCard ${can ? '' : 'lock'} ${got ? 'done' : ''}" data-o="gy:${ev.k}"><i>${ev.ic}</i><b>${ev.n}</b><small>${can ? ev.d : need}</small>
-      <em>${!can ? '🔒 まだ' : got ? (ev.per === 'week' ? 'こんしゅうは もらったよ' : 'きょうは もらったよ') : `ごほうび コイン +${ev.rw}`}</em></button>`; }).join('');
+    return `<button class="gyCard ${can ? '' : 'lock'} ${got ? 'done' : ''}" data-o="gy:${ev.k}"><i>${IC(ev.ic, 'gyBig')}</i><b>${ev.n}</b><small>${can ? ev.d : need}</small>
+      <em>${!can ? IC('lock') + 'まだ' : got ? (ev.per === 'week' ? 'こんしゅうは もらったよ' : 'きょうは もらったよ') : `ごほうび コイン +${ev.rw}`}</em></button>`; }).join('');
 }
 function gyPlace(){
   const pg = R.el.querySelector('.osGy'); if(!pg || !GY.open) return;
@@ -5010,7 +5031,7 @@ async function gyStart(k){
   if(!ac()){ sayT.textContent = 'この きかいでは 音が ならせないみたい…'; return; }
   GY.mode = k; GY.playing = true; gyPlace();
   const box = pg.querySelector('.gyBox');
-  box.insertAdjacentHTML('beforeend', `<div class="gyCap">⏳ がくふを くばっています…</div><div class="gyBar"><i></i></div><i class="gySpot"></i>`);
+  box.insertAdjacentHTML('beforeend', `<div class="gyCap">${IC('hourglass')}がくふを くばっています…</div><div class="gyBar"><i></i></div><i class="gySpot"></i>`);
   pg.insertAdjacentHTML('beforeend', `<button class="gyStop" data-o="gy:stop">■ とめる</button>`);
   GY.parts = resList().slice().sort(() => Math.random() - .5).slice(0, 6);
   try{ await preload(); }catch(e){}
@@ -5021,8 +5042,8 @@ async function gyStart(k){
 }
 function gyParade(box){
   const par = box.querySelector('.gyParade'), L = GY.parts.length ? GY.parts : resList().slice(0, 8), W = box.clientWidth;
-  const ems = ['🚩', '🎈', '🥁', '🎺', '🪅', '🌟', '🎀', '🎶'];
-  par.innerHTML = L.concat(L).slice(0, 10).map((r, i) => `<div class="gyWalker" style="--d:${16}s;--w:${W}px;height:100%;animation-delay:${i * 1.6}s;left:0">${resPic(r)}<i>${ems[i % ems.length]}</i></div>`).join('');
+  const ems = ['flag', 'balloon', 'drum', 'trumpet', 'party', 'star', 'ribbon', 'note'];
+  par.innerHTML = L.concat(L).slice(0, 10).map((r, i) => `<div class="gyWalker" style="--d:${16}s;--w:${W}px;height:100%;animation-delay:${i * 1.6}s;left:0">${resPic(r)}<i>${IC(ems[i % ems.length])}</i></div>`).join('');
 }
 function fwBurst(cv, big){
   const x = cv.width * (.15 + Math.random() * .7), y = cv.height * (.08 + Math.random() * .3), hue = Math.floor(Math.random() * 360), n = big ? 70 : 44;
@@ -5036,7 +5057,7 @@ function gyLoop(){
   const box = pg.querySelector('.gyBox'), now = AC.currentTime, el = now - GY.t0, total = GY.end - GY.t0, B = 4 * 60 / 112;
   const bar = Math.max(0, Math.floor(el / B)), sec = bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : 3;
   const bi = box.querySelector('.gyBar i'); if(bi) bi.style.width = clamp(el / total * 100, 0, 100) + '%';
-  if(el >= 0 && sec !== GY.sec){ GY.sec = sec; const c = box.querySelector('.gyCap'), S = SEC[sec]; c.innerHTML = `${S.n}<small style="font-size:11px;color:#8A7560">${S.who}</small>`; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+  if(el >= 0 && sec !== GY.sec){ GY.sec = sec; const c = box.querySelector('.gyCap'), S = SEC[sec]; c.innerHTML = `${IC(S.ic)}${S.n}<small style="font-size:11px;color:#8A7560">${S.who}</small>`; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
     const sp = box.querySelector('.gySpot'), w = box.clientWidth * (sec === 3 ? .9 : .32); Object.assign(sp.style, {left:(box.clientWidth * S.x[0] - w / 2) + 'px', width:w + 'px', top:(box.clientHeight * (isL() ? .38 : .3)) + 'px', height:(box.clientHeight * .36) + 'px'}); }
   /* おんぷ */
   if(el > 0 && Math.random() < (sec === 3 ? .18 : .08)){ const n = document.createElement('i'); n.className = 'gyNote'; n.textContent = ['♪', '♫', '♬', '♩'][Math.floor(Math.random() * 4)];
@@ -5068,12 +5089,12 @@ function gyFinish(){
     o.gy[k] = ev.per === 'week' ? weekKey() : dayKey();
     if(k === 'concert'){ who = GY.parts.map(r => { const a = ABILITIES[Math.floor(Math.random() * ABILITIES.length)], cap = (() => { try{ return abCap(r); }catch(e){ return 100; } })(), before = r.ab[a.id] || 0;
         r.ab[a.id] = Math.min(cap, before + 1); return `<span>${resPic(r)}${H(r.name)}<small>${r.ab[a.id] > before ? `${a.i}+1` : 'MAX'}</small></span>`; }).join(''); }
-    if(k === 'parade'){ who = GY.parts.map(r => { r.fr = (r.fr || 0) + 1; return `<span>${resPic(r)}${H(r.name)}<small>💗+1</small></span>`; }).join(''); }
+    if(k === 'parade'){ who = GY.parts.map(r => { r.fr = (r.fr || 0) + 1; return `<span>${resPic(r)}${H(r.name)}<small>${IC('heart')}+1</small></span>`; }).join(''); }
     persist(); addCoin(ev.rw, `ぎょうじ：${ev.n}`); refresh();
     try{ sound('fan'); confetti(2200); }catch(e){}
   }
   const pg = R.el.querySelector('.osGy');
-  pg.insertAdjacentHTML('beforeend', `<div class="gyRes"><div class="gyResIn"><h3>${ev ? ev.ic : '🎵'} ${ev ? ev.n : ''}、だいせいこう！</h3>
+  pg.insertAdjacentHTML('beforeend', `<div class="gyRes"><div class="gyResIn"><h3>${IC(ev ? ev.ic : 'note')}${ev ? ev.n : ''}、だいせいこう！</h3>
     ${first ? `<p>おしろコイン <b style="color:#C2457A">+${ev.rw}</b></p>${who ? `<p>${k === 'concert' ? 'えんそうを きいた じゅうみんの 能力が あがったよ' : 'いっしょに あるいて なかよしに なったよ'}</p><div class="gyWho">${who}</div>` : ''}`
       : `<p>${ev && ev.per === 'week' ? 'こんしゅうの ごほうびは もう もらったよ。' : 'きょうの ごほうびは もう もらったよ。'}<br>えんそうは なんかいでも きけるよ！</p>`}
     <button class="gyOk" data-o="gy:ok">やったー！</button></div></div>`);
@@ -5095,7 +5116,7 @@ function openGz(){
   const pg = pgEl('osGz'), key = isL() ? 'gz_bg_l' : 'gz_bg_p';
   pg.innerHTML = `<div class="gzBg" style="background-image:url(${OI}${key}.webp)"></div><div class="gzBox"><img class="bgi" src="${OI}${key}.webp" alt=""><div class="gzHana"><canvas></canvas></div><div class="gzPeds"></div></div>
     <div class="gzPanel"><div class="gzInfo"></div><div class="gzCards"></div></div>`;
-  pg.classList.add('show'); GZ.open = true; GZ.sel = null; setTitle('👑 ぎょくざのま'); if(ST) ST.pause();
+  pg.classList.add('show'); GZ.open = true; GZ.sel = null; setTitle('gyokuza', 'ぎょくざのま'); if(ST) ST.pause();
   gzPlace(); gzRender();
   const hb = pg.querySelector('.gzHana'); GZ.hv = HimeView(hb, hb.querySelector('canvas'), {start:3});
 }
@@ -5111,23 +5132,35 @@ function gzPlace(){
   if(GZ.hv) GZ.hv.layout();
   gzRenderPeds();
 }
-function gzRenderPeds(){
+/* v10.6：台座の じゅうみんは 2.5D が ある キャラ（ハナ・ホワイトタイガー・レッサーパンダ・シマエナガ・ユニコーン）なら 2.5D で 表示 */
+const m25Key = r => { try{ return (window.__res25d && window.__res25d.mount && window.__res25d.keyOf(r)) || null; }catch(e){ return null; } };
+function pedPic(r){
+  let h = resPic(r); const k = m25Key(r);
+  if(k){ let st = 1; try{ st = SP(r.sp).human ? 1 : (r.star || 1); }catch(e){} h = h.replace('class="rpic', `data-m25="${k}" data-m25s="${st}" class="rpic`); }
+  return h;
+}
+function gzRenderPeds(force){
   const pg = R.el.querySelector('.osGz'); if(!pg) return;
   const pos = isL() ? PED_L : PED_P, n = slotN(), plus = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
-  pg.querySelector('.gzPeds').innerHTML = ROLES.map((R0, i) => { const [x, y] = pos[i], r = roleOf(R0.k), lock = i >= n;
+  const sig = [isL(), n, GZ.flash || ''].concat(ROLES.map(R0 => { const r = roleOf(R0.k); return r ? r.id + ':' + (r.star || 1) : '-'; })).join('|');
+  const box = pg.querySelector('.gzPeds');
+  if(!force && box.dataset.sig === sig) return;   // おなじ ときは かきなおさない（2.5D を つくりなおさない）
+  box.dataset.sig = sig;
+  box.innerHTML = ROLES.map((R0, i) => { const [x, y] = pos[i], r = roleOf(R0.k), lock = i >= n;
     return `<button class="gzPed ${GZ.flash === R0.k ? 'flash' : ''}" data-o="gz:ped:${R0.k}" style="left:${x}%;top:${y}%" ${lock ? 'disabled' : ''}>
-      ${lock ? `<span class="gzLock">🔒<small>${STAGE_N[i === 2 ? 2 : 3].replace('の おしろ', '')}</small></span>` : r ? `<span class="gzWho">${resPic(r)}</span>` : `<span class="gzPlus">${plus}</span>`}
-      <span class="gzTag">${R0.ic} ${R0.n}${r ? '：' + r.name : ''}</span></button>`; }).join('');
+      ${lock ? `<span class="gzLock">${IC('lock', 'gzLkI')}<small>${STAGE_N[i === 2 ? 2 : 3].replace('の おしろ', '')}</small></span>` : r ? `<span class="gzWho">${pedPic(r)}</span>` : `<span class="gzPlus">${plus}</span>`}
+      <span class="gzTag">${IC(R0.ic)}${R0.n}${r ? '：' + H(r.name) : ''}</span></button>`; }).join('');
   GZ.flash = null;
+  try{ box.querySelectorAll('[data-m25]:not([data-m25ok])').forEach(h => window.__res25d.mount(h, {noZoom:true})); }catch(e){ console.warn('gz 2.5D', e); }
 }
 function gzRender(){
   const pg = R.el.querySelector('.osGz'); if(!pg) return;
   const L = resList(), o = GD(), busy = new Set(Object.values(o.roles));
   const info = pg.querySelector('.gzInfo'), sel = GZ.sel && resById(GZ.sel);
   info.innerHTML = sel ? `${sel.name}を どの やくしょくに する？ <small>あいている 台座（＋）を タッチ</small>`
-    : `じゅうみんを えらんで、台座に のせよう <small>${ROLES.slice(0, slotN()).map(r => `${r.ic}${r.n}：${r.d}`).join('　')}${slotN() < 4 ? '　（おしろを しんか させると 台座が ふえる）' : ''}</small>`;
+    : `じゅうみんを えらんで、台座に のせよう <small>${ROLES.slice(0, slotN()).map(r => `${IC(r.ic)}${r.n}：${r.d}`).join('　')}${slotN() < 4 ? '　（おしろを しんか させると 台座が ふえる）' : ''}</small>`;
   pg.querySelector('.gzCards').innerHTML = L.length ? L.map(r => { const role = ROLES.find(x => o.roles[x.k] === r.id && ROLES.indexOf(x) < slotN()), rar = (() => { try{ return SP(r.sp).rar || 1; }catch(e){ return 1; } })();
-      return `<button class="gzCard ${GZ.sel === r.id ? 'on' : ''} ${role ? 'busy' : ''}" data-o="gz:card:${r.id}"><span class="gzPic">${resPic(r)}</span><b>${r.name}</b><small>${'★'.repeat(rar)}</small>${role ? `<em>${role.ic}${role.n}</em>` : ''}</button>`; }).join('')
+      return `<button class="gzCard ${GZ.sel === r.id ? 'on' : ''} ${role ? 'busy' : ''}" data-o="gz:card:${r.id}"><span class="gzPic">${resPic(r)}</span><b>${r.name}</b><small>${'★'.repeat(rar)}</small>${role ? `<em>${IC(role.ic)}${role.n}</em>` : ''}</button>`; }).join('')
     : '<div class="gzEmpty">まだ じゅうみんが いないよ。まちに じゅうみんを よぼう！</div>';
   gzRenderPeds();
 }
@@ -5139,7 +5172,7 @@ function gzAction(v, w){
     if(GZ.sel){
       Object.keys(o.roles).forEach(k => { if(o.roles[k] === GZ.sel) delete o.roles[k]; });
       o.roles[w] = GZ.sel; GZ.sel = null; GZ.flash = w; persist(); try{ sound('fan'); }catch(e){}
-      const r = roleOf(w); try{ toast(`👑 ${r.name}が ${ROLES[i].n}に なったよ！（${ROLES[i].d}）`); }catch(e){}
+      const r = roleOf(w); otoast('crown', `${r.name}が ${ROLES[i].n}に なったよ！（${ROLES[i].d}）`);
       if(GZ.hv) GZ.hv.pose('laugh');
     } else if(o.roles[w]){ const r = roleOf(w); delete o.roles[w]; persist(); try{ sound('tap'); toast(`${r ? r.name : ''}の ${ROLES[i].n}を おやすみに したよ`); }catch(e){} }
     else { try{ toast('さきに 下の じゅうみんを えらんでね'); }catch(e){} }
@@ -5390,12 +5423,13 @@ css3.textContent = `
 #osHimeBig .hbHint{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.7);pointer-events:none}
 `;
 document.head.appendChild(css3);
+const hanaIc = () => { let s = ''; try{ s = artSrc('res_girl') || ''; }catch(e){} return s ? `<img class="osIc" src="${H(s)}" alt="">` : IC('heart'); };
 const POSE_N = [['normal','つうじょう'],['laugh','わらい'],['surprise','おどろき'],['smug','ふんぞり']];
 let lastGirlHost = null;
 function openHimeBig(){
   if(document.getElementById('osHimeBig')) return;
   const ov = document.createElement('div'); ov.id = 'osHimeBig';
-  ov.innerHTML = `<div class="hbStage"><canvas></canvas></div><button class="osHimeSw" data-hb="norm">🙂 いつもの ハナ</button><button class="hbX" data-hb="x" aria-label="とじる">${SVG.close}</button>
+  ov.innerHTML = `<div class="hbStage"><canvas></canvas></div><button class="osHimeSw" data-hb="norm">${hanaIc()}いつもの ハナ</button><button class="hbX" data-hb="x" aria-label="とじる">${SVG.close}</button>
     <div class="hbPoses">${POSE_N.map(([k, n], i) => `<button data-hb="p:${k}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div><div class="hbHint">ハナを タッチ → ひょうじょうが かわるよ</div>`;
   document.body.appendChild(ov);
   const mark = id => ov.querySelectorAll('.hbPoses button').forEach(b => b.classList.toggle('on', b.dataset.hb === 'p:' + id));
@@ -5415,7 +5449,7 @@ window.oshiroHime = openHimeBig;
 function addHimeBtn(host){
   if(!hasCastle() || host.dataset.osHime) return; host.dataset.osHime = '1'; lastGirlHost = host;
   const row = document.createElement('div'); row.className = 'osHimeRow';
-  row.innerHTML = '<button class="osHimeBtn" type="button">👑 ひめの すがた</button>';
+  row.innerHTML = `<button class="osHimeBtn" type="button">${IC('crown')}ひめの すがた</button>`;
   const anchor = host.closest('.dlgArt') || host;
   anchor.insertAdjacentElement('afterend', row);
   row.querySelector('button').addEventListener('click', e => { e.stopPropagation(); openHimeBig(); });
@@ -5429,7 +5463,7 @@ document.addEventListener('click', e => { try{ const h = e.target.closest && e.t
 if(window.MutationObserver) new MutationObserver(ms => {
   for(const m of ms) for(const n of m.addedNodes){
     if(n.nodeType === 1 && n.id === 'm25big' && bigFromGirl && hasCastle() && !n.querySelector('.osHimeSw')){
-      const b = document.createElement('button'); b.className = 'osHimeSw'; b.type = 'button'; b.textContent = '👑 ひめの ハナ';
+      const b = document.createElement('button'); b.className = 'osHimeSw'; b.type = 'button'; b.innerHTML = IC('crown') + 'ひめの ハナ';
       b.addEventListener('click', e => { e.stopPropagation(); const x = n.querySelector('.m25x'); if(x) x.click(); else n.remove(); openHimeBig(); });
       n.appendChild(b);
     }
