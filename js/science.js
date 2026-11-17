@@ -3484,7 +3484,7 @@ window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size
 
 
 /* =====================================================================
-   v10.2：おしろ STEP1＋STEP2＋STEP3（まちのちず）
+   v10.3：おしろ STEP1〜3 ＋ ぞうちく ★3で 見た目が かわる
    STEP1：おしろトップ 2.5D ・ おふれ ・ おしろコイン
    STEP2：ぞうちく（5つの パーツ × 3だんかい）・ おしろの しんか（木の とりで → 石の おしろ → きらきらの おしろ）
    v10.1 の なおし
@@ -4085,6 +4085,35 @@ const PARTS = [
 ];
 const COST = [20, 40, 70], TOWN_LV3 = 12;
 const STAGE_N = ['', '木の とりで', '石の おしろ', 'きらきらの おしろ'];
+/* v10.3：おしろの 絵（castle_1〜3）と ★3 パーツの さしかえ絵（cp〈すがた〉_〈パーツ〉）
+   w,h＝絵の 大きさ／hot＝ボタンの いち（％）／p＝さしかえ絵を おく いち（px） */
+const CINFO = {"1":{"w":748,"h":768,"hot":{"tower":[17,30],"flag":[80,25],"gate":[59,73],"garden":[12,60],"moat":[90,62]},"p":{"tower":[137,2],"flag":[349,113],"gate":[238,301],"garden":[1,421],"moat":[438,416]}},"2":{"w":747,"h":768,"hot":{"tower":[11,42],"flag":[90,33],"gate":[50,82],"garden":[11,63],"moat":[89,63]},"p":{"tower":[100,23],"flag":[510,115],"gate":[247,283],"garden":[13,393],"moat":[440,439]}},"3":{"w":722,"h":768,"hot":{"tower":[11,42],"flag":[90,34],"gate":[50,84],"garden":[12,66],"moat":[88,66]},"p":{}}};
+const CIMG = {}, CCV = {};
+const ldI = src => CIMG[src] || (CIMG[src] = new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => { delete CIMG[src]; rej(new Error(src)); }; im.src = src; }));
+const lv3Keys = () => PARTS.filter(p => lvOf(p.k) >= 3).map(p => p.k);
+/* いまの おしろの 絵（★3の パーツだけ さしかえ）を canvas で つくる */
+function castleCanvas(st, keys){
+  st = st || castleStage(); keys = st >= 3 ? [] : (keys || lv3Keys());
+  const ck = st + ':' + keys.join(',');
+  if(CCV[ck]) return CCV[ck];
+  return CCV[ck] = (async () => {
+    const I = CINFO[st], cv = document.createElement('canvas'); cv.width = I.w; cv.height = I.h;
+    const x = cv.getContext('2d');
+    x.drawImage(await ldI(`${OI}castle_${st}.webp`), 0, 0, I.w, I.h);
+    for(const p of PARTS){
+      if(!keys.includes(p.k) || !I.p[p.k]) continue;
+      const [px, py] = I.p[p.k];
+      try{
+        const [im, er] = await Promise.all([ldI(`${OI}cp${st}_${p.k}.webp`), ldI(`${OI}cp${st}_${p.k}_e.webp`)]);
+        x.globalCompositeOperation = 'destination-out'; x.drawImage(er, px, py);
+        x.globalCompositeOperation = 'source-over'; x.drawImage(im, px, py);
+      }catch(e){ console.warn('castle part', e); }
+    }
+    x.globalCompositeOperation = 'source-over';
+    return cv;
+  })().catch(e => { delete CCV[ck]; throw e; });
+}
+window.oshiroCastleCanvas = castleCanvas;
 function P(){ const o = O(); o.parts = o.parts || {}; PARTS.forEach(p => { o.parts[p.k] = o.parts[p.k] || 0; }); o.stage = o.stage || 1; return o.parts; }
 const lvOf = k => P()[k] || 0;
 const costOf = k => lvOf(k) >= 3 ? 0 : COST[lvOf(k)];
@@ -4104,19 +4133,32 @@ css2.textContent = `
 .osZc .osPgBg{background-image:url(${OI}zc_bg_l.webp);background-position:center 60%}
 #osr.osP .osZc .osPgBg{background-image:url(${OI}zc_bg_p.webp)}
 .zcCastle{position:absolute;z-index:3}
-.zcCimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 10px rgba(60,40,20,.28));transition:transform .5s,opacity .5s}
+.zcImgBox{position:absolute}
+.zcCimg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 10px 10px rgba(60,40,20,.28))}
+.zcOld{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;animation:zcFadeOut 1.1s ease-in .15s forwards}
+@keyframes zcFadeOut{to{opacity:0;filter:brightness(1.8)}}
+.zcGlow{position:absolute;z-index:3;width:46%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,250,210,.95),rgba(255,226,120,.55) 40%,rgba(255,226,120,0) 70%);animation:zcGlow2 1.4s ease-out forwards}
+@keyframes zcGlow2{from{transform:translate(-50%,-50%) scale(.2);opacity:1}to{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
+.zcNew{position:absolute;z-index:6;transform:translate(-50%,-100%);white-space:nowrap;height:30px;padding:0 12px;border-radius:999px;background:linear-gradient(180deg,#FFE27A,#F6B93B);border:2px solid #fff;color:#6B4A00;font-weight:900;font-size:14px;display:flex;align-items:center;box-shadow:0 3px 8px rgba(60,40,20,.35);pointer-events:none;animation:zcNew 2.6s ease-out forwards}
+@keyframes zcNew{0%{opacity:0;margin-top:10px}15%,80%{opacity:1;margin-top:0}100%{opacity:0;margin-top:-10px}}
 .zcPt{position:absolute;transform:translate(-50%,-50%);object-fit:contain;filter:drop-shadow(0 4px 4px rgba(60,40,20,.3));pointer-events:none;z-index:2}
 .zcPt.l3{filter:drop-shadow(0 0 8px rgba(255,220,110,.95)) drop-shadow(0 4px 4px rgba(60,40,20,.3))}
 .zcPt.pop{animation:zcPop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes zcPop{from{transform:translate(-50%,-50%) scale(.2);opacity:0}}
 #osr.osP .zcSay{font-size:13px;padding:6px 10px;line-height:1.5}
-#osr .zcHot{position:absolute;z-index:4;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.95);border:3px solid #E7C27A;box-shadow:0 3px 8px rgba(60,40,20,.35);font-weight:900;font-size:13px;color:#A0661A;flex-direction:column;gap:0}
+#osr .zcHot{position:absolute;z-index:4;transform:translate(-50%,-50%);min-width:48px;height:auto;padding:4px 8px 3px;border-radius:14px;background:rgba(255,255,255,.95);border:3px solid #E7C27A;box-shadow:0 3px 8px rgba(60,40,20,.35);font-weight:900;font-size:12px;color:#7A4A1A;flex-direction:column;gap:1px;line-height:1.1}
+#osr .zcHot span{display:block;white-space:nowrap}
+#osr .zcHot i{font-style:normal;font-size:11px;letter-spacing:0;color:#F2A600;white-space:nowrap}
+#osr .zcHot i em{font-style:normal;color:#D9CFC0}
+#osr .zcHot b{position:absolute;right:-8px;top:-8px;width:20px;height:20px;border-radius:50%;background:#36A85C;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center}
+#osr .zcHot b svg{width:12px;height:12px}
 #osr .zcHot svg{width:22px;height:22px}
-#osr .zcHot.can{background:radial-gradient(circle,#FFF6C8,#FFD24A);border-color:#fff;color:#7A4A00;animation:zcGlow 1.2s ease-in-out infinite}
+#osr .zcHot.can{background:#FFFBEA;border-color:#FFD24A;color:#7A4A00;animation:zcGlow 1.2s ease-in-out infinite}
 #osr .zcHot.sel{outline:4px solid #FF7EA3;outline-offset:2px}
-#osr .zcHot.max{background:linear-gradient(180deg,#FFE58A,#F2B91E);border-color:#fff;color:#fff}
+#osr .zcHot.max{background:linear-gradient(180deg,#FFF3B8,#F6C744);border-color:#fff;color:#6B4A00;opacity:.9}
+#osr .zcHot.max i{color:#C0392B}
 @keyframes zcGlow{50%{box-shadow:0 0 0 8px rgba(255,214,74,.35),0 3px 8px rgba(60,40,20,.35)}}
-.zcHot i{font-style:normal;font-size:10px;letter-spacing:-1px;line-height:1;color:#F2A600}
+
 #osr .zcBear{position:absolute;z-index:5;padding:0;transform-origin:50% 100%}
 #osr .zcBear img{display:block;height:100%;width:auto;filter:drop-shadow(0 8px 8px rgba(60,40,20,.3));pointer-events:none}
 #osr .zcBear.swing{animation:zcSwing .22s ease-in-out 4 alternate}
@@ -4172,31 +4214,40 @@ document.head.appendChild(css2);
 const starStr = lv => '★'.repeat(lv) + `<em>${'★'.repeat(3 - lv)}</em>`;
 function zcHTML(){
   return `<div class="osPgBg"></div><div class="zcStage"></div>
-    <div class="zcCastle"><img class="zcCimg" src="${OI}castle_${castleStage()}.webp" alt=""></div>
+    <div class="zcCastle"><div class="zcImgBox"><canvas class="zcCimg"></canvas></div></div>
     <button class="zcBear" data-o="zbear" aria-label="くまの 大工さん"><img src="${OI}zc_bear.webp" alt=""></button>
     <div class="zcSay"><b>くまの 大工さん</b><span></span></div>
     <div class="zcPanel"><div class="zcCalc"></div><div class="zcCards"></div></div>`;
 }
-function zcRenderCastle(popK){
-  const box = R.zc.querySelector('.zcCastle'); if(!box) return;
-  box.querySelectorAll('.zcPt,.zcHot').forEach(e => e.remove());
-  const w = box.clientWidth, coin = O().coin;
+/* おしろの 絵を かく（fade＝★3に なった とき ふわっと きりかえ） */
+async function zcDrawCastle(fade){
+  const cv = R.zc.querySelector('.zcCimg'); if(!cv) return;
+  const st = castleStage(), I = CINFO[st];
+  let src; try{ src = await castleCanvas(st); }catch(e){ return; }
+  if(!cv.isConnected) return;
+  if(fade && cv.width){
+    const old = document.createElement('canvas'); old.className = 'zcOld'; old.width = cv.width; old.height = cv.height;
+    old.getContext('2d').drawImage(cv, 0, 0); cv.parentNode.appendChild(old); setTimeout(() => old.remove(), 1400);
+  }
+  cv.width = I.w; cv.height = I.h; const x = cv.getContext('2d'); x.clearRect(0, 0, I.w, I.h); x.drawImage(src, 0, 0);
+}
+function zcRenderCastle(){
+  const box = R.zc.querySelector('.zcCastle'), ib = box && box.querySelector('.zcImgBox'); if(!ib) return;
+  const st = castleStage(), I = CINFO[st], bw = box.clientWidth, bh = box.clientHeight;
+  const k = Math.min(bw / I.w, bh / I.h), w = I.w * k, h = I.h * k;
+  Object.assign(ib.style, {width:w + 'px', height:h + 'px', left:(bw - w) / 2 + 'px', top:(bh - h) / 2 + 'px'});
+  ib.querySelectorAll('.zcHot').forEach(e => e.remove());
+  const coin = O().coin, plus = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
   PARTS.forEach(p => {
-    const lv = lvOf(p.k), [x, y] = p.pos;
-    if(lv > 0){
-      const im = document.createElement('img'); im.className = 'zcPt l' + lv + (popK === p.k ? ' pop' : ''); im.src = OI + p.ic + '.webp'; im.alt = '';
-      const sz = w * (.17 + .05 * lv); im.style.cssText = `left:${x}%;top:${y}%;width:${sz}px;height:${sz}px`; box.appendChild(im);
-    }
-    const can = lv < 3 && coin >= costOf(p.k);
+    const lv = lvOf(p.k), [x, y] = I.hot[p.k], can = lv < 3 && coin >= costOf(p.k);
     const b = document.createElement('button');
     b.className = 'zcHot' + (can ? ' can' : '') + (lv >= 3 ? ' max' : '') + (ZC.sel === p.k ? ' sel' : '');
-    b.dataset.o = 'zsel:' + p.k; b.setAttribute('aria-label', p.n);
-    b.innerHTML = lv >= 3 ? '★' : can ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg>' : `<span>${p.n.slice(0, 2)}</span><i>${'★'.repeat(lv)}</i>`;
-    const oy = y < 50 ? -22 : 22, ox = x < 50 ? -18 : 18;
-    b.style.left = `calc(${x}% + ${ox}px)`; b.style.top = `calc(${y}% + ${oy}px)`;
-    box.appendChild(b);
+    b.dataset.o = 'zsel:' + p.k; b.setAttribute('aria-label', `${p.n} レベル${lv}`);
+    b.innerHTML = `<span>${p.n}</span><i>${'★'.repeat(lv)}<em>${'★'.repeat(3 - lv)}</em></i>${can ? `<b>${plus}</b>` : ''}`;
+    b.style.left = x + '%'; b.style.top = y + '%';
+    ib.appendChild(b);
   });
-  const st = castleStage(), stEl = R.zc.querySelector('.zcStage');
+  const stEl = R.zc.querySelector('.zcStage');
   stEl.innerHTML = `🏰 ${STAGE_N[st]}<i>${st < 3 ? (st === 1 ? 'ぜんぶ ★2 で しんか' : `ぜんぶ ★3 ＋ まち Lv${TOWN_LV3} で しんか`) : 'さいこうの おしろ！'}</i>`;
 }
 function zcRenderPanel(){
@@ -4205,7 +4256,7 @@ function zcRenderPanel(){
     const lv = lvOf(p.k), c = costOf(p.k), can = lv < 3 && coin >= c;
     const btn = lv >= 3 ? `<button class="zcBtn mx" disabled>★ さいだい</button>`
       : `<button class="zcBtn ${can ? '' : 'ng'}" data-o="zbuild:${p.k}"><img src="${OI}ic_coin.webp" alt="">${c}　${lv ? 'レベルアップ' : 'たてる'}</button>`;
-    return `<div class="zcCard ${ZC.sel === p.k ? 'sel' : ''} ${lv >= 3 ? 'max' : ''}" data-k="${p.k}" data-o="zsel:${p.k}"><img src="${OI}${p.ic}.webp" alt=""><b>${p.n}</b><span class="st">${starStr(lv)}</span><small>${lv ? `レベル ${lv} / 3` : 'まだ ないよ'}　${p.d}</small>${btn}</div>`;
+    return `<div class="zcCard ${ZC.sel === p.k ? 'sel' : ''} ${lv >= 3 ? 'max' : ''}" data-k="${p.k}" data-o="zsel:${p.k}"><img src="${OI}${p.ic}.webp" alt=""><b>${p.n}</b><span class="st">${starStr(lv)}</span><small>${lv >= 3 ? '✨ 見た目が かわったよ！' : lv === 2 ? 'つぎの ★3で 見た目が かわる！' : lv ? `レベル ${lv} / 3　${p.d}` : `まだ ないよ　${p.d}`}</small>${btn}</div>`;
   }).join('');
   const box = R.zc.querySelector('.zcCards'), sl = box.scrollLeft, stp = box.scrollTop;
   box.innerHTML = cards; box.scrollLeft = sl; box.scrollTop = stp;
@@ -4216,7 +4267,7 @@ function zcCalc(){
   const coin = O().coin, lv = lvOf(p.k), c = costOf(p.k);
   if(lv >= 3){ el.innerHTML = `${p.n}は さいだい レベル！<small>${castleStage() < 3 && PARTS.every(x => lvOf(x.k) >= 3) ? `まちを Lv${TOWN_LV3} に すると きらきらの おしろに なるよ（いま Lv${townLv()}）` : 'ほかの パーツも そだてよう'}</small>`; return; }
   el.innerHTML = coin >= c
-    ? `いまの コイン <b>${coin}</b> − ひつよう <b>${c}</b> ＝ のこり <b>${coin - c}</b><small>${p.n}を ${lv ? `レベル${lv + 1}に` : 'たてる'} と こうなるよ</small>`
+    ? `いまの コイン <b>${coin}</b> − ひつよう <b>${c}</b> ＝ のこり <b>${coin - c}</b><small>${lv === 2 ? `${p.n}を ★3に すると 見た目が かわるよ！` : `${p.n}を ${lv ? `レベル${lv + 1}に` : 'たてる'} と こうなるよ`}</small>`
     : `いまの コイン <b>${coin}</b> − ひつよう <b>${c}</b> … <span class="ng">あと <b>${c - coin}</b> たりない</span><small>おふれを たっせいして コインを あつめよう</small>`;
 }
 function zcSay(t){ const s = R.zc.querySelector('.zcSay'); if(!s) return; s.querySelector('span').textContent = t; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
@@ -4260,39 +4311,51 @@ function openZc(){
   const first = PARTS.find(p => lvOf(p.k) < 3 && O().coin >= costOf(p.k)) || PARTS.find(p => lvOf(p.k) < 3) || PARTS[0];
   ZC.sel = first.k; zcPlace(); zcRenderPanel();
   zcSay(canBuild() ? 'コインが あるな！ ひかってる ところを たてよう！' : 'コインが たまったら また きてくれ。おふれで コインが もらえるぞ！');
-  const im = R.zc.querySelector('.zcCimg'); if(im) im.onload = () => zcRenderCastle();
+  zcDrawCastle(false);
 }
-function zcFx(k){
-  const box = R.zc.querySelector('.zcCastle'), p = PARTS.find(x => x.k === k); if(!box || !p) return;
-  for(let i = 0; i < 6; i++){ const e = document.createElement('i'); e.className = 'zcPuff'; e.style.cssText = `left:${p.pos[0]}%;top:${p.pos[1]}%;--dx:${(Math.random() - .5) * 90}px;--dy:${-20 - Math.random() * 60}px;animation-delay:${i * .06}s`; box.appendChild(e); setTimeout(() => e.remove(), 1300); }
-  setTimeout(() => { for(let i = 0; i < 8; i++){ const e = document.createElement('i'); e.className = 'zcStar'; e.textContent = '✦'; const a = i / 8 * TAU; e.style.cssText = `left:${p.pos[0]}%;top:${p.pos[1]}%;--dx:${Math.cos(a) * 70}px;--dy:${Math.sin(a) * 70}px`; box.appendChild(e); setTimeout(() => e.remove(), 1100); } }, 700);
+function zcFx(k, big){
+  const box = R.zc.querySelector('.zcImgBox'), I = CINFO[castleStage()]; if(!box || !I.hot[k]) return;
+  const [x, y] = I.hot[k];
+  for(let i = 0; i < 6; i++){ const e = document.createElement('i'); e.className = 'zcPuff'; e.style.cssText = `left:${x}%;top:${y}%;--dx:${(Math.random() - .5) * 90}px;--dy:${-20 - Math.random() * 60}px;animation-delay:${i * .06}s`; box.appendChild(e); setTimeout(() => e.remove(), 1300); }
+  setTimeout(() => { const n = big ? 14 : 8; for(let i = 0; i < n; i++){ const e = document.createElement('i'); e.className = 'zcStar'; e.textContent = '✦'; const a = i / n * TAU, r = big ? 110 : 70; e.style.cssText = `left:${x}%;top:${y}%;--dx:${Math.cos(a) * r}px;--dy:${Math.sin(a) * r}px`; box.appendChild(e); setTimeout(() => e.remove(), 1100); } }, 700);
+}
+function zcLook(k){
+  const box = R.zc.querySelector('.zcImgBox'), I = CINFO[castleStage()]; if(!box || !I.hot[k]) return;
+  const [x, y] = I.hot[k], g = document.createElement('i'); g.className = 'zcGlow'; g.style.left = x + '%'; g.style.top = y + '%'; box.appendChild(g); setTimeout(() => g.remove(), 1500);
+  const t = document.createElement('i'); t.className = 'zcNew'; t.textContent = '✨ 見た目が かわった！'; t.style.left = x + '%'; t.style.top = (y - 6) + '%'; box.appendChild(t); setTimeout(() => t.remove(), 2700);
 }
 function zcBuild(k, btn){
   if(ZC.busy) return;
   const p = PARTS.find(x => x.k === k), o = O(), lv = lvOf(k), c = costOf(k); if(!p || lv >= 3) return;
   ZC.sel = k;
   if(o.coin < c){ zcSelect(k); try{ sound('ng'); }catch(e){} zcSay(`コインが あと ${c - o.coin}まい たりないぞ。おふれを がんばろう！`); return; }
-  ZC.busy = true; const before = castleStage();
+  ZC.busy = true; const before = castleStage(), preKeys = lv3Keys();
   addCoin(-c, `ぞうちく：${p.n} レベル${lv + 1}`);
   P()[k] = lv + 1; persist();
   const b = R.zc.querySelector('.zcBear'); b.classList.remove('swing'); void b.offsetWidth; b.classList.add('swing');
   zcSay('トントン カンカン……！'); try{ sound('tap'); setTimeout(() => sound('tap'), 220); setTimeout(() => sound('tap'), 440); }catch(e){}
-  zcFx(k);
+  const look = lv + 1 >= 3;
+  zcFx(k, look);
   setTimeout(() => {
     try{ sound('fan'); }catch(e){}
-    zcRenderCastle(k); zcRenderPanel(); refresh();
-    zcSay(lv + 1 >= 3 ? `${p.n}が さいこうに なったぞ！ ✨` : `${p.n}が ${lv ? `レベル${lv + 1}に なった` : 'できあがった'}ぞ！`);
-    const after = castleStage(); ZC.busy = false;
-    if(after > before){ O().stage = after; persist(); evolve(before, after); }
+    const after = castleStage();
+    if(look && after === before){ zcDrawCastle(true); zcLook(k); try{ confetti(1200); }catch(e){} }
+    zcRenderCastle(); zcRenderPanel(); refresh();
+    zcSay(look ? `${p.n}が ★3！ 見た目が りっぱに かわったぞ！ ✨` : `${p.n}が ${lv ? `★${lv + 1}に なった` : 'できあがった'}ぞ！ ${lv + 1 === 2 ? 'あと ひとつで 見た目が かわるぞ' : ''}`);
+    ZC.busy = false;
+    if(after > before){ O().stage = after; persist(); evolve(before, after, preKeys); }
   }, 900);
 }
-function evolve(a, b){
+async function evolve(a, b, preKeys){
   const ov = document.createElement('div'); ov.className = 'zcEvo';
-  ov.innerHTML = `<i class="ray"></i><div class="ci"><img class="old" src="${OI}castle_${a}.webp" alt=""><img class="nw" src="${OI}castle_${b}.webp" alt=""></div>
+  let sa = `${OI}castle_${a}.webp`, sb = `${OI}castle_${b}.webp`;
+  try{ sa = (await castleCanvas(a, preKeys)).toDataURL(); }catch(e){}
+  try{ sb = (await castleCanvas(b)).toDataURL(); }catch(e){}
+  ov.innerHTML = `<i class="ray"></i><div class="ci"><img class="old" src="${sa}" alt=""><img class="nw" src="${sb}" alt=""></div>
     <h2>おしろが しんかした！</h2><p>${STAGE_N[a]} → <b>${STAGE_N[b]}</b><br>${b === 3 ? 'まちで いちばん すてきな おしろだよ！' : 'つぎは ぜんぶ ★3 を めざそう！'}</p><button class="ok">やったー！</button>`;
   R.el.appendChild(ov);
   try{ sound('fan'); setTimeout(() => { sound('fan'); confetti(2600); }, 1300); }catch(e){}
-  ov.querySelector('.ok').addEventListener('click', e => { e.stopPropagation(); ov.remove(); const im = R.zc.querySelector('.zcCimg'); if(im){ im.src = OI + `castle_${b}.webp`; } zcRenderCastle(); });
+  ov.querySelector('.ok').addEventListener('click', e => { e.stopPropagation(); ov.remove(); zcDrawCastle(false); zcRenderCastle(); });
 }
 
 /* =====================================================================
@@ -4396,7 +4459,14 @@ function mpData(){
   return {cols, rows, cells, cov, objs, castle};
 }
 function mpImg(o){
-  const key = o.id === 'castle' ? 'castle_' + castleStage() : o.it.art || '';
+  if(o.id === 'castle'){
+    const st = castleStage(), key = 'castle_' + st + ':' + (st >= 3 ? '' : lv3Keys().join(','));
+    if(MP.img[key]) return MP.img[key];
+    const rec = MP.img[key] = {im:null, ok:false, err:false, emo:'🏰'};
+    castleCanvas(st).then(cv => { rec.im = cv; rec.ok = true; mpReq(); }).catch(() => { rec.err = true; mpReq(); });
+    return rec;
+  }
+  const key = o.it.art || '';
   if(MP.img[key]) return MP.img[key];
   const src = o.id === 'castle' ? `${OI}castle_${castleStage()}.webp` : (o.it.img || (typeof artSrc === 'function' ? artSrc(o.it.art) : ''));
   const rec = {im:null, ok:false, err:!src, emo:o.it.emoji || '🏠'};
@@ -4461,7 +4531,7 @@ function tuft(c, x, y, r){
 function spriteBox(o){
   const im = mpImg(o), cxw = isoX(o.x + o.w / 2, o.y + o.h / 2), cyw = isoY(o.x + o.w / 2, o.y + o.h / 2);
   let fw = o.kind === 'castle' ? TW * 1.85 : o.kind === 'big' ? (o.w === o.h ? TW * 1.6 : TW * 1.3) : o.kind === 'conn' ? TW * 1.08 : o.kind === 'deco' ? TW * .62 : TW * .92;
-  const ar = im.ok && im.im.naturalWidth ? im.im.naturalHeight / im.im.naturalWidth : 1;
+  const iw = im.ok ? (im.im.naturalWidth || im.im.width) : 0, ar = iw ? (im.im.naturalHeight || im.im.height) / iw : 1;
   const fh = fw * ar, ay = cyw + (o.kind === 'castle' ? TH * .95 : fw / 4.2);
   return {x:cxw - fw / 2, y:ay - fh, w:fw, h:fh, cx:cxw, ay, im};
 }
