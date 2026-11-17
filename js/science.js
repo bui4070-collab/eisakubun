@@ -3484,7 +3484,7 @@ window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size
 
 
 /* =====================================================================
-   v10.1：おしろ STEP1＋STEP2
+   v10.2：おしろ STEP1＋STEP2＋STEP3（まちのちず）
    STEP1：おしろトップ 2.5D ・ おふれ ・ おしろコイン
    STEP2：ぞうちく（5つの パーツ × 3だんかい）・ おしろの しんか（木の とりで → 石の おしろ → きらきらの おしろ）
    v10.1 の なおし
@@ -3650,7 +3650,9 @@ css.textContent = `
 #osr.osL .osStage{bottom:0}
 #osr.osL .osMenu{left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);grid-template-columns:repeat(5,auto);gap:clamp(10px,2.4vw,26px);padding:12px clamp(16px,3vw,30px) 10px;border-radius:28px;background:rgba(255,250,240,.9);box-shadow:0 6px 18px rgba(90,50,40,.25);border:3px solid rgba(255,255,255,.95);--bs:clamp(58px,8.2vw,84px)}
 /* たて（スマホ）：パネルの 中に ふきだし＋メニュー。はいらない ときは スクロール */
-#osr.osP .osPanel{position:absolute;left:0;right:0;bottom:0;z-index:13;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:14px 12px max(16px,env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:linear-gradient(180deg,#FBE3EA,#FFF4E4 40%,#FFF8EC);border-top:4px solid #fff;box-shadow:0 -6px 16px rgba(90,50,40,.18);border-radius:24px 24px 0 0}
+#osr.osP .osPanel{position:absolute;left:0;right:0;bottom:0;z-index:13;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:30px 12px max(16px,env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:linear-gradient(180deg,rgba(255,240,244,.55),rgba(255,248,240,.15) 30%,rgba(255,248,240,0) 60%),url(${OI}top_panel_p.webp) center bottom/cover no-repeat,#FBE7E4;border-top:4px solid #fff;box-shadow:0 -6px 16px rgba(90,50,40,.18);border-radius:24px 24px 0 0}
+#osr.osP .osPanel::before{content:"";position:absolute;left:0;right:0;top:4px;height:26px;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='26'%3E%3Cpath d='M0 3 Q36 10 72 3' fill='none' stroke='%23C99A4E' stroke-width='1.6'/%3E%3Cpath d='M6 5 L18 6.6 L12 22Z' fill='%23FF9DB6'/%3E%3Cpath d='M24 7 L36 7.6 L30 23Z' fill='%23FFE27A'/%3E%3Cpath d='M42 7.6 L54 7 L48 23Z' fill='%23C9A8F2'/%3E%3Cpath d='M60 6.6 L70 5 L65 21Z' fill='%23A6DCF5'/%3E%3C/svg%3E") left top/72px 26px repeat-x}
+#osr.osP .osPanel .osLb{background:rgba(255,255,255,.97);box-shadow:0 2px 6px rgba(90,50,40,.22)}
 #osr.osP .osSay{position:relative;left:auto!important;top:auto!important;transform:none;max-width:none;flex:none;font-size:14px}
 #osr.osP .osSay::after{left:auto;right:22%;bottom:auto;top:-12px;border:10px solid transparent;border-bottom-color:#E7C27A;border-top:0}
 #osr.osP .osSay.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
@@ -3731,7 +3733,7 @@ document.head.appendChild(css);
 const MENU = [
   {k:'ofure',   n:'おふれ',       c:'c1', ic:'ic_ofure'},
   {k:'zouchiku',n:'ぞうちく',     c:'c2', ic:'ic_zouchiku'},
-  {k:'chizu',   n:'まちのちず',   c:'c3', ic:'ic_chizu',    soon:'まちのちずは もうすぐ できますぞ！ たのしみに していてくだされ'},
+  {k:'chizu',   n:'まちのちず',   c:'c3', ic:'ic_chizu'},
   {k:'gyouji',  n:'ぎょうじ',     c:'c4', ic:'ic_gyouji',   soon:'おしろの ぎょうじは じゅんびちゅうですぞ。オーケストラも れんしゅうちゅう！'},
   {k:'gyokuza', n:'ぎょくざのま', c:'c5', ic:'ic_gyokuza',  soon:'ぎょくざのまは もうすぐ ひらきますぞ。やくしょくを きめる へやです'}
 ];
@@ -3788,6 +3790,7 @@ function place(){
   if(ST) ST.layout();
   if(OFH) OFH.layout();
   if(ZC.open) zcPlace();
+  if(MP.open) mpReq();
 }
 function refresh(){
   const o = ensureWeek();
@@ -3810,6 +3813,7 @@ function openOshiro(key){
 function closePages(){
   R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false;
   if(OFH){ OFH.dispose(); OFH = null; }
+  closeMap();
   setTitle('🏰 おしろ' + stageSuffix());
 }
 function closeOshiro(){
@@ -3821,16 +3825,18 @@ window.oshiroOpen = openOshiro;
 
 async function onClick(e){
   const b = e.target.closest('[data-o]'); if(!b || b.disabled) return;
-  const [a, v] = b.dataset.o.split(':');
-  try{ sound('tap'); }catch(err){}
+  const [a, v, w] = b.dataset.o.split(':');
+  if(a !== 'mz') try{ sound('tap'); }catch(err){}
   if(a === 'back'){
-    if(R.of.classList.contains('show') || R.zc.classList.contains('show')){ closePages(); if(ST) ST.resume(); refresh(); say(owlLine()); }
+    if(R.of.classList.contains('show') || R.zc.classList.contains('show') || MP.open){ closePages(); if(ST) ST.resume(); refresh(); say(owlLine()); }
     else closeOshiro();
     return;
   }
   if(a === 'bld'){ const k = KEY; closeOshiro(); if(k) openBuilding(k); return; }
   if(a === 'ofure'){ openOfure(); return; }
   if(a === 'zouchiku'){ openZc(); return; }
+  if(a === 'chizu'){ openMap(); return; }
+  if(a === 'mz'){ if(v !== 'ans' && v !== 'close') try{ sound('tap'); }catch(err){} mpAction(v, w, b); return; }
   if(a === 'get'){ getReward(+v, b); return; }
   if(a === 'bonus'){ getBonus(b); return; }
   if(a === 'zsel'){ zcSelect(v); return; }
@@ -4103,6 +4109,7 @@ css2.textContent = `
 .zcPt.l3{filter:drop-shadow(0 0 8px rgba(255,220,110,.95)) drop-shadow(0 4px 4px rgba(60,40,20,.3))}
 .zcPt.pop{animation:zcPop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes zcPop{from{transform:translate(-50%,-50%) scale(.2);opacity:0}}
+#osr.osP .zcSay{font-size:13px;padding:6px 10px;line-height:1.5}
 #osr .zcHot{position:absolute;z-index:4;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.95);border:3px solid #E7C27A;box-shadow:0 3px 8px rgba(60,40,20,.35);font-weight:900;font-size:13px;color:#A0661A;flex-direction:column;gap:0}
 #osr .zcHot svg{width:22px;height:22px}
 #osr .zcHot.can{background:radial-gradient(circle,#FFF6C8,#FFD24A);border-color:#fff;color:#7A4A00;animation:zcGlow 1.2s ease-in-out infinite}
@@ -4114,7 +4121,7 @@ css2.textContent = `
 #osr .zcBear img{display:block;height:100%;width:auto;filter:drop-shadow(0 8px 8px rgba(60,40,20,.3));pointer-events:none}
 #osr .zcBear.swing{animation:zcSwing .22s ease-in-out 4 alternate}
 @keyframes zcSwing{from{transform:rotate(-6deg)}to{transform:rotate(6deg) translateY(-6px)}}
-.zcSay{position:absolute;z-index:6;background:#fff;border:3px solid #8CC4F2;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(40,60,90,.22)}
+.zcSay{position:absolute;z-index:6;max-height:96px;overflow:hidden;background:#fff;border:3px solid #8CC4F2;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(40,60,90,.22)}
 .zcSay b{display:block;font-size:11px;color:#2F6DB5}
 .zcSay.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
 .zcStage{position:absolute;z-index:6;height:30px;padding:0 14px;border-radius:999px;background:linear-gradient(180deg,#fff,#FFF3D6);border:2px solid #E7C27A;color:#8A3D5C;font-weight:900;font-size:14px;display:flex;align-items:center;gap:6px;box-shadow:0 3px 8px rgba(60,40,20,.25);white-space:nowrap;transform:translateX(-50%)}
@@ -4124,25 +4131,25 @@ css2.textContent = `
 .zcStar{position:absolute;z-index:7;pointer-events:none;color:#FFD24A;font-size:22px;text-shadow:0 0 6px #fff;animation:zcStar 1s ease-out forwards}
 @keyframes zcStar{from{transform:translate(-50%,-50%) scale(.2);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.1);opacity:0}}
 /* パネル */
-.zcPanel{position:absolute;z-index:8;display:flex;flex-direction:column;gap:8px;background:rgba(255,250,240,.95);border:3px solid #fff;border-radius:22px;box-shadow:0 6px 18px rgba(60,40,20,.25);padding:10px}
-.zcCalc{flex:none;background:#FFF6DC;border:2px dashed #E7C27A;border-radius:14px;padding:6px 10px;font-weight:900;font-size:14px;color:#6B4423;line-height:1.6;text-align:center}
-.zcCalc b{font-size:19px;color:#C2457A}
+.zcPanel{position:absolute;z-index:8;display:flex;flex-direction:column;gap:6px;background:rgba(255,250,240,.95);border:3px solid #fff;border-radius:20px;box-shadow:0 6px 18px rgba(60,40,20,.25);padding:8px}
+.zcCalc{flex:none;background:#FFF6DC;border:2px dashed #E7C27A;border-radius:12px;padding:4px 8px;font-weight:900;font-size:13px;color:#6B4423;line-height:1.5;text-align:center}
+.zcCalc b{font-size:16px;color:#C2457A}
 .zcCalc .ng{color:#B5651D}
-.zcCalc small{display:block;font-size:11px;color:#8A7560;font-weight:800}
+.zcCalc small{display:block;font-size:10px;color:#8A7560;font-weight:800}
 .zcCards{flex:1;min-height:0;display:flex;gap:8px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 #osr.osL .zcCards{flex-direction:column}
 #osr.osP .zcCards{flex-direction:row;padding-bottom:4px}
-.zcCard{position:relative;flex:none;display:grid;grid-template-columns:58px minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;align-items:center;background:#fff;border:3px solid #F0DDBB;border-radius:16px;padding:8px}
-#osr.osP .zcCard{width:min(64vw,250px)}
+.zcCard{position:relative;flex:none;display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:6px;align-items:center;background:#fff;border:3px solid #F0DDBB;border-radius:14px;padding:6px}
+#osr.osP .zcCard{width:min(44vw,172px)}
 .zcCard.sel{border-color:#FF7EA3;box-shadow:0 0 0 3px rgba(255,126,163,.3)}
 .zcCard.max{background:#FFFBEA}
-.zcCard>img{grid-row:1/4;width:58px;height:58px;object-fit:contain}
-.zcCard b{font-size:16px;font-weight:900;color:#5A3B2E}
-.zcCard .st{font-size:15px;letter-spacing:1px;color:#F2A600}
+.zcCard>img{grid-row:1/4;width:44px;height:44px;object-fit:contain}
+.zcCard b{font-size:14px;font-weight:900;color:#5A3B2E;line-height:1.2}
+.zcCard .st{font-size:12px;letter-spacing:1px;color:#F2A600;line-height:1.2}
 .zcCard .st em{font-style:normal;color:#E6DDCF}
-.zcCard small{font-size:11px;font-weight:800;color:#8A7560;line-height:1.35}
-#osr .zcBtn{grid-column:1/-1;margin-top:6px;height:42px;border-radius:14px;gap:4px;font-weight:900;font-size:15px;background:linear-gradient(180deg,#7FC8F5,#2E8BD6);color:#fff;border:2px solid #fff;box-shadow:0 4px 0 #1C6AAE}
-#osr .zcBtn img{width:24px;height:24px;object-fit:contain}
+.zcCard small{font-size:10px;font-weight:800;color:#8A7560;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#osr .zcBtn{grid-column:1/-1;margin-top:5px;height:34px;border-radius:12px;gap:3px;font-weight:900;font-size:13px;background:linear-gradient(180deg,#7FC8F5,#2E8BD6);color:#fff;border:2px solid #fff;box-shadow:0 4px 0 #1C6AAE}
+#osr .zcBtn img{width:20px;height:20px;object-fit:contain}
 #osr .zcBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #1C6AAE}
 #osr .zcBtn.ng{background:#D9D2C6;box-shadow:0 4px 0 #B5AC9E;color:#fff}
 #osr .zcBtn.mx{background:linear-gradient(180deg,#FFE58A,#F2B91E);box-shadow:0 4px 0 #C88F0C;color:#6B4A00}
@@ -4234,12 +4241,14 @@ function zcPlace(){
     set(sayEl, {left:14, top:top + 6, right:'auto', width:Math.min(sw * .42, 320), bottom:'auto'});
     set(stg, {left:sw / 2 + 10, top:Hh - 46, bottom:'auto'});
   } else {
-    const sh = Math.round(clamp(Hh * .5, 300, Hh - 300));
-    set(pn, {left:10, right:10, top:sh, bottom:Math.max(12, 10), width:'auto', height:'auto'});
-    const cz = Math.min(W * .74, (sh - top - 48) * .92);
-    set(cs, {left:W / 2 - cz / 2 + 12, top:top + 40 + (sh - top - 48 - cz) / 2, width:cz, height:cz});
-    const bh = clamp(sh * .3, 100, 170); set(bear, {left:2, bottom:'auto', top:sh - bh - 4, height:bh, width:'auto'});
-    set(sayEl, {left:W * .3, right:10, width:'auto', top:'auto', bottom:Hh - sh + 8});
+    /* たて：上＝おしろ／まん中＝くまと ふきだし（よこ ならび）／下＝えらぶ パネル。かさならない */
+    const panelH = Math.round(clamp(Hh * .33, 206, 236)), pTop = Hh - panelH - 10;
+    set(pn, {left:10, right:10, top:pTop, bottom:10, width:'auto', height:'auto'});
+    const stripH = Math.round(clamp(Hh * .12, 74, 96)), sTop = pTop - stripH - 6;
+    set(bear, {left:6, top:sTop, bottom:'auto', height:stripH, width:'auto'});
+    set(sayEl, {left:Math.round(6 + stripH * .67 + 6), right:10, top:sTop + 6, bottom:'auto', width:'auto'});
+    const aTop = top + 40, aH = Math.max(120, sTop - 14 - aTop), cz = Math.min(W * .78, aH - 8);
+    set(cs, {left:W / 2 - cz / 2, top:aTop + (aH - cz) / 2, width:cz, height:cz});
     set(stg, {left:W / 2, top:top + 2, bottom:'auto'});
   }
   zcRenderCastle();
@@ -4284,6 +4293,362 @@ function evolve(a, b){
   R.el.appendChild(ov);
   try{ sound('fan'); setTimeout(() => { sound('fan'); confetti(2600); }, 1300); }catch(e){}
   ov.querySelector('.ok').addEventListener('click', e => { e.stopPropagation(); ov.remove(); const im = R.zc.querySelector('.zcCimg'); if(im){ im.src = OI + `castle_${b}.webp`; } zcRenderCastle(); });
+}
+
+/* =====================================================================
+   STEP3：まちのちず（おしろの とうから 見た まち）
+   ・まちの セーブ（save.town.cells）から その場で アイソメトリックの 地図を つくる
+   ・畑・木は となりと つながる 大きさ／それ以外は 施設一覧の 大きさ／大きな たてものは 2×2（2×1）
+   ・あいた 草地には 草むら・お花を じどうで おく
+   ・たてものを タッチ → なまえ・★ ・「いく」（まちの その ばしょへ）
+   ・ほういじしん を タッチ → ほうがく クイズ（せいかいで おしろコイン +2、1日5かいまで）
+   ===================================================================== */
+const MP = {open:false, cv:null, ctx:null, box:null, D:null, cam:{x:0, y:0, s:1}, img:{}, dirty:true, raf:0, pins:true, sel:null, ptr:new Map(), pinch:null, moved:false};
+const TW = 128, TH = 64;
+const isoX = (x, y) => (x - y) * TW / 2, isoY = (x, y) => (x + y) * TH / 2;
+const WATER = new Set(['river', 'sea', 'harbor']);
+const isRoad = id => { try{ return typeof isRoadId === 'function' && isRoadId(id); }catch(e){ return /^road/.test(id || ''); } };
+const css4 = document.createElement('style');
+css4.textContent = `
+.osMp{background:linear-gradient(180deg,#BFE6FF 0%,#E4F4FF 45%,#FFF1DE 100%)}
+.osMp::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 30% 9% at 18% 16%,rgba(255,255,255,.9),transparent 70%),radial-gradient(ellipse 26% 8% at 78% 10%,rgba(255,255,255,.85),transparent 70%),radial-gradient(ellipse 34% 10% at 64% 30%,rgba(255,255,255,.6),transparent 70%);pointer-events:none}
+.osMp canvas{position:absolute;left:0;right:0;bottom:0;top:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.osMp canvas.drag{cursor:grabbing}
+.mpHint{position:absolute;z-index:3;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);height:28px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.92);color:#6B4423;font-weight:900;font-size:12px;display:flex;align-items:center;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.18);pointer-events:none;transition:opacity .6s}
+.mpTools{position:absolute;z-index:4;right:12px;top:calc(env(safe-area-inset-top,0px) + 108px);display:flex;flex-direction:column;gap:8px}
+#osr .mpB{width:48px;height:48px;border-radius:50%;background:#fff;color:#6B4423;border:3px solid #E7C27A;box-shadow:0 3px 0 #C99A4E,0 4px 10px rgba(60,40,20,.25)}
+#osr .mpB svg{width:24px;height:24px}
+#osr .mpB.on{background:linear-gradient(180deg,#FFE27A,#F6B93B);border-color:#fff}
+#osr .mpB:active{transform:translateY(2px);box-shadow:0 1px 0 #C99A4E}
+#osr .mpB small{font-size:10px;font-weight:900;line-height:1}
+#osr .mpCmp{position:absolute;z-index:4;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:118px;height:118px;padding:0;border-radius:50%}
+.mpCmp img{position:absolute;left:14px;top:14px;width:90px;height:90px;object-fit:contain;transform:rotate(63.4deg);filter:drop-shadow(0 3px 4px rgba(60,40,20,.35));pointer-events:none}
+.mpCmp i{position:absolute;font-style:normal;font-weight:900;font-size:11px;line-height:1;height:20px;padding:0 6px;border-radius:999px;background:#fff;color:#6B4423;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none}
+.mpCmp i.n{background:#F2557E;color:#fff}
+.mpCmp em{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);font-style:normal;font-weight:900;font-size:11px;color:#6B4423;background:rgba(255,255,255,.92);border-radius:999px;height:20px;padding:0 8px;display:flex;align-items:center;white-space:nowrap;pointer-events:none}
+/* たてものの カード */
+.mpCard{position:absolute;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);transform:translateX(-50%);width:min(92vw,420px);animation:mpIn .3s both!important;display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:10px;background:rgba(255,252,244,.98);border:3px solid #E7C27A;border-radius:20px;padding:10px 12px;box-shadow:0 8px 20px rgba(60,40,20,.3)}
+.mpCard>img,.mpCard>.mpEmo{width:72px;height:72px;object-fit:contain}
+.mpCard>.mpEmo{font-size:48px;display:flex;align-items:center;justify-content:center}
+.mpCard b{display:block;font-size:17px;font-weight:900;overflow-wrap:anywhere}
+.mpCard .st{font-size:15px;color:#F2A600;letter-spacing:1px}
+.mpCard .st em{font-style:normal;color:#E6DDCF}
+.mpCard small{display:block;font-size:11px;font-weight:800;color:#8A7560;line-height:1.4}
+.mpCard .mpBtns{display:flex;flex-direction:column;gap:6px}
+#osr .mpGo{height:42px;padding:0 16px;border-radius:14px;gap:4px;background:linear-gradient(180deg,#9BE0AE,#36A85C);color:#fff;font-weight:900;font-size:16px;border:2px solid #fff;box-shadow:0 3px 0 #24834A}
+#osr .mpGo:active{transform:translateY(2px);box-shadow:0 1px 0 #24834A}
+#osr .mpX{position:absolute;right:-10px;top:-10px;width:34px;height:34px;border-radius:50%;background:#fff;color:#6B4423;border:2px solid #E7C27A;box-shadow:0 2px 5px rgba(0,0,0,.25)}
+#osr .mpX svg{width:16px;height:16px}
+#osr.osL .mpCard{left:auto;right:76px;transform:none;bottom:16px;animation:mpInL .3s both!important}
+@keyframes mpIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes mpInL{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+/* ほうがく クイズ */
+.mpQz{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(40,30,50,.45);animation:osFade .25s}
+.mpQzIn{position:relative;width:min(92vw,440px);background:#FFFDF6;border:4px solid #E7C27A;border-radius:22px;padding:14px 14px 16px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.mpQzIn h3{margin:2px 0 6px;font-size:18px;color:#8A3D5C}
+.mpQzPic{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0}
+.mpQzPic img{width:76px;height:76px;object-fit:contain}
+.mpQzPic span{font-size:26px}
+.mpQzIn p{margin:6px 0;font-size:17px;font-weight:900;line-height:1.6}
+.mpQzIn p small{display:block;font-size:12px;color:#8A7560}
+.mpQzOpts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#osr .mpQzOpts button{height:52px;border-radius:14px;background:linear-gradient(180deg,#FFF6D6,#FFE27A);border:2px solid #fff;box-shadow:0 4px 0 #C98A12;font-weight:900;font-size:19px;color:#6B4A00}
+#osr .mpQzOpts button.ok{background:linear-gradient(180deg,#BDF0C8,#36A85C);color:#fff;box-shadow:0 4px 0 #24834A}
+#osr .mpQzOpts button.ng{opacity:.45}
+.mpQzRes{margin-top:10px;font-weight:900;font-size:16px;min-height:24px}
+.mpQzRes .okc{color:#24834A}.mpQzRes .ngc{color:#C0392B}
+.mpQzBtns{display:flex;gap:8px;justify-content:center;margin-top:10px}
+#osr .mpQzBtns button{height:44px;padding:0 18px;border-radius:999px;background:#fff;border:2px solid #E7C27A;font-weight:900;font-size:15px;color:#6B4423;box-shadow:0 3px 0 #C99A4E}
+#osr .mpQzBtns button.gold{background:linear-gradient(180deg,#FFE27A,#F6B93B);border-color:#fff;box-shadow:0 3px 0 #C98A12}
+.mpQzLeft{font-size:12px;font-weight:800;color:#8A7560;margin-top:6px}
+.cell.mpFlash{animation:mpFlash .5s ease-in-out 4 alternate;z-index:500!important}
+@keyframes mpFlash{from{filter:drop-shadow(0 0 0 rgba(255,214,74,0))}to{filter:drop-shadow(0 0 14px rgba(255,214,74,1)) brightness(1.15)}}
+`;
+document.head.appendChild(css4);
+const SVG2 = {
+  plus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>',
+  minus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>',
+  fit:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-7.2 7-12.2A7 7 0 0 0 5 9.8C5 14.8 12 22 12 22z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><circle cx="12" cy="9.8" r="2.6" fill="currentColor"/></svg>'
+};
+function mpHTML(){
+  return `<canvas></canvas><div class="mpHint">ゆびで うごかす ・ ２本ゆびで おおきく</div>
+    <div class="mpTools"><button class="mpB" data-o="mz:in" aria-label="おおきく">${SVG2.plus}</button><button class="mpB" data-o="mz:out" aria-label="ちいさく">${SVG2.minus}</button>
+      <button class="mpB" data-o="mz:fit" aria-label="ぜんたい">${SVG2.fit}</button><button class="mpB ${MP.pins ? 'on' : ''}" data-o="mz:pin" aria-label="ピン">${SVG2.pin}</button></div>
+    <button class="mpB mpCmp" data-o="mz:quiz" aria-label="ほうがく クイズ"><img src="${OI}ic_compass.webp" alt=""><i class="n" style="left:110px;top:30px">きた</i><i style="left:110px;top:88px">ひがし</i><i style="left:8px;top:88px">みなみ</i><i style="left:8px;top:30px">にし</i><em>ほうがく クイズ</em></button>`;
+}
+/* ---------- データ ---------- */
+function mpData(){
+  const t = save.town; if(!t) return null;
+  let cols = 12, rows = 12; try{ const L = townCalc().L; cols = L.cols; rows = L.rows; }catch(e){}
+  const cells = t.cells || {}, glv = t.glv || {}, cov = {}, objs = [];
+  Object.entries(cells).forEach(([k, id]) => {
+    const it = ITEM(id); if(!it) return; const [x, y] = k.split(',').map(Number);
+    if(x >= cols || y >= rows) return;
+    if(isRoad(id) || WATER.has(id) || id === 'platform' || id === 'road_crossing') return;
+    const s = it.sz || [1, 1];
+    for(let dy = 0; dy < s[1]; dy++) for(let dx = 0; dx < s[0]; dx++) cov[`${x+dx},${y+dy}`] = k;
+    const conn = id === 'field' || /tree/.test(id);
+    const kind = id === 'castle' ? 'castle' : s[0] * s[1] > 1 ? 'big' : conn ? 'conn' : it.cat === 'deco' ? 'deco' : 'one';
+    objs.push({k, id, it, x, y, w:s[0], h:s[1], kind, g:glv[k] || 0});
+  });
+  const castle = objs.find(o => o.id === 'castle');
+  return {cols, rows, cells, cov, objs, castle};
+}
+function mpImg(o){
+  const key = o.id === 'castle' ? 'castle_' + castleStage() : o.it.art || '';
+  if(MP.img[key]) return MP.img[key];
+  const src = o.id === 'castle' ? `${OI}castle_${castleStage()}.webp` : (o.it.img || (typeof artSrc === 'function' ? artSrc(o.it.art) : ''));
+  const rec = {im:null, ok:false, err:!src, emo:o.it.emoji || '🏠'};
+  if(src){ const im = new Image(); im.onload = () => { rec.ok = true; mpReq(); }; im.onerror = () => { rec.err = true; mpReq(); }; im.src = src; rec.im = im; }
+  MP.img[key] = rec; return rec;
+}
+const hashXY = (x, y) => { let h = (x * 73856093) ^ (y * 19349663); h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+/* ---------- かく ---------- */
+function diamond(c, x, y, w = 1, h = 1){ c.beginPath(); c.moveTo(isoX(x, y), isoY(x, y)); c.lineTo(isoX(x + w, y), isoY(x + w, y)); c.lineTo(isoX(x + w, y + h), isoY(x + w, y + h)); c.lineTo(isoX(x, y + h), isoY(x, y + h)); c.closePath(); }
+function drawGround(c, D){
+  const {cols, rows, cells, cov} = D;
+  /* つちの そくめん（ジオラマ） */
+  const dep = 26;
+  c.fillStyle = '#B98A58';
+  c.beginPath(); c.moveTo(isoX(0, rows), isoY(0, rows)); c.lineTo(isoX(cols, rows), isoY(cols, rows)); c.lineTo(isoX(cols, rows), isoY(cols, rows) + dep); c.lineTo(isoX(0, rows), isoY(0, rows) + dep); c.closePath(); c.fill();
+  c.fillStyle = '#9C6F43';
+  c.beginPath(); c.moveTo(isoX(cols, 0), isoY(cols, 0)); c.lineTo(isoX(cols, rows), isoY(cols, rows)); c.lineTo(isoX(cols, rows), isoY(cols, rows) + dep); c.lineTo(isoX(cols, 0), isoY(cols, 0) + dep); c.closePath(); c.fill();
+  const id = (x, y) => cells[`${x},${y}`];
+  const road = (x, y) => { const v = id(x, y); return v && (isRoad(v) || v === 'road_crossing'); };
+  for(let y = 0; y < rows; y++) for(let x = 0; x < cols; x++){
+    const v = id(x, y);
+    if(v && WATER.has(v)){ diamond(c, x, y); c.fillStyle = v === 'sea' ? '#7CC8EE' : '#8AD3F3'; c.fill(); c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1; c.stroke();
+      const r = hashXY(x, y); c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 2.4; c.beginPath(); const cx = isoX(x + .3 + r * .3, y + .5), cy = isoY(x + .3 + r * .3, y + .5); c.moveTo(cx - 10, cy); c.quadraticCurveTo(cx - 5, cy - 5, cx, cy); c.quadraticCurveTo(cx + 5, cy + 5, cx + 10, cy); c.stroke(); continue; }
+    if(v === 'road_bridge'){ diamond(c, x, y); c.fillStyle = '#8AD3F3'; c.fill(); }
+    if(road(x, y) || v === 'road_bridge'){
+      const br = v === 'road_bridge';
+      diamond(c, x + .06, y + .06, .88, .88); c.fillStyle = br ? '#D6A15F' : v === 'road_brick' ? '#C8735C' : v === 'road_dirt' ? '#CFA571' : v === 'road_stone' ? '#ABA394' : v === 'road_pastel' ? '#F6D7DF' : '#8E9199'; c.fill();
+      /* となりと つなぐ */
+      [[0,-1],[1,0],[0,1],[-1,0]].forEach(([dx, dy]) => { const n = id(x + dx, y + dy); if(!(n && (isRoad(n) || n === 'road_crossing' || n === 'road_bridge'))) return;
+        if(dx === 0) diamond(c, x + .06, y + (dy < 0 ? 0 : .94), .88, .06); else diamond(c, x + (dx < 0 ? 0 : .94), y + .06, .06, .88); c.fill(); });
+      if(v === 'road_crossing'){ c.strokeStyle = '#F2C94C'; c.lineWidth = 3; diamond(c, x + .2, y + .2, .6, .6); c.stroke(); }
+      else if(!br){
+        const h = road(x - 1, y) || road(x + 1, y), vv = road(x, y - 1) || road(x, y + 1);
+        c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2.4; c.setLineDash([8, 7]);
+        if(h && !vv){ c.beginPath(); c.moveTo(isoX(x, y + .5), isoY(x, y + .5)); c.lineTo(isoX(x + 1, y + .5), isoY(x + 1, y + .5)); c.stroke(); }
+        else if(vv && !h){ c.beginPath(); c.moveTo(isoX(x + .5, y), isoY(x + .5, y)); c.lineTo(isoX(x + .5, y + 1), isoY(x + .5, y + 1)); c.stroke(); }
+        c.setLineDash([]);
+      }
+      /* 草地との さかいめ（縁石） */
+      continue;
+    }
+    if(v === 'platform'){ diamond(c, x, y); c.fillStyle = '#E2D3B8'; c.fill(); c.strokeStyle = '#F2C94C'; c.lineWidth = 2; c.stroke(); continue; }
+    diamond(c, x, y); const k = cov[`${x},${y}`];
+    c.fillStyle = k ? ((x + y) % 2 ? '#93CD6C' : '#8CC765') : ((x + y) % 2 ? '#A6DA80' : '#9ED479'); c.fill();
+    /* 縁石 */
+    c.strokeStyle = 'rgba(240,240,232,.95)'; c.lineWidth = 3;
+    [[0,-1,[0,0],[1,0]],[1,0,[1,0],[1,1]],[0,1,[1,1],[0,1]],[-1,0,[0,1],[0,0]]].forEach(([dx, dy, a, b]) => { if(!road(x + dx, y + dy)) return;
+      c.beginPath(); c.moveTo(isoX(x + a[0], y + a[1]), isoY(x + a[0], y + a[1])); c.lineTo(isoX(x + b[0], y + b[1]), isoY(x + b[0], y + b[1])); c.stroke(); });
+  }
+}
+function tuft(c, x, y, r){
+  const cx = isoX(x, y), cy = isoY(x, y);
+  if(r < .55){ /* 草むら */
+    c.fillStyle = '#6FB24F'; [[-9, 0, 9], [0, -4, 11], [9, 0, 9]].forEach(([dx, dy, s]) => { c.beginPath(); c.ellipse(cx + dx, cy + dy, s, s * .8, 0, 0, TAU); c.fill(); });
+    c.fillStyle = '#88C964'; [[-6, -4, 5], [3, -8, 6], [10, -3, 4]].forEach(([dx, dy, s]) => { c.beginPath(); c.arc(cx + dx, cy + dy, s, 0, TAU); c.fill(); });
+  } else { /* お花 */
+    const col = ['#FF9DB6', '#FFE27A', '#FFFFFF', '#C9A8F2'][Math.floor(r * 40) % 4];
+    c.fillStyle = '#6FB24F'; c.beginPath(); c.ellipse(cx, cy, 14, 7, 0, 0, TAU); c.fill();
+    [[-7, -2], [0, -5], [7, -1], [-2, 2], [5, 3]].forEach(([dx, dy]) => { c.fillStyle = col; c.beginPath(); c.arc(cx + dx, cy + dy, 3.4, 0, TAU); c.fill(); c.fillStyle = '#F6B93B'; c.beginPath(); c.arc(cx + dx, cy + dy, 1.2, 0, TAU); c.fill(); });
+  }
+}
+function spriteBox(o){
+  const im = mpImg(o), cxw = isoX(o.x + o.w / 2, o.y + o.h / 2), cyw = isoY(o.x + o.w / 2, o.y + o.h / 2);
+  let fw = o.kind === 'castle' ? TW * 1.85 : o.kind === 'big' ? (o.w === o.h ? TW * 1.6 : TW * 1.3) : o.kind === 'conn' ? TW * 1.08 : o.kind === 'deco' ? TW * .62 : TW * .92;
+  const ar = im.ok && im.im.naturalWidth ? im.im.naturalHeight / im.im.naturalWidth : 1;
+  const fh = fw * ar, ay = cyw + (o.kind === 'castle' ? TH * .95 : fw / 4.2);
+  return {x:cxw - fw / 2, y:ay - fh, w:fw, h:fh, cx:cxw, ay, im};
+}
+function drawObjs(c, D){
+  const list = [];
+  /* あいた 草地の かざり */
+  for(let y = 0; y < D.rows; y++) for(let x = 0; x < D.cols; x++){
+    const k = `${x},${y}`; if(D.cells[k] || D.cov[k]) continue;
+    let near = false; for(let dy = -1; dy <= 1 && !near; dy++) for(let dx = -1; dx <= 1; dx++){ const n = `${x+dx},${y+dy}`; if(D.cov[n]){ near = true; break; } }
+    const r = hashXY(x, y); if(!near || r > .62) continue;
+    list.push({d:x + y + 1.1, f:() => tuft(c, x + .25 + r * .5, y + .3 + (1 - r) * .4, r)});
+  }
+  D.objs.forEach(o => list.push({d:o.x + o.w + o.y + o.h, o}));
+  list.sort((a, b) => a.d - b.d);
+  MP.boxes = [];
+  for(const L of list){
+    if(L.f){ L.f(); continue; }
+    const o = L.o, b = spriteBox(o);
+    c.fillStyle = 'rgba(40,60,20,.22)'; c.beginPath(); c.ellipse(b.cx, b.ay - 2, b.w * .42, b.w * .2, 0, 0, TAU); c.fill();
+    if(b.im.ok) c.drawImage(b.im.im, b.x, b.y, b.w, b.h);
+    else if(b.im.err){ c.font = `${Math.round(b.w * .6)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText(b.im.emo, b.cx, b.ay - 4); }
+    if(MP.sel && MP.sel.k === o.k){ c.strokeStyle = 'rgba(255,214,74,.95)'; c.lineWidth = 5; diamond(c, o.x, o.y, o.w, o.h); c.stroke(); }
+    MP.boxes.push({o, b});
+  }
+  /* ピン（たてもの だけ） */
+  if(MP.pins) MP.boxes.forEach(({o, b}) => {
+    if(o.kind === 'deco' || o.kind === 'conn' || o.it.cat === 'home') return;
+    const px = b.cx, py = b.y + Math.min(b.h * .12, 18), s = 1 / MP.cam.s * Math.min(MP.cam.s, 1.25);
+    const r = 15 * s;
+    c.save(); c.translate(px, py - r * 1.6);
+    c.fillStyle = o.id === 'castle' ? '#F2557E' : '#2E8BD6'; c.strokeStyle = '#fff'; c.lineWidth = 3 * s;
+    c.beginPath(); c.arc(0, 0, r, Math.PI * .8, Math.PI * .2); c.lineTo(0, r * 1.7); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#fff'; c.font = `900 ${Math.round(r * .95)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(o.id === 'castle' ? '♛' : o.g ? '★' + (o.g > 1 ? o.g : '') : '•', 0, 1);
+    c.restore();
+  });
+}
+function mpDraw(){
+  MP.raf = 0; if(!MP.open || !MP.D) return;
+  const cv = MP.cv, c = MP.ctx, dpr = Math.min(2, devicePixelRatio || 1), r = cv.getBoundingClientRect();
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr); if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+  const s = MP.cam.s * dpr; c.setTransform(s, 0, 0, s, (r.width / 2 - MP.cam.x * MP.cam.s) * dpr, (r.height / 2 - MP.cam.y * MP.cam.s) * dpr);
+  c.imageSmoothingQuality = 'high';
+  drawGround(c, MP.D); drawObjs(c, MP.D);
+}
+const mpReq = () => { if(!MP.raf) MP.raf = requestAnimationFrame(mpDraw); };
+function mpBounds(){ const D = MP.D; return {x0:isoX(0, D.rows) - 10, x1:isoX(D.cols, 0) + 10, y0:-TW * .8, y1:isoY(D.cols, D.rows) + 30}; }
+function mpFit(){
+  const r = MP.cv.getBoundingClientRect(), B = mpBounds(), top = 104, bot = isL() ? 20 : 70, side = isL() ? 70 : 8;
+  const s = Math.min((r.width - side * 2) / (B.x1 - B.x0), (r.height - top - bot) / (B.y1 - B.y0));
+  MP.cam.s = clamp(s, .12, 2.5); MP.cam.x = (B.x0 + B.x1) / 2; MP.cam.y = (B.y0 + B.y1) / 2 - ((top - bot) / 2) / MP.cam.s; mpReq();
+}
+function mpZoom(f, sx, sy){
+  const r = MP.cv.getBoundingClientRect(); sx = sx == null ? r.width / 2 : sx; sy = sy == null ? r.height / 2 : sy;
+  const wx = MP.cam.x + (sx - r.width / 2) / MP.cam.s, wy = MP.cam.y + (sy - r.height / 2) / MP.cam.s;
+  const ns = clamp(MP.cam.s * f, .12, 3); MP.cam.x = wx - (sx - r.width / 2) / ns; MP.cam.y = wy - (sy - r.height / 2) / ns; MP.cam.s = ns; mpReq();
+}
+function mpHit(cx, cy){
+  const r = MP.cv.getBoundingClientRect(), wx = MP.cam.x + (cx - r.left - r.width / 2) / MP.cam.s, wy = MP.cam.y + (cy - r.top - r.height / 2) / MP.cam.s;
+  for(let i = (MP.boxes || []).length - 1; i >= 0; i--){ const {o, b} = MP.boxes[i];
+    const ix = b.w * .14, iy = b.h * .1; if(wx > b.x + ix && wx < b.x + b.w - ix && wy > b.y + iy && wy < b.ay) return o; }
+  /* じめんの マス */
+  const gx = (wx / (TW / 2) + wy / (TH / 2)) / 2, gy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
+  const k = MP.D.cov[`${Math.floor(gx)},${Math.floor(gy)}`]; return k ? MP.D.objs.find(o => o.k === k) : null;
+}
+function mpBind(){
+  const cv = MP.cv;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); MP.ptr.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY}); MP.moved = false;
+    if(MP.ptr.size === 2){ const [a, b] = [...MP.ptr.values()]; MP.pinch = {d:Math.hypot(a.x - b.x, a.y - b.y), s:MP.cam.s}; } cv.classList.add('drag'); hideHint(); });
+  cv.addEventListener('pointermove', e => {
+    const p = MP.ptr.get(e.pointerId); if(!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if(Math.hypot(e.clientX - p.x0, e.clientY - p.y0) > 6) MP.moved = true;
+    if(MP.ptr.size >= 2 && MP.pinch){ const [a, b] = [...MP.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = cv.getBoundingClientRect();
+      mpZoom((MP.pinch.s * d / MP.pinch.d) / MP.cam.s, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top); MP.moved = true; return; }
+    if(MP.ptr.size === 1){ MP.cam.x -= dx / MP.cam.s; MP.cam.y -= dy / MP.cam.s; mpReq(); }
+  });
+  const up = e => { const had = MP.ptr.has(e.pointerId); MP.ptr.delete(e.pointerId); if(MP.ptr.size < 2) MP.pinch = null; if(!MP.ptr.size) cv.classList.remove('drag');
+    if(had && !MP.moved && e.type === 'pointerup'){ const o = mpHit(e.clientX, e.clientY); mpSelect(o); } };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); mpZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, {passive:false});
+}
+function hideHint(){ const h = R && R.el.querySelector('.mpHint'); if(h) h.style.opacity = 0; }
+const starS = n => '★'.repeat(n) + `<em>${'★'.repeat(Math.max(0, 3 - n))}</em>`;
+function mpSelect(o){
+  const old = R.el.querySelector('.mpCard'); if(old) old.remove();
+  MP.sel = o || null; mpReq(); if(!o) return;
+  try{ sound('tap'); }catch(e){}
+  const src = o.id === 'castle' ? `${OI}castle_${castleStage()}.webp` : (o.it.img || artSrc(o.it.art));
+  const info = (() => { try{ return (window.ZUKAN_INFO && ZUKAN_INFO[o.id]) || ''; }catch(e){ return ''; } })();
+  const d = mpDir(o);
+  const el = document.createElement('div'); el.className = 'mpCard';
+  el.innerHTML = `${src ? `<img src="${H(src)}" alt="">` : `<span class="mpEmo">${H(o.it.emoji || '🏠')}</span>`}
+    <div><b>${H(o.id === 'castle' ? STAGE_N[castleStage()] : o.it.name)}</b>${o.it.cat === 'deco' || o.id === 'castle' ? '' : `<span class="st">${starS(o.g)}</span>`}
+      <small>${d ? `おしろから 見て <b style="display:inline;font-size:12px;color:#C2457A">${d}</b> に あるよ` : o.id === 'castle' ? 'ここが ハナの おしろ！' : ''}${info ? '<br>' + H(info).slice(0, 40) : ''}</small></div>
+    <div class="mpBtns">${o.id === 'castle' ? '' : `<button class="mpGo" data-o="mz:go">いく</button>`}</div>
+    <button class="mpX" data-o="mz:close" aria-label="とじる">${SVG.close}</button>`;
+  R.el.querySelector('.osMp').appendChild(el);
+}
+/* ---------- ほうがく ---------- */
+const DIRN = {n:'きた', s:'みなみ', e:'ひがし', w:'にし'};
+function mpDirKey(o){
+  const C = MP.D && MP.D.castle; if(!C || !o || o === C) return null;
+  const dx = (o.x + o.w / 2) - (C.x + C.w / 2), dy = (o.y + o.h / 2) - (C.y + C.h / 2);
+  if(Math.abs(dx) < .5 && Math.abs(dy) < .5) return null;
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if(ax >= ay * 2) return dx > 0 ? 'e' : 'w';
+  if(ay >= ax * 2) return dy > 0 ? 's' : 'n';
+  return (dy > 0 ? 's' : 'n') + (dx > 0 ? 'e' : 'w');
+}
+function mpDir(o){ const k = mpDirKey(o); if(!k) return ''; return k.length === 1 ? DIRN[k] : DIRN[k[0]] + DIRN[k[1]]; }
+const QZ_MAX = 5;
+function qzLeft(){ const o = O(), d = dayKey(); if(o.qzDay !== d){ o.qzDay = d; o.qzN = 0; } return QZ_MAX - (o.qzN || 0); }
+function mpQuiz(){
+  const old = R.el.querySelector('.mpQz'); if(old) old.remove();
+  const C = MP.D && MP.D.castle;
+  const wrap = document.createElement('div'); wrap.className = 'mpQz';
+  if(!C){ wrap.innerHTML = `<div class="mpQzIn"><h3>🧭 ほうがく クイズ</h3><p>まちに おしろを おくと<br>クイズが できるよ！<small>おしろを まんなかに して ほうがくを かんがえるよ</small></p><div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
+    R.el.querySelector('.osMp').appendChild(wrap); return; }
+  const cand = MP.D.objs.filter(o => o !== C && o.kind !== 'deco' && o.kind !== 'conn' && (mpDirKey(o) || '').length === 1);
+  if(!cand.length){ wrap.innerHTML = `<div class="mpQzIn"><h3>🧭 ほうがく クイズ</h3><p>おしろの まわりに たてものを ふやすと<br>クイズが できるよ！</p><div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
+    R.el.querySelector('.osMp').appendChild(wrap); return; }
+  const o = cand[Math.floor(Math.random() * cand.length)], ans = mpDirKey(o);
+  MP.qz = {o, ans};
+  const src = o.it.img || artSrc(o.it.art);
+  wrap.innerHTML = `<div class="mpQzIn"><h3>🧭 ほうがく クイズ</h3>
+    <div class="mpQzPic"><img src="${OI}castle_${castleStage()}.webp" alt=""><span>→</span>${src ? `<img src="${H(src)}" alt="">` : `<span>${H(o.it.emoji || '🏠')}</span>`}</div>
+    <p>「${H(o.it.name)}」は<br>おしろから 見て どっちの ほうがく？<small>ちずの ほういじしん（ピンクが きた）を 見て かんがえよう</small></p>
+    <div class="mpQzOpts">${['n','e','s','w'].map(k => `<button data-o="mz:ans:${k}">${DIRN[k]}</button>`).join('')}</div>
+    <div class="mpQzRes"></div><div class="mpQzLeft">${qzLeft() > 0 ? `きょう コインが もらえる のこり ${qzLeft()}かい` : 'きょうの コインは おしまい（クイズは つづけられるよ）'}</div>
+    <div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
+  R.el.querySelector('.osMp').appendChild(wrap);
+  mpSelect(null); MP.sel = o; mpReq();
+}
+function mpAnswer(k, btn){
+  const q = MP.qz; if(!q || q.done) return; q.done = true;
+  const box = R.el.querySelector('.mpQz'), ok = k === q.ans;
+  box.querySelectorAll('.mpQzOpts button').forEach(b => { const kk = b.dataset.o.split(':')[2]; b.disabled = true; if(kk === q.ans) b.classList.add('ok'); else if(b === btn) b.classList.add('ng'); });
+  let msg;
+  if(ok){ const left = qzLeft(); try{ sound('fan'); }catch(e){}
+    if(left > 0){ const o = O(); o.qzN = (o.qzN || 0) + 1; persist(); flyCoins(btn, 4, () => { addCoin(2, 'ほうがく クイズ'); refresh(); }); msg = '<span class="okc">せいかい！ おしろコイン +2</span>'; }
+    else msg = '<span class="okc">せいかい！ すごい！</span>';
+    try{ count('study'); }catch(e){}
+  } else { try{ sound('ng'); }catch(e){} msg = `<span class="ngc">ざんねん… こたえは「${DIRN[q.ans]}」</span>`; }
+  box.querySelector('.mpQzRes').innerHTML = msg;
+  box.querySelector('.mpQzBtns').innerHTML = `<button data-o="mz:qzx">とじる</button><button class="gold" data-o="mz:quiz">つぎの もんだい</button>`;
+  box.querySelector('.mpQzLeft').textContent = qzLeft() > 0 ? `きょう コインが もらえる のこり ${qzLeft()}かい` : 'きょうの コインは おしまい（クイズは つづけられるよ）';
+}
+/* ---------- まちへ いく ---------- */
+function mpGo(){
+  const o = MP.sel; if(!o) return;
+  closeOshiro();
+  try{ show('town'); }catch(e){}
+  const [x, y] = o.k.split(',');
+  const tryFind = n => {
+    const c = document.querySelector(`#townMap .cell[data-x="${x}"][data-y="${y}"]`);
+    if(!c){ if(n > 0) setTimeout(() => tryFind(n - 1), 200); return; }
+    try{ c.scrollIntoView({block:'center', inline:'center', behavior:'smooth'}); }catch(e){ c.scrollIntoView(); }
+    c.classList.add('mpFlash'); setTimeout(() => c.classList.remove('mpFlash'), 2200);
+    try{ toast(`🗺️ ${o.it.name}に ついたよ！`); }catch(e){}
+  };
+  setTimeout(() => tryFind(10), 250);
+}
+/* ---------- ひらく ---------- */
+function openMap(){
+  R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false; if(OFH){ OFH.dispose(); OFH = null; }
+  MP.D = mpData();
+  if(!MP.D){ say('まちの データが 見つかりませんぞ…'); return; }
+  let pg = R.el.querySelector('.osMp');
+  if(!pg){ pg = document.createElement('div'); pg.className = 'osPg osMp'; R.el.insertBefore(pg, R.el.querySelector('.osBar')); }
+  pg.innerHTML = mpHTML(); pg.classList.add('show'); MP.open = true; MP.sel = null;
+  MP.cv = pg.querySelector('canvas'); MP.ctx = MP.cv.getContext('2d'); mpBind();
+  setTitle('🗺️ まちのちず'); if(ST) ST.pause();
+  requestAnimationFrame(() => { mpFit(); setTimeout(hideHint, 4000); });
+}
+function closeMap(){ const pg = R && R.el.querySelector('.osMp'); if(pg){ pg.classList.remove('show'); pg.innerHTML = ''; } MP.open = false; MP.cv = null; MP.qz = null; }
+function mpAction(v, w, b){
+  if(v === 'in') return mpZoom(1.3);
+  if(v === 'out') return mpZoom(1 / 1.3);
+  if(v === 'fit') return mpFit();
+  if(v === 'pin'){ MP.pins = !MP.pins; b.classList.toggle('on', MP.pins); return mpReq(); }
+  if(v === 'close') return mpSelect(null);
+  if(v === 'go') return mpGo();
+  if(v === 'quiz') return mpQuiz();
+  if(v === 'qzx'){ const q = R.el.querySelector('.mpQz'); if(q) q.remove(); MP.qz = null; MP.sel = null; return mpReq(); }
+  if(v === 'ans') return mpAnswer(w, b);
 }
 /* =====================================================================
    2.5D の ぶたい（oshiro_top_25d_proto_v3 を もとに：さくらは 小さめ）
@@ -4577,5 +4942,6 @@ if(window.MutationObserver) new MutationObserver(ms => {
 function tryHash(){ if(/#oshiro\b/.test(location.hash)) setTimeout(() => { try{ openOshiro(null); }catch(e){ console.warn(e); } }, 900); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryHash); else tryHash();
 addEventListener('hashchange', tryHash);
-window.__oshiro = {O, ensureWeek, count, open:openOshiro, parts:P, stage:castleStage, hime:openHimeBig};
+window.__oshiro = {O, ensureWeek, count, open:openOshiro, parts:P, stage:castleStage, hime:openHimeBig, map:openMap};
+
 })();
