@@ -3481,19 +3481,28 @@ window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size
 
 
 
+
+
 /* =====================================================================
-   v10.0：おしろ STEP1（おしろトップ 2.5D ・ おふれ ・ おしろコイン）
-   ・まちの「おしろ」を タッチすると ひらく（もようがえ中は ひらかない）
-   ・URL の さいごに #oshiro を つけると、おしろが なくても ためせる
-   ・画像：./assets/images/oshiro/（top_bg / top_hana / top_bird / top_owl / top25d.json / ic_〇〇）
-   ・セーブ：save.oshiro（coin・こんしゅうの おふれ・かぞえた かず）
-   ・ぞうちく／まちのちず／ぎょうじ／ぎょくざのま は STEP2〜4 で ふやす（いまは「もうすぐ」）
+   v10.1：おしろ STEP1＋STEP2
+   STEP1：おしろトップ 2.5D ・ おふれ ・ おしろコイン
+   STEP2：ぞうちく（5つの パーツ × 3だんかい）・ おしろの しんか（木の とりで → 石の おしろ → きらきらの おしろ）
+   v10.1 の なおし
+   ・ボタンの 色が きえていた（#osr button の background:none が 勝っていた）→ なおした。もどる・グレードアップを 見やすく
+   ・スマホ たて：トップが 画面から はみだす → 画面の 高さに あわせて ぶたいを ちぢめ、下の パネルは スクロールも できる
+   ・おふれ：ふくろう → ハナ（ひめ）の 2.5D（4つの ひょうじょう／タッチで かわる）。ミッションの ところだけ スクロール
+   ・じゅうみん：おしろが ある ときは ハナの 画面で「いつもの ハナ」⇔「ひめの ハナ」を きりかえ
+   ・まちの「おしろ」を タッチすると ひらく（もようがえ中は ひらかない）／URL の さいごに #oshiro で おためし
+   ・画像：./assets/images/oshiro/
+   ・セーブ：save.oshiro（coin・おふれ・parts）
    ===================================================================== */
 (function(){
 'use strict';
 const OI = './assets/images/oshiro/';
 const TAU = Math.PI * 2, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const H = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nfm = n => (typeof nf === 'function' ? nf(n) : String(n));
+const hasCastle = () => { try{ return Object.values(save.town.cells || {}).includes('castle'); }catch(e){ return false; } };
 
 /* ---------- アイコン（SVG：まんなかに そろう） ---------- */
 const SVG = {
@@ -3582,36 +3591,40 @@ async function openFromTown(key){
   openOshiro(key);
 }
 
+
 /* =====================================================================
    スタイル
+   ・ボタンの きほんは :where(#osr) で よわく する（クラスの 色が かならず 勝つ）
+   ・ボタンの 中身は flex で まんなか。× や ＜ は SVG
    ===================================================================== */
 const css = document.createElement('style');
 css.textContent = `
 #osr{position:fixed;inset:0;z-index:66;display:none;overflow:hidden;background:#F6DCC8;color:#5A3B2E;font-family:var(--maru);-webkit-user-select:none;user-select:none}
 #osr.show{display:block}
 #osr *{box-sizing:border-box}
-#osr button{font:inherit;color:inherit;border:0;margin:0;padding:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1;display:flex;align-items:center;justify-content:center;text-align:center}
-#osr button:disabled{cursor:default}
+:where(#osr) button{font:inherit;color:inherit;border:0;margin:0;padding:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1;display:flex;align-items:center;justify-content:center;text-align:center}
+:where(#osr) button:disabled{cursor:default}
 #osr svg{display:block;flex:none}
 .osStage{position:absolute;left:0;right:0;top:0;overflow:hidden;background:#F6DCC8}
 .osStage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .osLoad{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#FBE9DC;color:#A05A70;font-weight:900;font-size:16px;transition:opacity .4s;z-index:3}
 /* 上の バー */
-.osBar{position:absolute;left:0;right:0;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));pointer-events:none}
+.osBar{position:absolute;left:0;right:0;top:0;z-index:30;display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));pointer-events:none}
 .osBar>*{pointer-events:auto}
-.osRb{flex:none;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.96);color:#B0476E;box-shadow:0 3px 8px rgba(90,40,60,.3),inset 0 0 0 3px #F4B8CB}
-.osRb svg{width:22px;height:22px}
-.osRb:active{transform:scale(.92)}
-.osTtl{flex:none;display:flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;background:rgba(255,255,255,.92);font-weight:900;font-size:18px;color:#8A3D5C;box-shadow:0 3px 8px rgba(90,40,60,.22);white-space:nowrap}
+#osr .osRb{flex:none;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#FF8FB0,#E9557F);color:#fff;border:3px solid #fff;box-shadow:0 4px 0 #B83A60,0 6px 14px rgba(70,20,40,.45)}
+#osr .osRb svg{width:24px;height:24px}
+#osr .osRb:active{transform:translateY(3px);box-shadow:0 1px 0 #B83A60,0 3px 8px rgba(70,20,40,.4)}
+.osTtl{flex:none;display:flex;align-items:center;gap:4px;height:42px;padding:0 16px;border-radius:999px;background:#fff;font-weight:900;font-size:18px;color:#8A3D5C;box-shadow:0 3px 10px rgba(70,30,40,.3);white-space:nowrap}
 .osSp{flex:1;min-width:0}
-.osBld{flex:none;height:40px;padding:0 14px 0 10px;gap:4px;border-radius:999px;background:rgba(255,255,255,.92);color:#7A5A3A;font-weight:900;font-size:13px;box-shadow:0 3px 8px rgba(90,40,60,.22)}
-.osBld svg{width:18px;height:18px}
-.osCoin{flex:none;display:flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 4px;border-radius:999px;background:linear-gradient(180deg,#FFF8DC,#FFE9A8);box-shadow:0 3px 0 #D9A21B,0 4px 10px rgba(90,60,20,.25);font-weight:900;font-size:20px;color:#8A5A00;white-space:nowrap}
+#osr .osBld{flex:none;height:44px;padding:0 14px 0 10px;gap:5px;border-radius:999px;background:linear-gradient(180deg,#FFFFFF,#FFF1D6);color:#6B4423;font-weight:900;font-size:14px;border:3px solid #E2A93B;box-shadow:0 3px 0 #C58B22,0 5px 12px rgba(70,40,20,.35);white-space:nowrap}
+#osr .osBld svg{width:20px;height:20px}
+#osr .osBld:active{transform:translateY(2px);box-shadow:0 1px 0 #C58B22}
+.osCoin{flex:none;display:flex;align-items:center;gap:4px;height:46px;padding:0 14px 0 4px;border-radius:999px;background:linear-gradient(180deg,#FFF8DC,#FFE9A8);border:2px solid #fff;box-shadow:0 3px 0 #D9A21B,0 4px 12px rgba(90,60,20,.3);font-weight:900;font-size:20px;color:#8A5A00;white-space:nowrap}
 .osCoin img{width:38px;height:38px;object-fit:contain;flex:none}
 .osCoin.bump{animation:osBump .45s}
 @keyframes osBump{40%{transform:scale(1.18)}}
-/* 大臣の ふきだし */
-.osSay{position:absolute;z-index:12;max-width:min(300px,44vw);background:#fff;border:3px solid #E7C27A;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(90,60,40,.25);transform:translate(-50%,-100%);transition:opacity .3s;pointer-events:none}
+/* ふきだし */
+.osSay{position:absolute;z-index:12;max-width:min(300px,44vw);background:#fff;border:3px solid #E7C27A;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(90,60,40,.25);transform:translate(-50%,-100%);pointer-events:none}
 .osSay::after{content:"";position:absolute;left:50%;bottom:-12px;margin-left:-10px;border:10px solid transparent;border-top-color:#E7C27A;border-bottom:0}
 .osSay b{display:block;font-size:11px;color:#9A6A1E}
 .osSay.pop{animation:osPop .35s cubic-bezier(.2,1.5,.4,1)}
@@ -3619,49 +3632,57 @@ css.textContent = `
 /* メニュー */
 .osMenu{position:absolute;z-index:14;display:grid;gap:6px}
 .osM{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
-.osRd{position:relative;width:var(--bs);height:var(--bs);border-radius:50%;box-shadow:0 5px 0 rgba(0,0,0,.14),0 6px 14px rgba(90,50,40,.25),inset 0 0 0 4px #fff;transition:transform .12s}
-.osRd:active{transform:scale(.92)}
-.osRd img{width:72%;height:72%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));pointer-events:none}
-.osRd.c1{background:radial-gradient(circle at 35% 30%,#FFF6CF,#FFD86A)}
-.osRd.c2{background:radial-gradient(circle at 35% 30%,#E6F3FF,#8CC4F2)}
-.osRd.c3{background:radial-gradient(circle at 35% 30%,#ECFADF,#9ED98A)}
-.osRd.c4{background:radial-gradient(circle at 35% 30%,#F4E9FF,#C2A4F0)}
-.osRd.c5{background:radial-gradient(circle at 35% 30%,#FFEAF1,#F7A9C2)}
-.osRd.soon img{filter:saturate(.55) drop-shadow(0 2px 2px rgba(0,0,0,.15));opacity:.85}
-.osBadge{position:absolute;right:-4px;top:-4px;width:26px;height:26px;border-radius:50%;background:#FF5A7E;color:#fff;font-style:normal;font-weight:900;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.3),0 0 0 3px #fff;animation:osPulse 1.1s ease-in-out infinite}
+#osr .osRd{position:relative;width:var(--bs);height:var(--bs);border-radius:50%;border:4px solid #fff;box-shadow:0 5px 0 rgba(0,0,0,.14),0 6px 14px rgba(90,50,40,.25);transition:transform .12s}
+#osr .osRd:active{transform:scale(.92)}
+#osr .osRd img{width:70%;height:70%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));pointer-events:none}
+#osr .osRd.c1{background:radial-gradient(circle at 35% 30%,#FFF6CF,#FFD86A)}
+#osr .osRd.c2{background:radial-gradient(circle at 35% 30%,#E6F3FF,#8CC4F2)}
+#osr .osRd.c3{background:radial-gradient(circle at 35% 30%,#ECFADF,#9ED98A)}
+#osr .osRd.c4{background:radial-gradient(circle at 35% 30%,#F4E9FF,#C2A4F0)}
+#osr .osRd.c5{background:radial-gradient(circle at 35% 30%,#FFEAF1,#F7A9C2)}
+#osr .osRd.soon img{filter:saturate(.55) drop-shadow(0 2px 2px rgba(0,0,0,.15));opacity:.85}
+.osBadge{position:absolute;right:-6px;top:-6px;width:26px;height:26px;border-radius:50%;background:#FF5A7E;color:#fff;font-style:normal;font-weight:900;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.3),0 0 0 3px #fff;animation:osPulse 1.1s ease-in-out infinite}
+.osBadge.k{background:#F2A600}
 @keyframes osPulse{50%{transform:scale(1.15)}}
-.osSoon{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);height:18px;padding:0 7px;border-radius:999px;background:#8A7B6C;color:#fff;font-style:normal;font-weight:900;font-size:10px;line-height:1;display:flex;align-items:center;white-space:nowrap}
-.osLb{display:flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.94);font-weight:900;font-size:13px;color:#6B4423;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,.15)}
+.osSoon{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);height:18px;padding:0 7px;border-radius:999px;background:#8A7B6C;color:#fff;font-style:normal;font-weight:900;font-size:10px;line-height:1;display:flex;align-items:center;white-space:nowrap}
+.osLb{display:flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.96);font-weight:900;font-size:13px;color:#6B4423;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,.15)}
 /* よこ（iPad） */
 #osr.osL .osStage{bottom:0}
-#osr.osL .osMenu{left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);grid-template-columns:repeat(5,auto);gap:clamp(10px,2.4vw,26px);padding:12px clamp(16px,3vw,30px) 10px;border-radius:28px;background:rgba(255,250,240,.88);box-shadow:0 6px 18px rgba(90,50,40,.25);border:3px solid rgba(255,255,255,.95);--bs:clamp(58px,8.2vw,84px)}
-/* たて（スマホ） */
-#osr.osP .osSay{left:12px!important;right:12px;max-width:none;transform:none;z-index:15;font-size:14px}
+#osr.osL .osMenu{left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);grid-template-columns:repeat(5,auto);gap:clamp(10px,2.4vw,26px);padding:12px clamp(16px,3vw,30px) 10px;border-radius:28px;background:rgba(255,250,240,.9);box-shadow:0 6px 18px rgba(90,50,40,.25);border:3px solid rgba(255,255,255,.95);--bs:clamp(58px,8.2vw,84px)}
+/* たて（スマホ）：パネルの 中に ふきだし＋メニュー。はいらない ときは スクロール */
+#osr.osP .osPanel{position:absolute;left:0;right:0;bottom:0;z-index:13;display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:14px 12px max(16px,env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:linear-gradient(180deg,#FBE3EA,#FFF4E4 40%,#FFF8EC);border-top:4px solid #fff;box-shadow:0 -6px 16px rgba(90,50,40,.18);border-radius:24px 24px 0 0}
+#osr.osP .osSay{position:relative;left:auto!important;top:auto!important;transform:none;max-width:none;flex:none;font-size:14px}
 #osr.osP .osSay::after{left:auto;right:22%;bottom:auto;top:-12px;border:10px solid transparent;border-bottom-color:#E7C27A;border-top:0}
 #osr.osP .osSay.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
-@keyframes osPopP{from{transform:scale(.9);opacity:0}}
-#osr.osP .osPanel{position:absolute;left:0;right:0;bottom:0;z-index:13;background:linear-gradient(180deg,#FBE3EA,#FFF4E4 40%,#FFF8EC);border-top:4px solid #fff;box-shadow:0 -6px 16px rgba(90,50,40,.18);border-radius:24px 24px 0 0}
-#osr.osP .osMenu{left:0;right:0;grid-template-columns:repeat(6,1fr);row-gap:14px;column-gap:6px;padding:0 14px;--bs:min(19vw,78px)}
+@keyframes osPopP{from{transform:scale(.92);opacity:0}}
+#osr.osP .osMenu{position:relative;flex:none;grid-template-columns:repeat(6,1fr);row-gap:14px;column-gap:6px;padding:4px 2px 6px}
 #osr.osP .osM{grid-column:span 2}
 #osr.osP .osM:nth-child(4){grid-column:2/span 2}
 #osr.osP .osM:nth-child(5){grid-column:4/span 2}
-/* ---------- おふれ ---------- */
-.osOf{position:absolute;inset:0;z-index:16;display:none;overflow:hidden}
-.osOf.show{display:block;animation:osFade .3s}
+/* ---------- 画面の うえに かさねる ページ（おふれ・ぞうちく） ---------- */
+.osPg{position:absolute;inset:0;z-index:16;display:none;overflow:hidden}
+.osPg.show{display:block;animation:osFade .3s}
 @keyframes osFade{from{opacity:0}}
-.osOf::before{content:"";position:absolute;inset:-20px;background:url(${OI}top_bg.webp) center 30%/cover no-repeat;filter:blur(6px) brightness(.9) saturate(.9)}
-.osOf::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,236,240,.35),rgba(255,246,232,.55))}
-.osOfIn{position:absolute;inset:0;z-index:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:max(70px,calc(env(safe-area-inset-top) + 64px)) 14px max(20px,env(safe-area-inset-bottom))}
-.osOwl{position:absolute;z-index:1;pointer-events:none;filter:drop-shadow(0 8px 10px rgba(60,30,30,.3));animation:osBob 2.8s ease-in-out infinite;transform-origin:50% 100%}
-.osOwl.clap{animation:osClap .25s ease-in-out 8 alternate}
-@keyframes osBob{50%{transform:translateY(-6px)}}
-@keyframes osClap{from{transform:rotate(-5deg) scale(1.02)}to{transform:rotate(5deg) scale(1.04)}}
-.osScroll{position:relative;margin:14px auto 10px;max-width:680px;background:linear-gradient(180deg,#FFF9EA,#FBEDCB);border:3px solid #D9B26A;border-radius:14px;padding:18px 14px 16px;box-shadow:0 8px 20px rgba(90,60,30,.25)}
-.osScroll::before,.osScroll::after{content:"";position:absolute;left:-12px;right:-12px;height:22px;border-radius:12px;background:linear-gradient(180deg,#F6E2B4,#E2BE78 60%,#C99A4E);box-shadow:0 2px 4px rgba(90,60,30,.3)}
+.osPgBg{position:absolute;inset:-20px;background:center 30%/cover no-repeat}
+.osOf .osPgBg{background-image:url(${OI}top_bg.webp);filter:blur(6px) brightness(.92) saturate(.95)}
+.osOf .osPgBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,236,240,.3),rgba(255,246,232,.5))}
+/* おふれ：ハナ */
+.osHanaBox{position:absolute;z-index:2}
+.osHanaBox canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation;cursor:pointer}
+.osHanaBox .osHanaTap{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);height:24px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.95);color:#B0476E;font-weight:900;font-size:12px;display:flex;align-items:center;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.2);pointer-events:none;animation:osBob 2.4s ease-in-out infinite}
+@keyframes osBob{50%{transform:translate(-50%,-4px)}}
+.osOfSay{position:absolute;z-index:3;background:#fff;border:3px solid #F4A6BF;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(90,40,60,.22)}
+.osOfSay b{display:block;font-size:11px;color:#C2457A}
+.osOfSay.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
+/* おふれ：まきもの（見出しは うごかない／ミッションだけ スクロール） */
+.osScroll{position:absolute;z-index:2;display:flex;flex-direction:column;background:linear-gradient(180deg,#FFF9EA,#FBEDCB);border:3px solid #D9B26A;border-radius:14px;box-shadow:0 8px 20px rgba(90,60,30,.25)}
+.osScroll::before,.osScroll::after{content:"";position:absolute;left:-12px;right:-12px;height:22px;border-radius:12px;background:linear-gradient(180deg,#F6E2B4,#E2BE78 60%,#C99A4E);box-shadow:0 2px 4px rgba(90,60,30,.3);z-index:1}
 .osScroll::before{top:-14px}.osScroll::after{bottom:-14px}
-.osHd{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 10px;flex-wrap:wrap}
+.osHd{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 12px 8px;flex-wrap:wrap;border-bottom:2px dashed #E6CF9E}
 .osHd b{font-size:22px;font-weight:900;color:#8A3D5C;letter-spacing:.06em}
 .osHd small{display:flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;background:#FFE3EA;color:#B0476E;font-weight:900;font-size:12px}
+.osHd ruby rt{font-size:.6em}
+.osList{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:6px 12px 18px}
 .osCard{display:grid;grid-template-columns:44px minmax(0,1fr) 92px;align-items:center;gap:10px;background:#fff;border:3px solid #F0DDBB;border-radius:16px;padding:10px;margin:8px 0;transition:background .3s}
 .osCard.ok{border-color:#F2B91E;background:#FFFBEA;box-shadow:0 0 0 3px rgba(242,185,30,.25)}
 .osCard.got{opacity:.72;background:#F6F1E8}
@@ -3676,31 +3697,31 @@ css.textContent = `
 .osPb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FFD36B,#F28F1C);transition:width .4s}
 .osCard.got .osPb i,.osCard.ok .osPb i{background:linear-gradient(90deg,#9BE0AE,#36A85C)}
 .osTx small{font-size:12px;font-weight:800;color:#8A7560}
-.osRw{width:92px;height:56px;border-radius:14px;flex-direction:column;gap:2px;background:#FFF6DC;border:2px solid #F0D490}
-.osRw .osRwT{display:flex;align-items:center;justify-content:center;gap:2px;font-weight:900;font-size:17px;color:#A0661A}
+.osRw{width:92px;height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#FFF6DC;border:2px solid #F0D490}
+.osRwT{display:flex;align-items:center;justify-content:center;gap:2px;font-weight:900;font-size:17px;color:#A0661A}
 .osRw img{width:26px;height:26px;object-fit:contain}
 .osRw small{font-size:10px;font-weight:900;color:#A08A6A;line-height:1}
-.osRw.get{background:linear-gradient(180deg,#FFE27A,#F6B93B);border-color:#C98A12;box-shadow:0 4px 0 #C98A12;animation:osPulse 1.2s ease-in-out infinite}
-.osRw.get small{color:#6B4A00}
-.osRw.get:active{transform:translateY(3px);box-shadow:0 1px 0 #C98A12}
+#osr .osRw.get{background:linear-gradient(180deg,#FFE27A,#F6B93B);border:2px solid #C98A12;box-shadow:0 4px 0 #C98A12;animation:osPulse 1.2s ease-in-out infinite;flex-direction:column}
+#osr .osRw.get small{color:#6B4A00}
+#osr .osRw.get:active{transform:translateY(3px);box-shadow:0 1px 0 #C98A12}
 .osBn{display:grid;grid-template-columns:44px minmax(0,1fr) 92px;align-items:center;gap:10px;border:3px dashed #E7B9C9;border-radius:16px;padding:10px;margin:12px 0 2px;background:rgba(255,240,245,.8)}
 .osBn.ok{border-style:solid;border-color:#F2B91E;background:#FFFBEA}
 .osBn.got{opacity:.72}
 .osBn .osTx b{font-size:15px}
 .osFly{position:fixed;z-index:80;width:34px;height:34px;pointer-events:none;object-fit:contain}
-/* よこ（iPad）の おふれ */
-#osr.osL .osOwl{left:max(1vw,10px);bottom:0;height:min(74vh,560px)}
-#osr.osL .osOfIn{padding-left:max(30vw,250px);padding-right:max(3vw,18px)}
-#osr.osL .osScroll{margin-top:22px}
-/* たて（スマホ）の おふれ */
-#osr.osP .osOwl{right:6px;top:max(56px,calc(env(safe-area-inset-top) + 50px));height:120px}
-#osr.osP .osOfIn{padding-top:max(150px,calc(env(safe-area-inset-top) + 144px))}
-#osr.osP .osOfSay{position:absolute;z-index:2;left:12px;right:110px;top:max(70px,calc(env(safe-area-inset-top) + 64px));background:#fff;border:3px solid #E7C27A;border-radius:16px;padding:6px 10px;font-weight:800;font-size:13px;line-height:1.5}
-#osr.osL .osOfSay{position:absolute;z-index:2;left:max(3vw,16px);width:min(28vw,260px);top:max(74px,calc(env(safe-area-inset-top) + 68px));background:#fff;border:3px solid #E7C27A;border-radius:16px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55}
-.osOfSay b{display:block;font-size:11px;color:#9A6A1E}
-@media (max-width:420px){.osCard,.osBn{grid-template-columns:36px minmax(0,1fr) 78px;gap:8px;padding:8px}.osChk{width:34px;height:34px}.osRw{width:78px}.osTx b{font-size:14px}.osTtl{font-size:16px;padding:0 12px}.osBld span{display:none}.osBld{padding:0 10px}}
+/* よこ（iPad）：ハナは 左、まきものは 右 */
+#osr.osL .osOf .osHanaBox{left:1vw;bottom:0;width:min(36vw,440px);top:calc(env(safe-area-inset-top,0px) + 150px)}
+#osr.osL .osOf .osOfSay{left:max(2vw,14px);width:min(32vw,380px);top:calc(env(safe-area-inset-top,0px) + 76px)}
+#osr.osL .osOf .osScroll{left:max(38vw,330px);right:max(2.5vw,22px);top:calc(env(safe-area-inset-top,0px) + 96px);bottom:max(26px,calc(env(safe-area-inset-bottom) + 18px));max-width:720px}
+/* たて（スマホ）：ハナは 上（うごかない）、まきものは 下 */
+#osr.osP .osOf .osHanaBox{left:0;width:56vw;top:calc(env(safe-area-inset-top,0px) + 62px);height:var(--hh,30vh)}
+#osr.osP .osOf .osOfSay{left:50vw;right:10px;top:calc(env(safe-area-inset-top,0px) + 82px);font-size:13px}
+#osr.osP .osOf .osOfSay::before{content:"";position:absolute;left:-12px;top:22px;border:10px solid transparent;border-right-color:#F4A6BF;border-left:0}
+#osr.osP .osOf .osScroll{left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 62px + var(--hh,30vh) + 18px);bottom:max(18px,calc(env(safe-area-inset-bottom) + 12px))}
+#osr.osP .osHd b{font-size:19px}
+@media (max-width:420px){.osCard,.osBn{grid-template-columns:36px minmax(0,1fr) 78px;gap:8px;padding:8px}.osChk{width:34px;height:34px}.osRw{width:78px}.osTx b{font-size:14px}.osTtl{font-size:16px;padding:0 12px}#osr .osBld span{display:none}#osr .osBld{padding:0;width:46px}}
 @media (max-height:520px) and (orientation:landscape){#osr.osL .osMenu{--bs:52px;padding:8px 14px 6px}#osr.osL .osLb{height:20px;font-size:11px}}
-@media (prefers-reduced-motion:reduce){.osBadge,.osRw.get,.osOwl{animation:none}}
+@media (prefers-reduced-motion:reduce){.osBadge,#osr .osRw.get,.osHanaTap{animation:none}}
 `;
 document.head.appendChild(css);
 
@@ -3709,17 +3730,18 @@ document.head.appendChild(css);
    ===================================================================== */
 const MENU = [
   {k:'ofure',   n:'おふれ',       c:'c1', ic:'ic_ofure'},
-  {k:'zouchiku',n:'ぞうちく',     c:'c2', ic:'ic_zouchiku', soon:'ぞうちくは もうすぐ できますぞ！ いまは おふれで コインを ためておきましょう'},
+  {k:'zouchiku',n:'ぞうちく',     c:'c2', ic:'ic_zouchiku'},
   {k:'chizu',   n:'まちのちず',   c:'c3', ic:'ic_chizu',    soon:'まちのちずは もうすぐ できますぞ！ たのしみに していてくだされ'},
   {k:'gyouji',  n:'ぎょうじ',     c:'c4', ic:'ic_gyouji',   soon:'おしろの ぎょうじは じゅんびちゅうですぞ。オーケストラも れんしゅうちゅう！'},
   {k:'gyokuza', n:'ぎょくざのま', c:'c5', ic:'ic_gyokuza',  soon:'ぎょくざのまは もうすぐ ひらきますぞ。やくしょくを きめる へやです'}
 ];
-let R = null, ST = null, KEY = null;   // R：DOM、ST：2.5D、KEY：まちの マス
+let R = null, ST = null, KEY = null, OFH = null;   // R：DOM、ST：トップの 2.5D、KEY：まちの マス、OFH：おふれの ハナ
 const isL = () => innerWidth > innerHeight;
 
 function owlLine(){
   const o = ensureWeek();
   if(o.ms.some(isOk)) return 'おふれの ごほうびが うけとれますぞ！「おふれ」を タッチしてくだされ。';
+  if(canBuild()) return 'コインが たまりましたぞ！「ぞうちく」で おしろを りっぱに しましょうぞ。';
   if(o.ms.every(m => m.got)) return o.bonus ? 'こんしゅうの おふれは ぜんぶ たっせい！ みごとですぞ、ひめ！' : 'ぜんぶ たっせい！ ボーナスが うけとれますぞ！';
   const m = o.ms.find(x => !x.got);
   return `こんしゅうの おふれ：「${MS[m.id].t(m.goal).replace(/<[^>]+>/g, '').replace('日にち', '日')}」。いっしょに がんばりましょうぞ！`;
@@ -3731,50 +3753,67 @@ function root(){
     <div class="osSay"><b>ふくろう大臣</b><span></span></div>
     <div class="osPanel"></div>
     <div class="osMenu">${MENU.map(m => `<div class="osM"><button class="osRd ${m.c}${m.soon ? ' soon' : ''}" data-o="${m.k}" aria-label="${m.n}"><img src="${OI}${m.ic}.webp" alt="">${m.soon ? '<i class="osSoon">もうすぐ</i>' : ''}</button><span class="osLb">${m.n}</span></div>`).join('')}</div>
-    <div class="osOf"><div class="osOfSay"><b>ふくろう大臣</b><span></span></div><img class="osOwl" src="${OI}top_owl.webp" alt=""><div class="osOfIn"></div></div>
+    <div class="osPg osOf"><div class="osPgBg"></div><div class="osOfSay"><b>ハナ</b><span></span></div><div class="osHanaBox"><canvas></canvas><span class="osHanaTap">タッチで ひょうじょうが かわるよ</span></div>
+      <div class="osScroll"><div class="osHd"></div><div class="osList"></div></div></div>
+    <div class="osPg osZc"></div>
     <div class="osBar"><button class="osRb" data-o="back" aria-label="もどる">${SVG.back}</button><div class="osTtl">🏰 おしろ</div><div class="osSp"></div>
-      <button class="osBld" data-o="bld" aria-label="たてもの">${SVG.bld}<span>たてもの</span></button>
+      <button class="osBld" data-o="bld" aria-label="グレードアップ">${SVG.bld}<span>グレードアップ</span></button>
       <div class="osCoin"><img src="${OI}ic_coin.webp" alt=""><b>0</b></div></div>`;
   document.body.appendChild(el);
   el.addEventListener('click', onClick);
-  R = {el, stage:el.querySelector('.osStage'), cv:el.querySelector('canvas'), load:el.querySelector('.osLoad'), say:el.querySelector('.osSay'),
-       panel:el.querySelector('.osPanel'), menu:el.querySelector('.osMenu'), of:el.querySelector('.osOf'), ofIn:el.querySelector('.osOfIn'),
-       ofSay:el.querySelector('.osOfSay span'), owl:el.querySelector('.osOwl'), ttl:el.querySelector('.osTtl'), coin:el.querySelector('.osCoin'), bld:el.querySelector('.osBld')};
+  R = {el, stage:el.querySelector('.osStage'), cv:el.querySelector('.osStage canvas'), load:el.querySelector('.osLoad'), say:el.querySelector('.osSay'),
+       panel:el.querySelector('.osPanel'), menu:el.querySelector('.osMenu'), of:el.querySelector('.osOf'), ofHd:el.querySelector('.osOf .osHd'), ofList:el.querySelector('.osOf .osList'),
+       ofSay:el.querySelector('.osOfSay span'), ofSayBox:el.querySelector('.osOfSay'), hanaBox:el.querySelector('.osHanaBox'), zc:el.querySelector('.osZc'),
+       ttl:el.querySelector('.osTtl'), coin:el.querySelector('.osCoin'), bld:el.querySelector('.osBld')};
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if(R && R.el.classList.contains('show')) place(); }, 60); });
   return R;
 }
+/* たて：ぶたいの 高さを 画面に あわせて きめる（ふきだし＋ボタン2だんが 入るように） */
 function place(){
   const L = isL(); R.el.classList.toggle('osL', L); R.el.classList.toggle('osP', !L);
-  if(L){ R.stage.style.height = ''; R.stage.style.bottom = '0'; R.panel.style.display = 'none'; R.menu.style.top = ''; }
-  else {
-    const sh = Math.round(Math.min(innerHeight * .58, innerWidth * 1024 / 860));
+  if(L){
+    if(R.say.parentNode !== R.el){ R.el.insertBefore(R.say, R.panel); R.el.insertBefore(R.menu, R.panel.nextSibling); }
+    R.stage.style.height = ''; R.stage.style.bottom = '0'; R.panel.style.display = 'none';
+  } else {
+    if(R.say.parentNode !== R.panel){ R.panel.appendChild(R.say); R.panel.appendChild(R.menu); }
+    const Hh = innerHeight, W = innerWidth;
+    const bs = Math.round(clamp(Math.min(W * .19, 78, (Hh * .42 - 120) / 2 - 28), 50, 78));
+    R.menu.style.setProperty('--bs', bs + 'px');
+    const need = 18 + (R.say.offsetHeight || 64) + 12 + 2 * (bs + 34) + 14 + 16;
+    const sh = Math.round(clamp(Hh - need, Hh * .34, Math.min(Hh * .58, W * 1024 / 860)));
     R.stage.style.bottom = 'auto'; R.stage.style.height = sh + 'px';
-    R.panel.style.display = 'block'; R.panel.style.top = (sh - 22) + 'px';
-    R.say.style.left = ''; R.say.style.top = (sh - 8) + 'px';
-    const bh = R.say.offsetHeight || 64, rest = innerHeight - sh - bh, mh = R.menu.offsetHeight || 220;
-    R.menu.style.top = (sh + bh + Math.max(10, (rest - mh) / 2 - 10)) + 'px'; R.menu.style.bottom = 'auto';
+    R.panel.style.display = 'flex'; R.panel.style.top = (sh - 22) + 'px';
   }
+  R.el.style.setProperty('--hh', Math.round(clamp(innerHeight * .37, 200, 340)) + 'px');
   if(ST) ST.layout();
+  if(OFH) OFH.layout();
+  if(ZC.open) zcPlace();
 }
 function refresh(){
   const o = ensureWeek();
-  R.coin.querySelector('b').textContent = (typeof nf === "function" ? nf(o.coin) : o.coin);
-  const b = R.menu.querySelector('[data-o="ofure"]'), has = canGet(), cur = b.querySelector('.osBadge');
-  if(has && !cur) b.insertAdjacentHTML('beforeend', '<i class="osBadge">!</i>'); if(!has && cur) cur.remove();
+  R.coin.querySelector('b').textContent = nfm(o.coin);
+  const badge = (k, on, cls) => { const b = R.menu.querySelector(`[data-o="${k}"]`), cur = b.querySelector('.osBadge'); if(on && !cur) b.insertAdjacentHTML('beforeend', `<i class="osBadge ${cls || ''}">!</i>`); if(!on && cur) cur.remove(); };
+  badge('ofure', canGet()); badge('zouchiku', canBuild(), 'k');
   R.bld.style.display = KEY ? '' : 'none';
 }
 function say(txt){ const s = R.say; s.querySelector('span').textContent = txt; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); if(!isL() && R.el.classList.contains('show')) setTimeout(place, 0); }
+function setTitle(t){ R.ttl.textContent = t; }
 
 function openOshiro(key){
   root(); KEY = key || null;
-  ensureWeek(); R.el.classList.add('show'); R.of.classList.remove('show'); R.ttl.textContent = '🏰 おしろ';
+  ensureWeek(); P(); R.el.classList.add('show'); closePages();
   try{ document.body.classList.add('noscroll'); }catch(e){}
   place(); refresh(); say(owlLine());
   try{ sound('ok'); }catch(e){}
   if(!ST) ST = Stage(R.cv, R.load); else ST.resume();
 }
+function closePages(){
+  R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false;
+  if(OFH){ OFH.dispose(); OFH = null; }
+  setTitle('🏰 おしろ' + stageSuffix());
+}
 function closeOshiro(){
-  if(!R) return; R.el.classList.remove('show'); if(ST) ST.pause();
+  if(!R) return; closePages(); R.el.classList.remove('show'); if(ST) ST.pause();
   try{ document.body.classList.remove('noscroll'); }catch(e){}
   try{ if(curScreen === 'town') renderTown(); }catch(e){}
 }
@@ -3784,35 +3823,59 @@ async function onClick(e){
   const b = e.target.closest('[data-o]'); if(!b || b.disabled) return;
   const [a, v] = b.dataset.o.split(':');
   try{ sound('tap'); }catch(err){}
-  if(a === 'back'){ if(R.of.classList.contains('show')){ R.of.classList.remove('show'); R.ttl.textContent = '🏰 おしろ'; if(ST) ST.resume(); refresh(); say(owlLine()); } else closeOshiro(); return; }
+  if(a === 'back'){
+    if(R.of.classList.contains('show') || R.zc.classList.contains('show')){ closePages(); if(ST) ST.resume(); refresh(); say(owlLine()); }
+    else closeOshiro();
+    return;
+  }
   if(a === 'bld'){ const k = KEY; closeOshiro(); if(k) openBuilding(k); return; }
   if(a === 'ofure'){ openOfure(); return; }
+  if(a === 'zouchiku'){ openZc(); return; }
   if(a === 'get'){ getReward(+v, b); return; }
   if(a === 'bonus'){ getBonus(b); return; }
+  if(a === 'zsel'){ zcSelect(v); return; }
+  if(a === 'zbuild'){ zcBuild(v, b); return; }
+  if(a === 'zbear'){ zcBearSay(); return; }
   const m = MENU.find(x => x.k === a); if(m && m.soon) say(m.soon);
 }
 
 /* ---------- おふれ ---------- */
+const HANA_OF = {
+  normal:['こんしゅうの おふれだよ！ いっしょに がんばろうね','どれから やろうかな？'],
+  laugh:['えへへ、たのしみだね！','ぜんぶ できたら ボーナスだよ！'],
+  surprise:['わっ！ びっくりした〜','え、もう こんなに すすんでる！？'],
+  smug:['ふふん、ひめに おまかせ！','わたしたちなら かんたんだよね！']
+};
+function hanaOfLine(){
+  const o = ensureWeek(), all = o.ms.every(m => m.got);
+  if(o.ms.some(isOk)) return 'やったね！ きいろい ボタンで ごほうびを もらおう！';
+  if(all) return o.bonus ? 'こんしゅうは かんぺき！ また げつようびに あたらしい おふれが でるよ' : 'ぜんぶ たっせい！ ボーナスも もらおうね！';
+  return 'こんしゅうの おふれだよ。たっせいすると おしろコインが もらえるんだ！';
+}
+function ofSay(txt){ R.ofSay.textContent = txt; const s = R.ofSayBox; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
 function cardHTML(m, i){
   const p = prog(m), ok = isOk(m), st = m.got ? 'got' : ok ? 'ok' : '';
   const rw = `<span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${m.rw}</span>`;
   return `<div class="osCard ${st}"><div class="osChk">${m.got ? SVG.check : ''}</div>
     <div class="osTx"><b><i>${MS[m.id].ic}</i>${MS[m.id].t(m.goal)}</b><div class="osPb"><i style="width:${Math.round(p / m.goal * 100)}%"></i></div><small>${p} / ${m.goal}${m.got ? '　うけとりずみ' : ''}</small></div>
-    ${ok ? `<button class="osRw get" data-o="get:${i}">${rw}<small>うけとる</small></button>` : `<div class="osRw" style="display:flex;flex-direction:column;align-items:center;justify-content:center">${rw}<small>${m.got ? 'もらったよ' : 'ごほうび'}</small></div>`}</div>`;
+    ${ok ? `<button class="osRw get" data-o="get:${i}">${rw}<small>うけとる</small></button>` : `<div class="osRw">${rw}<small>${m.got ? 'もらったよ' : 'ごほうび'}</small></div>`}</div>`;
 }
 function renderOfure(){
-  const o = ensureWeek(), all = o.ms.every(m => m.got);
+  const o = ensureWeek(), all = o.ms.every(m => m.got), st = R.ofList.scrollTop;
   const bn = `<div class="osBn ${o.bonus ? 'got' : all ? 'ok' : ''}"><div class="osChk">${o.bonus ? SVG.check : ''}</div>
     <div class="osTx"><b><i>👑</i>3つ ぜんぶ たっせいで ボーナス！</b><small>${o.ms.filter(m => m.got).length} / 3</small></div>
     ${all && !o.bonus ? `<button class="osRw get" data-o="bonus"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>うけとる</small></button>`
-      : `<div class="osRw" style="display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>${o.bonus ? 'もらったよ' : 'ボーナス'}</small></div>`}</div>`;
-  R.ofIn.innerHTML = `<div class="osScroll"><div class="osHd"><b>こんしゅうの おふれ</b><small>のこり ${daysLeft()}<ruby>日<rt>にち</rt></ruby></small></div>
-    ${o.ms.map(cardHTML).join('')}${bn}</div>`;
-  R.ofSay.textContent = o.ms.some(isOk) ? 'みごとですぞ！ きいろい ボタンで ごほうびを うけとってくだされ。'
-    : all ? (o.bonus ? 'こんしゅうは かんぺきですぞ！ また げつようびに あたらしい おふれを だしますぞ。' : 'ぜんぶ たっせい！ ボーナスも うけとってくだされ！')
-    : 'ひめ、こんしゅうの おふれですぞ。たっせいすると おしろコインが もらえますぞ！';
+      : `<div class="osRw"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>${o.bonus ? 'もらったよ' : 'ボーナス'}</small></div>`}</div>`;
+  R.ofHd.innerHTML = `<b>こんしゅうの おふれ</b><small>のこり ${daysLeft()}<ruby>日<rt>にち</rt></ruby></small>`;
+  R.ofList.innerHTML = o.ms.map(cardHTML).join('') + bn;
+  R.ofList.scrollTop = st;
 }
-function openOfure(){ R.of.classList.add('show'); R.ttl.textContent = '📜 おふれ'; renderOfure(); if(ST) ST.pause(); }
+function openOfure(){
+  R.zc.classList.remove('show'); ZC.open = false;
+  R.of.classList.add('show'); setTitle('📜 おふれ'); renderOfure(); R.ofList.scrollTop = 0; ofSay(hanaOfLine());
+  if(ST) ST.pause();
+  if(!OFH) OFH = HimeView(R.hanaBox, R.hanaBox.querySelector('canvas'), {onPose:id => { const L = HANA_OF[id] || HANA_OF.normal; ofSay(L[Math.floor(Math.random() * L.length)]); }});
+}
 function flyCoins(from, n, done){
   const a = from.getBoundingClientRect(), b = R.coin.querySelector('img').getBoundingClientRect();
   const k = Math.min(8, Math.max(3, Math.round(n / 4))); let left = k;
@@ -3828,21 +3891,400 @@ function flyCoins(from, n, done){
 }
 function addCoin(n, why){
   const o = O(); o.coin += n; persist();
-  R.coin.querySelector('b').textContent = (typeof nf === "function" ? nf(o.coin) : o.coin); R.coin.classList.remove('bump'); void R.coin.offsetWidth; R.coin.classList.add('bump');
+  R.coin.querySelector('b').textContent = nfm(o.coin); R.coin.classList.remove('bump'); void R.coin.offsetWidth; R.coin.classList.add('bump');
   try{ (save.oshiroLog = save.oshiroLog || []).unshift({t:Date.now(), n, why}); save.oshiroLog.length = Math.min(save.oshiroLog.length, 60); }catch(e){}
 }
 function getReward(i, btn){
   const o = ensureWeek(), m = o.ms[i]; if(!m || !isOk(m)) return;
   m.got = 1; persist(); btn.disabled = true; try{ sound('fan'); }catch(e){}
-  flyCoins(btn, m.rw, () => { addCoin(m.rw, 'おふれ たっせい'); renderOfure(); refresh(); if(o.ms.every(x => x.got)) owlClap(); });
+  if(OFH) OFH.pose('laugh');
+  flyCoins(btn, m.rw, () => { addCoin(m.rw, 'おふれ たっせい'); renderOfure(); refresh(); if(o.ms.every(x => x.got)) ofSay('3つ ぜんぶ たっせい！ ボーナスも もらおう！'); });
 }
 function getBonus(btn){
   const o = ensureWeek(); if(o.bonus || !o.ms.every(m => m.got)) return;
   o.bonus = 1; persist(); btn.disabled = true; try{ sound('fan'); confetti(1800); }catch(e){}
-  owlClap(); flyCoins(btn, BONUS * 2, () => { addCoin(BONUS, 'おふれ ボーナス'); renderOfure(); refresh(); });
+  if(OFH) OFH.pose('smug');
+  flyCoins(btn, BONUS * 2, () => { addCoin(BONUS, 'おふれ ボーナス'); renderOfure(); refresh(); ofSay('やったー！ こんしゅうは かんぺき！'); });
 }
-function owlClap(){ R.owl.classList.remove('clap'); void R.owl.offsetWidth; R.owl.classList.add('clap'); setTimeout(() => R.owl.classList.remove('clap'), 2200); }
 
+/* =====================================================================
+   ハナ（ひめ）の 2.5D：4つの ひょうじょう（つうじょう・わらい・おどろき・ふんぞり）
+   ・ハナを タッチ → つぎの ひょうじょう、シマエナガを タッチ → ぴょこん
+   ・おふれの ページ と じゅうみんの ハナの 画面で つかう
+   ===================================================================== */
+let HIME_P = null;
+const b64u8 = s => { const bin = atob(s), a = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; };
+function himeData(){
+  if(HIME_P) return HIME_P;
+  const ld = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = OI + src; });
+  HIME_P = fetch(OI + 'hime25d.json').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }).then(async D => {
+    const cache = {};
+    for(const p of D.poses) for(const L of p.layers){
+      if(!cache[L.src]) cache[L.src] = ld(L.src);
+      L.img = await cache[L.src];
+      L.nv = L.nx * L.ny; L.base = new Float32Array(L.nv * 2); L.pos = new Float32Array(L.nv * 2); L.uv = new Float32Array(L.nv * 2);
+      for(let j = 0; j < L.ny; j++) for(let i = 0; i < L.nx; i++){ const k = j * L.nx + i, u = i / (L.nx - 1), v = j / (L.ny - 1); L.uv[k*2] = u; L.uv[k*2+1] = v; L.base[k*2] = L.x + u * L.w; L.base[k*2+1] = L.y + v * L.h; }
+      const idx = []; for(let j = 0; j < L.ny - 1; j++) for(let i = 0; i < L.nx - 1; i++){ const a = j * L.nx + i, b = a + 1, c = a + L.nx, d = c + 1; idx.push(a, b, c, b, d, c); }
+      L.idx = new Uint16Array(idx);
+      L.ops.forEach(o => { if(typeof o.w === 'string') o.w = b64u8(o.w); }); if(typeof L.pin === 'string') L.pin = b64u8(L.pin);
+      const c = document.createElement('canvas'); c.width = Math.min(L.img.width, 256); c.height = Math.round(c.width * L.img.height / L.img.width);
+      const x = c.getContext('2d'); x.drawImage(L.img, 0, 0, c.width, c.height); L.am = x.getImageData(0, 0, c.width, c.height); L.aw = c.width; L.ah = c.height;
+    }
+    return D;
+  });
+  HIME_P.catch(() => { HIME_P = null; });
+  return HIME_P;
+}
+function HimeView(box, cv, opt = {}){
+  const API = {dead:false, cur:0, layout(){}, pose(){}, next(){}, dispose(){}};
+  let D = null, gl = null, prog, LP, LU, LV, sbuf, shadowTex, texs = new Map(), bufs = new Map(), raf = 0, view = {s:1, vx:0, vy:0, vw:1024, vh:1536};
+  const tapAt = [[-1e9, -1e9], [-1e9, -1e9], [-1e9, -1e9], [-1e9, -1e9]];
+  const pulse = tt => tt > 6 ? 0 : Math.exp(-2.6 * tt) * (.5 + .5 * Math.cos(TAU * 2.2 * tt)) * (1 - Math.exp(-30 * tt));
+  const osc = tt => tt > 6 ? 0 : Math.exp(-3.2 * tt) * Math.sin(TAU * 2.4 * tt);
+  const blinkP = (t, off) => { const m = ((t + off) % 3.9 + 3.9) % 3.9; return m < .17 ? Math.sin(Math.PI * m / .17) : 0; };
+  function tex(img){
+    if(texs.has(img)) return texs.get(img);
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    texs.set(img, t); return t;
+  }
+  function buf(L){
+    if(bufs.has(L)) return bufs.get(L);
+    const o = {vb:gl.createBuffer(), ub:gl.createBuffer(), ib:gl.createBuffer()};
+    gl.bindBuffer(gl.ARRAY_BUFFER, o.ub); gl.bufferData(gl.ARRAY_BUFFER, L.uv, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, o.ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, L.idx, gl.STATIC_DRAW);
+    bufs.set(L, o); return o;
+  }
+  function drawLayer(L, t, tt, G, vp){
+    const ops = L.ops.map(o => {
+      const e = o.ev || 0, s = Math.sin(TAU * (o.f || 0) * t + (o.ph || 0)), Pp = pulse(tt[e]), Oo = osc(tt[e]);
+      if(o.k === 'rot') return {o, a:(o.A || 0) * s + (o.tapA || 0) * Pp};
+      if(o.k === 'blink') return {o, sy:1 - o.depth * blinkP(t, o.off)};
+      return {o, s0:TAU * (o.f || 0) * t + (o.ph || 0), s, dx:(o.tapX || 0) * Oo, dy:(o.tapY || 0) * Oo};
+    });
+    const pos = L.pos, base = L.base, n = L.nv;
+    for(let i = 0; i < n; i++){
+      let x = base[i*2], y = base[i*2+1];
+      for(let q = 0; q < ops.length; q++){
+        const e = ops[q], o = e.o, w = o.w ? o.w[i] / 255 : 1; if(w < .004) continue;
+        if(o.k === 'rot'){ const a = e.a * w * Math.PI / 180; if(!a) continue; const cs = Math.cos(a), sn = Math.sin(a), dx = x - o.px, dy = y - o.py; x = o.px + dx * cs - dy * sn; y = o.py + dx * sn + dy * cs; }
+        else if(o.k === 'blink'){ y = o.py + (y - o.py) * (1 + (e.sy - 1) * w); }
+        else if(o.wk){ const m = Math.sin(e.s0 + o.wk * y); x += ((o.ax || 0) * m + e.dx) * w; y += ((o.ay || 0) * m + e.dy) * w; }
+        else { x += ((o.ax || 0) * e.s + e.dx) * w; y += ((o.ay || 0) * e.s + e.dy) * w; }
+      }
+      const hh = clamp((G.gr - y) / (G.gr - G.top), 0, 1), pn = L.pin ? L.pin[i] / 255 : 0;
+      const gx = G.cx + (x - G.cx) * G.sx + G.jel * Math.pow(hh, 1.6), gy = G.gr - (G.gr - y) * G.sy;
+      x = x * pn + gx * (1 - pn); y = y * pn + gy * (1 - pn);
+      pos[i*2] = x; pos[i*2+1] = y;
+    }
+    const b = buf(L);
+    gl.useProgram(prog); gl.uniform4f(LV, vp[0], vp[1], vp[2], vp[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.vb); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(LP); gl.vertexAttribPointer(LP, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.ub); gl.enableVertexAttribArray(LU); gl.vertexAttribPointer(LU, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.ib); gl.bindTexture(gl.TEXTURE_2D, tex(L.img)); gl.drawElements(gl.TRIANGLES, L.idx.length, gl.UNSIGNED_SHORT, 0);
+  }
+  function drawShadow(S, k, vp){
+    const hw = S.w * k / 2, hh = S.h * k / 2, d = new Float32Array([S.cx-hw, S.y-hh, 0, 0, S.cx+hw, S.y-hh, 1, 0, S.cx+hw, S.y+hh, 1, 1, S.cx-hw, S.y-hh, 0, 0, S.cx+hw, S.y+hh, 1, 1, S.cx-hw, S.y+hh, 0, 1]);
+    gl.useProgram(prog); gl.uniform4f(LV, vp[0], vp[1], vp[2], vp[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, sbuf); gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(LP); gl.vertexAttribPointer(LP, 2, gl.FLOAT, false, 16, 0); gl.enableVertexAttribArray(LU); gl.vertexAttribPointer(LU, 2, gl.FLOAT, false, 16, 8);
+    gl.bindTexture(gl.TEXTURE_2D, shadowTex); gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+  function layout(){
+    if(!D) return;
+    const r = cv.getBoundingClientRect(); if(!r.width || !r.height) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+    const s = Math.min(r.width / 1000, r.height / 1560);
+    view = {s, vw:r.width / s, vh:r.height / s, vx:0, vy:0}; view.vx = 490 - view.vw / 2; view.vy = 1536 - view.vh;
+  }
+  function hit(cx, cy){
+    const r = cv.getBoundingClientRect(), ax = view.vx + (cx - r.left) / view.s, ay = view.vy + (cy - r.top) / view.s, P = D.poses[API.cur];
+    for(const li of [1, 0]){ const L = P.layers[li]; if(!L) continue; const u = (ax - L.x) / L.w, v = (ay - L.y) / L.h; if(u < -.02 || u > 1.02 || v < -.02 || v > 1.02) continue;
+      for(let dy = -2; dy <= 2; dy++) for(let dx = -2; dx <= 2; dx++){ const px = Math.round(u * L.aw) + dx * 2, py = Math.round(v * L.ah) + dy * 2; if(px < 0 || py < 0 || px >= L.aw || py >= L.ah) continue; if(L.am.data[(py * L.aw + px) * 4 + 3] > 40) return li; } }
+    return -1;
+  }
+  function setPose(i, quiet){ API.cur = (i + D.poses.length) % D.poses.length; tapAt[API.cur][0] = performance.now(); if(fbImg) fbImg.src = OI + D.poses[API.cur].layers[0].src; if(!quiet && opt.onPose) opt.onPose(D.poses[API.cur].id, D.poses[API.cur].name); }
+  const t0 = performance.now();
+  function frame(now){
+    if(API.dead) return;
+    if(!cv.isConnected){ API.dispose(); return; }
+    raf = requestAnimationFrame(frame);
+    if(!cv.offsetParent && cv.getClientRects().length === 0) return;
+    const t = (now - t0) / 1000; layout();
+    gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    const P = D.poses[API.cur], g = P.g, vp = [view.vx, view.vy, view.vw, view.vh], a0 = P.layers[0];
+    const tt = [0, 1].map(e => (now - tapAt[API.cur][e]) / 1000);
+    let sq = 0; const u = tt[0]; if(u > 0 && u < 3) sq = -g.tapSq * (1 - Math.exp(-30 * u)) * Math.exp(-5 * u) * Math.cos(TAU * 2.2 * u);
+    const sy = 1 + g.br * Math.sin(TAU * g.brf * t + 1) + sq;
+    const G = {gr:P.ground, top:P.top, cx:a0.x + a0.w / 2, sy, sx:1 - (sy - 1) * .7, jel:g.jelly * Math.sin(TAU * g.jf * t) + g.tapJ * osc(tt[0])};
+    drawShadow(P.shadow, 1 + .02 * Math.sin(TAU * g.brf * t), vp);
+    for(const L of P.layers) drawLayer(L, t, tt, G, vp);
+  }
+  let fbImg = null;
+  function fallback(){
+    if(!D) return;
+    fbImg = document.createElement('img'); fbImg.alt = ''; fbImg.style.cssText = 'position:absolute;left:50%;bottom:0;height:100%;max-width:100%;transform:translateX(-50%);object-fit:contain;object-position:50% 100%;cursor:pointer';
+    fbImg.src = OI + D.poses[API.cur].layers[0].src; cv.replaceWith(fbImg);
+    fbImg.addEventListener('click', () => { setPose(API.cur + 1); try{ sound('ok'); }catch(e){} });
+  }
+  API._hit = hit; API._view = () => view;
+  API.layout = layout;
+  API.pose = id => { if(!D) return; const i = D.poses.findIndex(p => p.id === id); if(i >= 0) setPose(i, true); };
+  API.next = () => { if(D) setPose(API.cur + 1); };
+  API.dispose = () => {
+    if(API.dead) return; API.dead = true; cancelAnimationFrame(raf);
+    try{ texs.forEach(t => gl.deleteTexture(t)); bufs.forEach(o => { gl.deleteBuffer(o.vb); gl.deleteBuffer(o.ub); gl.deleteBuffer(o.ib); }); const ext = gl.getExtension('WEBGL_lose_context'); if(ext) ext.loseContext(); }catch(e){}
+  };
+  cv.addEventListener('pointerdown', e => {
+    if(!D || !gl) return; const h = hit(e.clientX, e.clientY), now = performance.now();
+    if(h === 1){ tapAt[API.cur][1] = now; try{ sound('tap'); }catch(err){} }
+    else if(h === 0){ setPose(API.cur + 1); tapAt[API.cur][1] = now + 80; try{ sound('ok'); }catch(err){} }
+  });
+  himeData().then(d => {
+    if(API.dead) return; D = d;
+    const ca = {premultipliedAlpha:true, alpha:true, antialias:true};
+    gl = cv.getContext('webgl2', ca) || cv.getContext('webgl', ca);
+    if(!gl){ fallback(); return; }
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+    prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 p;attribute vec2 u;varying vec2 v;uniform vec4 vp;void main(){v=u;gl_Position=vec4((p.x-vp.x)/vp.z*2.-1.,1.-(p.y-vp.y)/vp.w*2.,0.,1.);}'));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, 'precision mediump float;varying vec2 v;uniform sampler2D t;void main(){gl_FragColor=texture2D(t,v);}'));
+    gl.linkProgram(prog); if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){ fallback(); return; }
+    LP = gl.getAttribLocation(prog, 'p'); LU = gl.getAttribLocation(prog, 'u'); LV = gl.getUniformLocation(prog, 'vp');
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); sbuf = gl.createBuffer();
+    const c = document.createElement('canvas'); c.width = 128; c.height = 64; const x = c.getContext('2d');
+    const gr = x.createRadialGradient(64, 32, 2, 64, 32, 62); gr.addColorStop(0, 'rgba(120,70,50,.36)'); gr.addColorStop(.55, 'rgba(120,70,50,.16)'); gr.addColorStop(1, 'rgba(120,70,50,0)');
+    x.save(); x.scale(1, .5); x.translate(0, 32); x.fillStyle = gr; x.fillRect(0, -32, 128, 128); x.restore(); shadowTex = tex(c);
+    setPose(opt.start || 0, true); layout(); raf = requestAnimationFrame(frame);
+  }).catch(e => { console.warn('hime 2.5D', e); });
+  return API;
+}
+
+/* =====================================================================
+   STEP2：ぞうちく（おしろを そだてる）
+   ・パーツ 5つ（とう／はた／しろもん／ていえん／ほり）× レベル 1〜3
+   ・ひつような コイン：レベル1＝20・レベル2＝40・レベル3＝70
+   ・おしろの すがた：木の とりで →（ぜんぶ ★2 いじょう）石の おしろ →（ぜんぶ ★3 ＋ まち Lv12）きらきらの おしろ
+   ・「いまの コイン − ひつような コイン ＝ のこり」を ひきざんの しきで 見せる
+   ===================================================================== */
+const PARTS = [
+  {k:'tower',  n:'とう',     ic:'pt_tower',  pos:[19, 30], d:'たかい とうから まちが 見える'},
+  {k:'flag',   n:'はた',     ic:'pt_flag',   pos:[80, 16], d:'おしろの しるし。かぜに なびく'},
+  {k:'gate',   n:'しろもん', ic:'pt_gate',   pos:[52, 80], d:'おきゃくさんを おむかえする もん'},
+  {k:'garden', n:'ていえん', ic:'pt_garden', pos:[13, 82], d:'お花と ふんすいの にわ'},
+  {k:'moat',   n:'ほり',     ic:'pt_moat',   pos:[88, 82], d:'おしろを まもる 水の みぞ'}
+];
+const COST = [20, 40, 70], TOWN_LV3 = 12;
+const STAGE_N = ['', '木の とりで', '石の おしろ', 'きらきらの おしろ'];
+function P(){ const o = O(); o.parts = o.parts || {}; PARTS.forEach(p => { o.parts[p.k] = o.parts[p.k] || 0; }); o.stage = o.stage || 1; return o.parts; }
+const lvOf = k => P()[k] || 0;
+const costOf = k => lvOf(k) >= 3 ? 0 : COST[lvOf(k)];
+const townLv = () => { try{ return (save.town.lv || 0) + 1; }catch(e){ return 1; } };
+function castleStage(){
+  const ls = PARTS.map(p => lvOf(p.k)), mn = Math.min(...ls);
+  if(mn >= 3 && townLv() >= TOWN_LV3) return 3;
+  if(mn >= 2) return 2;
+  return 1;
+}
+function canBuild(){ try{ const c = O().coin; return PARTS.some(p => lvOf(p.k) < 3 && c >= costOf(p.k)); }catch(e){ return false; } }
+function stageSuffix(){ return ''; }
+const ZC = {open:false, sel:'tower', busy:false};
+const BEAR = ['よーし、どこを たてる？','コインが たまったら まかせとけ！','トントン カンカン！ たのしいなあ','ぜんぶ ★2に すると 石の おしろに なるぞ','おしろの パーツは 5つ あるんだ'];
+const css2 = document.createElement('style');
+css2.textContent = `
+.osZc .osPgBg{background-image:url(${OI}zc_bg_l.webp);background-position:center 60%}
+#osr.osP .osZc .osPgBg{background-image:url(${OI}zc_bg_p.webp)}
+.zcCastle{position:absolute;z-index:3}
+.zcCimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 10px rgba(60,40,20,.28));transition:transform .5s,opacity .5s}
+.zcPt{position:absolute;transform:translate(-50%,-50%);object-fit:contain;filter:drop-shadow(0 4px 4px rgba(60,40,20,.3));pointer-events:none;z-index:2}
+.zcPt.l3{filter:drop-shadow(0 0 8px rgba(255,220,110,.95)) drop-shadow(0 4px 4px rgba(60,40,20,.3))}
+.zcPt.pop{animation:zcPop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes zcPop{from{transform:translate(-50%,-50%) scale(.2);opacity:0}}
+#osr .zcHot{position:absolute;z-index:4;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.95);border:3px solid #E7C27A;box-shadow:0 3px 8px rgba(60,40,20,.35);font-weight:900;font-size:13px;color:#A0661A;flex-direction:column;gap:0}
+#osr .zcHot svg{width:22px;height:22px}
+#osr .zcHot.can{background:radial-gradient(circle,#FFF6C8,#FFD24A);border-color:#fff;color:#7A4A00;animation:zcGlow 1.2s ease-in-out infinite}
+#osr .zcHot.sel{outline:4px solid #FF7EA3;outline-offset:2px}
+#osr .zcHot.max{background:linear-gradient(180deg,#FFE58A,#F2B91E);border-color:#fff;color:#fff}
+@keyframes zcGlow{50%{box-shadow:0 0 0 8px rgba(255,214,74,.35),0 3px 8px rgba(60,40,20,.35)}}
+.zcHot i{font-style:normal;font-size:10px;letter-spacing:-1px;line-height:1;color:#F2A600}
+#osr .zcBear{position:absolute;z-index:5;padding:0;transform-origin:50% 100%}
+#osr .zcBear img{display:block;height:100%;width:auto;filter:drop-shadow(0 8px 8px rgba(60,40,20,.3));pointer-events:none}
+#osr .zcBear.swing{animation:zcSwing .22s ease-in-out 4 alternate}
+@keyframes zcSwing{from{transform:rotate(-6deg)}to{transform:rotate(6deg) translateY(-6px)}}
+.zcSay{position:absolute;z-index:6;background:#fff;border:3px solid #8CC4F2;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(40,60,90,.22)}
+.zcSay b{display:block;font-size:11px;color:#2F6DB5}
+.zcSay.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
+.zcStage{position:absolute;z-index:6;height:30px;padding:0 14px;border-radius:999px;background:linear-gradient(180deg,#fff,#FFF3D6);border:2px solid #E7C27A;color:#8A3D5C;font-weight:900;font-size:14px;display:flex;align-items:center;gap:6px;box-shadow:0 3px 8px rgba(60,40,20,.25);white-space:nowrap;transform:translateX(-50%)}
+.zcStage i{font-style:normal;font-size:11px;color:#A08A6A;font-weight:800}
+.zcPuff{position:absolute;z-index:7;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(255,255,255,.6) 60%,rgba(255,255,255,0) 72%);pointer-events:none;animation:zcPuff .9s ease-out forwards}
+@keyframes zcPuff{from{transform:translate(-50%,-50%) scale(.3);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(2.2);opacity:0}}
+.zcStar{position:absolute;z-index:7;pointer-events:none;color:#FFD24A;font-size:22px;text-shadow:0 0 6px #fff;animation:zcStar 1s ease-out forwards}
+@keyframes zcStar{from{transform:translate(-50%,-50%) scale(.2);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.1);opacity:0}}
+/* パネル */
+.zcPanel{position:absolute;z-index:8;display:flex;flex-direction:column;gap:8px;background:rgba(255,250,240,.95);border:3px solid #fff;border-radius:22px;box-shadow:0 6px 18px rgba(60,40,20,.25);padding:10px}
+.zcCalc{flex:none;background:#FFF6DC;border:2px dashed #E7C27A;border-radius:14px;padding:6px 10px;font-weight:900;font-size:14px;color:#6B4423;line-height:1.6;text-align:center}
+.zcCalc b{font-size:19px;color:#C2457A}
+.zcCalc .ng{color:#B5651D}
+.zcCalc small{display:block;font-size:11px;color:#8A7560;font-weight:800}
+.zcCards{flex:1;min-height:0;display:flex;gap:8px;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#osr.osL .zcCards{flex-direction:column}
+#osr.osP .zcCards{flex-direction:row;padding-bottom:4px}
+.zcCard{position:relative;flex:none;display:grid;grid-template-columns:58px minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;align-items:center;background:#fff;border:3px solid #F0DDBB;border-radius:16px;padding:8px}
+#osr.osP .zcCard{width:min(64vw,250px)}
+.zcCard.sel{border-color:#FF7EA3;box-shadow:0 0 0 3px rgba(255,126,163,.3)}
+.zcCard.max{background:#FFFBEA}
+.zcCard>img{grid-row:1/4;width:58px;height:58px;object-fit:contain}
+.zcCard b{font-size:16px;font-weight:900;color:#5A3B2E}
+.zcCard .st{font-size:15px;letter-spacing:1px;color:#F2A600}
+.zcCard .st em{font-style:normal;color:#E6DDCF}
+.zcCard small{font-size:11px;font-weight:800;color:#8A7560;line-height:1.35}
+#osr .zcBtn{grid-column:1/-1;margin-top:6px;height:42px;border-radius:14px;gap:4px;font-weight:900;font-size:15px;background:linear-gradient(180deg,#7FC8F5,#2E8BD6);color:#fff;border:2px solid #fff;box-shadow:0 4px 0 #1C6AAE}
+#osr .zcBtn img{width:24px;height:24px;object-fit:contain}
+#osr .zcBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #1C6AAE}
+#osr .zcBtn.ng{background:#D9D2C6;box-shadow:0 4px 0 #B5AC9E;color:#fff}
+#osr .zcBtn.mx{background:linear-gradient(180deg,#FFE58A,#F2B91E);box-shadow:0 4px 0 #C88F0C;color:#6B4A00}
+/* しんか */
+.zcEvo{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(ellipse at 50% 45%,rgba(255,248,220,.97),rgba(70,40,90,.96) 78%);animation:osFade .3s}
+.zcEvo .ray{position:absolute;left:50%;top:44%;width:150vmax;height:150vmax;transform:translate(-50%,-50%);background:repeating-conic-gradient(rgba(255,255,255,.35) 0 8deg,transparent 8deg 20deg);animation:zcSpin 10s linear infinite;pointer-events:none}
+@keyframes zcShow{from{opacity:0}to{opacity:1}}
+@keyframes zcSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.zcEvo .ci{position:relative;width:min(70vw,52vh);height:min(70vw,52vh)}
+.zcEvo .ci img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.zcEvo .ci .old{animation:zcOld 1.4s ease-in forwards}
+.zcEvo .ci .nw{opacity:0;animation:zcNew .9s 1.2s cubic-bezier(.2,1.6,.4,1) forwards;filter:drop-shadow(0 0 24px rgba(255,240,170,.95))}
+@keyframes zcOld{0%{filter:brightness(1)}60%{filter:brightness(3);transform:scale(1.05)}100%{filter:brightness(4);opacity:0;transform:scale(.6)}}
+@keyframes zcNew{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+.zcEvo h2{position:relative;margin:0;font-size:clamp(24px,5vw,40px);color:#fff;text-shadow:0 3px 0 #C2457A,0 0 16px rgba(255,255,255,.8);opacity:0;animation:zcShow .5s 1.8s forwards}
+.zcEvo p{position:relative;margin:0;background:rgba(255,255,255,.92);border-radius:16px;padding:6px 16px;font-weight:900;color:#6B4423;opacity:0;animation:zcShow .5s 2s forwards;text-align:center;line-height:1.6}
+#osr .zcEvo .ok{position:relative;height:50px;padding:0 28px;border-radius:999px;background:linear-gradient(180deg,#FFE27A,#F6B93B);border:3px solid #fff;color:#6B4A00;font-weight:900;font-size:18px;box-shadow:0 4px 0 #C98A12;opacity:0;animation:zcShow .5s 2.3s forwards}
+`;
+document.head.appendChild(css2);
+const starStr = lv => '★'.repeat(lv) + `<em>${'★'.repeat(3 - lv)}</em>`;
+function zcHTML(){
+  return `<div class="osPgBg"></div><div class="zcStage"></div>
+    <div class="zcCastle"><img class="zcCimg" src="${OI}castle_${castleStage()}.webp" alt=""></div>
+    <button class="zcBear" data-o="zbear" aria-label="くまの 大工さん"><img src="${OI}zc_bear.webp" alt=""></button>
+    <div class="zcSay"><b>くまの 大工さん</b><span></span></div>
+    <div class="zcPanel"><div class="zcCalc"></div><div class="zcCards"></div></div>`;
+}
+function zcRenderCastle(popK){
+  const box = R.zc.querySelector('.zcCastle'); if(!box) return;
+  box.querySelectorAll('.zcPt,.zcHot').forEach(e => e.remove());
+  const w = box.clientWidth, coin = O().coin;
+  PARTS.forEach(p => {
+    const lv = lvOf(p.k), [x, y] = p.pos;
+    if(lv > 0){
+      const im = document.createElement('img'); im.className = 'zcPt l' + lv + (popK === p.k ? ' pop' : ''); im.src = OI + p.ic + '.webp'; im.alt = '';
+      const sz = w * (.17 + .05 * lv); im.style.cssText = `left:${x}%;top:${y}%;width:${sz}px;height:${sz}px`; box.appendChild(im);
+    }
+    const can = lv < 3 && coin >= costOf(p.k);
+    const b = document.createElement('button');
+    b.className = 'zcHot' + (can ? ' can' : '') + (lv >= 3 ? ' max' : '') + (ZC.sel === p.k ? ' sel' : '');
+    b.dataset.o = 'zsel:' + p.k; b.setAttribute('aria-label', p.n);
+    b.innerHTML = lv >= 3 ? '★' : can ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg>' : `<span>${p.n.slice(0, 2)}</span><i>${'★'.repeat(lv)}</i>`;
+    const oy = y < 50 ? -22 : 22, ox = x < 50 ? -18 : 18;
+    b.style.left = `calc(${x}% + ${ox}px)`; b.style.top = `calc(${y}% + ${oy}px)`;
+    box.appendChild(b);
+  });
+  const st = castleStage(), stEl = R.zc.querySelector('.zcStage');
+  stEl.innerHTML = `🏰 ${STAGE_N[st]}<i>${st < 3 ? (st === 1 ? 'ぜんぶ ★2 で しんか' : `ぜんぶ ★3 ＋ まち Lv${TOWN_LV3} で しんか`) : 'さいこうの おしろ！'}</i>`;
+}
+function zcRenderPanel(){
+  const coin = O().coin;
+  const cards = PARTS.map(p => {
+    const lv = lvOf(p.k), c = costOf(p.k), can = lv < 3 && coin >= c;
+    const btn = lv >= 3 ? `<button class="zcBtn mx" disabled>★ さいだい</button>`
+      : `<button class="zcBtn ${can ? '' : 'ng'}" data-o="zbuild:${p.k}"><img src="${OI}ic_coin.webp" alt="">${c}　${lv ? 'レベルアップ' : 'たてる'}</button>`;
+    return `<div class="zcCard ${ZC.sel === p.k ? 'sel' : ''} ${lv >= 3 ? 'max' : ''}" data-k="${p.k}" data-o="zsel:${p.k}"><img src="${OI}${p.ic}.webp" alt=""><b>${p.n}</b><span class="st">${starStr(lv)}</span><small>${lv ? `レベル ${lv} / 3` : 'まだ ないよ'}　${p.d}</small>${btn}</div>`;
+  }).join('');
+  const box = R.zc.querySelector('.zcCards'), sl = box.scrollLeft, stp = box.scrollTop;
+  box.innerHTML = cards; box.scrollLeft = sl; box.scrollTop = stp;
+  zcCalc();
+}
+function zcCalc(){
+  const p = PARTS.find(x => x.k === ZC.sel), el = R.zc.querySelector('.zcCalc'); if(!p || !el) return;
+  const coin = O().coin, lv = lvOf(p.k), c = costOf(p.k);
+  if(lv >= 3){ el.innerHTML = `${p.n}は さいだい レベル！<small>${castleStage() < 3 && PARTS.every(x => lvOf(x.k) >= 3) ? `まちを Lv${TOWN_LV3} に すると きらきらの おしろに なるよ（いま Lv${townLv()}）` : 'ほかの パーツも そだてよう'}</small>`; return; }
+  el.innerHTML = coin >= c
+    ? `いまの コイン <b>${coin}</b> − ひつよう <b>${c}</b> ＝ のこり <b>${coin - c}</b><small>${p.n}を ${lv ? `レベル${lv + 1}に` : 'たてる'} と こうなるよ</small>`
+    : `いまの コイン <b>${coin}</b> − ひつよう <b>${c}</b> … <span class="ng">あと <b>${c - coin}</b> たりない</span><small>おふれを たっせいして コインを あつめよう</small>`;
+}
+function zcSay(t){ const s = R.zc.querySelector('.zcSay'); if(!s) return; s.querySelector('span').textContent = t; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
+function zcBearSay(){ zcSay(BEAR[Math.floor(Math.random() * BEAR.length)]); const b = R.zc.querySelector('.zcBear'); b.classList.remove('swing'); void b.offsetWidth; b.classList.add('swing'); }
+function zcSelect(k){
+  ZC.sel = k; zcRenderCastle(); zcRenderPanel();
+  const c = R.zc.querySelector(`.zcCard[data-k="${k}"]`); if(c) c.scrollIntoView({block:'nearest', inline:'nearest', behavior:'smooth'});
+  const p = PARTS.find(x => x.k === k); if(p){ const lv = lvOf(k); zcSay(lv >= 3 ? `${p.n}は もう さいこうだ！` : `${p.n}だね。コイン ${costOf(k)}まいで ${lv ? 'りっぱに できるぞ' : 'たてられるぞ'}！`); }
+}
+/* JS で ならべる（よこ・たて） */
+function zcPlace(){
+  const z = R.zc; if(!z.classList.contains('show')) return;
+  const W = innerWidth, Hh = innerHeight, top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0) + 70;
+  const cs = z.querySelector('.zcCastle'), bear = z.querySelector('.zcBear'), sayEl = z.querySelector('.zcSay'), pn = z.querySelector('.zcPanel'), stg = z.querySelector('.zcStage');
+  const set = (el, o) => Object.assign(el.style, Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'number' ? v + 'px' : v])));
+  if(isL()){
+    const pw = clamp(W * .34, 280, 380), sw = W - pw - 24;
+    set(pn, {left:'auto', right:12, top:top + 10, bottom:14, width:pw, height:'auto'});
+    const cz = Math.min(sw * .62, (Hh - top) * .78);
+    set(cs, {left:sw / 2 - cz / 2 + 10, top:top + (Hh - top) * .5 - cz / 2 + 10, width:cz, height:cz});
+    const bh = clamp(Hh * .36, 150, 300); set(bear, {left:8, bottom:6, top:'auto', height:bh, width:'auto'});
+    set(sayEl, {left:14, top:top + 6, right:'auto', width:Math.min(sw * .42, 320), bottom:'auto'});
+    set(stg, {left:sw / 2 + 10, top:Hh - 46, bottom:'auto'});
+  } else {
+    const sh = Math.round(clamp(Hh * .5, 300, Hh - 300));
+    set(pn, {left:10, right:10, top:sh, bottom:Math.max(12, 10), width:'auto', height:'auto'});
+    const cz = Math.min(W * .74, (sh - top - 48) * .92);
+    set(cs, {left:W / 2 - cz / 2 + 12, top:top + 40 + (sh - top - 48 - cz) / 2, width:cz, height:cz});
+    const bh = clamp(sh * .3, 100, 170); set(bear, {left:2, bottom:'auto', top:sh - bh - 4, height:bh, width:'auto'});
+    set(sayEl, {left:W * .3, right:10, width:'auto', top:'auto', bottom:Hh - sh + 8});
+    set(stg, {left:W / 2, top:top + 2, bottom:'auto'});
+  }
+  zcRenderCastle();
+}
+function openZc(){
+  R.of.classList.remove('show'); if(OFH){ OFH.dispose(); OFH = null; }
+  P(); R.zc.innerHTML = zcHTML(); R.zc.classList.add('show'); ZC.open = true; setTitle('🔨 ぞうちく');
+  if(ST) ST.pause();
+  const first = PARTS.find(p => lvOf(p.k) < 3 && O().coin >= costOf(p.k)) || PARTS.find(p => lvOf(p.k) < 3) || PARTS[0];
+  ZC.sel = first.k; zcPlace(); zcRenderPanel();
+  zcSay(canBuild() ? 'コインが あるな！ ひかってる ところを たてよう！' : 'コインが たまったら また きてくれ。おふれで コインが もらえるぞ！');
+  const im = R.zc.querySelector('.zcCimg'); if(im) im.onload = () => zcRenderCastle();
+}
+function zcFx(k){
+  const box = R.zc.querySelector('.zcCastle'), p = PARTS.find(x => x.k === k); if(!box || !p) return;
+  for(let i = 0; i < 6; i++){ const e = document.createElement('i'); e.className = 'zcPuff'; e.style.cssText = `left:${p.pos[0]}%;top:${p.pos[1]}%;--dx:${(Math.random() - .5) * 90}px;--dy:${-20 - Math.random() * 60}px;animation-delay:${i * .06}s`; box.appendChild(e); setTimeout(() => e.remove(), 1300); }
+  setTimeout(() => { for(let i = 0; i < 8; i++){ const e = document.createElement('i'); e.className = 'zcStar'; e.textContent = '✦'; const a = i / 8 * TAU; e.style.cssText = `left:${p.pos[0]}%;top:${p.pos[1]}%;--dx:${Math.cos(a) * 70}px;--dy:${Math.sin(a) * 70}px`; box.appendChild(e); setTimeout(() => e.remove(), 1100); } }, 700);
+}
+function zcBuild(k, btn){
+  if(ZC.busy) return;
+  const p = PARTS.find(x => x.k === k), o = O(), lv = lvOf(k), c = costOf(k); if(!p || lv >= 3) return;
+  ZC.sel = k;
+  if(o.coin < c){ zcSelect(k); try{ sound('ng'); }catch(e){} zcSay(`コインが あと ${c - o.coin}まい たりないぞ。おふれを がんばろう！`); return; }
+  ZC.busy = true; const before = castleStage();
+  addCoin(-c, `ぞうちく：${p.n} レベル${lv + 1}`);
+  P()[k] = lv + 1; persist();
+  const b = R.zc.querySelector('.zcBear'); b.classList.remove('swing'); void b.offsetWidth; b.classList.add('swing');
+  zcSay('トントン カンカン……！'); try{ sound('tap'); setTimeout(() => sound('tap'), 220); setTimeout(() => sound('tap'), 440); }catch(e){}
+  zcFx(k);
+  setTimeout(() => {
+    try{ sound('fan'); }catch(e){}
+    zcRenderCastle(k); zcRenderPanel(); refresh();
+    zcSay(lv + 1 >= 3 ? `${p.n}が さいこうに なったぞ！ ✨` : `${p.n}が ${lv ? `レベル${lv + 1}に なった` : 'できあがった'}ぞ！`);
+    const after = castleStage(); ZC.busy = false;
+    if(after > before){ O().stage = after; persist(); evolve(before, after); }
+  }, 900);
+}
+function evolve(a, b){
+  const ov = document.createElement('div'); ov.className = 'zcEvo';
+  ov.innerHTML = `<i class="ray"></i><div class="ci"><img class="old" src="${OI}castle_${a}.webp" alt=""><img class="nw" src="${OI}castle_${b}.webp" alt=""></div>
+    <h2>おしろが しんかした！</h2><p>${STAGE_N[a]} → <b>${STAGE_N[b]}</b><br>${b === 3 ? 'まちで いちばん すてきな おしろだよ！' : 'つぎは ぜんぶ ★3 を めざそう！'}</p><button class="ok">やったー！</button>`;
+  R.el.appendChild(ov);
+  try{ sound('fan'); setTimeout(() => { sound('fan'); confetti(2600); }, 1300); }catch(e){}
+  ov.querySelector('.ok').addEventListener('click', e => { e.stopPropagation(); ov.remove(); const im = R.zc.querySelector('.zcCimg'); if(im){ im.src = OI + `castle_${b}.webp`; } zcRenderCastle(); });
+}
 /* =====================================================================
    2.5D の ぶたい（oshiro_top_25d_proto_v3 を もとに：さくらは 小さめ）
    ===================================================================== */
@@ -4061,9 +4503,79 @@ function Stage(cv, loadEl){
   return API;
 }
 
+
+/* =====================================================================
+   じゅうみん：ハナの 画面で「いつもの ハナ」⇔「ひめの ハナ」（おしろが ある とき）
+   ・ダイアログ：2.5D の ハナの 下に「👑 ひめの すがた」ボタン
+   ・おおきい 表示（いつもの ハナ）にも「👑 ひめ」ボタン → ひめの おおきい 表示へ
+   ・ひめの おおきい 表示：ハナを タッチ → ひょうじょうが かわる／「いつもの ハナ」で もどる
+   ===================================================================== */
+const css3 = document.createElement('style');
+css3.textContent = `
+.osHimeRow{display:flex;justify-content:center;margin:6px 0 2px}
+.osHimeBtn,.osHimeSw{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:40px;padding:0 16px;border-radius:999px;border:3px solid #fff;background:linear-gradient(180deg,#FF9DBA,#E9557F);color:#fff;font:inherit;font-weight:900;font-size:15px;line-height:1;box-shadow:0 3px 0 #B83A60,0 4px 10px rgba(80,30,50,.3);cursor:pointer;white-space:nowrap}
+.osHimeBtn:active,.osHimeSw:active{transform:translateY(2px);box-shadow:0 1px 0 #B83A60}
+.osHimeSw{position:absolute;z-index:6;top:calc(env(safe-area-inset-top,0px) + 14px);left:12px}
+#osHimeBig{position:fixed;inset:0;z-index:170;background:radial-gradient(ellipse at 50% 42%,rgba(255,240,246,.95),rgba(70,30,80,.97) 80%);animation:osFade .25s;touch-action:none;font-family:var(--maru)}
+#osHimeBig .hbStage{position:absolute;left:0;right:0;top:64px;bottom:118px}
+#osHimeBig canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#osHimeBig .hbX{position:absolute;z-index:6;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:50px;height:50px;border-radius:50%;border:3px solid #fff;background:#fff;color:#6B4423;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.35);cursor:pointer;padding:0}
+#osHimeBig .hbX svg{width:24px;height:24px;display:block}
+#osHimeBig .hbPoses{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 46px);display:flex;justify-content:center;gap:8px;flex-wrap:wrap;padding:0 10px}
+#osHimeBig .hbPoses button{height:40px;padding:0 14px;border-radius:999px;border:2px solid #fff;background:rgba(255,255,255,.88);color:#8A3D5C;font:inherit;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1;cursor:pointer}
+#osHimeBig .hbPoses button.on{background:linear-gradient(180deg,#FFE3EA,#FFC2D1);border-color:#E9557F}
+#osHimeBig .hbHint{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;color:#fff;font-weight:900;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.7);pointer-events:none}
+`;
+document.head.appendChild(css3);
+const POSE_N = [['normal','つうじょう'],['laugh','わらい'],['surprise','おどろき'],['smug','ふんぞり']];
+let lastGirlHost = null;
+function openHimeBig(){
+  if(document.getElementById('osHimeBig')) return;
+  const ov = document.createElement('div'); ov.id = 'osHimeBig';
+  ov.innerHTML = `<div class="hbStage"><canvas></canvas></div><button class="osHimeSw" data-hb="norm">🙂 いつもの ハナ</button><button class="hbX" data-hb="x" aria-label="とじる">${SVG.close}</button>
+    <div class="hbPoses">${POSE_N.map(([k, n], i) => `<button data-hb="p:${k}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div><div class="hbHint">ハナを タッチ → ひょうじょうが かわるよ</div>`;
+  document.body.appendChild(ov);
+  const mark = id => ov.querySelectorAll('.hbPoses button').forEach(b => b.classList.toggle('on', b.dataset.hb === 'p:' + id));
+  const hv = HimeView(ov.querySelector('.hbStage'), ov.querySelector('canvas'), {onPose:id => mark(id)});
+  const close = () => { hv.dispose(); ov.remove(); removeEventListener('resize', lay); };
+  const lay = () => hv.layout(); addEventListener('resize', lay);
+  ov.addEventListener('click', e => {
+    const b = e.target.closest('[data-hb]'); if(!b) return; e.stopPropagation();
+    const [a, v] = b.dataset.hb.split(':'); try{ sound('tap'); }catch(err){}
+    if(a === 'x') close();
+    else if(a === 'p'){ hv.pose(v); mark(v); }
+    else if(a === 'norm'){ close(); const box = lastGirlHost && lastGirlHost.isConnected && lastGirlHost.querySelector('.m25box'); if(box) box.click(); }
+  });
+}
+window.oshiroHime = openHimeBig;
+/* ダイアログに ボタンを つける */
+function addHimeBtn(host){
+  if(!hasCastle() || host.dataset.osHime) return; host.dataset.osHime = '1'; lastGirlHost = host;
+  const row = document.createElement('div'); row.className = 'osHimeRow';
+  row.innerHTML = '<button class="osHimeBtn" type="button">👑 ひめの すがた</button>';
+  const anchor = host.closest('.dlgArt') || host;
+  anchor.insertAdjacentElement('afterend', row);
+  row.querySelector('button').addEventListener('click', e => { e.stopPropagation(); openHimeBig(); });
+}
+function scanGirl(){ document.querySelectorAll('#dlgBody [data-m25="girl"]').forEach(addHimeBtn); }
+const dlgB = document.getElementById('dlgBody');
+if(dlgB && window.MutationObserver) new MutationObserver(scanGirl).observe(dlgB, {childList:true, subtree:true});
+/* いつもの ハナの おおきい 表示に「👑 ひめ」 */
+let bigFromGirl = false;
+document.addEventListener('click', e => { try{ const h = e.target.closest && e.target.closest('[data-m25]'); if(h && e.target.closest('.m25box')){ bigFromGirl = h.dataset.m25 === 'girl'; if(bigFromGirl) lastGirlHost = h; } }catch(err){} }, true);
+if(window.MutationObserver) new MutationObserver(ms => {
+  for(const m of ms) for(const n of m.addedNodes){
+    if(n.nodeType === 1 && n.id === 'm25big' && bigFromGirl && hasCastle() && !n.querySelector('.osHimeSw')){
+      const b = document.createElement('button'); b.className = 'osHimeSw'; b.type = 'button'; b.textContent = '👑 ひめの ハナ';
+      b.addEventListener('click', e => { e.stopPropagation(); const x = n.querySelector('.m25x'); if(x) x.click(); else n.remove(); openHimeBig(); });
+      n.appendChild(b);
+    }
+  }
+}).observe(document.body, {childList:true});
+
 /* ---------- ためしに ひらく：URL に #oshiro ---------- */
 function tryHash(){ if(/#oshiro\b/.test(location.hash)) setTimeout(() => { try{ openOshiro(null); }catch(e){ console.warn(e); } }, 900); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryHash); else tryHash();
 addEventListener('hashchange', tryHash);
-window.__oshiro = {O, ensureWeek, count, open:openOshiro};
+window.__oshiro = {O, ensureWeek, count, open:openOshiro, parts:P, stage:castleStage, hime:openHimeBig};
 })();
