@@ -3484,7 +3484,7 @@ window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size
 
 
 /* =====================================================================
-   v10.3：おしろ STEP1〜3 ＋ ぞうちく ★3で 見た目が かわる
+   v10.5：おしろ STEP1〜4（ぎょうじ・ぎょくざのま）
    STEP1：おしろトップ 2.5D ・ おふれ ・ おしろコイン
    STEP2：ぞうちく（5つの パーツ × 3だんかい）・ おしろの しんか（木の とりで → 石の おしろ → きらきらの おしろ）
    v10.1 の なおし
@@ -3734,8 +3734,8 @@ const MENU = [
   {k:'ofure',   n:'おふれ',       c:'c1', ic:'ic_ofure'},
   {k:'zouchiku',n:'ぞうちく',     c:'c2', ic:'ic_zouchiku'},
   {k:'chizu',   n:'まちのちず',   c:'c3', ic:'ic_chizu'},
-  {k:'gyouji',  n:'ぎょうじ',     c:'c4', ic:'ic_gyouji',   soon:'おしろの ぎょうじは じゅんびちゅうですぞ。オーケストラも れんしゅうちゅう！'},
-  {k:'gyokuza', n:'ぎょくざのま', c:'c5', ic:'ic_gyokuza',  soon:'ぎょくざのまは もうすぐ ひらきますぞ。やくしょくを きめる へやです'}
+  {k:'gyouji',  n:'ぎょうじ',     c:'c4', ic:'ic_gyouji'},
+  {k:'gyokuza', n:'ぎょくざのま', c:'c5', ic:'ic_gyokuza'}
 ];
 let R = null, ST = null, KEY = null, OFH = null;   // R：DOM、ST：トップの 2.5D、KEY：まちの マス、OFH：おふれの ハナ
 const isL = () => innerWidth > innerHeight;
@@ -3791,12 +3791,14 @@ function place(){
   if(OFH) OFH.layout();
   if(ZC.open) zcPlace();
   if(MP.open) mpReq();
+  if(GY.open) gyPlace();
+  if(GZ.open) gzPlace();
 }
 function refresh(){
   const o = ensureWeek();
   R.coin.querySelector('b').textContent = nfm(o.coin);
   const badge = (k, on, cls) => { const b = R.menu.querySelector(`[data-o="${k}"]`), cur = b.querySelector('.osBadge'); if(on && !cur) b.insertAdjacentHTML('beforeend', `<i class="osBadge ${cls || ''}">!</i>`); if(!on && cur) cur.remove(); };
-  badge('ofure', canGet()); badge('zouchiku', canBuild(), 'k');
+  badge('ofure', canGet()); badge('zouchiku', canBuild(), 'k'); badge('gyouji', gyBadge(), 'k'); badge('gyokuza', gzBadge(), 'k');
   R.bld.style.display = KEY ? '' : 'none';
 }
 function say(txt){ const s = R.say; s.querySelector('span').textContent = txt; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); if(!isL() && R.el.classList.contains('show')) setTimeout(place, 0); }
@@ -3806,14 +3808,14 @@ function openOshiro(key){
   root(); KEY = key || null;
   ensureWeek(); P(); R.el.classList.add('show'); closePages();
   try{ document.body.classList.add('noscroll'); }catch(e){}
-  place(); refresh(); say(owlLine());
+  place(); refresh(); say(owlLine()); chefDaily();
   try{ sound('ok'); }catch(e){}
   if(!ST) ST = Stage(R.cv, R.load); else ST.resume();
 }
 function closePages(){
   R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false;
   if(OFH){ OFH.dispose(); OFH = null; }
-  closeMap();
+  closeMap(); closeGy(); closeGz();
   setTitle('🏰 おしろ' + stageSuffix());
 }
 function closeOshiro(){
@@ -3828,7 +3830,7 @@ async function onClick(e){
   const [a, v, w] = b.dataset.o.split(':');
   if(a !== 'mz') try{ sound('tap'); }catch(err){}
   if(a === 'back'){
-    if(R.of.classList.contains('show') || R.zc.classList.contains('show') || MP.open){ closePages(); if(ST) ST.resume(); refresh(); say(owlLine()); }
+    if(R.of.classList.contains('show') || R.zc.classList.contains('show') || MP.open || GY.open || GZ.open){ closePages(); if(ST) ST.resume(); refresh(); say(owlLine()); }
     else closeOshiro();
     return;
   }
@@ -3836,6 +3838,10 @@ async function onClick(e){
   if(a === 'ofure'){ openOfure(); return; }
   if(a === 'zouchiku'){ openZc(); return; }
   if(a === 'chizu'){ openMap(); return; }
+  if(a === 'gyouji'){ openGy(); return; }
+  if(a === 'gyokuza'){ openGz(); return; }
+  if(a === 'gy'){ gyAction(v); return; }
+  if(a === 'gz'){ gzAction(v, w); return; }
   if(a === 'mz'){ if(v !== 'ans' && v !== 'close') try{ sound('tap'); }catch(err){} mpAction(v, w, b); return; }
   if(a === 'get'){ getReward(+v, b); return; }
   if(a === 'bonus'){ getBonus(b); return; }
@@ -3904,11 +3910,12 @@ function getReward(i, btn){
   const o = ensureWeek(), m = o.ms[i]; if(!m || !isOk(m)) return;
   m.got = 1; persist(); btn.disabled = true; try{ sound('fan'); }catch(e){}
   if(OFH) OFH.pose('laugh');
-  flyCoins(btn, m.rw, () => { addCoin(m.rw, 'おふれ たっせい'); renderOfure(); refresh(); if(o.ms.every(x => x.got)) ofSay('3つ ぜんぶ たっせい！ ボーナスも もらおう！'); });
+  const mb = roleOf('minister') ? Math.max(1, Math.round(m.rw * .1)) : 0;
+  flyCoins(btn, m.rw, () => { addCoin(m.rw + mb, mb ? `おふれ たっせい（📜大臣 +${mb}）` : 'おふれ たっせい'); if(mb) try{ toast(`📜 大臣の ${roleOf('minister').name}の おかげで +${mb}`); }catch(e){} renderOfure(); refresh(); if(o.ms.every(x => x.got)) ofSay('3つ ぜんぶ たっせい！ ボーナスも もらおう！'); });
 }
 function getBonus(btn){
   const o = ensureWeek(); if(o.bonus || !o.ms.every(m => m.got)) return;
-  o.bonus = 1; persist(); btn.disabled = true; try{ sound('fan'); confetti(1800); }catch(e){}
+  o.bonus = 1; try{ const g = GD(); if(!g.allWk.includes(o.wk)) g.allWk.push(o.wk); g.allWk = g.allWk.slice(-20); }catch(e){} persist(); btn.disabled = true; try{ sound('fan'); confetti(1800); }catch(e){}
   if(OFH) OFH.pose('smug');
   flyCoins(btn, BONUS * 2, () => { addCoin(BONUS, 'おふれ ボーナス'); renderOfure(); refresh(); ofSay('やったー！ こんしゅうは かんぺき！'); });
 }
@@ -4116,7 +4123,7 @@ function castleCanvas(st, keys){
 window.oshiroCastleCanvas = castleCanvas;
 function P(){ const o = O(); o.parts = o.parts || {}; PARTS.forEach(p => { o.parts[p.k] = o.parts[p.k] || 0; }); o.stage = o.stage || 1; return o.parts; }
 const lvOf = k => P()[k] || 0;
-const costOf = k => lvOf(k) >= 3 ? 0 : COST[lvOf(k)];
+const costOf = k => lvOf(k) >= 3 ? 0 : (typeof roleOf === 'function' && roleOf('carpenter') ? Math.floor(COST[lvOf(k)] * .9) : COST[lvOf(k)]);
 const townLv = () => { try{ return (save.town.lv || 0) + 1; }catch(e){ return 1; } };
 function castleStage(){
   const ls = PARTS.map(p => lvOf(p.k)), mn = Math.min(...ls);
@@ -4720,6 +4727,427 @@ function mpAction(v, w, b){
   if(v === 'qzx'){ const q = R.el.querySelector('.mpQz'); if(q) q.remove(); MP.qz = null; MP.sel = null; return mpReq(); }
   if(v === 'ans') return mpAnswer(w, b);
 }
+
+/* =====================================================================
+   STEP4：おしろの ぎょうじ（オーケストラ音楽会・花火大会・パレード）／ぎょくざのま（やくしょくの 任命）
+   ・BGM「はなひめ祭典マーチ」（へ長調 4/4 ♩=112、24小節）を assets/audio/music/ の 楽器の 音で その場で 演奏
+   ・音楽会：いつでも ひらける。1日1かい ごほうび（コイン +5、出た じゅうみん 6人の 能力 +1：レア度の じょうげんは まもる）
+   ・花火大会：おふれ ぜんぶ たっせいを 3週 れんぞく → 1週1かい（コイン +10）
+   ・パレード：じゅうみん 8人いじょう → 1日1かい（コイン +5、なかよし +1）
+   ・ぎょくざのま：大臣（おふれ +10%）・大工（ぞうちく −10%）・楽団長（おんがくの ポイント +10%）・料理長（1日1かい コイン +3）
+     台座の かず：木の とりで 2／石の おしろ 3／きらきらの おしろ 4
+   ===================================================================== */
+const GY = {open:false, mode:null, playing:false, raf:0, srcs:[], t0:0, end:0, fw:[], parts:[], notesT:0};
+const GZ = {open:false, sel:null, hv:null};
+const css5 = document.createElement('style');
+css5.textContent = `
+.osGy{background:#1E1B3A}.osGz{background:#E9B9AE}
+.gyBg,.gzBg{position:absolute;inset:-20px;background:center/cover no-repeat;filter:blur(10px) brightness(.7)}
+.osGy .gyBg{background-image:url(${OI}gy_bg_l.webp)}.osGz .gzBg{background-image:url(${OI}gz_bg_l.webp)}
+.gyBox,.gzBox{position:absolute;overflow:hidden;border-radius:0}
+.gyBox>img.bgi,.gzBox>img.bgi{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none}
+.gyFw{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+.gyCap{position:absolute;z-index:6;left:50%;top:3%;transform:translateX(-50%);height:34px;padding:0 16px;border-radius:999px;background:rgba(255,255,255,.95);border:2px solid #F2C94C;color:#6B4423;font-weight:900;font-size:15px;display:flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.gyCap.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
+.gyBar{position:absolute;z-index:6;left:8%;right:8%;top:calc(3% + 42px);height:8px;border-radius:99px;background:rgba(255,255,255,.35);overflow:hidden}
+.gyBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FFE27A,#FF8FB1,#B79BFF)}
+.gyNote{position:absolute;z-index:4;font-style:normal;font-weight:900;font-size:22px;pointer-events:none;text-shadow:0 0 6px rgba(255,255,255,.9);animation:gyNote 2.2s ease-out forwards}
+@keyframes gyNote{0%{opacity:0;transform:translate(0,0) scale(.6)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-120px) scale(1.2) rotate(18deg)}}
+.gySpot{position:absolute;z-index:2;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse at 50% 60%,rgba(255,244,180,.55),rgba(255,244,180,0) 70%);transition:left .6s,width .6s,opacity .4s;mix-blend-mode:screen}
+.gyParade{position:absolute;z-index:5;left:0;right:0;pointer-events:none}
+.gyWalker{position:absolute;bottom:0;animation:gyWalk var(--d) linear forwards}
+.gyWalker .rpic{height:100%;animation:gyHop .36s ease-in-out infinite alternate}
+.gyWalker .rpic>img.rb{height:100%;width:auto}
+.gyWalker i{position:absolute;left:50%;top:-18px;transform:translateX(-50%);font-style:normal;font-size:16px}
+@keyframes gyWalk{from{transform:translateX(-120%)}to{transform:translateX(calc(var(--w) + 20%))}}
+@keyframes gyHop{to{translate:0 -10%;rotate:4deg}}
+/* えらぶ パネル */
+.gyMenu{position:absolute;z-index:8;display:grid;gap:8px}
+#osr .gyCard{position:relative;flex-direction:column;gap:3px;padding:10px 8px 9px;border-radius:18px;background:rgba(255,252,244,.96);border:3px solid #F2C94C;box-shadow:0 5px 0 #C99A4E,0 6px 16px rgba(0,0,0,.35);min-width:0}
+#osr .gyCard:active{transform:translateY(3px);box-shadow:0 2px 0 #C99A4E}
+#osr .gyCard b{font-size:16px;font-weight:900;color:#6B4423;white-space:nowrap}
+#osr .gyCard i{font-style:normal;font-size:30px;line-height:1}
+#osr .gyCard small{font-size:11px;font-weight:800;color:#8A7560;line-height:1.35}
+#osr .gyCard em{font-style:normal;font-size:11px;font-weight:900;color:#fff;background:#E9557F;border-radius:999px;padding:1px 8px;margin-top:2px}
+#osr .gyCard.done em{background:#36A85C}
+#osr .gyCard.lock{background:rgba(236,230,220,.95);border-color:#CFC3B2;box-shadow:0 5px 0 #A99C8A}
+#osr .gyCard.lock i{filter:grayscale(1);opacity:.6}
+#osr .gyCard.lock em{background:#8A7B6C}
+.gySay{position:absolute;z-index:8;background:#fff;border:3px solid #F2C94C;border-radius:16px;padding:6px 12px;font-weight:800;font-size:14px;line-height:1.5;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.gySay b{display:block;font-size:11px;color:#9A6A1E}
+#osr .gyStop{position:absolute;z-index:9;right:12px;bottom:max(14px,env(safe-area-inset-bottom));height:44px;padding:0 18px;border-radius:999px;background:#fff;border:3px solid #E9557F;color:#B0476E;font-weight:900;font-size:15px;box-shadow:0 4px 0 #B83A60}
+.gyRes{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(20,10,40,.55);animation:osFade .3s}
+.gyResIn{width:min(90vw,420px);background:#FFFDF6;border:4px solid #F2C94C;border-radius:22px;padding:14px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.gyResIn h3{margin:2px 0 6px;font-size:22px;color:#8A3D5C}
+.gyResIn p{margin:4px 0;font-weight:800;font-size:14px;line-height:1.6}
+.gyWho{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:8px 0}
+.gyWho span{display:flex;flex-direction:column;align-items:center;width:64px;font-size:10px;font-weight:900}
+.gyWho .rpic{height:52px}.gyWho .rpic>img.rb{height:100%;width:auto}
+.gyWho small{color:#36A85C;font-size:10px}
+#osr .gyOk{margin:8px auto 0;height:46px;padding:0 28px;border-radius:999px;background:linear-gradient(180deg,#FFE27A,#F6B93B);border:3px solid #fff;color:#6B4A00;font-weight:900;font-size:17px;box-shadow:0 4px 0 #C98A12}
+/* ぎょくざのま */
+.gzHana{position:absolute;z-index:3}
+.gzHana canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer}
+#osr .gzPed{position:absolute;z-index:4;transform:translate(-50%,-100%);flex-direction:column;justify-content:flex-end;gap:2px;padding:0;background:transparent}
+.gzPed .gzWho{height:var(--ph);display:flex;align-items:flex-end;justify-content:center}
+.gzPed .gzWho .rpic{height:100%}.gzPed .gzWho .rpic>img.rb{height:100%;width:auto}
+.gzPed .gzPlus{width:var(--pp);height:var(--pp);border-radius:50%;background:radial-gradient(circle,#FFF6C8,#FFD24A);border:3px solid #fff;color:#7A4A00;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 0 rgba(255,214,74,.6);animation:zcGlow 1.4s ease-in-out infinite;margin-bottom:6px}
+.gzPed .gzPlus svg{width:55%;height:55%}
+.gzPed .gzLock{width:var(--pp);height:var(--pp);border-radius:50%;background:rgba(80,60,60,.55);color:#fff;font-weight:900;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:6px;line-height:1.2}
+.gzPed .gzTag{height:24px;padding:0 10px;border-radius:999px;background:#fff;border:2px solid #E2A93B;color:#6B4423;font-weight:900;font-size:12px;display:flex;align-items:center;gap:3px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+#osr .gzPed.sel .gzTag{background:#FFE3EA;border-color:#E9557F}
+#osr .gzPed.flash .gzWho{animation:gzBow .7s ease-in-out}
+@keyframes gzBow{0%{transform:translateY(-60%) scale(.6);opacity:0}50%{transform:translateY(0) scale(1.08);opacity:1}70%{transform:rotate(-8deg)}100%{transform:none}}
+.gzPanel{position:absolute;z-index:8;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));background:rgba(255,250,244,.96);border:3px solid #fff;border-radius:20px;box-shadow:0 6px 18px rgba(60,30,30,.3);padding:8px;display:flex;flex-direction:column;gap:6px}
+.gzInfo{font-weight:900;font-size:13px;color:#6B4423;text-align:center;line-height:1.45}
+.gzInfo small{display:block;font-size:11px;color:#8A7560;font-weight:800}
+.gzCards{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 2px 4px}
+#osr .gzCard{flex:none;width:76px;flex-direction:column;gap:1px;padding:4px 2px;border-radius:14px;background:#fff;border:3px solid #F0DDBB}
+#osr .gzCard.on{border-color:#E9557F;background:#FFE3EA}
+#osr .gzCard.busy{opacity:.55}
+.gzCard .gzPic{height:52px;display:flex;align-items:flex-end;justify-content:center}
+.gzCard .gzPic .rpic{height:100%}.gzCard .gzPic .rpic>img.rb{height:100%;width:auto}
+.gzCard b{font-size:11px;font-weight:900;max-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gzCard small{font-size:10px;font-weight:900;color:#F2A600;letter-spacing:-1px}
+.gzCard em{font-style:normal;font-size:9px;font-weight:900;color:#B0476E}
+.gzEmpty{font-weight:800;font-size:13px;color:#8A7560;text-align:center;padding:10px}
+`;
+document.head.appendChild(css5);
+
+/* ---------- セーブ ---------- */
+function GD(){ const o = O(); o.gy = o.gy || {}; o.roles = o.roles || {}; o.allWk = o.allWk || []; return o; }
+const resList = () => { try{ return nonHuman(); }catch(e){ return (save.town && save.town.res) || []; } };
+const resById = id => resList().find(r => r.id === id);
+function wkStreak(){
+  const L = GD().allWk; let n = 0, d = new Date(weekKey() + 'T00:00:00');
+  if(!L.includes(dayKey(d))) d.setDate(d.getDate() - 7);
+  while(L.includes(dayKey(d))){ n++; d.setDate(d.getDate() - 7); }
+  return n;
+}
+const GYEV = [
+  {k:'concert', n:'音楽会',   ic:'🎻', d:'オーケストラの えんそう', can:() => true, need:'いつでも', per:'day', rw:5},
+  {k:'hanabi',  n:'花火大会', ic:'🎆', d:'おふれ ぜんぶを 3週 れんぞく', can:() => wkStreak() >= 3, need:() => `おふれ ぜんぶ たっせい ${wkStreak()}/3週`, per:'week', rw:10},
+  {k:'parade',  n:'パレード', ic:'🎉', d:'じゅうみん 8人いじょう', can:() => resList().length >= 8, need:() => `じゅうみん ${resList().length}/8人`, per:'day', rw:5}
+];
+const gyGot = ev => { const g = GD().gy[ev.k]; return ev.per === 'week' ? g === weekKey() : g === dayKey(); };
+const gyBadge = () => GYEV.some(ev => ev.can() && !gyGot(ev));
+/* ---------- やくしょく ---------- */
+const ROLES = [
+  {k:'minister',  n:'大臣',   ic:'📜', d:'おふれの ごほうび +10%'},
+  {k:'carpenter', n:'大工',   ic:'🔨', d:'ぞうちくの コイン −10%'},
+  {k:'band',      n:'楽団長', ic:'🎼', d:'おんがくの ポイント +10%'},
+  {k:'chef',      n:'料理長', ic:'🍳', d:'1日1かい おしろで コイン +3'}
+];
+const slotN = () => [0, 2, 3, 4][castleStage()] || 2;
+function roleOf(k){ const o = GD(), i = ROLES.findIndex(r => r.k === k); if(i < 0 || i >= slotN()) return null; const r = resById(o.roles[k]); return r || null; }
+const gzBadge = () => resList().length > 0 && ROLES.slice(0, slotN()).some(r => !roleOf(r.k));
+/* 楽団長：おんがくの ポイント +10% */
+const _apGz = addPoints;
+addPoints = function(pt, reason){
+  try{ if(pt > 0 && /おんがく/.test(String(reason || '')) && roleOf('band')){ const ex = Math.max(1, Math.round(pt * .1)); pt += ex; reason = `${reason}（🎼楽団長 +${ex}）`; } }catch(e){}
+  const a = Array.from(arguments); a[0] = pt; a[1] = reason; return _apGz.apply(this, a);
+};
+/* 料理長：1日1かい */
+function chefDaily(){
+  try{ const o = GD(), r = roleOf('chef'); if(!r || o.chefDay === dayKey()) return; o.chefDay = dayKey(); persist();
+    setTimeout(() => { addCoin(3, '料理長の おべんとう'); refresh(); try{ toast(`🍳 料理長の ${r.name}が おべんとうを くれたよ！ おしろコイン +3`); }catch(e){} }, 900); }catch(e){}
+}
+
+/* =====================================================================
+   オーケストラ（Web Audio）
+   ===================================================================== */
+const SND = './assets/audio/music/', FN = ['C','Cs','D','Ds','E','F','Fs','G','Gs','A','As','B'];
+const SAMP = {tp:[53,57,60,63,67,70,74,77,81,84], tb:[34,37,39,41,46,50,53,60,61,63,65], tu:[29,34,39,41,46,50,53,58,62], ti:[41,46,49,52,53],
+  gl:[79,84,91,96,103,108], cb:[30,31,34,36,38,40,42,44,45,49,52,56,59], cl:[50,53,58,62,65,70,74,77,82,86,89], vc:[36,39,41,43,46,49,52,55,58,61,64,67,72],
+  vn:[57,60,64,67,69,72,76,79,81,84,88,91], hn:[33,36,39,43,50,53,60,69,74,77], fl:[60,64,69,72,76,81,84,88,93,96]};
+const DRUM = ['sn_p1','sn_p2','sn_f1','sn_f2','snroll_p','snroll_f'];
+let AC = null, MST = null, REV = null; const BUF = {};
+function ac(){
+  if(!AC){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; AC = new C();
+    const comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.connect(AC.destination);
+    MST = AC.createGain(); MST.gain.value = .9; MST.connect(comp);
+    /* かんたんな ホールの ひびき */
+    try{ const len = AC.sampleRate * 1.6, ir = AC.createBuffer(2, len, AC.sampleRate);
+      for(let c = 0; c < 2; c++){ const d = ir.getChannelData(c); for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+      REV = AC.createConvolver(); REV.buffer = ir; const rg = AC.createGain(); rg.gain.value = .22; REV.connect(rg); rg.connect(comp); }catch(e){ REV = null; } }
+  if(AC.state === 'suspended') AC.resume();
+  return AC;
+}
+const fileOf = (k, m) => typeof m === 'string' ? `${SND}${m}.mp3` : `${SND}${k}_${FN[m % 12]}${Math.floor(m / 12) - 1}.mp3`;
+function load(k, m){
+  const key = k + ':' + m; if(BUF[key]) return BUF[key];
+  return BUF[key] = fetch(fileOf(k, m)).then(r => { if(!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((ok, ng) => { try{ const p = AC.decodeAudioData(ab, ok, ng); if(p && p.then) p.then(ok, ng); }catch(e){ ng(e); } }))
+    .catch(e => { console.warn('orch', key, e); return null; });
+}
+const nearS = (k, m) => SAMP[k].reduce((a, c) => Math.abs(c - m) < Math.abs(a - m) ? c : a);
+async function note(k, m, t, dur, vol, opt = {}){
+  const base = typeof m === 'string' ? m : nearS(k, m), buf = await load(k, base); if(!buf || !GY.playing) return;
+  const s = AC.createBufferSource(), g = AC.createGain(); s.buffer = buf;
+  if(typeof m !== 'string') s.playbackRate.value = Math.pow(2, (m - base) / 12);
+  const at = Math.max(t, AC.currentTime + .005), a = opt.att || .012, rel = opt.rel || .18;
+  g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(vol, at + a);
+  if(!opt.ring){ g.gain.setValueAtTime(vol, at + Math.max(a, dur - .02)); g.gain.linearRampToValueAtTime(0, at + dur + rel); }
+  s.connect(g); g.connect(MST); if(REV) g.connect(REV);
+  s.start(at); s.stop(at + (opt.ring ? 3 : dur + rel + .05)); GY.srcs.push(s); s.onended = () => { const i = GY.srcs.indexOf(s); if(i >= 0) GY.srcs.splice(i, 1); };
+}
+/* 楽譜（仕様書 8章） */
+const NN = {C:0, D:2, E:4, F:5, G:7, A:9, B:11};
+const PN = p => { if(p === 'r') return null; const m = /^([A-G])(#|b)?(\d)$/.exec(p); return (+m[3] + 1) * 12 + NN[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); };
+const MEL = [[['F4',1],['A4',.5],['C5',.5],['F5',2]],[['E5',1],['D5',.5],['C5',.5],['D5',1],['Bb4',1]],[['C5',1],['A4',.5],['C5',.5],['F5',1],['A5',1]],[['G5',2],['C5',1],['r',1]],
+ [['A4',1],['C5',1],['F5',1.5],['E5',.5]],[['D5',1],['C5',1],['Bb4',1],['A4',1]],[['G4',1],['A4',.5],['Bb4',.5],['C5',1],['D5',1]],[['C5',3],['r',1]],
+ [['A4',1],['C5',1],['F5',1.5],['G5',.5]],[['A5',1],['G5',1],['F5',1],['D5',1]],[['C5',1],['F5',1],['E5',1],['G5',1]],[['F5',3],['r',1]],
+ [['D5',2],['A4',1],['D5',1]],[['F5',2],['E5',1],['D5',1]],[['C#5',1],['D5',1],['E5',1],['A4',1]],[['D5',3],['r',1]],
+ [['Bb4',2],['D5',1],['F5',1]],[['A5',2],['G5',1],['F5',1]],[['E5',1],['F5',1],['G5',1],['Bb5',1]],[['A5',1],['G5',1],['E5',1],['C5',1]],
+ [['F5',1],['A5',1],['G5',1],['F5',1]],[['Bb5',2],['A5',1],['G5',1]],[['F5',1],['C5',1],['A4',.5],['C5',.5],['F5',1]],[['F5',2],['r',2]]];
+const BAS = [[['F2',2],['F2',2]],[['Bb2',2],['G2',2]],[['F2',2],['D3',2]],[['C3',2],['C2',1],['r',1]],[['F2',2],['A2',2]],[['Bb2',2],['F2',2]],[['C3',2],['E2',2]],[['F2',2],['C3',2]],
+ [['F2',2],['A2',2]],[['D3',2],['Bb2',2]],[['C3',2],['C2',2]],[['F2',2],['F2',1],['r',1]],[['D3',2],['A2',2]],[['D3',2],['A2',2]],[['A2',2],['A2',2]],[['D3',2],['D2',2]],
+ [['Bb2',2],['Bb2',2]],[['F2',2],['A2',2]],[['C3',2],['E2',2]],[['C3',2],['C2',2]],[['F2',2],['D3',2]],[['Bb2',2],['C3',2]],[['C3',2],['C2',2]],[['F2',2],['r',2]]];
+const CHD = [['F'],['Bb','Gm'],['F','Dm'],['C7'],['F'],['Bb','F'],['C7'],['F','C'],['F'],['Dm','Bb'],['F','C7'],['F'],['Dm'],['Dm','A'],['A7'],['Dm'],['Bb'],['F'],['C'],['C7'],['F','Dm'],['Bb','C'],['C7'],['F']];
+function chordPcs(ch){ const r = (NN[ch[0]] + (ch[1] === 'b' ? -1 : ch[1] === '#' ? 1 : 0) + 12) % 12, mi = /m/.test(ch.slice(1)), sv = /7/.test(ch);
+  const a = [r, (r + (mi ? 3 : 4)) % 12, (r + 7) % 12]; if(sv) a.push((r + 10) % 12); return a; }
+const voice = (pcs, lo) => pcs.map(pc => { let m = lo - (lo % 12) + pc; if(m < lo) m += 12; return m; }).sort((a, b) => a - b);
+const SEC = [{b:0, n:'🎺 ファンファーレ', who:'トランペット・ホルン・ティンパニ', x:[.5, .62]}, {b:4, n:'🎻 おまつりの テーマ', who:'バイオリン・フルート', x:[.32, .62]},
+  {b:12, n:'🎷 ホルンと チェロの うた', who:'ホルン・チェロ', x:[.82, .55]}, {b:20, n:'🎆 みんなで フィナーレ', who:'ぜんいん！', x:[.5, 1.1]}];
+async function preload(){
+  const s = new Set(), add = (k, m) => s.add(k + '|' + (typeof m === 'string' ? m : nearS(k, m)));
+  MEL.flat().forEach(([p]) => { const m = PN(p); if(m == null) return; ['tp', 'vn'].forEach(k => add(k, m)); add('fl', m + 12); add('hn', m - 12); add('vc', m - 12); add('gl', m + 24); });
+  BAS.flat().forEach(([p]) => { const m = PN(p); if(m == null) return; add('tu', m); add('cb', m); add('vc', m + 12); add('tb', m + 12); });
+  CHD.flat().forEach(c => { voice(chordPcs(c), 53).forEach(m => add('hn', m)); voice(chordPcs(c), 60).forEach(m => add('cl', m)); voice(chordPcs(c), 67).forEach(m => add('vn', m)); });
+  SAMP.ti.forEach(m => add('ti', m)); DRUM.forEach(d => s.add('sn|' + d));
+  await Promise.all([...s].map(x => { const [k, m] = x.split('|'); return load(k, isNaN(+m) ? m : +m); }));
+}
+function schedule(t0){
+  const q = 60 / 112, B = 4 * q;
+  const tiNear = m => SAMP.ti.reduce((a, c) => Math.abs(c - m) < Math.abs(a - m) ? c : a);
+  for(let b = 0; b < 24; b++){
+    const T = t0 + b * B, sec = b < 4 ? 0 : b < 12 ? 1 : b < 20 ? 2 : 3;
+    /* 旋律 */
+    let t = T;
+    MEL[b].forEach(([p, d]) => { const m = PN(p), du = d * q * .95;
+      if(m != null){
+        if(sec === 0) note('tp', m, t, du, .7);
+        if(sec === 1){ note('vn', m, t, du, .55, {att:.03}); note('fl', m + 12, t, du, .25, {att:.02}); }
+        if(sec === 2){ note('hn', m - 12, t, du, .55, {att:.04}); note('vc', m - 12, t, du, .3, {att:.05}); }
+        if(sec === 3){ note('tp', m, t, du, .55); note('vn', m, t, du, .45); note('fl', m + 12, t, du, .25); if(d >= 1) note('gl', m + 24, t, .3, .16, {ring:1}); }
+      }
+      t += d * q; });
+    /* 低音 */
+    t = T;
+    BAS[b].forEach(([p, d]) => { const m = PN(p), du = d * q * .9;
+      if(m != null){
+        if(sec === 0){ note('tu', m, t, du, .55); note('cb', m, t, du, .35); }
+        if(sec === 1){ note('cb', m, t, du, .45); note('vc', m + 12, t, q * .9, .3); }
+        if(sec === 2) note('cb', m, t, du, .45, {att:.04});
+        if(sec === 3){ note('tu', m, t, du, .5); note('tb', m + 12, t, du, .35); note('cb', m, t, du, .35); }
+      }
+      t += d * q; });
+    /* 和音 */
+    const cs = CHD[b], seg = 4 / cs.length;
+    cs.forEach((c, i) => { const ct = T + i * seg * q, pcs = chordPcs(c), sd = seg * q;
+      if(sec === 0) voice(pcs, 53).forEach(m => note('hn', m, ct, sd * .95, .18, {att:.05}));
+      if(sec === 1){ voice(pcs, 60).forEach(m => note('cl', m, ct, sd * .95, .1, {att:.06}));
+        for(let k = 1; k < seg; k += 2) voice(pcs, 53).forEach(m => note('hn', m, ct + k * q, q * .45, .14)); }
+      if(sec === 2){ voice(pcs, 58).forEach(m => note('cl', m, ct, sd * .95, .1, {att:.08})); voice(pcs, 67).slice(-1).forEach(m => note('vn', m, ct, sd * .95, .14, {att:.15})); }
+      if(sec === 3){ voice(pcs, 53).forEach(m => note('hn', m, ct, sd * .9, .16)); voice(pcs, 60).forEach(m => note('cl', m, ct, sd * .9, .1)); }
+    });
+    /* だがっき */
+    const root = PN(BAS[b][0][0]);
+    if(sec === 0){ for(let k = 0; k < 8; k++) note('ti', tiNear(41 + (b % 2 ? 7 : 0)), T + k * q / 2, q / 2, k ? .22 : .5, {ring:1}); }
+    if(sec === 1){ note('ti', tiNear(root != null ? root % 12 + 36 + (root % 12 < 5 ? 12 : 0) : 41), T, q, .4, {ring:1}); note('sn', b % 2 ? 'sn_p2' : 'sn_p1', T + q, .3, .22, {ring:1}); note('sn', 'sn_p1', T + 3 * q, .3, .22, {ring:1}); }
+    if(sec === 3){ note('sn', 'sn_f1', T, .3, .32, {ring:1}); note('sn', 'sn_f2', T + 2 * q, .3, .28, {ring:1});
+      if(b === 22) note('sn', 'snroll_f', T, B, .35); if(b === 22) for(let k = 0; k < 16; k++) note('ti', 41, T + k * q / 4, q / 4, .18 + k * .02, {ring:1});
+      if(b === 23){ note('ti', 41, T, q, .7, {ring:1}); note('ti', 53, T, q, .5, {ring:1}); note('gl', 89, T, .3, .3, {ring:1}); note('gl', 96, T + q / 2, .3, .25, {ring:1}); } }
+    if(b === 19){ note('sn', 'snroll_p', T, B, .25); }
+  }
+  return t0 + 24 * B + 1.6;
+}
+function stopMusic(){ GY.playing = false; GY.srcs.forEach(s => { try{ s.stop(); }catch(e){} }); GY.srcs = []; cancelAnimationFrame(GY.raf); GY.raf = 0; }
+
+/* =====================================================================
+   ぎょうじの 画面
+   ===================================================================== */
+const imgSz = {gy_bg_l:[1536, 1024], gy_bg_p:[826, 1024], gz_bg_l:[1536, 1024], gz_bg_p:[890, 1024]};
+function fitBox(box, key, area){
+  const [iw, ih] = imgSz[key], k = Math.min(area.w / iw, area.h / ih), w = iw * k, h = ih * k;
+  Object.assign(box.style, {left:area.x + (area.w - w) / 2 + 'px', top:area.y + (area.top ? 0 : (area.h - h) / 2) + 'px', width:w + 'px', height:h + 'px'});
+  return {w, h};
+}
+function pgEl(cls){ let pg = R.el.querySelector('.' + cls); if(!pg){ pg = document.createElement('div'); pg.className = 'osPg ' + cls; R.el.insertBefore(pg, R.el.querySelector('.osBar')); } return pg; }
+function openGy(){
+  closeGz(); R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false; if(OFH){ OFH.dispose(); OFH = null; } closeMap();
+  const pg = pgEl('osGy'), L = isL(), key = L ? 'gy_bg_l' : 'gy_bg_p';
+  pg.innerHTML = `<div class="gyBg" style="background-image:url(${OI}${key}.webp)"></div><div class="gyBox"><img class="bgi" src="${OI}${key}.webp" alt=""><canvas class="gyFw"></canvas><div class="gyParade"></div></div>
+    <div class="gySay"><b>ねこの 指揮者</b><span>今夜は おしろの ぎょうじ！ どれを ひらきますか？</span></div><div class="gyMenu"></div>`;
+  pg.classList.add('show'); GY.open = true; GY.mode = null; setTitle('🎆 ぎょうじ'); if(ST) ST.pause();
+  gyRender(); gyPlace();
+}
+function gyRender(){
+  const m = R.el.querySelector('.osGy .gyMenu'); if(!m) return;
+  m.innerHTML = GYEV.map(ev => { const can = ev.can(), got = gyGot(ev), need = typeof ev.need === 'function' ? ev.need() : ev.need;
+    return `<button class="gyCard ${can ? '' : 'lock'} ${got ? 'done' : ''}" data-o="gy:${ev.k}"><i>${ev.ic}</i><b>${ev.n}</b><small>${can ? ev.d : need}</small>
+      <em>${!can ? '🔒 まだ' : got ? (ev.per === 'week' ? 'こんしゅうは もらったよ' : 'きょうは もらったよ') : `ごほうび コイン +${ev.rw}`}</em></button>`; }).join('');
+}
+function gyPlace(){
+  const pg = R.el.querySelector('.osGy'); if(!pg || !GY.open) return;
+  const L = isL(), W = innerWidth, Hh = innerHeight, key = L ? 'gy_bg_l' : 'gy_bg_p';
+  const box = pg.querySelector('.gyBox'), img = box.querySelector('.bgi');
+  if(!img.src.includes(key)){ img.src = `${OI}${key}.webp`; pg.querySelector('.gyBg').style.backgroundImage = `url(${OI}${key}.webp)`; }
+  const sz = L ? fitBox(box, key, {x:0, y:0, w:W, h:Hh}) : fitBox(box, key, {x:0, y:64, w:W, h:Hh - 64, top:1});
+  const cv = box.querySelector('.gyFw'), dpr = Math.min(2, devicePixelRatio || 1); cv.width = sz.w * dpr; cv.height = sz.h * dpr;
+  const par = box.querySelector('.gyParade'); par.style.bottom = '3%'; par.style.height = (sz.h * (L ? .2 : .16)) + 'px';
+  const m = pg.querySelector('.gyMenu'), say = pg.querySelector('.gySay');
+  m.style.display = GY.playing ? 'none' : ''; say.style.display = GY.playing ? 'none' : '';
+  if(L){ Object.assign(m.style, {left:'50%', transform:'translateX(-50%)', right:'auto', bottom:'max(16px, env(safe-area-inset-bottom))', top:'auto', gridTemplateColumns:'repeat(3, 190px)'});
+    Object.assign(say.style, {left:'50%', transform:'translateX(-50%)', top:'auto', bottom:'calc(max(16px, env(safe-area-inset-bottom)) + 150px)', right:'auto', maxWidth:'560px'}); }
+  else { Object.assign(m.style, {left:'10px', right:'10px', transform:'none', bottom:'max(12px, env(safe-area-inset-bottom))', top:'auto', gridTemplateColumns:'repeat(3, minmax(0,1fr))'});
+    Object.assign(say.style, {left:'12px', right:'12px', transform:'none', top:'auto', bottom:'calc(max(12px, env(safe-area-inset-bottom)) + 150px)', maxWidth:'none'}); }
+}
+async function gyStart(k){
+  const ev = GYEV.find(e => e.k === k); if(!ev) return;
+  const pg = R.el.querySelector('.osGy'), sayT = pg.querySelector('.gySay span');
+  if(!ev.can()){ sayT.textContent = k === 'hanabi' ? `花火大会は、おふれを ぜんぶ たっせいする 週を 3週 つづけると ひらけるよ（いま ${wkStreak()}週）` : `パレードは じゅうみんが 8人 いると ひらけるよ（いま ${resList().length}人）`; try{ sound('ng'); }catch(e){} return; }
+  if(!ac()){ sayT.textContent = 'この きかいでは 音が ならせないみたい…'; return; }
+  GY.mode = k; GY.playing = true; gyPlace();
+  const box = pg.querySelector('.gyBox');
+  box.insertAdjacentHTML('beforeend', `<div class="gyCap">⏳ がくふを くばっています…</div><div class="gyBar"><i></i></div><i class="gySpot"></i>`);
+  pg.insertAdjacentHTML('beforeend', `<button class="gyStop" data-o="gy:stop">■ とめる</button>`);
+  GY.parts = resList().slice().sort(() => Math.random() - .5).slice(0, 6);
+  try{ await preload(); }catch(e){}
+  if(!GY.playing) return;
+  GY.t0 = AC.currentTime + .25; GY.end = schedule(GY.t0); GY.sec = -1; GY.fw = []; GY.lastFw = 0;
+  if(k === 'parade') gyParade(box);
+  gyLoop();
+}
+function gyParade(box){
+  const par = box.querySelector('.gyParade'), L = GY.parts.length ? GY.parts : resList().slice(0, 8), W = box.clientWidth;
+  const ems = ['🚩', '🎈', '🥁', '🎺', '🪅', '🌟', '🎀', '🎶'];
+  par.innerHTML = L.concat(L).slice(0, 10).map((r, i) => `<div class="gyWalker" style="--d:${16}s;--w:${W}px;height:100%;animation-delay:${i * 1.6}s;left:0">${resPic(r)}<i>${ems[i % ems.length]}</i></div>`).join('');
+}
+function fwBurst(cv, big){
+  const x = cv.width * (.15 + Math.random() * .7), y = cv.height * (.08 + Math.random() * .3), hue = Math.floor(Math.random() * 360), n = big ? 70 : 44;
+  for(let i = 0; i < n; i++){ const a = i / n * TAU, s = (big ? 3.2 : 2.4) * (cv.width / 900) * (.6 + Math.random() * .5);
+    GY.fw.push({x, y, vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:1, hue:(hue + Math.random() * 40) % 360}); }
+}
+function gyLoop(){
+  if(!GY.playing) return;
+  GY.raf = requestAnimationFrame(gyLoop);
+  const pg = R.el.querySelector('.osGy'); if(!pg) return;
+  const box = pg.querySelector('.gyBox'), now = AC.currentTime, el = now - GY.t0, total = GY.end - GY.t0, B = 4 * 60 / 112;
+  const bar = Math.max(0, Math.floor(el / B)), sec = bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : 3;
+  const bi = box.querySelector('.gyBar i'); if(bi) bi.style.width = clamp(el / total * 100, 0, 100) + '%';
+  if(el >= 0 && sec !== GY.sec){ GY.sec = sec; const c = box.querySelector('.gyCap'), S = SEC[sec]; c.innerHTML = `${S.n}<small style="font-size:11px;color:#8A7560">${S.who}</small>`; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+    const sp = box.querySelector('.gySpot'), w = box.clientWidth * (sec === 3 ? .9 : .32); Object.assign(sp.style, {left:(box.clientWidth * S.x[0] - w / 2) + 'px', width:w + 'px', top:(box.clientHeight * (isL() ? .38 : .3)) + 'px', height:(box.clientHeight * .36) + 'px'}); }
+  /* おんぷ */
+  if(el > 0 && Math.random() < (sec === 3 ? .18 : .08)){ const n = document.createElement('i'); n.className = 'gyNote'; n.textContent = ['♪', '♫', '♬', '♩'][Math.floor(Math.random() * 4)];
+    n.style.cssText = `left:${(SEC[sec].x[0] + (Math.random() - .5) * (sec === 3 ? .7 : .25)) * 100}%;top:${(isL() ? 52 : 46) + Math.random() * 8}%;color:hsl(${Math.random() * 360},80%,70%);--dx:${(Math.random() - .5) * 60}px`;
+    box.appendChild(n); setTimeout(() => n.remove(), 2300); }
+  /* 花火 */
+  const cv = box.querySelector('.gyFw'), x = cv.getContext('2d');
+  const rate = GY.mode === 'hanabi' ? (sec === 3 ? .9 : .55) : sec === 3 ? .5 : 0;
+  if(rate && now - GY.lastFw > (1.2 - rate) * 1.4){ GY.lastFw = now; fwBurst(cv, GY.mode === 'hanabi'); }
+  x.clearRect(0, 0, cv.width, cv.height); x.globalCompositeOperation = 'lighter';
+  GY.fw = GY.fw.filter(p => (p.life -= .012) > 0);
+  GY.fw.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .03; p.vx *= .985; x.fillStyle = `hsla(${p.hue},90%,65%,${p.life})`; x.beginPath(); x.arc(p.x, p.y, 2.2 * (cv.width / 900) + p.life * 1.5, 0, TAU); x.fill(); });
+  x.globalCompositeOperation = 'source-over';
+  if(now > GY.end) gyFinish();
+}
+function gyCleanup(){
+  stopMusic();
+  const pg = R && R.el.querySelector('.osGy'); if(!pg) return;
+  pg.querySelectorAll('.gyCap,.gyBar,.gySpot,.gyNote,.gyStop,.gyRes').forEach(e => e.remove());
+  const par = pg.querySelector('.gyParade'); if(par) par.innerHTML = '';
+  const cv = pg.querySelector('.gyFw'); if(cv) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  GY.fw = []; GY.mode = null; gyPlace();
+}
+function gyFinish(){
+  const k = GY.mode, ev = GYEV.find(e => e.k === k); stopMusic();
+  const o = GD(), first = ev && !gyGot(ev);
+  let who = '';
+  if(first){
+    o.gy[k] = ev.per === 'week' ? weekKey() : dayKey();
+    if(k === 'concert'){ who = GY.parts.map(r => { const a = ABILITIES[Math.floor(Math.random() * ABILITIES.length)], cap = (() => { try{ return abCap(r); }catch(e){ return 100; } })(), before = r.ab[a.id] || 0;
+        r.ab[a.id] = Math.min(cap, before + 1); return `<span>${resPic(r)}${H(r.name)}<small>${r.ab[a.id] > before ? `${a.i}+1` : 'MAX'}</small></span>`; }).join(''); }
+    if(k === 'parade'){ who = GY.parts.map(r => { r.fr = (r.fr || 0) + 1; return `<span>${resPic(r)}${H(r.name)}<small>💗+1</small></span>`; }).join(''); }
+    persist(); addCoin(ev.rw, `ぎょうじ：${ev.n}`); refresh();
+    try{ sound('fan'); confetti(2200); }catch(e){}
+  }
+  const pg = R.el.querySelector('.osGy');
+  pg.insertAdjacentHTML('beforeend', `<div class="gyRes"><div class="gyResIn"><h3>${ev ? ev.ic : '🎵'} ${ev ? ev.n : ''}、だいせいこう！</h3>
+    ${first ? `<p>おしろコイン <b style="color:#C2457A">+${ev.rw}</b></p>${who ? `<p>${k === 'concert' ? 'えんそうを きいた じゅうみんの 能力が あがったよ' : 'いっしょに あるいて なかよしに なったよ'}</p><div class="gyWho">${who}</div>` : ''}`
+      : `<p>${ev && ev.per === 'week' ? 'こんしゅうの ごほうびは もう もらったよ。' : 'きょうの ごほうびは もう もらったよ。'}<br>えんそうは なんかいでも きけるよ！</p>`}
+    <button class="gyOk" data-o="gy:ok">やったー！</button></div></div>`);
+}
+function closeGy(){ stopMusic(); const pg = R && R.el.querySelector('.osGy'); if(pg){ pg.classList.remove('show'); pg.innerHTML = ''; } GY.open = false; GY.mode = null; }
+function gyAction(v){
+  if(v === 'stop'){ gyCleanup(); gyRender(); return; }
+  if(v === 'ok'){ gyCleanup(); gyRender(); refresh(); return; }
+  if(GY.playing) return;
+  gyStart(v);
+}
+
+/* =====================================================================
+   ぎょくざのま
+   ===================================================================== */
+const PED_L = [[17.1, 60.5], [39.1, 60.5], [61, 60.5], [82.8, 60.5]], PED_P = [[29.5, 46.5], [70, 46.5], [27.5, 61.5], [71, 61.5]];
+function openGz(){
+  closeGy(); R.of.classList.remove('show'); R.zc.classList.remove('show'); ZC.open = false; if(OFH){ OFH.dispose(); OFH = null; } closeMap();
+  const pg = pgEl('osGz'), key = isL() ? 'gz_bg_l' : 'gz_bg_p';
+  pg.innerHTML = `<div class="gzBg" style="background-image:url(${OI}${key}.webp)"></div><div class="gzBox"><img class="bgi" src="${OI}${key}.webp" alt=""><div class="gzHana"><canvas></canvas></div><div class="gzPeds"></div></div>
+    <div class="gzPanel"><div class="gzInfo"></div><div class="gzCards"></div></div>`;
+  pg.classList.add('show'); GZ.open = true; GZ.sel = null; setTitle('👑 ぎょくざのま'); if(ST) ST.pause();
+  gzPlace(); gzRender();
+  const hb = pg.querySelector('.gzHana'); GZ.hv = HimeView(hb, hb.querySelector('canvas'), {start:3});
+}
+function gzPlace(){
+  const pg = R.el.querySelector('.osGz'); if(!pg || !GZ.open) return;
+  const L = isL(), W = innerWidth, Hh = innerHeight, key = L ? 'gz_bg_l' : 'gz_bg_p', box = pg.querySelector('.gzBox'), img = box.querySelector('.bgi');
+  if(!img.src.includes(key)){ img.src = `${OI}${key}.webp`; pg.querySelector('.gzBg').style.backgroundImage = `url(${OI}${key}.webp)`; }
+  const panelH = L ? 150 : 168, sz = fitBox(box, key, L ? {x:0, y:0, w:W, h:Hh - 40} : {x:0, y:64, w:W, h:Hh - 64 - panelH + 30, top:1});
+  const hb = pg.querySelector('.gzHana'), hh = sz.h * (L ? .4 : .32), hw = hh * .7;
+  Object.assign(hb.style, {left:(sz.w * .5 - hw / 2) + 'px', top:(sz.h * (L ? .43 : .36) - hh) + 'px', width:hw + 'px', height:hh + 'px'});
+  const pn = pg.querySelector('.gzPanel'); pn.style.maxWidth = L ? '760px' : 'none'; pn.style.margin = L ? '0 auto' : '0';
+  box.style.setProperty('--ph', (sz.h * (L ? .2 : .14)) + 'px'); box.style.setProperty('--pp', Math.round(clamp(sz.w * .07, 40, 64)) + 'px');
+  if(GZ.hv) GZ.hv.layout();
+  gzRenderPeds();
+}
+function gzRenderPeds(){
+  const pg = R.el.querySelector('.osGz'); if(!pg) return;
+  const pos = isL() ? PED_L : PED_P, n = slotN(), plus = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+  pg.querySelector('.gzPeds').innerHTML = ROLES.map((R0, i) => { const [x, y] = pos[i], r = roleOf(R0.k), lock = i >= n;
+    return `<button class="gzPed ${GZ.flash === R0.k ? 'flash' : ''}" data-o="gz:ped:${R0.k}" style="left:${x}%;top:${y}%" ${lock ? 'disabled' : ''}>
+      ${lock ? `<span class="gzLock">🔒<small>${STAGE_N[i === 2 ? 2 : 3].replace('の おしろ', '')}</small></span>` : r ? `<span class="gzWho">${resPic(r)}</span>` : `<span class="gzPlus">${plus}</span>`}
+      <span class="gzTag">${R0.ic} ${R0.n}${r ? '：' + r.name : ''}</span></button>`; }).join('');
+  GZ.flash = null;
+}
+function gzRender(){
+  const pg = R.el.querySelector('.osGz'); if(!pg) return;
+  const L = resList(), o = GD(), busy = new Set(Object.values(o.roles));
+  const info = pg.querySelector('.gzInfo'), sel = GZ.sel && resById(GZ.sel);
+  info.innerHTML = sel ? `${sel.name}を どの やくしょくに する？ <small>あいている 台座（＋）を タッチ</small>`
+    : `じゅうみんを えらんで、台座に のせよう <small>${ROLES.slice(0, slotN()).map(r => `${r.ic}${r.n}：${r.d}`).join('　')}${slotN() < 4 ? '　（おしろを しんか させると 台座が ふえる）' : ''}</small>`;
+  pg.querySelector('.gzCards').innerHTML = L.length ? L.map(r => { const role = ROLES.find(x => o.roles[x.k] === r.id && ROLES.indexOf(x) < slotN()), rar = (() => { try{ return SP(r.sp).rar || 1; }catch(e){ return 1; } })();
+      return `<button class="gzCard ${GZ.sel === r.id ? 'on' : ''} ${role ? 'busy' : ''}" data-o="gz:card:${r.id}"><span class="gzPic">${resPic(r)}</span><b>${r.name}</b><small>${'★'.repeat(rar)}</small>${role ? `<em>${role.ic}${role.n}</em>` : ''}</button>`; }).join('')
+    : '<div class="gzEmpty">まだ じゅうみんが いないよ。まちに じゅうみんを よぼう！</div>';
+  gzRenderPeds();
+}
+function gzAction(v, w){
+  const o = GD();
+  if(v === 'card'){ GZ.sel = GZ.sel === w ? null : w; try{ sound('tap'); }catch(e){} gzRender(); return; }
+  if(v === 'ped'){
+    const i = ROLES.findIndex(r => r.k === w); if(i < 0 || i >= slotN()) return;
+    if(GZ.sel){
+      Object.keys(o.roles).forEach(k => { if(o.roles[k] === GZ.sel) delete o.roles[k]; });
+      o.roles[w] = GZ.sel; GZ.sel = null; GZ.flash = w; persist(); try{ sound('fan'); }catch(e){}
+      const r = roleOf(w); try{ toast(`👑 ${r.name}が ${ROLES[i].n}に なったよ！（${ROLES[i].d}）`); }catch(e){}
+      if(GZ.hv) GZ.hv.pose('laugh');
+    } else if(o.roles[w]){ const r = roleOf(w); delete o.roles[w]; persist(); try{ sound('tap'); toast(`${r ? r.name : ''}の ${ROLES[i].n}を おやすみに したよ`); }catch(e){} }
+    else { try{ toast('さきに 下の じゅうみんを えらんでね'); }catch(e){} }
+    gzRender(); refresh(); if(ZC.open) zcRenderPanel(); return;
+  }
+}
+function closeGz(){ const pg = R && R.el.querySelector('.osGz'); if(GZ.hv){ GZ.hv.dispose(); GZ.hv = null; } if(pg){ pg.classList.remove('show'); pg.innerHTML = ''; } GZ.open = false; GZ.sel = null; }
+
 /* =====================================================================
    2.5D の ぶたい（oshiro_top_25d_proto_v3 を もとに：さくらは 小さめ）
    ===================================================================== */
