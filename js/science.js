@@ -3479,3 +3479,591 @@ openResident = function(id){
 window.__res25d = {keyOf, DATA: () => Object.keys(DATA), active: () => INST.size};
 })();
 
+
+
+/* =====================================================================
+   v10.0：おしろ STEP1（おしろトップ 2.5D ・ おふれ ・ おしろコイン）
+   ・まちの「おしろ」を タッチすると ひらく（もようがえ中は ひらかない）
+   ・URL の さいごに #oshiro を つけると、おしろが なくても ためせる
+   ・画像：./assets/images/oshiro/（top_bg / top_hana / top_bird / top_owl / top25d.json / ic_〇〇）
+   ・セーブ：save.oshiro（coin・こんしゅうの おふれ・かぞえた かず）
+   ・ぞうちく／まちのちず／ぎょうじ／ぎょくざのま は STEP2〜4 で ふやす（いまは「もうすぐ」）
+   ===================================================================== */
+(function(){
+'use strict';
+const OI = './assets/images/oshiro/';
+const TAU = Math.PI * 2, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const H = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- アイコン（SVG：まんなかに そろう） ---------- */
+const SVG = {
+  back:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  close:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>',
+  check:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bld:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V10l7-5 7 5v11M9.5 21v-5h5v5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+
+/* =====================================================================
+   セーブ・こんしゅうの おふれ
+   ===================================================================== */
+function O(){
+  const o = save.oshiro || (save.oshiro = {});
+  o.coin = o.coin || 0; o.wk = o.wk || ''; o.ms = o.ms || []; o.cnt = o.cnt || {}; o.days = o.days || [];
+  return o;
+}
+const weekKey = (d = new Date()) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return dayKey(x); };
+const daysLeft = () => { const d = new Date(); return 7 - (d.getDay() + 6) % 7; };   // きょうを ふくめて あと なん日
+const NI = '<ruby>日<rt>にち</rt></ruby>';
+/* n：[かんたん, ふつう, むずかしい] の もくひょう */
+const MS = {
+  study:{ic:'✏️', n:[10,20,35],     t:n => `べんきょうで せいかいを ${n}かい しよう`},
+  days: {ic:'📅', n:[2,3,5],        t:n => `${n}${NI} べんきょうしよう`},
+  pt:   {ic:'🪙', n:[300,800,1500], t:n => `ポイントを ${n}pt あつめよう`},
+  visit:{ic:'🏠', n:[5,10,20],      t:n => `まちの たてものを ${n}かい たずねよう`},
+  music:{ic:'🎵', n:[1,3,5],        t:n => `おんがくを ${n}きょく クリアしよう`},
+  buy:  {ic:'🛒', n:[1,3,5],        t:n => `ショップで ${n}かい かいものしよう`},
+  talk: {ic:'💬', n:[2,4,6],        t:n => `じゅうみんと ${n}かい おはなししよう`}
+};
+const RW = [10, 20, 30], BONUS = 20;
+function seeded(str){ let h = 2166136261; for(const c of str){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; }
+function ensureWeek(){
+  const o = O(), wk = weekKey();
+  if(o.wk === wk && o.ms.length === 3) return o;
+  const r = seeded('oshiro' + wk), ids = Object.keys(MS);
+  for(let i = ids.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  if(!ids.slice(0, 3).some(id => id === 'study' || id === 'days')){ const k = ids.indexOf('study'); [ids[2], ids[k]] = [ids[k], ids[2]]; }   // べんきょうは かならず 1つ
+  const lv = [0, 1, 2]; for(let i = 2; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [lv[i], lv[j]] = [lv[j], lv[i]]; }
+  o.wk = wk; o.cnt = {}; o.days = []; o.bonus = 0;
+  o.ms = ids.slice(0, 3).map((id, i) => ({id, goal:MS[id].n[lv[i]], rw:RW[lv[i]], got:0}));
+  try{ persist(); }catch(e){}
+  return o;
+}
+const prog = m => Math.min(O().cnt[m.id] || 0, m.goal);
+const isOk = m => !m.got && prog(m) >= m.goal;
+const canGet = () => { const o = ensureWeek(); return o.ms.some(isOk) || (o.ms.every(m => m.got) && !o.bonus); };
+function count(id, n = 1){
+  try{
+    const o = ensureWeek(); o.cnt[id] = (o.cnt[id] || 0) + n;
+    const m = o.ms.find(x => x.id === id);
+    if(m && !m.got && (o.cnt[id] - n) < m.goal && o.cnt[id] >= m.goal){ setTimeout(() => { try{ toast('🏰 おふれ たっせい！ おしろで ごほうびを うけとろう'); }catch(e){} }, 700); }
+  }catch(e){}
+}
+
+/* ---------- かぞえる しくみ ---------- */
+const _ap100 = addPoints;
+addPoints = function(pt, reason){
+  try{
+    const r = String(reason || '');
+    if(!/おしろ/.test(r)){
+      if(pt > 0) count('pt', pt);
+      if(pt > 0 && /せいかい/.test(r)) count('study');
+      if(pt > 0 && STUDY_RX.test(r)){ const o = ensureWeek(), d = dayKey(); if(!o.days.includes(d)){ o.days.push(d); o.cnt.days = o.days.length; } }
+      if(/おんがく.*クリア/.test(r)) count('music');
+      if(/を かった/.test(r)) count('buy');
+    }
+  }catch(e){}
+  return _ap100.apply(this, arguments);
+};
+try{ const _tt100 = talkTo; talkTo = function(){ count('talk'); return _tt100.apply(this, arguments); }; }catch(e){}
+let lastVisit = {k:'', t:0};
+window.addEventListener('click', e => {
+  try{
+    if(curScreen !== 'town' || townEdit || !save.town) return;
+    const c = e.target.closest && e.target.closest('#townMap .cell'); if(!c) return;
+    const key = `${c.dataset.x},${c.dataset.y}`, id = save.town.cells[key]; if(!id) return;
+    const it = (typeof ITEM === 'function') ? ITEM(id) : null; if(it && (it.cat === 'road' || it.cat === 'rail')) return;
+    const now = Date.now(); if(lastVisit.k === key && now - lastVisit.t < 4000) return; lastVisit = {k:key, t:now};
+    count('visit');
+    if(id === 'castle'){ e.stopImmediatePropagation(); e.preventDefault(); openFromTown(key); }
+  }catch(err){ console.warn('oshiro visit', err); }
+}, true);
+async function openFromTown(key){
+  try{ if(typeof tryScene === 'function' && await tryScene('castle')) return; }catch(e){}
+  openOshiro(key);
+}
+
+/* =====================================================================
+   スタイル
+   ===================================================================== */
+const css = document.createElement('style');
+css.textContent = `
+#osr{position:fixed;inset:0;z-index:66;display:none;overflow:hidden;background:#F6DCC8;color:#5A3B2E;font-family:var(--maru);-webkit-user-select:none;user-select:none}
+#osr.show{display:block}
+#osr *{box-sizing:border-box}
+#osr button{font:inherit;color:inherit;border:0;margin:0;padding:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;line-height:1;display:flex;align-items:center;justify-content:center;text-align:center}
+#osr button:disabled{cursor:default}
+#osr svg{display:block;flex:none}
+.osStage{position:absolute;left:0;right:0;top:0;overflow:hidden;background:#F6DCC8}
+.osStage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.osLoad{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#FBE9DC;color:#A05A70;font-weight:900;font-size:16px;transition:opacity .4s;z-index:3}
+/* 上の バー */
+.osBar{position:absolute;left:0;right:0;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));pointer-events:none}
+.osBar>*{pointer-events:auto}
+.osRb{flex:none;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.96);color:#B0476E;box-shadow:0 3px 8px rgba(90,40,60,.3),inset 0 0 0 3px #F4B8CB}
+.osRb svg{width:22px;height:22px}
+.osRb:active{transform:scale(.92)}
+.osTtl{flex:none;display:flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;background:rgba(255,255,255,.92);font-weight:900;font-size:18px;color:#8A3D5C;box-shadow:0 3px 8px rgba(90,40,60,.22);white-space:nowrap}
+.osSp{flex:1;min-width:0}
+.osBld{flex:none;height:40px;padding:0 14px 0 10px;gap:4px;border-radius:999px;background:rgba(255,255,255,.92);color:#7A5A3A;font-weight:900;font-size:13px;box-shadow:0 3px 8px rgba(90,40,60,.22)}
+.osBld svg{width:18px;height:18px}
+.osCoin{flex:none;display:flex;align-items:center;gap:4px;height:44px;padding:0 14px 0 4px;border-radius:999px;background:linear-gradient(180deg,#FFF8DC,#FFE9A8);box-shadow:0 3px 0 #D9A21B,0 4px 10px rgba(90,60,20,.25);font-weight:900;font-size:20px;color:#8A5A00;white-space:nowrap}
+.osCoin img{width:38px;height:38px;object-fit:contain;flex:none}
+.osCoin.bump{animation:osBump .45s}
+@keyframes osBump{40%{transform:scale(1.18)}}
+/* 大臣の ふきだし */
+.osSay{position:absolute;z-index:12;max-width:min(300px,44vw);background:#fff;border:3px solid #E7C27A;border-radius:18px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55;box-shadow:0 4px 12px rgba(90,60,40,.25);transform:translate(-50%,-100%);transition:opacity .3s;pointer-events:none}
+.osSay::after{content:"";position:absolute;left:50%;bottom:-12px;margin-left:-10px;border:10px solid transparent;border-top-color:#E7C27A;border-bottom:0}
+.osSay b{display:block;font-size:11px;color:#9A6A1E}
+.osSay.pop{animation:osPop .35s cubic-bezier(.2,1.5,.4,1)}
+@keyframes osPop{from{transform:translate(-50%,-100%) scale(.7);opacity:0}}
+/* メニュー */
+.osMenu{position:absolute;z-index:14;display:grid;gap:6px}
+.osM{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.osRd{position:relative;width:var(--bs);height:var(--bs);border-radius:50%;box-shadow:0 5px 0 rgba(0,0,0,.14),0 6px 14px rgba(90,50,40,.25),inset 0 0 0 4px #fff;transition:transform .12s}
+.osRd:active{transform:scale(.92)}
+.osRd img{width:72%;height:72%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));pointer-events:none}
+.osRd.c1{background:radial-gradient(circle at 35% 30%,#FFF6CF,#FFD86A)}
+.osRd.c2{background:radial-gradient(circle at 35% 30%,#E6F3FF,#8CC4F2)}
+.osRd.c3{background:radial-gradient(circle at 35% 30%,#ECFADF,#9ED98A)}
+.osRd.c4{background:radial-gradient(circle at 35% 30%,#F4E9FF,#C2A4F0)}
+.osRd.c5{background:radial-gradient(circle at 35% 30%,#FFEAF1,#F7A9C2)}
+.osRd.soon img{filter:saturate(.55) drop-shadow(0 2px 2px rgba(0,0,0,.15));opacity:.85}
+.osBadge{position:absolute;right:-4px;top:-4px;width:26px;height:26px;border-radius:50%;background:#FF5A7E;color:#fff;font-style:normal;font-weight:900;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.3),0 0 0 3px #fff;animation:osPulse 1.1s ease-in-out infinite}
+@keyframes osPulse{50%{transform:scale(1.15)}}
+.osSoon{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);height:18px;padding:0 7px;border-radius:999px;background:#8A7B6C;color:#fff;font-style:normal;font-weight:900;font-size:10px;line-height:1;display:flex;align-items:center;white-space:nowrap}
+.osLb{display:flex;align-items:center;justify-content:center;height:24px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.94);font-weight:900;font-size:13px;color:#6B4423;white-space:nowrap;box-shadow:0 2px 5px rgba(0,0,0,.15)}
+/* よこ（iPad） */
+#osr.osL .osStage{bottom:0}
+#osr.osL .osMenu{left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);grid-template-columns:repeat(5,auto);gap:clamp(10px,2.4vw,26px);padding:12px clamp(16px,3vw,30px) 10px;border-radius:28px;background:rgba(255,250,240,.88);box-shadow:0 6px 18px rgba(90,50,40,.25);border:3px solid rgba(255,255,255,.95);--bs:clamp(58px,8.2vw,84px)}
+/* たて（スマホ） */
+#osr.osP .osSay{left:12px!important;right:12px;max-width:none;transform:none;z-index:15;font-size:14px}
+#osr.osP .osSay::after{left:auto;right:22%;bottom:auto;top:-12px;border:10px solid transparent;border-bottom-color:#E7C27A;border-top:0}
+#osr.osP .osSay.pop{animation:osPopP .35s cubic-bezier(.2,1.5,.4,1)}
+@keyframes osPopP{from{transform:scale(.9);opacity:0}}
+#osr.osP .osPanel{position:absolute;left:0;right:0;bottom:0;z-index:13;background:linear-gradient(180deg,#FBE3EA,#FFF4E4 40%,#FFF8EC);border-top:4px solid #fff;box-shadow:0 -6px 16px rgba(90,50,40,.18);border-radius:24px 24px 0 0}
+#osr.osP .osMenu{left:0;right:0;grid-template-columns:repeat(6,1fr);row-gap:14px;column-gap:6px;padding:0 14px;--bs:min(19vw,78px)}
+#osr.osP .osM{grid-column:span 2}
+#osr.osP .osM:nth-child(4){grid-column:2/span 2}
+#osr.osP .osM:nth-child(5){grid-column:4/span 2}
+/* ---------- おふれ ---------- */
+.osOf{position:absolute;inset:0;z-index:16;display:none;overflow:hidden}
+.osOf.show{display:block;animation:osFade .3s}
+@keyframes osFade{from{opacity:0}}
+.osOf::before{content:"";position:absolute;inset:-20px;background:url(${OI}top_bg.webp) center 30%/cover no-repeat;filter:blur(6px) brightness(.9) saturate(.9)}
+.osOf::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,236,240,.35),rgba(255,246,232,.55))}
+.osOfIn{position:absolute;inset:0;z-index:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:max(70px,calc(env(safe-area-inset-top) + 64px)) 14px max(20px,env(safe-area-inset-bottom))}
+.osOwl{position:absolute;z-index:1;pointer-events:none;filter:drop-shadow(0 8px 10px rgba(60,30,30,.3));animation:osBob 2.8s ease-in-out infinite;transform-origin:50% 100%}
+.osOwl.clap{animation:osClap .25s ease-in-out 8 alternate}
+@keyframes osBob{50%{transform:translateY(-6px)}}
+@keyframes osClap{from{transform:rotate(-5deg) scale(1.02)}to{transform:rotate(5deg) scale(1.04)}}
+.osScroll{position:relative;margin:14px auto 10px;max-width:680px;background:linear-gradient(180deg,#FFF9EA,#FBEDCB);border:3px solid #D9B26A;border-radius:14px;padding:18px 14px 16px;box-shadow:0 8px 20px rgba(90,60,30,.25)}
+.osScroll::before,.osScroll::after{content:"";position:absolute;left:-12px;right:-12px;height:22px;border-radius:12px;background:linear-gradient(180deg,#F6E2B4,#E2BE78 60%,#C99A4E);box-shadow:0 2px 4px rgba(90,60,30,.3)}
+.osScroll::before{top:-14px}.osScroll::after{bottom:-14px}
+.osHd{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 10px;flex-wrap:wrap}
+.osHd b{font-size:22px;font-weight:900;color:#8A3D5C;letter-spacing:.06em}
+.osHd small{display:flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;background:#FFE3EA;color:#B0476E;font-weight:900;font-size:12px}
+.osCard{display:grid;grid-template-columns:44px minmax(0,1fr) 92px;align-items:center;gap:10px;background:#fff;border:3px solid #F0DDBB;border-radius:16px;padding:10px;margin:8px 0;transition:background .3s}
+.osCard.ok{border-color:#F2B91E;background:#FFFBEA;box-shadow:0 0 0 3px rgba(242,185,30,.25)}
+.osCard.got{opacity:.72;background:#F6F1E8}
+.osChk{width:40px;height:40px;border-radius:10px;border:3px solid #CDB58C;background:#fff;display:flex;align-items:center;justify-content:center;color:#36A85C}
+.osChk svg{width:26px;height:26px}
+.osCard.got .osChk{border-color:#36A85C;background:#E3F5E7}
+.osTx{min-width:0}
+.osTx b{display:block;font-size:16px;font-weight:900;line-height:1.5;overflow-wrap:anywhere}
+.osTx b i{font-style:normal;margin-right:4px}
+.osTx ruby rt{font-size:.55em}
+.osPb{height:10px;border-radius:99px;background:#F1E6D2;overflow:hidden;margin:5px 0 2px}
+.osPb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FFD36B,#F28F1C);transition:width .4s}
+.osCard.got .osPb i,.osCard.ok .osPb i{background:linear-gradient(90deg,#9BE0AE,#36A85C)}
+.osTx small{font-size:12px;font-weight:800;color:#8A7560}
+.osRw{width:92px;height:56px;border-radius:14px;flex-direction:column;gap:2px;background:#FFF6DC;border:2px solid #F0D490}
+.osRw .osRwT{display:flex;align-items:center;justify-content:center;gap:2px;font-weight:900;font-size:17px;color:#A0661A}
+.osRw img{width:26px;height:26px;object-fit:contain}
+.osRw small{font-size:10px;font-weight:900;color:#A08A6A;line-height:1}
+.osRw.get{background:linear-gradient(180deg,#FFE27A,#F6B93B);border-color:#C98A12;box-shadow:0 4px 0 #C98A12;animation:osPulse 1.2s ease-in-out infinite}
+.osRw.get small{color:#6B4A00}
+.osRw.get:active{transform:translateY(3px);box-shadow:0 1px 0 #C98A12}
+.osBn{display:grid;grid-template-columns:44px minmax(0,1fr) 92px;align-items:center;gap:10px;border:3px dashed #E7B9C9;border-radius:16px;padding:10px;margin:12px 0 2px;background:rgba(255,240,245,.8)}
+.osBn.ok{border-style:solid;border-color:#F2B91E;background:#FFFBEA}
+.osBn.got{opacity:.72}
+.osBn .osTx b{font-size:15px}
+.osFly{position:fixed;z-index:80;width:34px;height:34px;pointer-events:none;object-fit:contain}
+/* よこ（iPad）の おふれ */
+#osr.osL .osOwl{left:max(1vw,10px);bottom:0;height:min(74vh,560px)}
+#osr.osL .osOfIn{padding-left:max(30vw,250px);padding-right:max(3vw,18px)}
+#osr.osL .osScroll{margin-top:22px}
+/* たて（スマホ）の おふれ */
+#osr.osP .osOwl{right:6px;top:max(56px,calc(env(safe-area-inset-top) + 50px));height:120px}
+#osr.osP .osOfIn{padding-top:max(150px,calc(env(safe-area-inset-top) + 144px))}
+#osr.osP .osOfSay{position:absolute;z-index:2;left:12px;right:110px;top:max(70px,calc(env(safe-area-inset-top) + 64px));background:#fff;border:3px solid #E7C27A;border-radius:16px;padding:6px 10px;font-weight:800;font-size:13px;line-height:1.5}
+#osr.osL .osOfSay{position:absolute;z-index:2;left:max(3vw,16px);width:min(28vw,260px);top:max(74px,calc(env(safe-area-inset-top) + 68px));background:#fff;border:3px solid #E7C27A;border-radius:16px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.55}
+.osOfSay b{display:block;font-size:11px;color:#9A6A1E}
+@media (max-width:420px){.osCard,.osBn{grid-template-columns:36px minmax(0,1fr) 78px;gap:8px;padding:8px}.osChk{width:34px;height:34px}.osRw{width:78px}.osTx b{font-size:14px}.osTtl{font-size:16px;padding:0 12px}.osBld span{display:none}.osBld{padding:0 10px}}
+@media (max-height:520px) and (orientation:landscape){#osr.osL .osMenu{--bs:52px;padding:8px 14px 6px}#osr.osL .osLb{height:20px;font-size:11px}}
+@media (prefers-reduced-motion:reduce){.osBadge,.osRw.get,.osOwl{animation:none}}
+`;
+document.head.appendChild(css);
+
+/* =====================================================================
+   画面
+   ===================================================================== */
+const MENU = [
+  {k:'ofure',   n:'おふれ',       c:'c1', ic:'ic_ofure'},
+  {k:'zouchiku',n:'ぞうちく',     c:'c2', ic:'ic_zouchiku', soon:'ぞうちくは もうすぐ できますぞ！ いまは おふれで コインを ためておきましょう'},
+  {k:'chizu',   n:'まちのちず',   c:'c3', ic:'ic_chizu',    soon:'まちのちずは もうすぐ できますぞ！ たのしみに していてくだされ'},
+  {k:'gyouji',  n:'ぎょうじ',     c:'c4', ic:'ic_gyouji',   soon:'おしろの ぎょうじは じゅんびちゅうですぞ。オーケストラも れんしゅうちゅう！'},
+  {k:'gyokuza', n:'ぎょくざのま', c:'c5', ic:'ic_gyokuza',  soon:'ぎょくざのまは もうすぐ ひらきますぞ。やくしょくを きめる へやです'}
+];
+let R = null, ST = null, KEY = null;   // R：DOM、ST：2.5D、KEY：まちの マス
+const isL = () => innerWidth > innerHeight;
+
+function owlLine(){
+  const o = ensureWeek();
+  if(o.ms.some(isOk)) return 'おふれの ごほうびが うけとれますぞ！「おふれ」を タッチしてくだされ。';
+  if(o.ms.every(m => m.got)) return o.bonus ? 'こんしゅうの おふれは ぜんぶ たっせい！ みごとですぞ、ひめ！' : 'ぜんぶ たっせい！ ボーナスが うけとれますぞ！';
+  const m = o.ms.find(x => !x.got);
+  return `こんしゅうの おふれ：「${MS[m.id].t(m.goal).replace(/<[^>]+>/g, '').replace('日にち', '日')}」。いっしょに がんばりましょうぞ！`;
+}
+function root(){
+  if(R) return R;
+  const el = document.createElement('div'); el.id = 'osr';
+  el.innerHTML = `<div class="osStage"><canvas></canvas><div class="osLoad">よみこみ中…</div></div>
+    <div class="osSay"><b>ふくろう大臣</b><span></span></div>
+    <div class="osPanel"></div>
+    <div class="osMenu">${MENU.map(m => `<div class="osM"><button class="osRd ${m.c}${m.soon ? ' soon' : ''}" data-o="${m.k}" aria-label="${m.n}"><img src="${OI}${m.ic}.webp" alt="">${m.soon ? '<i class="osSoon">もうすぐ</i>' : ''}</button><span class="osLb">${m.n}</span></div>`).join('')}</div>
+    <div class="osOf"><div class="osOfSay"><b>ふくろう大臣</b><span></span></div><img class="osOwl" src="${OI}top_owl.webp" alt=""><div class="osOfIn"></div></div>
+    <div class="osBar"><button class="osRb" data-o="back" aria-label="もどる">${SVG.back}</button><div class="osTtl">🏰 おしろ</div><div class="osSp"></div>
+      <button class="osBld" data-o="bld" aria-label="たてもの">${SVG.bld}<span>たてもの</span></button>
+      <div class="osCoin"><img src="${OI}ic_coin.webp" alt=""><b>0</b></div></div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', onClick);
+  R = {el, stage:el.querySelector('.osStage'), cv:el.querySelector('canvas'), load:el.querySelector('.osLoad'), say:el.querySelector('.osSay'),
+       panel:el.querySelector('.osPanel'), menu:el.querySelector('.osMenu'), of:el.querySelector('.osOf'), ofIn:el.querySelector('.osOfIn'),
+       ofSay:el.querySelector('.osOfSay span'), owl:el.querySelector('.osOwl'), ttl:el.querySelector('.osTtl'), coin:el.querySelector('.osCoin'), bld:el.querySelector('.osBld')};
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if(R && R.el.classList.contains('show')) place(); }, 60); });
+  return R;
+}
+function place(){
+  const L = isL(); R.el.classList.toggle('osL', L); R.el.classList.toggle('osP', !L);
+  if(L){ R.stage.style.height = ''; R.stage.style.bottom = '0'; R.panel.style.display = 'none'; R.menu.style.top = ''; }
+  else {
+    const sh = Math.round(Math.min(innerHeight * .58, innerWidth * 1024 / 860));
+    R.stage.style.bottom = 'auto'; R.stage.style.height = sh + 'px';
+    R.panel.style.display = 'block'; R.panel.style.top = (sh - 22) + 'px';
+    R.say.style.left = ''; R.say.style.top = (sh - 8) + 'px';
+    const bh = R.say.offsetHeight || 64, rest = innerHeight - sh - bh, mh = R.menu.offsetHeight || 220;
+    R.menu.style.top = (sh + bh + Math.max(10, (rest - mh) / 2 - 10)) + 'px'; R.menu.style.bottom = 'auto';
+  }
+  if(ST) ST.layout();
+}
+function refresh(){
+  const o = ensureWeek();
+  R.coin.querySelector('b').textContent = (typeof nf === "function" ? nf(o.coin) : o.coin);
+  const b = R.menu.querySelector('[data-o="ofure"]'), has = canGet(), cur = b.querySelector('.osBadge');
+  if(has && !cur) b.insertAdjacentHTML('beforeend', '<i class="osBadge">!</i>'); if(!has && cur) cur.remove();
+  R.bld.style.display = KEY ? '' : 'none';
+}
+function say(txt){ const s = R.say; s.querySelector('span').textContent = txt; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); if(!isL() && R.el.classList.contains('show')) setTimeout(place, 0); }
+
+function openOshiro(key){
+  root(); KEY = key || null;
+  ensureWeek(); R.el.classList.add('show'); R.of.classList.remove('show'); R.ttl.textContent = '🏰 おしろ';
+  try{ document.body.classList.add('noscroll'); }catch(e){}
+  place(); refresh(); say(owlLine());
+  try{ sound('ok'); }catch(e){}
+  if(!ST) ST = Stage(R.cv, R.load); else ST.resume();
+}
+function closeOshiro(){
+  if(!R) return; R.el.classList.remove('show'); if(ST) ST.pause();
+  try{ document.body.classList.remove('noscroll'); }catch(e){}
+  try{ if(curScreen === 'town') renderTown(); }catch(e){}
+}
+window.oshiroOpen = openOshiro;
+
+async function onClick(e){
+  const b = e.target.closest('[data-o]'); if(!b || b.disabled) return;
+  const [a, v] = b.dataset.o.split(':');
+  try{ sound('tap'); }catch(err){}
+  if(a === 'back'){ if(R.of.classList.contains('show')){ R.of.classList.remove('show'); R.ttl.textContent = '🏰 おしろ'; if(ST) ST.resume(); refresh(); say(owlLine()); } else closeOshiro(); return; }
+  if(a === 'bld'){ const k = KEY; closeOshiro(); if(k) openBuilding(k); return; }
+  if(a === 'ofure'){ openOfure(); return; }
+  if(a === 'get'){ getReward(+v, b); return; }
+  if(a === 'bonus'){ getBonus(b); return; }
+  const m = MENU.find(x => x.k === a); if(m && m.soon) say(m.soon);
+}
+
+/* ---------- おふれ ---------- */
+function cardHTML(m, i){
+  const p = prog(m), ok = isOk(m), st = m.got ? 'got' : ok ? 'ok' : '';
+  const rw = `<span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${m.rw}</span>`;
+  return `<div class="osCard ${st}"><div class="osChk">${m.got ? SVG.check : ''}</div>
+    <div class="osTx"><b><i>${MS[m.id].ic}</i>${MS[m.id].t(m.goal)}</b><div class="osPb"><i style="width:${Math.round(p / m.goal * 100)}%"></i></div><small>${p} / ${m.goal}${m.got ? '　うけとりずみ' : ''}</small></div>
+    ${ok ? `<button class="osRw get" data-o="get:${i}">${rw}<small>うけとる</small></button>` : `<div class="osRw" style="display:flex;flex-direction:column;align-items:center;justify-content:center">${rw}<small>${m.got ? 'もらったよ' : 'ごほうび'}</small></div>`}</div>`;
+}
+function renderOfure(){
+  const o = ensureWeek(), all = o.ms.every(m => m.got);
+  const bn = `<div class="osBn ${o.bonus ? 'got' : all ? 'ok' : ''}"><div class="osChk">${o.bonus ? SVG.check : ''}</div>
+    <div class="osTx"><b><i>👑</i>3つ ぜんぶ たっせいで ボーナス！</b><small>${o.ms.filter(m => m.got).length} / 3</small></div>
+    ${all && !o.bonus ? `<button class="osRw get" data-o="bonus"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>うけとる</small></button>`
+      : `<div class="osRw" style="display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="osRwT"><img src="${OI}ic_coin.webp" alt="">+${BONUS}</span><small>${o.bonus ? 'もらったよ' : 'ボーナス'}</small></div>`}</div>`;
+  R.ofIn.innerHTML = `<div class="osScroll"><div class="osHd"><b>こんしゅうの おふれ</b><small>のこり ${daysLeft()}<ruby>日<rt>にち</rt></ruby></small></div>
+    ${o.ms.map(cardHTML).join('')}${bn}</div>`;
+  R.ofSay.textContent = o.ms.some(isOk) ? 'みごとですぞ！ きいろい ボタンで ごほうびを うけとってくだされ。'
+    : all ? (o.bonus ? 'こんしゅうは かんぺきですぞ！ また げつようびに あたらしい おふれを だしますぞ。' : 'ぜんぶ たっせい！ ボーナスも うけとってくだされ！')
+    : 'ひめ、こんしゅうの おふれですぞ。たっせいすると おしろコインが もらえますぞ！';
+}
+function openOfure(){ R.of.classList.add('show'); R.ttl.textContent = '📜 おふれ'; renderOfure(); if(ST) ST.pause(); }
+function flyCoins(from, n, done){
+  const a = from.getBoundingClientRect(), b = R.coin.querySelector('img').getBoundingClientRect();
+  const k = Math.min(8, Math.max(3, Math.round(n / 4))); let left = k;
+  for(let i = 0; i < k; i++){
+    const im = document.createElement('img'); im.className = 'osFly'; im.src = OI + 'ic_coin.webp';
+    const x0 = a.left + a.width / 2 - 17 + (Math.random() - .5) * 30, y0 = a.top + a.height / 2 - 17;
+    im.style.left = x0 + 'px'; im.style.top = y0 + 'px'; document.body.appendChild(im);
+    const dx = b.left + b.width / 2 - 17 - x0, dy = b.top + b.height / 2 - 17 - y0;
+    const fin = () => { im.remove(); if(--left === 0) done(); };
+    if(im.animate){ const an = im.animate([{transform:'translate(0,0) scale(1)', opacity:1}, {transform:`translate(${dx * .4}px,${dy * .4 - 60}px) scale(1.2)`, opacity:1, offset:.45}, {transform:`translate(${dx}px,${dy}px) scale(.7)`, opacity:.9}], {duration:650 + i * 70, easing:'ease-in-out', fill:'forwards'}); an.onfinish = fin; }
+    else setTimeout(fin, 300);
+  }
+}
+function addCoin(n, why){
+  const o = O(); o.coin += n; persist();
+  R.coin.querySelector('b').textContent = (typeof nf === "function" ? nf(o.coin) : o.coin); R.coin.classList.remove('bump'); void R.coin.offsetWidth; R.coin.classList.add('bump');
+  try{ (save.oshiroLog = save.oshiroLog || []).unshift({t:Date.now(), n, why}); save.oshiroLog.length = Math.min(save.oshiroLog.length, 60); }catch(e){}
+}
+function getReward(i, btn){
+  const o = ensureWeek(), m = o.ms[i]; if(!m || !isOk(m)) return;
+  m.got = 1; persist(); btn.disabled = true; try{ sound('fan'); }catch(e){}
+  flyCoins(btn, m.rw, () => { addCoin(m.rw, 'おふれ たっせい'); renderOfure(); refresh(); if(o.ms.every(x => x.got)) owlClap(); });
+}
+function getBonus(btn){
+  const o = ensureWeek(); if(o.bonus || !o.ms.every(m => m.got)) return;
+  o.bonus = 1; persist(); btn.disabled = true; try{ sound('fan'); confetti(1800); }catch(e){}
+  owlClap(); flyCoins(btn, BONUS * 2, () => { addCoin(BONUS, 'おふれ ボーナス'); renderOfure(); refresh(); });
+}
+function owlClap(){ R.owl.classList.remove('clap'); void R.owl.offsetWidth; R.owl.classList.add('clap'); setTimeout(() => R.owl.classList.remove('clap'), 2200); }
+
+/* =====================================================================
+   2.5D の ぶたい（oshiro_top_25d_proto_v3 を もとに：さくらは 小さめ）
+   ===================================================================== */
+function Stage(cv, loadEl){
+  const API = {layout(){}, pause(){}, resume(){}};
+  let D = null, gl = null, GL2 = false, ctx2 = null, run = true, raf = 0, view = {s:1, vx:0, vy:0, vw:1536, vh:1024};
+  const b64 = s => { const bin = atob(s), a = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; };
+  const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+  let pM, pP, L_M, L_P, petalTex, shadowTex, sbuf, pbuf, pdata;
+  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+  const mkProg = (vs, fs) => { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); return p; };
+  function mkTex(img){
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    if(GL2){ gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); } else gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    return t;
+  }
+  function prepLayer(L, img){
+    L.img = img;
+    L.nv = L.nx * L.ny; L.base = new Float32Array(L.nv * 2); L.pos = new Float32Array(L.nv * 2); const uv = new Float32Array(L.nv * 2);
+    for(let j = 0; j < L.ny; j++) for(let i = 0; i < L.nx; i++){ const k = j * L.nx + i, u = i / (L.nx - 1), v = j / (L.ny - 1); uv[k*2] = u; uv[k*2+1] = v; L.base[k*2] = L.x + u * L.w; L.base[k*2+1] = L.y + v * L.h; }
+    L.ops.forEach(o => { if(typeof o.w === 'string') o.w = b64(o.w); }); if(typeof L.pin === 'string') L.pin = b64(L.pin);
+    const c = document.createElement('canvas'); c.width = Math.min(img.width, 256); c.height = Math.round(c.width * img.height / img.width);
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height); L.am = x.getImageData(0, 0, c.width, c.height); L.aw = c.width; L.ah = c.height;
+    if(!gl) return;
+    const idx = []; for(let j = 0; j < L.ny - 1; j++) for(let i = 0; i < L.nx - 1; i++){ const a = j * L.nx + i, b = a + 1, cc = a + L.nx, d = cc + 1; idx.push(a, b, cc, b, d, cc); }
+    L.ni = idx.length; L.vb = gl.createBuffer(); L.ub = gl.createBuffer(); L.ib = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, L.ub); gl.bufferData(gl.ARRAY_BUFFER, uv, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, L.ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+    L.tex = mkTex(img);
+  }
+  const pulse = tt => tt > 6 ? 0 : Math.exp(-2.6 * tt) * (.5 + .5 * Math.cos(TAU * 2.2 * tt)) * (1 - Math.exp(-30 * tt));
+  const osc = tt => tt > 6 ? 0 : Math.exp(-3.2 * tt) * Math.sin(TAU * 2.4 * tt);
+  const vpA = () => [view.vx, view.vy, view.vw, view.vh];
+  function drawLayer(L, t, tt, G, I, vpx){
+    const ops = L.ops.map(o => {
+      const e = o.ev || 0, s = Math.sin(TAU * (o.f || 0) * t + (o.ph || 0)), P = pulse(tt[e]), Ov = osc(tt[e]);
+      if(o.k === 'rot') return {o, a:(o.A || 0) * s * I + (o.tapA || 0) * P};
+      return {o, s0:TAU * (o.f || 0) * t + (o.ph || 0), s:s * I, dx:(o.tapX || 0) * Ov, dy:(o.tapY || 0) * Ov};
+    });
+    const pos = L.pos, base = L.base, n = L.nv;
+    for(let i = 0; i < n; i++){
+      let x = base[i*2], y = base[i*2+1];
+      for(let q = 0; q < ops.length; q++){
+        const e = ops[q], o = e.o, w = o.w ? o.w[i] / 255 : 1; if(w < .004) continue;
+        if(o.k === 'rot'){ const a = e.a * w * Math.PI / 180; if(!a) continue; const cs = Math.cos(a), sn = Math.sin(a), dx = x - o.px, dy = y - o.py; x = o.px + dx * cs - dy * sn; y = o.py + dx * sn + dy * cs; }
+        else if(o.wk){ const m = Math.sin(e.s0 + o.wk * y) * I; x += ((o.ax || 0) * m + e.dx) * w; y += ((o.ay || 0) * m + e.dy) * w; }
+        else { x += ((o.ax || 0) * e.s + e.dx) * w; y += ((o.ay || 0) * e.s + e.dy) * w; }
+      }
+      if(G){ const hh = clamp((G.gr - y) / (G.gr - G.top), 0, 1), pn = L.pin ? L.pin[i] / 255 : 0;
+        const gx = G.cx + (x - G.cx) * G.sx + G.jel * Math.pow(hh, 1.6), gy = G.gr - (G.gr - y) * G.sy;
+        x = x * pn + gx * (1 - pn); y = y * pn + gy * (1 - pn) - G.jump; }
+      pos[i*2] = x; pos[i*2+1] = y;
+    }
+    gl.useProgram(pM); gl.uniform4f(L_M.vp, vpx[0], vpx[1], vpx[2], vpx[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, L.vb); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(L_M.p); gl.vertexAttribPointer(L_M.p, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, L.ub); gl.enableVertexAttribArray(L_M.u); gl.vertexAttribPointer(L_M.u, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, L.ib); gl.bindTexture(gl.TEXTURE_2D, L.tex); gl.drawElements(gl.TRIANGLES, L.ni, gl.UNSIGNED_SHORT, 0);
+  }
+  /* さくら（v3 より 小さめ：おく 6〜12・てまえ 12〜22） */
+  function petalCanvas(){
+    const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d');
+    const path = () => { x.beginPath(); x.moveTo(48, 90); x.bezierCurveTo(18, 70, 6, 38, 20, 14); x.bezierCurveTo(28, 4, 40, 6, 47, 22); x.bezierCurveTo(54, 6, 68, 4, 76, 14); x.bezierCurveTo(90, 38, 78, 70, 48, 90); x.closePath(); };
+    const g = x.createRadialGradient(48, 84, 4, 48, 48, 56); g.addColorStop(0, 'rgba(255,248,250,1)'); g.addColorStop(.5, 'rgba(255,224,234,1)'); g.addColorStop(1, 'rgba(255,184,208,1)');
+    path(); x.fillStyle = g; x.fill(); x.lineWidth = 1.6; x.strokeStyle = 'rgba(232,140,172,.55)'; x.stroke();
+    x.beginPath(); x.moveTo(48, 84); x.quadraticCurveTo(46, 54, 47, 26); x.strokeStyle = 'rgba(236,150,180,.35)'; x.lineWidth = 1.4; x.stroke();
+    return c;
+  }
+  let rs = 12345; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  const NB = 60, NF = 14, petals = [];
+  function spawn(p, init){
+    const front = p.front, zone = rnd(), W = D.W, Hh = D.H;
+    if(init){ p.x = rnd() * W; p.y = rnd() * Hh; }
+    else if(zone < .45){ p.x = -80 + rnd() * 700; p.y = -50 - rnd() * 80; }
+    else if(zone < .75){ p.x = 1000 + rnd() * 600; p.y = -50 - rnd() * 80; }
+    else { p.x = -80 + rnd() * (W * .8); p.y = -50 - rnd() * 120; }
+    p.size = front ? 12 + rnd() * 10 : 6 + rnd() * 6; p.fall = front ? 58 + rnd() * 46 : 24 + rnd() * 28;
+    p.ang = rnd() * TAU; p.spin = (rnd() - .5) * 1.6; p.flip = rnd() * TAU; p.flipS = 1.2 + rnd() * 2.2;
+    p.swA = 12 + rnd() * 20; p.swS = .7 + rnd() * 1.1; p.swP = rnd() * TAU; p.t = rnd() < .45 ? 0 : rnd() * .8; p.a = front ? .9 : .7 + rnd() * .25;
+    p.vx = 0; p.vy = 0; p.burst = 0;
+  }
+  function burst(x, y){ for(let i = 0; i < 12; i++){ const p = {front:rnd() < .35}; spawn(p, false); p.free = true; p.x = x + (rnd() - .5) * 30; p.y = y + (rnd() - .5) * 20; p.vx = (rnd() - .3) * 240; p.vy = -90 - rnd() * 150; p.burst = 1; p.a = Math.max(p.a, .75); p.life = 5 + rnd() * 2; petals.push(p); } }
+  function stepPetals(dt, t){
+    const wind = 20 + 14 * Math.sin(t * .35) + 26 * Math.max(0, Math.sin(t * .13 + 1.2));
+    for(let i = petals.length - 1; i >= 0; i--){ const p = petals[i];
+      p.flip += p.flipS * dt; p.ang += p.spin * dt; p.swP += p.swS * dt;
+      const depth = p.front ? 1.25 : .8, tvx = wind * depth + Math.sin(p.swP) * p.swA, tvy = p.fall * (1 + .25 * Math.sin(p.swP * 1.3));
+      p.vx += (tvx - p.vx) * Math.min(1, dt * (p.burst ? .9 : 1.6)); p.vy += (tvy - p.vy) * Math.min(1, dt * (p.burst ? .9 : 1.6));
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if(p.free){ p.life -= dt; if(p.life < 0 || p.y > D.H + 60) petals.splice(i, 1); continue; }
+      if(p.y > D.H + 50 || p.x > D.W + 90) spawn(p, false);
+    }
+  }
+  const CO = [[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]], TRI = [0,1,2,0,2,3];
+  function drawPetals(front, vpx){
+    let n = 0;
+    for(const p of petals){ if(!!p.front !== front) continue; if(n >= pdata.length / 36) break;
+      const sx = Math.max(.12, Math.abs(Math.cos(p.flip))), hs = p.size, c = Math.cos(p.ang), s = Math.sin(p.ang);
+      const a = p.a * (p.free ? Math.min(1, p.life) : 1); if(a <= .01) continue;
+      const v = CO.map(([cx, cy, u, vv]) => { const X = cx * hs * sx, Y = cy * hs; return [p.x + X * c - Y * s, p.y + X * s + Y * c, u, vv]; });
+      for(let j = 0; j < 6; j++){ const k = TRI[j], o = n * 36 + j * 6; pdata[o] = v[k][0]; pdata[o+1] = v[k][1]; pdata[o+2] = v[k][2]; pdata[o+3] = v[k][3]; pdata[o+4] = a; pdata[o+5] = p.t; }
+      n++;
+    }
+    if(!n) return;
+    gl.useProgram(pP); gl.uniform4f(L_P.vp, vpx[0], vpx[1], vpx[2], vpx[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pbuf); gl.bufferData(gl.ARRAY_BUFFER, pdata.subarray(0, n * 36), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(L_P.p); gl.vertexAttribPointer(L_P.p, 2, gl.FLOAT, false, 24, 0);
+    gl.enableVertexAttribArray(L_P.u); gl.vertexAttribPointer(L_P.u, 2, gl.FLOAT, false, 24, 8);
+    gl.enableVertexAttribArray(L_P.e); gl.vertexAttribPointer(L_P.e, 2, gl.FLOAT, false, 24, 16);
+    gl.bindTexture(gl.TEXTURE_2D, petalTex); gl.drawArrays(gl.TRIANGLES, 0, n * 6);
+    gl.disableVertexAttribArray(L_P.e);
+  }
+  function shadowCanvas(){ const c = document.createElement('canvas'); c.width = 128; c.height = 64; const x = c.getContext('2d');
+    const g = x.createRadialGradient(64, 32, 2, 64, 32, 62); g.addColorStop(0, 'rgba(96,58,86,.42)'); g.addColorStop(.55, 'rgba(96,58,86,.2)'); g.addColorStop(1, 'rgba(96,58,86,0)');
+    x.save(); x.scale(1, .5); x.translate(0, 32); x.fillStyle = g; x.fillRect(0, -32, 128, 128); x.restore(); return c; }
+  function drawShadow(S, k, vpx){
+    const hw = S.w * k / 2, hh = S.h * k / 2, d = new Float32Array([S.cx-hw, S.y-hh, 0, 0, S.cx+hw, S.y-hh, 1, 0, S.cx+hw, S.y+hh, 1, 1, S.cx-hw, S.y-hh, 0, 0, S.cx+hw, S.y+hh, 1, 1, S.cx-hw, S.y+hh, 0, 1]);
+    gl.useProgram(pM); gl.uniform4f(L_M.vp, vpx[0], vpx[1], vpx[2], vpx[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, sbuf); gl.bufferData(gl.ARRAY_BUFFER, d, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(L_M.p); gl.vertexAttribPointer(L_M.p, 2, gl.FLOAT, false, 16, 0); gl.enableVertexAttribArray(L_M.u); gl.vertexAttribPointer(L_M.u, 2, gl.FLOAT, false, 16, 8);
+    gl.bindTexture(gl.TEXTURE_2D, shadowTex); gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+  /* 画面の きりとり：よこ＝全面、たて＝ハナ〜ふくろうが 入る はば */
+  function layout(){
+    if(!D) return;
+    const r = cv.getBoundingClientRect(); if(!r.width || !r.height) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1); let w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    const cap = 4.2e6; if(w * h > cap){ const k = Math.sqrt(cap / (w * h)); w = Math.round(w * k); h = Math.round(h * k); }
+    if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+    if(isL()){ const s = Math.max(w / D.W, h / D.H) * 1.03; view.s = s; view.vw = w / s; view.vh = h / s; view.vx = (D.W - view.vw) * .5; view.vy = (D.H - view.vh) * .38; }
+    else {
+      const fx = 350, fw = 920; let s = w / fw; view.vw = fw; view.vh = h / s;
+      if(view.vh > D.H){ s = h / D.H; view.vh = D.H; view.vw = w / s; view.vx = clamp(800 - view.vw / 2, 0, D.W - view.vw); view.vy = 0; }
+      else { view.vx = fx; view.vy = clamp(800 - view.vh, 0, D.H - view.vh); }
+      view.s = s;
+    }
+    /* 大臣の ふきだし：ふくろうの あたまの 上（たては パネルの 中） */
+    if(!isL()) return;
+    const ow = D.chars.find(c => c.id === 'owl'), ax = 1080, ay = ow ? ow.top - 6 : 316;
+    const sx = (ax - view.vx) / view.vw * r.width, sy = (ay - view.vy) / view.vh * r.height;
+    const bw = R.say.offsetWidth || 240, min = bw / 2 + 8, max = innerWidth - bw / 2 - 8;
+    R.say.style.left = clamp(sx, min, Math.max(min, max)) + 'px'; R.say.style.top = Math.max(r.top + sy, (R.say.offsetHeight || 60) + 70) + 'px';
+  }
+  function toStage(cx, cy){ const r = cv.getBoundingClientRect(); return [view.vx + (cx - r.left) / r.width * view.vw, view.vy + (cy - r.top) / r.height * view.vh]; }
+  function hit(sx, sy){
+    for(const h of D.hit){ const L = D.chars.find(c => c.id === h.char).layers[h.layer]; const u = (sx - L.x) / L.w, v = (sy - L.y) / L.h; if(u < -.02 || u > 1.02 || v < -.02 || v > 1.02) continue;
+      for(let dy = -2; dy <= 2; dy++) for(let dx = -2; dx <= 2; dx++){ const px = Math.round(u * L.aw) + dx * 2, py = Math.round(v * L.ah) + dy * 2; if(px < 0 || py < 0 || px >= L.aw || py >= L.ah) continue; if(L.am.data[(py * L.aw + px) * 4 + 3] > 40) return h; } }
+    return null;
+  }
+  const charTap = {hana:[-1e9, -1e9], owl:[-1e9, -1e9]};
+  const HANA = ['きょうも まちの ために がんばるよ！','おしろって ひろいね〜！','おふれ、ぜんぶ たっせい できるかな？','ふくろう大臣、いつも ありがとう！'];
+  cv.addEventListener('pointerdown', e => {
+    if(!D) return;
+    const [sx, sy] = toStage(e.clientX, e.clientY), h = hit(sx, sy), now = performance.now();
+    if(h){ charTap[h.char][h.ev] = now;
+      if(h.id === 'owl'){ say(owlLine()); try{ sound('ok'); }catch(err){} }
+      else if(h.id === 'hana'){ const t = HANA[Math.floor(Math.random() * HANA.length)]; R.say.querySelector('b').textContent = 'ハナ'; say(t); setTimeout(() => { if(R) R.say.querySelector('b').textContent = 'ふくろう大臣'; }, 2600); }
+    } else if(gl) burst(sx, sy);
+  });
+  const t0 = performance.now(); let last = t0;
+  function frame(now){
+    if(!run){ raf = 0; return; }
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(.05, (now - last) / 1000); last = now; const t = (now - t0) / 1000, I = 1;
+    layout();
+    if(!gl){ draw2d(); return; }
+    stepPetals(dt, t);
+    gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(.97, .86, .8, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    const vp = vpA();
+    drawLayer(D.bg, t, [99, 99], null, I, vp);
+    drawPetals(false, vp);
+    for(const c of D.chars){
+      const tt = [0, 1].map(e => (now - charTap[c.id][e]) / 1000), g = c.g, a0 = c.layers[0];
+      let jump = 0, sq = 0; const T1 = .55;
+      if(g.jump > 0 && tt[0] < T1){ jump = g.jump * Math.sin(Math.PI * tt[0] / T1); sq = .03 * Math.sin(Math.PI * tt[0] / T1); }
+      else { const u = tt[0] - T1; if(u > 0 && u < 3) sq = -g.tapSq * (1 - Math.exp(-30 * u)) * Math.exp(-5 * u) * Math.cos(TAU * 2.2 * u); }
+      const syy = 1 + I * g.br * Math.sin(TAU * g.brf * t + 1) + sq;
+      const G = {gr:c.ground, top:c.top, cx:a0.x + a0.w / 2, sy:syy, sx:1 - (syy - 1) * .7, jel:I * g.jelly * Math.sin(TAU * g.jf * t) + g.tapJ * osc(tt[0]), jump};
+      if(c.shadow) drawShadow(c.shadow, clamp(1 - jump / (Math.max(g.jump, 1) * 3.2), .6, 1) * (1 + .02 * Math.sin(TAU * g.brf * t)), vp);
+      for(const L of c.layers) drawLayer(L, t, tt, G, I, vp);
+    }
+    drawPetals(true, vp);
+  }
+  /* WebGL が つかえない とき：うごかない 絵 */
+  function draw2d(){
+    const x = ctx2, k = cv.width / view.vw; x.setTransform(k, 0, 0, k, -view.vx * k, -view.vy * k); x.clearRect(view.vx, view.vy, view.vw, view.vh);
+    x.drawImage(D.bg.img, D.bg.x, D.bg.y, D.bg.w, D.bg.h); D.chars.forEach(c => c.layers.forEach(L => x.drawImage(L.img, L.x, L.y, L.w, L.h)));
+  }
+  API.layout = layout;
+  API.pause = () => { run = false; };
+  API.resume = () => { if(!run){ run = true; last = performance.now(); if(D && !raf) raf = requestAnimationFrame(frame); } };
+  (async () => {
+    try{
+      D = await fetch(OI + 'top25d.json').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+      gl = cv.getContext('webgl2', {premultipliedAlpha:true, alpha:false, antialias:true}); GL2 = !!gl;
+      if(!gl) gl = cv.getContext('webgl', {premultipliedAlpha:true, alpha:false, antialias:true});
+      if(gl){
+        const VP = 'gl_Position=vec4((p.x-vp.x)/vp.z*2.-1.,1.-(p.y-vp.y)/vp.w*2.,0.,1.);';
+        pM = mkProg('attribute vec2 p;attribute vec2 u;varying vec2 v;uniform vec4 vp;void main(){v=u;' + VP + '}', 'precision mediump float;varying vec2 v;uniform sampler2D t;void main(){gl_FragColor=texture2D(t,v);}');
+        pP = mkProg('attribute vec2 p;attribute vec2 u;attribute vec2 e;varying vec2 v;varying vec2 q;uniform vec4 vp;void main(){v=u;q=e;' + VP + '}',
+          'precision mediump float;varying vec2 v;varying vec2 q;uniform sampler2D t;void main(){vec4 c=texture2D(t,v);vec3 col=mix(vec3(1.),vec3(1.,.80,.87),q.y);col=mix(col,col*vec3(.96,.9,.95),q.y*.4);gl_FragColor=vec4(c.rgb*col*q.x,c.a*q.x);}');
+        L_M = {p:gl.getAttribLocation(pM, 'p'), u:gl.getAttribLocation(pM, 'u'), vp:gl.getUniformLocation(pM, 'vp')};
+        L_P = {p:gl.getAttribLocation(pP, 'p'), u:gl.getAttribLocation(pP, 'u'), e:gl.getAttribLocation(pP, 'e'), vp:gl.getUniformLocation(pP, 'vp')};
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        sbuf = gl.createBuffer(); pbuf = gl.createBuffer(); pdata = new Float32Array((NB + NF + 40) * 36);
+      } else ctx2 = cv.getContext('2d');
+      const [bgI, ...rest] = await Promise.all([loadImg(OI + D.bg.src), ...D.chars.flatMap(c => c.layers.map(L => loadImg(OI + L.src)))]);
+      prepLayer(D.bg, bgI); let k = 0; D.chars.forEach(c => c.layers.forEach(L => prepLayer(L, rest[k++])));
+      if(gl){ petalTex = mkTex(petalCanvas()); shadowTex = mkTex(shadowCanvas()); for(let i = 0; i < NB + NF; i++){ const p = {front:i >= NB}; spawn(p, true); petals.push(p); } }
+      loadEl.style.opacity = 0; setTimeout(() => loadEl.remove(), 450);
+      layout(); if(run) raf = requestAnimationFrame(frame);
+    }catch(err){ console.warn('oshiro 2.5D', err); loadEl.innerHTML = `<img src="${OI}top_bg.webp" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`; loadEl.style.opacity = 1; }
+  })();
+  return API;
+}
+
+/* ---------- ためしに ひらく：URL に #oshiro ---------- */
+function tryHash(){ if(/#oshiro\b/.test(location.hash)) setTimeout(() => { try{ openOshiro(null); }catch(e){ console.warn(e); } }, 900); }
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryHash); else tryHash();
+addEventListener('hashchange', tryHash);
+window.__oshiro = {O, ensureWeek, count, open:openOshiro};
+})();
