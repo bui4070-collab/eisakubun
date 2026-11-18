@@ -9115,7 +9115,7 @@ body.sc631on{overflow:hidden}
 .ii635{width:1.45em;height:1.45em;object-fit:contain;display:inline-block;vertical-align:middle;margin:-3px 1px 0 0}
 .ii635.big{width:1.6em;height:1.6em;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 .ii635.h{width:1.5em;height:1.5em}
-.ii635.xl{width:84px;height:84px}
+.ii635.xl{width:84px;height:84px;position:static!important;left:auto!important;top:auto!important;bottom:auto!important;background:none!important;border-radius:0!important;box-shadow:none!important;animation:none!important;margin:0 auto!important}
 .sic633{width:1.45em;height:1.45em;object-fit:contain;display:inline-block;vertical-align:middle;margin-top:-3px}
 .sb631 .sic633{width:34px;height:34px;display:block;margin:0}
 .tools631 button,.chip631{display:inline-flex;align-items:center;gap:2px}
@@ -9726,7 +9726,7 @@ function mapView(pick){
     <div class="mpw636"><svg class="jpMap" viewBox="${MV.x} ${MV.y} ${MV.w} ${MV.w*1.1}"><g class="base636">${jpBase()}</g><g class="dots636">${mapDots()}</g></svg>
       <div class="zm636"><button type="button" data-z="in">＋</button><button type="button" data-z="out">－</button><button type="button" data-z="all" class="sm">ぜんぶ</button></div></div>
     <div class="lg636"><span><i style="background:#FFC1A6"></i>1</span><span><i style="background:#FF8A65"></i>2〜4</span><span><i style="background:#E8414B"></i>5〜</span><span><i style="background:#fff;border:1.5px solid #8AA"></i>まだ</span></div>
-    <div class="hn636"><img src="${A('bird_think')}" alt="">${sel ? `<div><b>${X(pick)}</b>：${sel.filter(st => readOK(st[0])).map(st => `<ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby>`).join('・') || 'まだ よめた 駅が ないよ'}${sel.some(st => !readOK(st[0])) ? `<small>（まだ ${sel.filter(st => !readOK(st[0])).length}駅 あるよ）</small>` : ''}</div>` : 'ゆび 2本や ＋で ひろげて、まるを タッチすると その 県の 駅が 見られるよ'}</div></div></div>`;
+    <div class="hn636"><img src="${A('bird_think')}" alt="">${sel ? `<div><b>${X(pick)}</b>：${sel.filter(st => readOK(st[0])).map(st => `<span class="sn636"><ruby>${X(st[1])}<rt>${X(st[2])}</rt></ruby></span>`).join('<wbr>・') || 'まだ よめた 駅が ないよ'}${sel.some(st => !readOK(st[0])) ? `<small>（まだ ${sel.filter(st => !readOK(st[0])).length}駅 あるよ）</small>` : ''}</div>` : 'ゆび 2本や ＋で ひろげて、まるを タッチすると その 県の 駅が 見られるよ'}</div></div></div>`;
   ROOT.querySelector('[data-m="back"]').onclick = e => { e.stopPropagation(); main(); };
   const svg = ROOT.querySelector('.mpw636 svg'), wrap = ROOT.querySelector('.mpw636');
   const apply = () => { clampMV(); svg.setAttribute('viewBox', `${MV.x} ${MV.y} ${MV.w} ${MV.w*1.1}`); svg.querySelector('.dots636').innerHTML = mapDots(); };
@@ -9900,6 +9900,10 @@ body.stn636on{overflow:hidden}
 .pd636{cursor:pointer}
 .lg636{display:flex;justify-content:center;gap:8px;font-size:11px;font-weight:800}.lg636 i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:2px;vertical-align:middle}
 .hn636 rt{font-size:8px}
+.mp636 .hn636{align-items:flex-start}
+.mp636 .hn636>div{flex:1;min-width:0;line-height:2.1;word-break:normal;overflow-wrap:anywhere;max-height:32vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mp636 .hn636 .sn636{display:inline-block;white-space:nowrap}
+.mp636 .hn636 small{display:block}
 .hi636{width:24px;height:24px;vertical-align:middle}
 .tb636{display:flex;gap:4px}.tb636 button{flex:1;border:2px solid #E6D6BB;background:#fff;border-radius:10px;padding:5px;font:inherit;font-weight:900;font-size:12.5px;color:#7A5634}.tb636 button.on{background:#2F6FA3;color:#fff;border-color:#2F6FA3}
 .rkb636{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
