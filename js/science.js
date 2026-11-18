@@ -5805,6 +5805,7 @@ window.__oshiro = {O, ensureWeek, count, open:openOshiro, parts:P, stage:castleS
   let batLow = false;
   const ecoOn = () => { const m = MODE(); return m === 'on' || (m === 'auto' && batLow); };
   window.__ecoOn = ecoOn;
+  window.__ecoBgmOff = () => { try{ return ecoOn() && ((save.settings && save.settings.eco109bgm) || 'off') === 'off'; }catch(e){ return false; } };
 
   /* ---------- フレームを まびく（30／15コマ） ---------- */
   window.__pwSkip = function(st, now, el){
@@ -5830,6 +5831,7 @@ html.eco108 #bgVeil{transition:none!important}
     const on = ecoOn();
     document.documentElement.classList.toggle('eco108', on);
     try{ if(typeof applyLite === 'function') applyLite(); }catch(e){}
+    try{ if(window.__ecoBgmOff()){ if(window.__fbgm) window.__fbgm.stop(); } }catch(e){}
     paintSet();
   }
   window.__ecoApply = apply;
@@ -5847,6 +5849,8 @@ html.eco108 #bgVeil{transition:none!important}
     const box = document.getElementById('seg108'); if(!box) return;
     const m = MODE();
     box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === m));
+    const b9 = document.getElementById('seg109');
+    if(b9){ const v = (save.settings && save.settings.eco109bgm) || 'off'; b9.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
     const n = document.getElementById('eco108Now');
     if(n) n.innerHTML = ecoOn() ? '<span class="eco108Tag">🍃 いま 省電力で うごいています</span>' : '';
   }
@@ -5856,9 +5860,17 @@ html.eco108 #bgVeil{transition:none!important}
     sec.innerHTML = `<h3>🔋 しょうでんりょく（省電力）モード<span id="eco108Now"></span></h3>
       <div class="seg" id="seg108"><button data-v="auto">じどう</button><button data-v="on">オン</button><button data-v="off">オフ</button></div>
       <p class="note">オンに すると、くりかえしの うごき・キラキラ・影を へらし、2.5Dの うごきを ゆっくりに して 電池を ながもち させます（ゲームの はんていには えいきょう しません）。<br>
-      「じどう」は バッテリーが すくない ときだけ オンに なります（iPhone・iPad では バッテリーが わからないので「オン」を えらんでください）。</p>`;
+      「じどう」は バッテリーが すくない ときだけ オンに なります（iPhone・iPad では バッテリーが わからないので「オン」を えらんでください）。</p>
+      <div class="row"><div class="lab">省電力の ときの BGM</div><div class="seg" id="seg109"><button data-v="off">ながさない</button><button data-v="on">ながす</button></div></div>
+      <p class="note">「ながさない」に すると、省電力モードの あいだは BGMを とめて こうかおん だけに します（リズムゲーム・ミニゲームの 音は なります）。</p>`;
     const after = [...card.querySelectorAll('.setSec')].find(s => /ペン・おと/.test(s.textContent));
     if(after) after.after(sec); else card.appendChild(sec);
+    sec.querySelector('#seg109').addEventListener('click', e => {
+      const b = e.target.closest('button'); if(!b) return;
+      try{ save.settings = save.settings || {}; save.settings.eco109bgm = b.dataset.v; persist(); }catch(err){}
+      try{ sound('tap'); }catch(err){}
+      apply();
+    });
     sec.querySelector('#seg108').addEventListener('click', e => {
       const b = e.target.closest('button'); if(!b) return;
       try{ save.settings = save.settings || {}; save.settings.eco108 = b.dataset.v; persist(); }catch(err){}
@@ -5871,4 +5883,81 @@ html.eco108 #bgVeil{transition:none!important}
 
   const init = () => { addSet(); apply(); };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0);
+})();
+
+
+/* =====================================================================
+   v10.9：音・まちの しょうでんりょく
+   ① 音の しくみ（AudioContext）を、音が なっていない ときは やすませる
+      ・音が 4びょう いじょう なっていなくて、BGMも ながれていない ときに おやすみ
+      ・つぎに 音を ならす ときに じどうで おきる（音の きこえかたは かわらない）
+      ・リズムゲーム などで じかんを はかっている あいだは やすませない
+   ② 省電力モード：住民の いどうを ゆっくり（2回に 1回）、船は とめる
+   ③ 省電力モード：BGMを ながさない（せっていで えらべる）
+   ===================================================================== */
+(function(){
+  'use strict';
+  const Orig = window.AudioContext || window.webkitAudioContext;
+  if(!Orig || Orig.__eco109) return;
+  const INFO = new Map();      // ctx → {live, use, read, els:Set, sus}
+  const now = () => performance.now();
+  const findDesc = (o, k) => { while(o){ const d = Object.getOwnPropertyDescriptor(o, k); if(d) return d; o = Object.getPrototypeOf(o); } return null; };
+  const ctDesc = findDesc(Orig.prototype, 'currentTime');
+  const rawTime = c => ctDesc && ctDesc.get ? ctDesc.get.call(c) : 0;
+  const reg = c => { INFO.set(c, {live:0, use:now(), read:now(), els:new Set(), sus:false});
+    try{ c.addEventListener('statechange', () => { const i = INFO.get(c); if(i && c.state === 'running') i.sus = false; }); }catch(e){} };
+  const wake = c => { const i = INFO.get(c); if(!i) return i; i.use = now(); if(i.sus || c.state === 'suspended'){ i.sus = false; try{ c.resume(); }catch(e){} } return i; };
+
+  /* AudioContext を つくった ときに とうろく */
+  class Eco extends Orig { constructor(...a){ super(...a); reg(this); } }
+  Eco.__eco109 = true;
+  try{ window.AudioContext = Eco; }catch(e){}
+  try{ if(window.webkitAudioContext) window.webkitAudioContext = Eco; }catch(e){}
+
+  /* じかんを よんでいる ＝ つかっている */
+  if(ctDesc && ctDesc.get){
+    const home = (() => { let o = Orig.prototype; while(o && !Object.getOwnPropertyDescriptor(o, 'currentTime')) o = Object.getPrototypeOf(o); return o; })();
+    try{ Object.defineProperty(home, 'currentTime', {configurable:true, enumerable:ctDesc.enumerable, get(){ const i = INFO.get(this); if(i) i.read = now(); return ctDesc.get.call(this); }}); }catch(e){}
+  }
+  /* 音を ならす ＝ おきる。おわるまで 「なっている」 */
+  const hookStart = P => {
+    if(!P || !P.start || P.start.__eco109) return;
+    const st = P.start;
+    P.start = function(){
+      const i = wake(this.context);
+      if(i){ i.live++; let done = false; const end = () => { if(!done){ done = true; i.live = Math.max(0, i.live - 1); i.use = now(); } };
+        try{ this.addEventListener('ended', end, {once:true}); }catch(e){} }
+      return st.apply(this, arguments);
+    };
+    P.start.__eco109 = true;
+  };
+  if(window.AudioScheduledSourceNode) hookStart(AudioScheduledSourceNode.prototype);
+  else { hookStart(window.AudioBufferSourceNode && AudioBufferSourceNode.prototype); hookStart(window.OscillatorNode && OscillatorNode.prototype); }
+  /* <audio> を つないでいる とき（ホームの BGM など） */
+  const cmes = Orig.prototype.createMediaElementSource;
+  if(cmes) Orig.prototype.createMediaElementSource = function(el){ const i = INFO.get(this); if(i) i.els.add(el); try{ el.addEventListener('play', () => wake(this)); }catch(e){} return cmes.apply(this, arguments); };
+
+  /* ときどき みて、やすませる */
+  setInterval(() => {
+    const t = now();
+    INFO.forEach((i, c) => {
+      if(c.state !== 'running') return;
+      if(document.hidden){ i.sus = true; try{ c.suspend(); }catch(e){} return; }
+      const media = [...i.els].some(el => !el.paused);
+      if(i.live > 0 || media || t - i.read < 4000 || t - i.use < 4000) return;
+      void rawTime(c);
+      i.sus = true; try{ c.suspend(); }catch(e){}
+    });
+  }, 2000);
+
+  /* 省電力：住民の いどうを 2回に 1回 */
+  const late = () => {
+    try{
+      if(typeof walkTick !== 'function' || walkTick.__eco109) return;
+      const w0 = walkTick; let n = 0;
+      walkTick = function(){ if(window.__ecoOn && window.__ecoOn() && (n++ & 1)) return; return w0.apply(this, arguments); };
+      walkTick.__eco109 = true;
+    }catch(e){ console.warn('eco walk', e); }
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 0)); else setTimeout(late, 0);
 })();

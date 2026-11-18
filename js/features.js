@@ -5218,7 +5218,7 @@ renderMap = (orig => function(){
   try{ drawSea(); drawDecks(); buildShips(); buildAir(); }catch(e){ console.warn(e); }
   return o;
 })(renderMap);
-setInterval(() => { if(curScreen==='town' && !document.hidden && !townEdit) try{ stepShips(); }catch(e){} }, 1700);
+setInterval(() => { if(curScreen==='town' && !document.hidden && !townEdit && !(window.__ecoOn && window.__ecoOn())) try{ stepShips(); }catch(e){} }, 1700);   // v10.9 省電力では 船を とめる
 document.addEventListener('click', e => {
   const b = e.target.closest('.ship65,.air65'); if(!b || curScreen!=='town' || townEdit) return;
   e.stopImmediatePropagation(); e.preventDefault(); const it = ITEM(b.dataset.id); sound('tap');
@@ -7292,7 +7292,7 @@ const W = ms => new Promise(r => setTimeout(r, ms));
 /* ---------- やきゅう：おんがく ---------- */
 let AC = null, MUS = null;
 const ac = () => { if(!AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; } } if(AC.state==='suspended') AC.resume(); return AC; };
-const muted = () => !!(save.settings && (save.settings.mute || save.settings.sound===false || save.settings.bgm===false));
+const muted = () => !!(save.settings && (save.settings.mute || save.settings.sound===false || save.settings.bgm===false)) || (window.__ecoBgmOff && window.__ecoBgmOff());   // v10.9 省電力：BGMを ながさない
 const N = {C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880,C3:130.81,G3:196,F3:174.61,E3:164.81,A3:220,D3:146.83,B3:246.94,R:0};
 const SONGS = {
   play:{bpm:132, lead:'C5 E5 G5 E5 C5 E5 G5 R  D5 F5 A5 F5 D5 F5 A5 R  E5 G5 C5 G5 E5 G5 C5 R  D5 B4 G4 B4 D5 R C5 R'.split(' '), bass:'C3 R G3 R C3 R G3 R  D3 R A3 R D3 R A3 R  E3 R G3 R E3 R G3 R  G3 R G3 R C3 R C3 R'.split(' '), gain:.07},
@@ -7323,7 +7323,7 @@ const watch = () => {
   if(!MUS || (MUS.name!==want && MUS.name!=='win' && MUS.name!=='lose')) startBGM(want);
   else if(MUS && (MUS.name==='win' || MUS.name==='lose') && Date.now() - (MUS.t0 || 0) > 9000) startBGM(want);
 };
-setInterval(watch, 500);
+setInterval(() => { if(!document.hidden) watch(); }, 500);   // v10.9
 /* しょうりの ファンファーレ：試合が おわった しゅんかんに かった ときだけ */
 let lastG = null;
 setInterval(() => { const G = window.__v618 && window.__v618.G; if(G){ lastG = {score:G.score, opp:G.cold ? G.opp.slice(0, G.oppShown).reduce((a,b) => a+b, 0) : G.opp.reduce((a,b) => a+b, 0), walk:G.walkoff}; return; }
@@ -9955,7 +9955,7 @@ try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments)
 const VER = '6.43.0', SRC = './assets/audio/BGM.mp3';
 const VOL = {base:.22, low:.07, quiet:.12, off:0};      // あまり 目立たない 音量
 const B = {el:null, ctx:null, gain:null, ok:false, cur:-1, err:false};
-const on = () => save.settings && save.settings.bgm !== false;
+const on = () => save.settings && save.settings.bgm !== false && !(window.__ecoBgmOff && window.__ecoBgmOff());   // v10.9
 
 function init(){
   if(B.el || B.err) return;
@@ -10016,7 +10016,7 @@ function unlock(){
 }
 ['pointerdown','touchend','keydown'].forEach(n => document.addEventListener(n, unlock, {capture:true, passive:true}));
 document.addEventListener('visibilitychange', () => apply());
-setInterval(() => { if(B.ok || !on()) apply(); }, 400);
+setInterval(() => { if(document.hidden) return; if(B.ok || !on()) apply(); }, 400);   // v10.9
 
 /* ---------- オン／オフ ---------- */
 const ICON = o => `<svg viewBox="0 0 32 32" class="bgmI643"><path d="M12 22.5V8.5l12-3v13" fill="none" stroke="${o ? '#E07A3F' : '#A89A88'}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -18721,6 +18721,7 @@ function crackle(){ const n = AC.sampleRate * 4, b = AC.createBuffer(1, n, AC.sa
   for(let i = 0; i < n; i++){ d[i] = (Math.random() * 2 - 1) * .012; if(Math.random() < .0003) d[i] += (Math.random() * 2 - 1) * .25; } return b; }
 const PAN = {ep:-.15, pf:-.2, gt:.35, gn:.3, bs:0, cb:0, dr:0, fl:.2, sx:.12, cl:.2, vb:-.35, xy:.4, hp:-.3, vc:-.1, vn:.25, hn:-.25};
 function fbStart(key, o){
+  if(window.__ecoBgmOff && window.__ecoBgmOff()) return false;   // v10.9 省電力：しせつ・ものがたりの BGMも ながさない
   o = o || {};
   const S = FSONG[key]; if(!S || !ctx()) return false;
   if(o.xf && FB){                          // xf ＝ at の じかんまで ふるい 曲を ならして、そこから ふわっと きりかえる
