@@ -3486,7 +3486,7 @@ window.__res25d = {keyOf, mount, DATA: () => Object.keys(DATA), active: () => IN
 
 
 /* =====================================================================
-   v10.6：おしろ（絵文字を イラストに・ぎょくざのまの 2.5D）
+   v10.7：おしろ（ぎょうじの ミニゲーム・やくしょくの レベル・ハナの 能力）
    STEP1：おしろトップ 2.5D ・ おふれ ・ おしろコイン
    STEP2：ぞうちく（5つの パーツ × 3だんかい）・ おしろの しんか（木の とりで → 石の おしろ → きらきらの おしろ）
    v10.1 の なおし
@@ -3927,7 +3927,7 @@ function getReward(i, btn){
   const o = ensureWeek(), m = o.ms[i]; if(!m || !isOk(m)) return;
   m.got = 1; persist(); btn.disabled = true; try{ sound('fan'); }catch(e){}
   if(OFH) OFH.pose('laugh');
-  const mb = roleOf('minister') ? Math.max(1, Math.round(m.rw * .1)) : 0;
+  const mb = roleOf('minister') ? Math.max(1, Math.round(m.rw * rPct('minister') / 100)) : 0;
   flyCoins(btn, m.rw, () => { addCoin(m.rw + mb, mb ? `おふれ たっせい（大臣 +${mb}）` : 'おふれ たっせい'); if(mb) otoast('ofure', `大臣の ${roleOf('minister').name}の おかげで +${mb}`); renderOfure(); refresh(); if(o.ms.every(x => x.got)) ofSay('3つ ぜんぶ たっせい！ ボーナスも もらおう！'); });
 }
 function getBonus(btn){
@@ -4140,7 +4140,7 @@ function castleCanvas(st, keys){
 window.oshiroCastleCanvas = castleCanvas;
 function P(){ const o = O(); o.parts = o.parts || {}; PARTS.forEach(p => { o.parts[p.k] = o.parts[p.k] || 0; }); o.stage = o.stage || 1; return o.parts; }
 const lvOf = k => P()[k] || 0;
-const costOf = k => lvOf(k) >= 3 ? 0 : (typeof roleOf === 'function' && roleOf('carpenter') ? Math.floor(COST[lvOf(k)] * .9) : COST[lvOf(k)]);
+const costOf = k => lvOf(k) >= 3 ? 0 : (typeof roleOf === 'function' && roleOf('carpenter') ? Math.floor(COST[lvOf(k)] * (1 - rPct('carpenter') / 100)) : COST[lvOf(k)]);
 const townLv = () => { try{ return (save.town.lv || 0) + 1; }catch(e){ return 1; } };
 function castleStage(){
   const ls = PARTS.map(p => lvOf(p.k)), mn = Math.min(...ls);
@@ -4755,7 +4755,7 @@ function mpAction(v, w, b){
      台座の かず：木の とりで 2／石の おしろ 3／きらきらの おしろ 4
    ===================================================================== */
 const GY = {open:false, mode:null, playing:false, raf:0, srcs:[], t0:0, end:0, fw:[], parts:[], notesT:0};
-const GZ = {open:false, sel:null, hv:null};
+const GZ = {open:false, sel:null, hv:null, role:null};
 const css5 = document.createElement('style');
 css5.textContent = `
 .osGy{background:#1E1B3A}.osGz{background:#E9B9AE}
@@ -4832,6 +4832,13 @@ css5.textContent = `
 .gzCard small{font-size:10px;font-weight:900;color:#F2A600;letter-spacing:-1px}
 .gzCard em{font-style:normal;font-size:9px;font-weight:900;color:#B0476E}
 .gzEmpty{font-weight:800;font-size:13px;color:#8A7560;text-align:center;padding:10px}
+.gzTag .lv{font-style:normal;font-size:10px;background:#F2A600;color:#fff;border-radius:999px;padding:0 5px;margin-left:2px}
+.gzRole{display:flex;flex-direction:column;align-items:center;gap:2px}.gzRole b{font-size:15px;color:#8A3D5C}
+.gzRole small.nx{color:#B0476E}
+.gzRB{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+#osr .gzLv{height:38px;padding:0 14px;border-radius:999px;background:linear-gradient(180deg,#FFE27A,#F6B93B);border:2px solid #fff;color:#6B4A00;font-weight:900;font-size:14px;box-shadow:0 3px 0 #C98A12;gap:2px}
+#osr .gzLv.ng{background:#D9D2C6;color:#fff;box-shadow:0 3px 0 #B5AC9E}
+#osr .gzOff{height:38px;padding:0 12px;border-radius:999px;background:#fff;border:2px solid #E7C27A;color:#6B4423;font-weight:900;font-size:13px}
 `;
 document.head.appendChild(css5);
 
@@ -4846,33 +4853,97 @@ function wkStreak(){
   return n;
 }
 const GYEV = [
-  {k:'concert', n:'音楽会',   ic:'violin', d:'オーケストラの えんそう', can:() => true, need:'いつでも', per:'day', rw:5},
-  {k:'hanabi',  n:'花火大会', ic:'gyouji', d:'おふれ ぜんぶを 3週 れんぞく', can:() => wkStreak() >= 3, need:() => `おふれ ぜんぶ たっせい ${wkStreak()}/3週`, per:'week', rw:10},
-  {k:'parade',  n:'パレード', ic:'party', d:'じゅうみん 8人いじょう', can:() => resList().length >= 8, need:() => `じゅうみん ${resList().length}/8人`, per:'day', rw:5}
+  {k:'concert', n:'音楽会',   ic:'violin', d:'ピアノの リズムゲーム', can:() => true, need:'いつでも', lim:3},
+  {k:'hanabi',  n:'花火大会', ic:'gyouji', d:'タイミングで コインが ふえる', can:() => wkStreak() >= 3, need:() => `おふれ ぜんぶ たっせい ${wkStreak()}/3週`, lim:2},
+  {k:'parade',  n:'パレード', ic:'party', d:'リズムに あわせて 行進', can:() => resList().length >= 8, need:() => `じゅうみん ${resList().length}/8人`, lim:3}
 ];
-const gyGot = ev => { const g = GD().gy[ev.k]; return ev.per === 'week' ? g === weekKey() : g === dayKey(); };
-const gyBadge = () => GYEV.some(ev => ev.can() && !gyGot(ev));
-/* ---------- やくしょく ---------- */
+const gyBadge = () => GYEV.some(ev => ev.can() && gyLeft(ev) > 0);
+/* ---------- やくしょく（v10.7：レベル 1〜5・のうりょくアップ） ---------- */
+const RLV_MAX = 5, RLV_PCT = [0, 10, 15, 20, 30, 40], RLV_COST = [0, 0, 30, 60, 100, 160], CHEF_COIN = [0, 3, 4, 5, 7, 10];
 const ROLES = [
-  {k:'minister',  n:'大臣',   ic:'ofure', d:'おふれの ごほうび +10%'},
-  {k:'carpenter', n:'大工',   ic:'zouchiku', d:'ぞうちくの コイン −10%'},
-  {k:'band',      n:'楽団長', ic:'baton', d:'おんがくの ポイント +10%'},
-  {k:'chef',      n:'料理長', ic:'pan', d:'1日1かい おしろで コイン +3'}
+  {k:'minister',  n:'大臣',   ic:'ofure',    ab:'know', d:p => `おふれの ごほうび +${p}%`},
+  {k:'carpenter', n:'大工',   ic:'zouchiku', ab:'work', d:p => `ぞうちくの コイン −${p}%`},
+  {k:'band',      n:'楽団長', ic:'baton',    ab:'pop',  d:p => `おんがくの ポイント +${p}%`},
+  {k:'chef',      n:'料理長', ic:'pan',      ab:'biz',  d:(p, L) => `1日1かい おしろで コイン +${CHEF_COIN[L]}`}
 ];
+const rLv = k => clamp((GD().rlv || {})[k] || 1, 1, RLV_MAX);
+const rPct = k => RLV_PCT[rLv(k)];
+const rDesc = R0 => R0.d(rPct(R0.k), rLv(R0.k));
+const abName = id => { const a = ABILITIES.find(x => x.id === id); return a ? a.n : id; };
+const rAbTxt = R0 => `${abName(R0.ab)} +${rPct(R0.k)}%・ほかの 能力 +${Math.round(rPct(R0.k) / 2)}%`;
 const slotN = () => [0, 2, 3, 4][castleStage()] || 2;
 function roleOf(k){ const o = GD(), i = ROLES.findIndex(r => r.k === k); if(i < 0 || i >= slotN()) return null; const r = resById(o.roles[k]); return r || null; }
+function roleKeyOf(r){ if(!r) return null; const o = GD(); const R0 = ROLES.find((x, i) => i < slotN() && o.roles[x.k] === r.id); return R0 || null; }
+/* 役職の 能力ボーナス（%）：その 役職の 能力は 全部、ほかは 半分 */
+function roleAbPct(r, ab){ const R0 = roleKeyOf(r); if(!R0) return 0; const p = rPct(R0.k); return R0.ab === ab ? p : p / 2; }
 const gzBadge = () => resList().length > 0 && ROLES.slice(0, slotN()).some(r => !roleOf(r.k));
-/* 楽団長：おんがくの ポイント +10% */
+/* 楽団長：おんがくの ポイント +% */
 const _apGz = addPoints;
 addPoints = function(pt, reason){
-  try{ if(pt > 0 && /おんがく/.test(String(reason || '')) && roleOf('band')){ const ex = Math.max(1, Math.round(pt * .1)); pt += ex; reason = `${reason}（楽団長 +${ex}）`; } }catch(e){}
+  try{ if(pt > 0 && /おんがく/.test(String(reason || '')) && roleOf('band')){ const ex = Math.max(1, Math.round(pt * rPct('band') / 100)); pt += ex; reason = `${reason}（楽団長 +${ex}）`; } }catch(e){}
   const a = Array.from(arguments); a[0] = pt; a[1] = reason; return _apGz.apply(this, a);
 };
 /* 料理長：1日1かい */
 function chefDaily(){
-  try{ const o = GD(), r = roleOf('chef'); if(!r || o.chefDay === dayKey()) return; o.chefDay = dayKey(); persist();
-    setTimeout(() => { addCoin(3, '料理長の おべんとう'); refresh(); otoast('pan', `料理長の ${r.name}が おべんとうを くれたよ！ おしろコイン +3`); }, 900); }catch(e){}
+  try{ const o = GD(), r = roleOf('chef'); if(!r || o.chefDay === dayKey()) return; o.chefDay = dayKey(); persist(); const c = CHEF_COIN[rLv('chef')];
+    setTimeout(() => { addCoin(c, '料理長の おべんとう'); refresh(); otoast('pan', `料理長の ${r.name}が おべんとうを くれたよ！ おしろコイン +${c}`); }, 900); }catch(e){}
 }
+/* まちの 能力の ごうけいに 役職ボーナスを たす（まちの 発展度・うりあげ などに はんえい） */
+try{
+  const _tt107 = townTotals;
+  townTotals = function(){
+    const tot = _tt107.apply(this, arguments);
+    try{ const o = GD(); ROLES.forEach((R0, i) => { if(i >= slotN()) return; const r = resById(o.roles[R0.k]); if(!r) return;
+      ABILITIES.forEach(a => { tot[a.id] += effAb(r, a.id) * roleAbPct(r, a.id) / 100; }); }); }catch(e){}
+    return tot;
+  };
+}catch(e){ console.warn('role totals', e); }
+/* じゅうみんの 能力バー：役職ボーナスを 色を かえて 見せる */
+try{
+  const _ab107 = abBars;
+  abBars = function(r){
+    const h = _ab107.apply(this, arguments);
+    try{
+      const R0 = roleKeyOf(r);
+      if(R0){
+        const mx = abCap(r);
+        const rows = ABILITIES.map(a => { const v = effAb(r, a.id), p = roleAbPct(r, a.id), add = v * p / 100;
+          return `<div class="abRow abRole"><span>${a.i} ${a.n}</span><div class="abBar"><i style="width:${clamp(v / mx * 100, 4, 100)}%"></i><em style="width:${clamp(add / mx * 100, 0, 100)}%"></em></div><b>${Math.round((v + add) * 10) / 10}<small>+${Math.round(add * 10) / 10}</small></b></div>`; }).join('');
+        return rows + `<div class="abRoleNote">${IC(R0.ic)}${R0.n} Lv${rLv(R0.k)}：${rAbTxt(R0)}</div>`;
+      }
+      if(SP(r.sp).human) return h + hanaNote();
+    }catch(e){}
+    return h;
+  };
+}catch(e){ console.warn('role bars', e); }
+(function(){ const c = document.createElement('style'); c.textContent = `
+.abRow.abRole .abBar{position:relative;display:flex}.abRow.abRole .abBar i{flex:none}.abRow.abRole .abBar em{display:block;height:100%;background:linear-gradient(90deg,#FFD24A,#F28F1C);flex:none}
+.abRow.abRole b{white-space:nowrap}.abRow.abRole b small{font-size:9px;color:#F28F1C;margin-left:1px}
+.abRoleNote,.hanaNote{margin:6px auto 0;max-width:360px;font-size:12px;font-weight:900;color:#8A5A00;background:#FFF6D6;border:2px solid #F2C94C;border-radius:12px;padding:4px 10px;text-align:left;line-height:1.5}
+.hanaNote{color:#B0476E;background:#FFF0F5;border-color:#FFB3C8}`; document.head.appendChild(c); })();
+
+/* =====================================================================
+   ハナの 能力：まちの 発展度で のびる（ハナは じょうげん 200）
+   ===================================================================== */
+const HANA_BASE = {work:5, biz:5, know:6, pop:6, drive:4}, HANA_CAP = 200, HANA_TOP = 10000;
+try{ AB_CAP[5] = Math.max(AB_CAP[5] || 0, HANA_CAP); }catch(e){}
+const hanaBonus = dev => Math.floor((HANA_CAP - 10) * Math.sqrt(clamp(dev, 0, HANA_TOP) / HANA_TOP));
+function hanaNote(){
+  let dev = 0; try{ dev = townCalc().dev; }catch(e){}
+  const b = hanaBonus(dev), nx = b >= HANA_CAP - 10 ? 0 : Math.ceil(Math.pow((b + 1) / (HANA_CAP - 10), 2) * HANA_TOP);
+  return `<div class="hanaNote">${IC('heart')}ハナの 能力は まちの 発展度で のびるよ（いま 発展度 ${dev}：+${b}）${nx ? `<br>つぎは 発展度 ${nx}で +1` : '<br>さいこうまで のびたよ！'}</div>`;
+}
+function hanaGrow(quiet){
+  try{
+    const g = girl(); if(!g) return 0; const dev = townCalc().dev, b = hanaBonus(dev); let up = 0;
+    g.ab = g.ab || {};
+    Object.keys(HANA_BASE).forEach(k => { const want = Math.min(HANA_CAP, HANA_BASE[k] + b); if((g.ab[k] || 0) < want){ up = Math.max(up, want - (g.ab[k] || 0)); g.ab[k] = want; } });
+    if(up){ persist(); if(!quiet) otoast('heart', `まちが はってんして ハナの 能力が あがったよ！（+${up}）`); }
+    return up;
+  }catch(e){ return 0; }
+}
+try{ const _sh107 = show; show = function(name){ const o = _sh107.apply(this, arguments); if(name === 'town' || name === 'residents' || name === 'home') setTimeout(() => hanaGrow(false), 600); return o; }; }catch(e){}
+setTimeout(() => hanaGrow(true), 1500);
 
 /* =====================================================================
    オーケストラ（Web Audio）
@@ -4930,15 +5001,16 @@ function chordPcs(ch){ const r = (NN[ch[0]] + (ch[1] === 'b' ? -1 : ch[1] === '#
 const voice = (pcs, lo) => pcs.map(pc => { let m = lo - (lo % 12) + pc; if(m < lo) m += 12; return m; }).sort((a, b) => a - b);
 const SEC = [{b:0, ic:'trumpet', n:'ファンファーレ', who:'トランペット・ホルン・ティンパニ', x:[.5, .62]}, {b:4, ic:'violin', n:'おまつりの テーマ', who:'バイオリン・フルート', x:[.32, .62]},
   {b:12, ic:'horn', n:'ホルンと チェロの うた', who:'ホルン・チェロ', x:[.82, .55]}, {b:20, ic:'gyouji', n:'みんなで フィナーレ', who:'ぜんいん！', x:[.5, 1.1]}];
-async function preload(){
+async function preload(mode){
   const s = new Set(), add = (k, m) => s.add(k + '|' + (typeof m === 'string' ? m : nearS(k, m)));
+  if(mode === 'concert') MEL.flat().forEach(([p]) => { const m = PN(p); if(m != null) add('pf', m); });
   MEL.flat().forEach(([p]) => { const m = PN(p); if(m == null) return; ['tp', 'vn'].forEach(k => add(k, m)); add('fl', m + 12); add('hn', m - 12); add('vc', m - 12); add('gl', m + 24); });
   BAS.flat().forEach(([p]) => { const m = PN(p); if(m == null) return; add('tu', m); add('cb', m); add('vc', m + 12); add('tb', m + 12); });
   CHD.flat().forEach(c => { voice(chordPcs(c), 53).forEach(m => add('hn', m)); voice(chordPcs(c), 60).forEach(m => add('cl', m)); voice(chordPcs(c), 67).forEach(m => add('vn', m)); });
   SAMP.ti.forEach(m => add('ti', m)); DRUM.forEach(d => s.add('sn|' + d));
   await Promise.all([...s].map(x => { const [k, m] = x.split('|'); return load(k, isNaN(+m) ? m : +m); }));
 }
-function schedule(t0){
+function schedule(t0, opt = {}){
   const q = 60 / 112, B = 4 * q;
   const tiNear = m => SAMP.ti.reduce((a, c) => Math.abs(c - m) < Math.abs(a - m) ? c : a);
   for(let b = 0; b < 24; b++){
@@ -4947,7 +5019,8 @@ function schedule(t0){
     let t = T;
     MEL[b].forEach(([p, d]) => { const m = PN(p), du = d * q * .95;
       if(m != null){
-        if(sec === 0) note('tp', m, t, du, .7);
+        if(opt.noMel){ /* 音楽会：メロディは ハナ（プレイヤー）が ピアノで ひく */ }
+        else if(sec === 0) note('tp', m, t, du, .7);
         if(sec === 1){ note('vn', m, t, du, .55, {att:.03}); note('fl', m + 12, t, du, .25, {att:.02}); }
         if(sec === 2){ note('hn', m - 12, t, du, .55, {att:.04}); note('vc', m - 12, t, du, .3, {att:.05}); }
         if(sec === 3){ note('tp', m, t, du, .55); note('vn', m, t, du, .45); note('fl', m + 12, t, du, .25); if(d >= 1) note('gl', m + 24, t, .3, .16, {ring:1}); }
@@ -5005,9 +5078,9 @@ function openGy(){
 }
 function gyRender(){
   const m = R.el.querySelector('.osGy .gyMenu'); if(!m) return;
-  m.innerHTML = GYEV.map(ev => { const can = ev.can(), got = gyGot(ev), need = typeof ev.need === 'function' ? ev.need() : ev.need;
-    return `<button class="gyCard ${can ? '' : 'lock'} ${got ? 'done' : ''}" data-o="gy:${ev.k}"><i>${IC(ev.ic, 'gyBig')}</i><b>${ev.n}</b><small>${can ? ev.d : need}</small>
-      <em>${!can ? IC('lock') + 'まだ' : got ? (ev.per === 'week' ? 'こんしゅうは もらったよ' : 'きょうは もらったよ') : `ごほうび コイン +${ev.rw}`}</em></button>`; }).join('');
+  m.innerHTML = GYEV.map(ev => { const can = ev.can(), left = gyLeft(ev), need = typeof ev.need === 'function' ? ev.need() : ev.need;
+    return `<button class="gyCard ${can && left > 0 ? '' : 'lock'} ${can && left <= 0 ? 'done' : ''}" data-o="gy:${ev.k}"><i>${IC(ev.ic, 'gyBig')}</i><b>${ev.n}</b><small>${can ? ev.d : need}</small>
+      <em>${!can ? IC('lock') + 'まだ' : left > 0 ? `きょう あと ${left}かい` : 'きょうは おしまい'}</em></button>`; }).join('');
 }
 function gyPlace(){
   const pg = R.el.querySelector('.osGy'); if(!pg || !GY.open) return;
@@ -5015,91 +5088,306 @@ function gyPlace(){
   const box = pg.querySelector('.gyBox'), img = box.querySelector('.bgi');
   if(!img.src.includes(key)){ img.src = `${OI}${key}.webp`; pg.querySelector('.gyBg').style.backgroundImage = `url(${OI}${key}.webp)`; }
   const sz = L ? fitBox(box, key, {x:0, y:0, w:W, h:Hh}) : fitBox(box, key, {x:0, y:64, w:W, h:Hh - 64, top:1});
-  const cv = box.querySelector('.gyFw'), dpr = Math.min(2, devicePixelRatio || 1); cv.width = sz.w * dpr; cv.height = sz.h * dpr;
-  const par = box.querySelector('.gyParade'); par.style.bottom = '3%'; par.style.height = (sz.h * (L ? .2 : .16)) + 'px';
+  const cv = box.querySelector('.gyFw'), dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(sz.w * dpr); cv.height = Math.round(sz.h * dpr);
+  const par = box.querySelector('.gyParade'); par.style.bottom = L ? '4%' : '3%'; par.style.height = (sz.h * (L ? .2 : .11)) + 'px';
   const m = pg.querySelector('.gyMenu'), say = pg.querySelector('.gySay');
   m.style.display = GY.playing ? 'none' : ''; say.style.display = GY.playing ? 'none' : '';
   if(L){ Object.assign(m.style, {left:'50%', transform:'translateX(-50%)', right:'auto', bottom:'max(16px, env(safe-area-inset-bottom))', top:'auto', gridTemplateColumns:'repeat(3, 190px)'});
     Object.assign(say.style, {left:'50%', transform:'translateX(-50%)', top:'auto', bottom:'calc(max(16px, env(safe-area-inset-bottom)) + 150px)', right:'auto', maxWidth:'560px'}); }
   else { Object.assign(m.style, {left:'10px', right:'10px', transform:'none', bottom:'max(12px, env(safe-area-inset-bottom))', top:'auto', gridTemplateColumns:'repeat(3, minmax(0,1fr))'});
     Object.assign(say.style, {left:'12px', right:'12px', transform:'none', top:'auto', bottom:'calc(max(12px, env(safe-area-inset-bottom)) + 150px)', maxWidth:'none'}); }
+  if(GY.game) GY.game.layout && GY.game.layout();
 }
+
+/* =====================================================================
+   v10.7：ぎょうじの ミニゲーム
+   ・音楽会：ピアノの リズムゲーム（おちてくる おんぷを タッチ → ハナが メロディを ひく）
+   ・花火大会：花火が いちばん 上に ついた ときに タッチ → タイミングで コインの かず が かわる
+   ・パレード：リズムに あわせて タッチ（ハナが せんとう）
+   ・1日に ひらける かいすう：音楽会 3／花火大会 2／パレード 3
+   ===================================================================== */
+const Q = 60 / 112, BAR = 4 * Q;
+const JUD = [['perfect', .08, 100, 'パーフェクト！', '#FF5A8A'], ['great', .15, 70, 'グレート！', '#F2A600'], ['good', .24, 40, 'グッド', '#36A85C']];
+const judgeOf = dt => { const a = Math.abs(dt); for(const j of JUD) if(a <= j[1]) return j; return null; };
+const rankOf = acc => acc >= .9 ? 'S' : acc >= .75 ? 'A' : acc >= .5 ? 'B' : 'C';
+const css6 = document.createElement('style');
+css6.textContent = `
+.gyFw.play{pointer-events:auto;touch-action:none;cursor:pointer}
+.gmHud{position:absolute;z-index:7;right:2%;top:calc(3% + 56px);display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none}
+.gmHud b{height:30px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.95);color:#6B4423;font-weight:900;font-size:15px;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.gmHud .cb{background:linear-gradient(180deg,#FFE27A,#F6B93B);color:#6B4A00}
+.gmJ{position:absolute;z-index:8;left:50%;transform:translate(-50%,-50%);font-weight:900;font-size:clamp(20px,4vw,34px);pointer-events:none;text-shadow:0 2px 0 #fff,0 0 10px rgba(255,255,255,.9);white-space:nowrap;animation:gmJ .55s ease-out forwards}
+@keyframes gmJ{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+.gmHana{position:absolute;z-index:6;left:1%;bottom:2%;height:var(--hh,24%);pointer-events:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+.gmHana .rpic{height:100%}.gmHana .rpic>img.rb{height:100%;width:auto}
+.gmHana.play .rpic{animation:gyHop .3s ease-in-out infinite alternate}
+.gmCount{position:absolute;z-index:9;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.gmCount b{font-size:clamp(48px,12vw,110px);font-weight:900;color:#fff;text-shadow:0 4px 0 #E9557F,0 0 20px rgba(255,255,255,.8);animation:gmCnt .9s ease-out forwards}
+@keyframes gmCnt{0%{opacity:0;transform:scale(2)}30%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.8)}}
+.gmHelp{position:absolute;z-index:8;left:50%;bottom:6%;transform:translateX(-50%);max-width:90%;padding:8px 14px;border-radius:16px;background:rgba(255,255,255,.95);border:3px solid #F2C94C;font-weight:900;font-size:14px;color:#6B4423;text-align:center;line-height:1.5;pointer-events:none;transition:opacity .6s}
+.gyWalker{position:absolute;bottom:0;transform:translateX(-160%);transition:transform 1.6s ease-out;animation:none!important}
+.gyWalker.in{transform:translateX(var(--x))}
+.gyWalker.yay .rpic{animation:gmYay .35s ease-out}
+.gyWalker.oops .rpic{animation:gmOops .4s ease-out}
+@keyframes gmYay{40%{transform:translateY(-35%) rotate(-8deg)}}
+@keyframes gmOops{30%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}}
+.gyWalker.hana .rpic{filter:drop-shadow(0 0 8px rgba(255,220,120,.95))}
+.gyWalker .wtag{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:900;color:#fff;background:#E9557F;border-radius:999px;padding:0 6px;white-space:nowrap}
+.gyRank{font-size:64px;font-weight:900;line-height:1;margin:2px 0;color:#E9557F;text-shadow:0 3px 0 #FFE27A}
+.gyRank.S{color:#F2A600;text-shadow:0 3px 0 #FFF1B8,0 0 16px rgba(255,200,40,.8)}
+.gyStat{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:4px 0}
+.gyStat span{font-size:12px;font-weight:900;border-radius:999px;padding:2px 8px;background:#F6EFE3;color:#6B4423}
+`;
+document.head.appendChild(css6);
+SAMP.pf = [48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84];
+
+/* ---------- きょうの かいすう ---------- */
+function gyCnt(){ const o = GD(); if(o.gyDay !== dayKey()){ o.gyDay = dayKey(); o.gyN = {}; } o.gyN = o.gyN || {}; return o.gyN; }
+const gyLeft = ev => Math.max(0, ev.lim - (gyCnt()[ev.k] || 0));
+
+/* ---------- 譜面 ---------- */
+function melNotes(){
+  const L = []; let beat = 0;
+  MEL.forEach((bar, b) => bar.forEach(([p, d]) => { const m = PN(p); if(m != null) L.push({t:beat * Q, m, d, bar:b}); beat += d; }));
+  const ps = [...new Set(L.map(n => n.m))].sort((a, b) => a - b);
+  L.forEach(n => { n.lane = Math.min(4, Math.floor(ps.indexOf(n.m) * 5 / ps.length)); });
+  return L;
+}
+function hanabiChart(){
+  const L = [];
+  for(let b = 2; b < 24; b++){ L.push({t:b * BAR}); if(b >= 12 && b % 2 === 0) L.push({t:b * BAR + 2 * Q}); if(b >= 20 && b < 23) L.push({t:b * BAR + 2 * Q}); }
+  const seen = new Set(); return L.filter(n => { const k = n.t.toFixed(3); if(seen.has(k)) return false; seen.add(k); return true; })
+    .map((n, i) => Object.assign(n, {x:.14 + ((i * 37) % 72) / 100, y:.12 + ((i * 53) % 26) / 100, hue:(i * 47) % 360}));
+}
+function paradeChart(){
+  const L = [];
+  for(let b = 2; b < 24; b++){
+    const beats = b < 12 ? [0, 2] : b < 20 ? [0, 1, 2] : [0, 1, 2, 3];
+    beats.forEach(k => L.push({t:b * BAR + k * Q, big:k === 0}));
+  }
+  return L;
+}
+
+/* ---------- ゲーム本体 ---------- */
 async function gyStart(k){
   const ev = GYEV.find(e => e.k === k); if(!ev) return;
   const pg = R.el.querySelector('.osGy'), sayT = pg.querySelector('.gySay span');
   if(!ev.can()){ sayT.textContent = k === 'hanabi' ? `花火大会は、おふれを ぜんぶ たっせいする 週を 3週 つづけると ひらけるよ（いま ${wkStreak()}週）` : `パレードは じゅうみんが 8人 いると ひらけるよ（いま ${resList().length}人）`; try{ sound('ng'); }catch(e){} return; }
+  if(gyLeft(ev) <= 0){ sayT.textContent = `${ev.n}は きょうは もう おしまい。また あした あそぼうね！`; try{ sound('ng'); }catch(e){} return; }
   if(!ac()){ sayT.textContent = 'この きかいでは 音が ならせないみたい…'; return; }
+  gyCnt()[k] = (gyCnt()[k] || 0) + 1; persist();
   GY.mode = k; GY.playing = true; gyPlace();
   const box = pg.querySelector('.gyBox');
-  box.insertAdjacentHTML('beforeend', `<div class="gyCap">${IC('hourglass')}がくふを くばっています…</div><div class="gyBar"><i></i></div><i class="gySpot"></i>`);
+  box.insertAdjacentHTML('beforeend', `<div class="gyCap">${IC('hourglass')}がくふを くばっています…</div><div class="gyBar"><i></i></div>
+    <div class="gmHud"><b class="sc">0</b><b class="cb" style="display:none"></b></div>
+    <div class="gmHelp">${k === 'concert' ? 'おちてくる おんぷが せんに かさなったら、その れつを タッチ！' : k === 'hanabi' ? '花火が いちばん 上で ひかったら タッチ！ ぴったりだと コインが いっぱい！' : 'たいこが まるに かさなったら タッチ！ ハナと いっしょに 行進しよう'}</div>`);
   pg.insertAdjacentHTML('beforeend', `<button class="gyStop" data-o="gy:stop">■ とめる</button>`);
   GY.parts = resList().slice().sort(() => Math.random() - .5).slice(0, 6);
-  try{ await preload(); }catch(e){}
+  try{ await preload(k); }catch(e){}
   if(!GY.playing) return;
-  GY.t0 = AC.currentTime + .25; GY.end = schedule(GY.t0); GY.sec = -1; GY.fw = []; GY.lastFw = 0;
-  if(k === 'parade') gyParade(box);
+  GY.t0 = AC.currentTime + 3.2; GY.end = schedule(GY.t0, {noMel:k === 'concert'}); GY.sec = -1; GY.fw = []; GY.lastFw = 0;
+  [3, 2, 1].forEach((n, i) => setTimeout(() => { if(GY.playing && GY.mode === k){ const c = document.createElement('div'); c.className = 'gmCount'; c.innerHTML = `<b>${n}</b>`; box.appendChild(c); setTimeout(() => c.remove(), 950); try{ note('sn', 'sn_p1', AC.currentTime, .2, .25, {ring:1}); }catch(e){} } }, 200 + i * 1000));
+  setTimeout(() => { const h = box.querySelector('.gmHelp'); if(h) h.style.opacity = 0; }, 5200);
+  GY.game = k === 'concert' ? Concert(box) : k === 'hanabi' ? Hanabi(box) : Parade(box);
   gyLoop();
 }
-function gyParade(box){
-  const par = box.querySelector('.gyParade'), L = GY.parts.length ? GY.parts : resList().slice(0, 8), W = box.clientWidth;
-  const ems = ['flag', 'balloon', 'drum', 'trumpet', 'party', 'star', 'ribbon', 'note'];
-  par.innerHTML = L.concat(L).slice(0, 10).map((r, i) => `<div class="gyWalker" style="--d:${16}s;--w:${W}px;height:100%;animation-delay:${i * 1.6}s;left:0">${resPic(r)}<i>${IC(ems[i % ems.length])}</i></div>`).join('');
+/* きょうつう：てんすう */
+function Score(n){
+  const S = {n, pts:0, combo:0, max:0, cnt:{perfect:0, great:0, good:0, miss:0}};
+  S.add = (j, box, yPct) => {
+    if(j){ S.pts += j[2]; S.combo++; S.max = Math.max(S.max, S.combo); S.cnt[j[0]]++; } else { S.combo = 0; S.cnt.miss++; }
+    const hud = box.querySelector('.gmHud'); if(hud){ hud.querySelector('.sc').textContent = Math.round(S.pts); const cb = hud.querySelector('.cb'); cb.style.display = S.combo >= 3 ? '' : 'none'; cb.textContent = `${S.combo} コンボ`; }
+    const e = document.createElement('i'); e.className = 'gmJ'; e.style.top = (yPct || 70) + '%'; e.style.color = j ? j[4] : '#8A7B6C'; e.textContent = j ? j[3] : 'ミス…'; box.appendChild(e); setTimeout(() => e.remove(), 600);
+  };
+  S.acc = () => S.n ? clamp(S.pts / (S.n * 100), 0, 1) : 0;
+  return S;
 }
-function fwBurst(cv, big){
-  const x = cv.width * (.15 + Math.random() * .7), y = cv.height * (.08 + Math.random() * .3), hue = Math.floor(Math.random() * 360), n = big ? 70 : 44;
-  for(let i = 0; i < n; i++){ const a = i / n * TAU, s = (big ? 3.2 : 2.4) * (cv.width / 900) * (.6 + Math.random() * .5);
-    GY.fw.push({x, y, vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:1, hue:(hue + Math.random() * 40) % 360}); }
+function hanaPic(box, cls){
+  let g = null; try{ g = girl(); }catch(e){}
+  const d = document.createElement('div'); d.className = 'gmHana ' + (cls || ''); d.innerHTML = g ? resPic(g) : `<img src="${OI}hime_normal_0.webp" alt="" style="height:100%">`; box.appendChild(d); return d;
+}
+/* ---------- 音楽会：ピアノ ---------- */
+function Concert(box){
+  const cv = box.querySelector('.gyFw'), x = cv.getContext('2d'), notes = melNotes(), S = Score(notes.length), FALL = 1.7, LN = 5;
+  const COLS = ['#FF7E9D', '#FFB347', '#F2C94C', '#6CCB8A', '#6FB2F2'], NAMES = ['ド', 'レ', 'ミ', 'ソ', 'ラ'];
+  const hana = hanaPic(box, 'play'); hana.style.setProperty('--hh', isL() ? '30%' : '15%'); if(!isL()){ hana.style.bottom = 'auto'; hana.style.top = '9%'; hana.style.left = '1%'; }
+  const flash = new Array(LN).fill(-9);
+  cv.classList.add('play');
+  const geo = () => { const W = cv.width, H = cv.height, L = isL(); const w = W * (L ? .5 : .84), x0 = (W - w) / 2; return {W, H, x0, w, lw:w / LN, hy:H * (L ? .78 : .8), ky:H * (L ? .8 : .82), kh:H * (L ? .16 : .14)}; };
+  cv.onpointerdown = e => {
+    if(!GY.playing) return; const r = cv.getBoundingClientRect(), g = geo(), px = (e.clientX - r.left) / r.width * g.W, py = (e.clientY - r.top) / r.height * g.H;
+    if(px < g.x0 || px > g.x0 + g.w || py < g.H * .25) return;
+    const lane = Math.floor((px - g.x0) / g.lw), now = AC.currentTime - GY.t0; flash[lane] = now;
+    let best = null; notes.forEach(n => { if(n.done || n.lane !== lane) return; const dt = now - n.t; if(Math.abs(dt) < .3 && (!best || Math.abs(dt) < Math.abs(now - best.t))) best = n; });
+    if(!best){ return; }
+    const j = judgeOf(now - best.t); if(!j) return;
+    best.done = j[0]; S.add(j, box, 62);
+    note('pf', best.m, AC.currentTime, Math.max(.3, best.d * Q), .75, {ring:1});
+  };
+  return {S, layout(){}, draw(now){
+    const g = geo(); x.clearRect(0, 0, g.W, g.H);
+    x.fillStyle = 'rgba(30,20,50,.55)'; x.fillRect(g.x0, 0, g.w, g.ky);
+    for(let i = 0; i < LN; i++){ const lx = g.x0 + i * g.lw; x.fillStyle = i % 2 ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.08)'; x.fillRect(lx, 0, g.lw, g.ky);
+      const f = clamp(1 - (now - flash[i]) / .25, 0, 1); if(f > 0){ const gr = x.createLinearGradient(0, g.hy, 0, g.hy - g.H * .4); gr.addColorStop(0, `rgba(255,255,255,${.45 * f})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(lx, g.hy - g.H * .4, g.lw, g.H * .4); } }
+    x.strokeStyle = '#FFE27A'; x.lineWidth = Math.max(3, g.H * .008); x.beginPath(); x.moveTo(g.x0, g.hy); x.lineTo(g.x0 + g.w, g.hy); x.stroke();
+    /* おんぷ */
+    notes.forEach(n => {
+      if(n.done && n.done !== 'miss' && now - n.t > .15) return;
+      const dt = n.t - now;
+      if(!n.done && dt < -.24){ n.done = 'miss'; S.add(null, box, 62); }
+      if(n.done === 'miss' || dt > FALL) return;
+      if(g.hy - (dt / FALL) * g.hy > g.ky + 4) return;
+      const y = g.hy - (dt / FALL) * g.hy, nx = g.x0 + n.lane * g.lw + g.lw / 2, nw = g.lw * .78, nh = Math.max(16, g.H * .045);
+      const hit = n.done && n.done !== 'miss';
+      x.globalAlpha = hit ? clamp(1 - (now - n.t) / .15, 0, 1) : 1;
+      x.fillStyle = COLS[n.lane]; x.strokeStyle = '#fff'; x.lineWidth = 3; rr(x, nx - nw / 2, y - nh / 2, nw, nh, nh / 2); x.fill(); x.stroke();
+      x.fillStyle = '#fff'; x.font = `900 ${Math.round(nh * .8)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('♪', nx, y + 1);
+      x.globalAlpha = 1;
+    });
+    /* けんばん */
+    for(let i = 0; i < LN; i++){ const lx = g.x0 + i * g.lw + 2, f = clamp(1 - (now - flash[i]) / .2, 0, 1);
+      x.fillStyle = f > 0 ? '#FFF6D6' : '#fff'; x.strokeStyle = '#6B4423'; x.lineWidth = 2; rr(x, lx, g.ky, g.lw - 4, g.kh, 10); x.fill(); x.stroke();
+      x.fillStyle = COLS[i]; rr(x, lx + 4, g.ky + g.kh - 12, g.lw - 12, 8, 4); x.fill();
+      x.fillStyle = '#6B4423'; x.font = `900 ${Math.round(g.kh * .3)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(NAMES[i], lx + (g.lw - 4) / 2, g.ky + g.kh * .45); }
+  }, end(){ cv.classList.remove('play'); cv.onpointerdown = null; hana.remove(); }};
+}
+function rr(x, a, b, w, h, r){ x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+/* ---------- 花火大会 ---------- */
+function Hanabi(box){
+  const cv = box.querySelector('.gyFw'), x = cv.getContext('2d'), R0 = hanabiChart(), S = Score(R0.length), RISE = 1.35;
+  const hana = hanaPic(box); hana.style.setProperty('--hh', isL() ? '26%' : '16%');
+  cv.classList.add('play'); GY.coins = 0;
+  const burst = (r, j) => {
+    const W = cv.width, H = cv.height, big = j ? (j[0] === 'perfect' ? 2 : j[0] === 'great' ? 1.4 : 1) : .45, n = Math.round(30 + 50 * big);
+    for(let i = 0; i < n; i++){ const a = i / n * TAU, s = big * 2.6 * (W / 900) * (.55 + Math.random() * .5);
+      GY.fw.push({x:r.x * W, y:r.y * H, vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:1, hue:(r.hue + Math.random() * 40) % 360, sz:big}); }
+    if(j && j[0] === 'perfect') for(let i = 0; i < 24; i++){ const a = Math.random() * TAU, s = 1.2 * (W / 900) * Math.random(); GY.fw.push({x:r.x * W, y:r.y * H, vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:1.3, hue:50, sz:.6}); }
+  };
+  cv.onpointerdown = () => {
+    if(!GY.playing) return; const now = AC.currentTime - GY.t0;
+    let best = null; R0.forEach(r => { if(r.done) return; const dt = now - r.t; if(dt > -.45 && dt < .45 && (!best || Math.abs(dt) < Math.abs(now - best.t))) best = r; });
+    if(!best) return;
+    const j0 = judgeOf(now - best.t), j = j0 || (Math.abs(now - best.t) < .4 ? ['good', .4, 25, 'おしい！', '#8A7B6C'] : null); if(!j) return;
+    best.done = 1; S.add(j, box, best.y * 100 + 8);
+    GY.coins += j[0] === 'perfect' ? 3 : j[0] === 'great' ? 2 : 1;
+    burst(best, j0 ? j : null);
+    try{ note('ti', j[0] === 'perfect' ? 41 : 46, AC.currentTime, .4, j[0] === 'perfect' ? .7 : .45, {ring:1}); if(j[0] === 'perfect') note('gl', 96, AC.currentTime + .05, .3, .3, {ring:1}); }catch(e){}
+  };
+  return {S, layout(){}, draw(now){
+    const W = cv.width, H = cv.height; x.clearRect(0, 0, W, H);
+    R0.forEach(r => {
+      if(r.done) return; const dt = r.t - now;
+      if(dt < -.4){ r.done = 1; S.add(null, box, r.y * 100 + 8); burst(r, null); return; }
+      if(dt > RISE) return;
+      const p = clamp(1 - dt / RISE, 0, 1), e = 1 - Math.pow(1 - p, 2.2), px = r.x * W, py = H * .98 - (H * .98 - r.y * H) * e;
+      /* ねらいの わ */
+      if(dt < .8){ const k = clamp(dt / .8, 0, 1), rad = (W / 900) * (22 + 80 * k); x.strokeStyle = `hsla(${r.hue},95%,72%,${1 - k * .4})`; x.lineWidth = 7 * (W / 900); x.beginPath(); x.arc(r.x * W, r.y * H, rad, 0, TAU); x.stroke();
+        x.strokeStyle = 'rgba(255,255,255,.95)'; x.lineWidth = 4 * (W / 900); x.beginPath(); x.arc(r.x * W, r.y * H, 22 * (W / 900), 0, TAU); x.stroke(); }
+      /* ひのたま */
+      const gr = x.createLinearGradient(px, py, px, py + H * .12); gr.addColorStop(0, `hsla(${r.hue},100%,85%,.9)`); gr.addColorStop(1, `hsla(${r.hue},100%,70%,0)`);
+      x.strokeStyle = gr; x.lineWidth = 9 * (W / 900); x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.sin(now * 20 + r.t) * 2, py + H * .12); x.stroke();
+      x.shadowColor = `hsl(${r.hue},100%,70%)`; x.shadowBlur = 18 * (W / 900); x.fillStyle = '#fff'; x.beginPath(); x.arc(px, py, 10 * (W / 900), 0, TAU); x.fill(); x.shadowBlur = 0;
+    });
+    x.globalCompositeOperation = 'lighter';
+    GY.fw = GY.fw.filter(p => (p.life -= .011) > 0);
+    GY.fw.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .028 * (W / 900); p.vx *= .985; x.fillStyle = `hsla(${p.hue},90%,65%,${Math.min(1, p.life)})`; x.beginPath(); x.arc(p.x, p.y, (1.8 + p.sz) * (W / 900) + p.life * 1.4, 0, TAU); x.fill(); });
+    x.globalCompositeOperation = 'source-over';
+  }, end(){ cv.classList.remove('play'); cv.onpointerdown = null; hana.remove(); }};
+}
+/* ---------- パレード ---------- */
+function Parade(box){
+  const cv = box.querySelector('.gyFw'), x = cv.getContext('2d'), N0 = paradeChart(), S = Score(N0.length), TRAV = 1.9;
+  const par = box.querySelector('.gyParade'), W0 = box.clientWidth;
+  let g = null; try{ g = girl(); }catch(e){}
+  const who = (g ? [g] : []).concat(GY.parts);
+  const ems = ['flag', 'drum', 'balloon', 'trumpet', 'party', 'star', 'ribbon'];
+  /* 右が せんとう（ハナ）。画面の 左の そとから じゅんばんに 入ってくる */
+  const gap = Math.min(W0 * .13, (W0 * .78) / Math.max(1, who.length));
+  par.innerHTML = who.map((r, i) => `<div class="gyWalker ${i === 0 && g ? 'hana' : ''}" style="height:100%;left:0;--x:${Math.round(W0 * .86 - gap * (i + .5))}px">${resPic(r)}<i>${i === 0 && g ? '<span class="wtag">ハナ</span>' : IC(ems[i % ems.length])}</i></div>`).join('');
+  const ws = [...par.querySelectorAll('.gyWalker')];
+  ws.forEach((w, i) => setTimeout(() => w.classList.add('in'), 300 + i * 420));
+  cv.classList.add('play');
+  const hitX = () => cv.width * .14, laneY = () => cv.height * (isL() ? .62 : .58);
+  const cheer = good => ws.forEach((w, i) => { w.classList.remove('yay', 'oops'); void w.offsetWidth; w.classList.add(good ? 'yay' : 'oops'); });
+  cv.onpointerdown = () => {
+    if(!GY.playing) return; const now = AC.currentTime - GY.t0;
+    let best = null; N0.forEach(n => { if(n.done) return; const dt = now - n.t; if(Math.abs(dt) < .3 && (!best || Math.abs(dt) < Math.abs(now - best.t))) best = n; });
+    if(!best) return; const j = judgeOf(now - best.t); if(!j) return;
+    best.done = j[0]; S.add(j, box, 46); cheer(true);
+    try{ note('sn', best.big ? 'sn_f1' : (S.combo % 2 ? 'sn_p1' : 'sn_p2'), AC.currentTime, .3, best.big ? .45 : .32, {ring:1}); }catch(e){}
+  };
+  return {S, layout(){}, draw(now){
+    const W = cv.width, H = cv.height, hx = hitX(), y = laneY(), sc = W / 900; x.clearRect(0, 0, W, H);
+    x.fillStyle = 'rgba(40,20,60,.45)'; rr(x, W * .04, y - 34 * sc, W * .92, 68 * sc, 34 * sc); x.fill();
+    x.strokeStyle = '#FFE27A'; x.lineWidth = 5 * sc; x.beginPath(); x.arc(hx, y, 28 * sc, 0, TAU); x.stroke();
+    x.fillStyle = 'rgba(255,226,122,.25)'; x.fill();
+    N0.forEach(n => {
+      const dt = n.t - now;
+      if(!n.done && dt < -.25){ n.done = 'miss'; S.add(null, box, 46); cheer(false); }
+      if(n.done || dt > TRAV) return;
+      const nx = hx + (dt / TRAV) * (W * .9 - hx), r = (n.big ? 24 : 18) * sc;
+      x.fillStyle = n.big ? '#E9557F' : '#FF9DB6'; x.strokeStyle = '#fff'; x.lineWidth = 4 * sc; x.beginPath(); x.arc(nx, y, r, 0, TAU); x.fill(); x.stroke();
+      x.strokeStyle = '#FFE27A'; x.lineWidth = 3 * sc; x.beginPath(); x.moveTo(nx - r * .5, y - r * .5); x.lineTo(nx + r * .1, y + r * .1); x.moveTo(nx + r * .5, y - r * .5); x.lineTo(nx - r * .1, y + r * .1); x.stroke();
+    });
+    x.globalCompositeOperation = 'lighter';
+    GY.fw = GY.fw.filter(p => (p.life -= .012) > 0);
+    GY.fw.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .03; x.fillStyle = `hsla(${p.hue},90%,65%,${p.life})`; x.beginPath(); x.arc(p.x, p.y, 2 * sc + p.life * 1.5, 0, TAU); x.fill(); });
+    x.globalCompositeOperation = 'source-over';
+    if(now > 20 * BAR && Math.random() < .03){ const X = W * (.2 + Math.random() * .6), Y = H * (.1 + Math.random() * .2), hue = Math.random() * 360; for(let i = 0; i < 40; i++){ const a = i / 40 * TAU; GY.fw.push({x:X, y:Y, vx:Math.cos(a) * 2.4 * sc, vy:Math.sin(a) * 2.4 * sc, life:1, hue}); } }
+  }, end(){ cv.classList.remove('play'); cv.onpointerdown = null; par.innerHTML = ''; }};
 }
 function gyLoop(){
   if(!GY.playing) return;
   GY.raf = requestAnimationFrame(gyLoop);
   const pg = R.el.querySelector('.osGy'); if(!pg) return;
-  const box = pg.querySelector('.gyBox'), now = AC.currentTime, el = now - GY.t0, total = GY.end - GY.t0, B = 4 * 60 / 112;
-  const bar = Math.max(0, Math.floor(el / B)), sec = bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : 3;
+  const box = pg.querySelector('.gyBox'), now = AC.currentTime, el = now - GY.t0, total = GY.end - GY.t0;
+  const bar = Math.max(0, Math.floor(el / BAR)), sec = bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : 3;
   const bi = box.querySelector('.gyBar i'); if(bi) bi.style.width = clamp(el / total * 100, 0, 100) + '%';
-  if(el >= 0 && sec !== GY.sec){ GY.sec = sec; const c = box.querySelector('.gyCap'), S = SEC[sec]; c.innerHTML = `${IC(S.ic)}${S.n}<small style="font-size:11px;color:#8A7560">${S.who}</small>`; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
-    const sp = box.querySelector('.gySpot'), w = box.clientWidth * (sec === 3 ? .9 : .32); Object.assign(sp.style, {left:(box.clientWidth * S.x[0] - w / 2) + 'px', width:w + 'px', top:(box.clientHeight * (isL() ? .38 : .3)) + 'px', height:(box.clientHeight * .36) + 'px'}); }
-  /* おんぷ */
-  if(el > 0 && Math.random() < (sec === 3 ? .18 : .08)){ const n = document.createElement('i'); n.className = 'gyNote'; n.textContent = ['♪', '♫', '♬', '♩'][Math.floor(Math.random() * 4)];
-    n.style.cssText = `left:${(SEC[sec].x[0] + (Math.random() - .5) * (sec === 3 ? .7 : .25)) * 100}%;top:${(isL() ? 52 : 46) + Math.random() * 8}%;color:hsl(${Math.random() * 360},80%,70%);--dx:${(Math.random() - .5) * 60}px`;
-    box.appendChild(n); setTimeout(() => n.remove(), 2300); }
-  /* 花火 */
-  const cv = box.querySelector('.gyFw'), x = cv.getContext('2d');
-  const rate = GY.mode === 'hanabi' ? (sec === 3 ? .9 : .55) : sec === 3 ? .5 : 0;
-  if(rate && now - GY.lastFw > (1.2 - rate) * 1.4){ GY.lastFw = now; fwBurst(cv, GY.mode === 'hanabi'); }
-  x.clearRect(0, 0, cv.width, cv.height); x.globalCompositeOperation = 'lighter';
-  GY.fw = GY.fw.filter(p => (p.life -= .012) > 0);
-  GY.fw.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .03; p.vx *= .985; x.fillStyle = `hsla(${p.hue},90%,65%,${p.life})`; x.beginPath(); x.arc(p.x, p.y, 2.2 * (cv.width / 900) + p.life * 1.5, 0, TAU); x.fill(); });
-  x.globalCompositeOperation = 'source-over';
+  if(el >= 0 && sec !== GY.sec){ GY.sec = sec; const c = box.querySelector('.gyCap'), S0 = SEC[sec]; if(c){ c.innerHTML = `${IC(S0.ic)}${S0.n}`; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); } }
+  else if(el < 0){ const c = box.querySelector('.gyCap'); if(c && !c.dataset.rd){ c.dataset.rd = 1; c.innerHTML = `${IC('note')}じゅんび…`; } }
+  try{ if(GY.game) GY.game.draw(el); }catch(e){ console.warn('game', e); }
   if(now > GY.end) gyFinish();
 }
 function gyCleanup(){
   stopMusic();
+  if(GY.game){ try{ GY.game.end(); }catch(e){} GY.game = null; }
   const pg = R && R.el.querySelector('.osGy'); if(!pg) return;
-  pg.querySelectorAll('.gyCap,.gyBar,.gySpot,.gyNote,.gyStop,.gyRes').forEach(e => e.remove());
+  pg.querySelectorAll('.gyCap,.gyBar,.gySpot,.gyNote,.gyStop,.gyRes,.gmHud,.gmJ,.gmHana,.gmCount,.gmHelp').forEach(e => e.remove());
   const par = pg.querySelector('.gyParade'); if(par) par.innerHTML = '';
   const cv = pg.querySelector('.gyFw'); if(cv) cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
   GY.fw = []; GY.mode = null; gyPlace();
 }
 function gyFinish(){
-  const k = GY.mode, ev = GYEV.find(e => e.k === k); stopMusic();
-  const o = GD(), first = ev && !gyGot(ev);
-  let who = '';
-  if(first){
-    o.gy[k] = ev.per === 'week' ? weekKey() : dayKey();
-    if(k === 'concert'){ who = GY.parts.map(r => { const a = ABILITIES[Math.floor(Math.random() * ABILITIES.length)], cap = (() => { try{ return abCap(r); }catch(e){ return 100; } })(), before = r.ab[a.id] || 0;
-        r.ab[a.id] = Math.min(cap, before + 1); return `<span>${resPic(r)}${H(r.name)}<small>${r.ab[a.id] > before ? `${a.i}+1` : 'MAX'}</small></span>`; }).join(''); }
-    if(k === 'parade'){ who = GY.parts.map(r => { r.fr = (r.fr || 0) + 1; return `<span>${resPic(r)}${H(r.name)}<small>${IC('heart')}+1</small></span>`; }).join(''); }
-    persist(); addCoin(ev.rw, `ぎょうじ：${ev.n}`); refresh();
-    try{ sound('fan'); confetti(2200); }catch(e){}
+  const k = GY.mode, ev = GYEV.find(e => e.k === k), S = GY.game && GY.game.S; stopMusic();
+  const acc = S ? S.acc() : 0, rk = rankOf(acc);
+  let coins = 0, who = '', msg = '';
+  if(k === 'concert'){
+    coins = Math.max(1, Math.round(9 * acc)) + (S && S.cnt.miss === 0 ? 3 : 0);
+    const up = acc >= .9 ? 2 : acc >= .5 ? 1 : 0;
+    if(up){ who = GY.parts.map(r => { const a = ABILITIES[Math.floor(Math.random() * ABILITIES.length)], cap = (() => { try{ return abCap(r); }catch(e){ return 100; } })(), before = r.ab[a.id] || 0;
+      r.ab[a.id] = Math.min(cap, before + up); return `<span>${resPic(r)}${H(r.name)}<small>${r.ab[a.id] > before ? `${a.i}+${r.ab[a.id] - before}` : 'MAX'}</small></span>`; }).join('');
+      msg = 'ハナの えんそうを きいた じゅうみんの 能力が あがったよ'; }
+    else msg = 'つぎは もっと うまく ひけるかな？（せいかく 50%で 能力 アップ）';
+  } else if(k === 'hanabi'){
+    coins = Math.min(15, Math.max(1, Math.round((GY.coins || 0) / 4)));
+    msg = 'ぴったりの タイミングほど コインが ふえるよ';
+  } else if(k === 'parade'){
+    coins = Math.max(1, Math.round(8 * acc));
+    if(acc >= .5){ who = GY.parts.map(r => { r.fr = (r.fr || 0) + 1; return `<span>${resPic(r)}${H(r.name)}<small>${IC('heart')}+1</small></span>`; }).join(''); msg = 'いっしょに 行進して なかよしに なったよ'; }
+    else msg = 'リズムに のって なかよし アップを めざそう（せいかく 50%）';
   }
+  persist(); addCoin(coins, `ぎょうじ：${ev ? ev.n : ''}（${rk}）`); refresh();
+  try{ sound('fan'); if(rk === 'S' || rk === 'A') confetti(2200); }catch(e){}
   const pg = R.el.querySelector('.osGy');
-  pg.insertAdjacentHTML('beforeend', `<div class="gyRes"><div class="gyResIn"><h3>${IC(ev ? ev.ic : 'note')}${ev ? ev.n : ''}、だいせいこう！</h3>
-    ${first ? `<p>おしろコイン <b style="color:#C2457A">+${ev.rw}</b></p>${who ? `<p>${k === 'concert' ? 'えんそうを きいた じゅうみんの 能力が あがったよ' : 'いっしょに あるいて なかよしに なったよ'}</p><div class="gyWho">${who}</div>` : ''}`
-      : `<p>${ev && ev.per === 'week' ? 'こんしゅうの ごほうびは もう もらったよ。' : 'きょうの ごほうびは もう もらったよ。'}<br>えんそうは なんかいでも きけるよ！</p>`}
+  if(GY.game){ try{ GY.game.end(); }catch(e){} GY.game = null; }
+  pg.insertAdjacentHTML('beforeend', `<div class="gyRes"><div class="gyResIn"><h3>${IC(ev ? ev.ic : 'note')}${ev ? ev.n : ''} おしまい！</h3>
+    <div class="gyRank ${rk}">${rk}</div>
+    ${S ? `<div class="gyStat"><span>パーフェクト ${S.cnt.perfect}</span><span>グレート ${S.cnt.great}</span><span>グッド ${S.cnt.good}</span><span>ミス ${S.cnt.miss}</span><span>さいだい ${S.max} コンボ</span></div>` : ''}
+    <p>おしろコイン <b style="color:#C2457A">+${coins}</b>　<small>（きょう あと ${ev ? gyLeft(ev) : 0}かい）</small></p>
+    <p style="font-size:13px">${msg}</p>${who ? `<div class="gyWho">${who}</div>` : ''}
     <button class="gyOk" data-o="gy:ok">やったー！</button></div></div>`);
 }
-function closeGy(){ stopMusic(); const pg = R && R.el.querySelector('.osGy'); if(pg){ pg.classList.remove('show'); pg.innerHTML = ''; } GY.open = false; GY.mode = null; }
+function closeGy(){ stopMusic(); if(GY.game){ try{ GY.game.end(); }catch(e){} GY.game = null; } const pg = R && R.el.querySelector('.osGy'); if(pg){ pg.classList.remove('show'); pg.innerHTML = ''; } GY.open = false; GY.mode = null; }
 function gyAction(v){
   if(v === 'stop'){ gyCleanup(); gyRender(); return; }
   if(v === 'ok'){ gyCleanup(); gyRender(); refresh(); return; }
@@ -5142,14 +5430,14 @@ function pedPic(r){
 function gzRenderPeds(force){
   const pg = R.el.querySelector('.osGz'); if(!pg) return;
   const pos = isL() ? PED_L : PED_P, n = slotN(), plus = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
-  const sig = [isL(), n, GZ.flash || ''].concat(ROLES.map(R0 => { const r = roleOf(R0.k); return r ? r.id + ':' + (r.star || 1) : '-'; })).join('|');
+  const sig = [isL(), n, GZ.flash || '', GZ.role || ''].concat(ROLES.map(R0 => { const r = roleOf(R0.k); return r ? r.id + ':' + (r.star || 1) + ':' + rLv(R0.k) : '-'; })).join('|');
   const box = pg.querySelector('.gzPeds');
   if(!force && box.dataset.sig === sig) return;   // おなじ ときは かきなおさない（2.5D を つくりなおさない）
   box.dataset.sig = sig;
   box.innerHTML = ROLES.map((R0, i) => { const [x, y] = pos[i], r = roleOf(R0.k), lock = i >= n;
-    return `<button class="gzPed ${GZ.flash === R0.k ? 'flash' : ''}" data-o="gz:ped:${R0.k}" style="left:${x}%;top:${y}%" ${lock ? 'disabled' : ''}>
+    return `<button class="gzPed ${GZ.flash === R0.k ? 'flash' : ''} ${GZ.role === R0.k ? 'sel' : ''}" data-o="gz:ped:${R0.k}" style="left:${x}%;top:${y}%" ${lock ? 'disabled' : ''}>
       ${lock ? `<span class="gzLock">${IC('lock', 'gzLkI')}<small>${STAGE_N[i === 2 ? 2 : 3].replace('の おしろ', '')}</small></span>` : r ? `<span class="gzWho">${pedPic(r)}</span>` : `<span class="gzPlus">${plus}</span>`}
-      <span class="gzTag">${IC(R0.ic)}${R0.n}${r ? '：' + H(r.name) : ''}</span></button>`; }).join('');
+      <span class="gzTag">${IC(R0.ic)}${R0.n}<i class="lv">Lv${rLv(R0.k)}</i>${r ? '：' + H(r.name) : ''}</span></button>`; }).join('');
   GZ.flash = null;
   try{ box.querySelectorAll('[data-m25]:not([data-m25ok])').forEach(h => window.__res25d.mount(h, {noZoom:true})); }catch(e){ console.warn('gz 2.5D', e); }
 }
@@ -5157,8 +5445,17 @@ function gzRender(){
   const pg = R.el.querySelector('.osGz'); if(!pg) return;
   const L = resList(), o = GD(), busy = new Set(Object.values(o.roles));
   const info = pg.querySelector('.gzInfo'), sel = GZ.sel && resById(GZ.sel);
-  info.innerHTML = sel ? `${sel.name}を どの やくしょくに する？ <small>あいている 台座（＋）を タッチ</small>`
-    : `じゅうみんを えらんで、台座に のせよう <small>${ROLES.slice(0, slotN()).map(r => `${IC(r.ic)}${r.n}：${r.d}`).join('　')}${slotN() < 4 ? '　（おしろを しんか させると 台座が ふえる）' : ''}</small>`;
+  const RS = GZ.role && ROLES.find(x => x.k === GZ.role), rr0 = RS && roleOf(RS.k);
+  if(RS && rr0 && !sel){
+    const L0 = rLv(RS.k), cost = L0 < RLV_MAX ? RLV_COST[L0 + 1] : 0, can = L0 < RLV_MAX && O().coin >= cost;
+    info.innerHTML = `<div class="gzRole"><span>${IC(RS.ic)}<b>${RS.n} Lv${L0}</b>：${H(rr0.name)}</span><small>${rDesc(RS)}／${rAbTxt(RS)}</small>
+      ${L0 < RLV_MAX ? `<small class="nx">Lv${L0 + 1}に すると：${RS.d(RLV_PCT[L0 + 1], L0 + 1)}／${abName(RS.ab)} +${RLV_PCT[L0 + 1]}%</small>` : '<small class="nx">さいだい レベル！</small>'}
+      <span class="gzRB">${L0 < RLV_MAX ? `<button class="gzLv ${can ? '' : 'ng'}" data-o="gz:lv:${RS.k}">${IC('coin')}${cost}　レベルアップ</button>` : ''}<button class="gzOff" data-o="gz:off:${RS.k}">おやすみ</button><button class="gzOff" data-o="gz:rx">とじる</button></span></div>`;
+  } else {
+    if(!rr0) GZ.role = null;
+    info.innerHTML = sel ? `${sel.name}を どの やくしょくに する？ <small>台座を タッチ（いる ときは いれかわる）</small>`
+      : `じゅうみんを えらんで、台座に のせよう <small>${ROLES.slice(0, slotN()).map(r => `${IC(r.ic)}${r.n} Lv${rLv(r.k)}：${rDesc(r)}・${abName(r.ab)} +${rPct(r.k)}%`).join('　')}${slotN() < 4 ? '　（おしろを しんか させると 台座が ふえる）' : ''}<br>台座の じゅうみんを タッチすると レベルアップ できるよ</small>`;
+  }
   pg.querySelector('.gzCards').innerHTML = L.length ? L.map(r => { const role = ROLES.find(x => o.roles[x.k] === r.id && ROLES.indexOf(x) < slotN()), rar = (() => { try{ return SP(r.sp).rar || 1; }catch(e){ return 1; } })();
       return `<button class="gzCard ${GZ.sel === r.id ? 'on' : ''} ${role ? 'busy' : ''}" data-o="gz:card:${r.id}"><span class="gzPic">${resPic(r)}</span><b>${r.name}</b><small>${'★'.repeat(rar)}</small>${role ? `<em>${IC(role.ic)}${role.n}</em>` : ''}</button>`; }).join('')
     : '<div class="gzEmpty">まだ じゅうみんが いないよ。まちに じゅうみんを よぼう！</div>';
@@ -5166,15 +5463,26 @@ function gzRender(){
 }
 function gzAction(v, w){
   const o = GD();
-  if(v === 'card'){ GZ.sel = GZ.sel === w ? null : w; try{ sound('tap'); }catch(e){} gzRender(); return; }
+  if(v === 'card'){ GZ.sel = GZ.sel === w ? null : w; GZ.role = null; try{ sound('tap'); }catch(e){} gzRender(); return; }
+  if(v === 'rx'){ GZ.role = null; gzRender(); return; }
+  if(v === 'off'){ const i = ROLES.findIndex(r => r.k === w), r = roleOf(w); delete o.roles[w]; GZ.role = null; persist(); try{ sound('tap'); toast(`${r ? r.name : ''}の ${ROLES[i].n}を おやすみに したよ`); }catch(e){} gzRender(); refresh(); return; }
+  if(v === 'lv'){
+    const R0 = ROLES.find(r => r.k === w), L0 = rLv(w); if(!R0 || L0 >= RLV_MAX) return;
+    const cost = RLV_COST[L0 + 1];
+    if(O().coin < cost){ try{ sound('ng'); }catch(e){} otoast('coin', `コインが あと ${cost - O().coin}まい たりないよ`); return; }
+    addCoin(-cost, `やくしょく：${R0.n} Lv${L0 + 1}`); o.rlv = o.rlv || {}; o.rlv[w] = L0 + 1; persist(); GZ.flash = w;
+    try{ sound('fan'); confetti(1200); }catch(e){} if(GZ.hv) GZ.hv.pose('smug');
+    otoast('crown', `${R0.n}が Lv${L0 + 1}に なったよ！ ${rDesc(R0)}・${abName(R0.ab)} +${rPct(w)}%`);
+    gzRenderPeds(true); gzRender(); refresh(); return;
+  }
   if(v === 'ped'){
     const i = ROLES.findIndex(r => r.k === w); if(i < 0 || i >= slotN()) return;
     if(GZ.sel){
       Object.keys(o.roles).forEach(k => { if(o.roles[k] === GZ.sel) delete o.roles[k]; });
       o.roles[w] = GZ.sel; GZ.sel = null; GZ.flash = w; persist(); try{ sound('fan'); }catch(e){}
-      const r = roleOf(w); otoast('crown', `${r.name}が ${ROLES[i].n}に なったよ！（${ROLES[i].d}）`);
+      const r = roleOf(w); GZ.role = null; otoast('crown', `${r.name}が ${ROLES[i].n}に なったよ！（${rDesc(ROLES[i])}）`);
       if(GZ.hv) GZ.hv.pose('laugh');
-    } else if(o.roles[w]){ const r = roleOf(w); delete o.roles[w]; persist(); try{ sound('tap'); toast(`${r ? r.name : ''}の ${ROLES[i].n}を おやすみに したよ`); }catch(e){} }
+    } else if(o.roles[w]){ GZ.role = GZ.role === w ? null : w; try{ sound('tap'); }catch(e){} }
     else { try{ toast('さきに 下の じゅうみんを えらんでね'); }catch(e){} }
     gzRender(); refresh(); if(ZC.open) zcRenderPanel(); return;
   }
