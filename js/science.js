@@ -3348,6 +3348,7 @@ function visible(inst){
 }
 function loop(now){
   if(!INST.size){ rafOn = false; return; }
+  if(window.__pwSkip && window.__pwSkip(INST, now)){ requestAnimationFrame(loop); return; }   /* v10.8 省電力 */
   INST.forEach(inst => {
     if(!visible(inst)){ inst.dispose(); return; }
     const t = (window.__m25T != null) ? window.__m25T : (now - inst.t0) / 1000;
@@ -4043,6 +4044,7 @@ function HimeView(box, cv, opt = {}){
     if(!cv.isConnected){ API.dispose(); return; }
     raf = requestAnimationFrame(frame);
     if(!cv.offsetParent && cv.getClientRects().length === 0) return;
+    if(window.__pwSkip && window.__pwSkip(API, now)) return;   /* v10.8 省電力：フレームを まびく */
     const t = (now - t0) / 1000; layout();
     gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     const P = D.poses[API.cur], g = P.g, vp = [view.vx, view.vy, view.vw, view.vh], a0 = P.layers[0];
@@ -5654,6 +5656,7 @@ function Stage(cv, loadEl){
   function frame(now){
     if(!run){ raf = 0; return; }
     raf = requestAnimationFrame(frame);
+    if(window.__pwSkip && window.__pwSkip(API, now, cv)) return;   /* v10.8 省電力 */
     const dt = Math.min(.05, (now - last) / 1000); last = now; const t = (now - t0) / 1000, I = 1;
     layout();
     if(!gl){ draw2d(); return; }
@@ -5784,4 +5787,88 @@ if(document.readyState === 'loading') document.addEventListener('DOMContentLoade
 addEventListener('hashchange', tryHash);
 window.__oshiro = {O, ensureWeek, count, open:openOshiro, parts:P, stage:castleStage, hime:openHimeBig, map:openMap};
 
+})();
+
+
+/* =====================================================================
+   v10.8：しょうでんりょく（省電力）モード
+   ・2.5D・さくらの 花びら・キャラの おおきい表示：ふだん 30コマ／秒、省電力 15コマ／秒
+     （画面が かくれている／見えていない ときは 描かない）
+   ・省電力 オン：くりかえしの うごき（ゆれ・キラキラ）は 1回で とまる、影・ぼかしを へらす、
+     まちは「かるい表示」、きせつイベントの ふってくる アイコンを かくす
+   ・せってい：オフ／オン／じどう（バッテリー 30％以下 または 充電していない ときに 20％以下）
+   ・セーブ：save.settings.eco108（'off'｜'on'｜'auto'）
+   ===================================================================== */
+(function(){
+  'use strict';
+  const MODE = () => { try{ return (save.settings && save.settings.eco108) || 'auto'; }catch(e){ return 'auto'; } };
+  let batLow = false;
+  const ecoOn = () => { const m = MODE(); return m === 'on' || (m === 'auto' && batLow); };
+  window.__ecoOn = ecoOn;
+
+  /* ---------- フレームを まびく（30／15コマ） ---------- */
+  window.__pwSkip = function(st, now, el){
+    if(document.hidden) return true;
+    if(el && (!el.isConnected || (!el.offsetParent && el.getClientRects().length === 0))) return true;
+    const iv = ecoOn() ? 66 : 33;
+    if(st.__pwT && now - st.__pwT < iv - 4) return true;
+    st.__pwT = now; return false;
+  };
+
+  /* ---------- 見た目を かるく ---------- */
+  const st = document.createElement('style');
+  st.textContent = `
+html.eco108 *,html.eco108 *::before,html.eco108 *::after{animation-iteration-count:1!important}
+html.eco108 #townMap *,html.eco108 .buddy img,html.eco108 .walker *,html.eco108 .car2 img,html.eco108 .mover img,html.eco108 .bigTile img.hb,html.eco108 .sign.logo img{filter:none!important}
+html.eco108 #evFx,html.eco108 #loader .spk{display:none!important}
+html.eco108 .htlBody.listV::before{filter:brightness(.62)!important}
+html.eco108 #bgVeil{transition:none!important}
+.eco108Tag{display:inline-block;margin-left:6px;background:#E3F6DA;color:#3C8A2E;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:900;vertical-align:middle}`;
+  document.head.appendChild(st);
+
+  function apply(){
+    const on = ecoOn();
+    document.documentElement.classList.toggle('eco108', on);
+    try{ if(typeof applyLite === 'function') applyLite(); }catch(e){}
+    paintSet();
+  }
+  window.__ecoApply = apply;
+
+  /* ---------- バッテリー（つかえる ブラウザだけ。iPhone・iPad の Safari は 「オン」で つかってください） ---------- */
+  try{
+    if(navigator.getBattery) navigator.getBattery().then(b => {
+      const up = () => { batLow = (!b.charging && b.level <= 0.3) || b.level <= 0.2; apply(); };
+      b.addEventListener('levelchange', up); b.addEventListener('chargingchange', up); up();
+    }).catch(() => {});
+  }catch(e){}
+
+  /* ---------- せってい ---------- */
+  function paintSet(){
+    const box = document.getElementById('seg108'); if(!box) return;
+    const m = MODE();
+    box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === m));
+    const n = document.getElementById('eco108Now');
+    if(n) n.innerHTML = ecoOn() ? '<span class="eco108Tag">🍃 いま 省電力で うごいています</span>' : '';
+  }
+  function addSet(){
+    const card = document.querySelector('#scr-settings .card'); if(!card || document.getElementById('seg108')) return;
+    const sec = document.createElement('div'); sec.className = 'setSec';
+    sec.innerHTML = `<h3>🔋 しょうでんりょく（省電力）モード<span id="eco108Now"></span></h3>
+      <div class="seg" id="seg108"><button data-v="auto">じどう</button><button data-v="on">オン</button><button data-v="off">オフ</button></div>
+      <p class="note">オンに すると、くりかえしの うごき・キラキラ・影を へらし、2.5Dの うごきを ゆっくりに して 電池を ながもち させます（ゲームの はんていには えいきょう しません）。<br>
+      「じどう」は バッテリーが すくない ときだけ オンに なります（iPhone・iPad では バッテリーが わからないので「オン」を えらんでください）。</p>`;
+    const after = [...card.querySelectorAll('.setSec')].find(s => /ペン・おと/.test(s.textContent));
+    if(after) after.after(sec); else card.appendChild(sec);
+    sec.querySelector('#seg108').addEventListener('click', e => {
+      const b = e.target.closest('button'); if(!b) return;
+      try{ save.settings = save.settings || {}; save.settings.eco108 = b.dataset.v; persist(); }catch(err){}
+      try{ sound('tap'); }catch(err){}
+      apply();
+    });
+    paintSet();
+  }
+  try{ renderSettings = (orig => function(){ const o = orig.apply(this, arguments); try{ addSet(); }catch(e){} return o; })(renderSettings); }catch(e){}
+
+  const init = () => { addSet(); apply(); };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0);
 })();

@@ -69,6 +69,7 @@ function phase(){
   return {v, h};
 }
 function paintSignals(){
+  if(document.hidden || (typeof curScreen!=='undefined' && curScreen!=='town')) return;   /* v10.8 省電力 */
   const m = $('#townMap'); if(!m) return;
   const p = phase(); if(m.dataset.sv!==p.v) m.dataset.sv = p.v; if(m.dataset.sh!==p.h) m.dataset.sh = p.h;
 }
@@ -3331,6 +3332,7 @@ makeMQ = (orig => function(opt={}){
    ===================================================================== */
 const LITE_LV = 10, LITE_ZOOM = 0.85, LITE_WALK = 16, LITE_CAR = 8;
 function liteOn(){
+  if(window.__ecoOn && window.__ecoOn()) return true;   /* v10.8 省電力モードでは いつも かるい表示 */
   const s = save.settings?.lite56 || 'auto';
   if(s==='on') return true; if(s==='off') return false;
   return !!save.town && (save.town.lv||0) + 1 >= LITE_LV && (save.town.zoom||1) <= LITE_ZOOM;
@@ -5231,7 +5233,7 @@ function cryPill(){
   const n = save.crystal || 0, el = c.querySelector('b'); if(el.textContent !== String(n)) el.textContent = n;
 }
 updatePill = (orig => function(){ const o = orig.apply(this, arguments); try{ cryPill(); }catch(e){} return o; })(updatePill);
-setInterval(() => { try{ cryPill(); }catch(e){} }, 1500);
+setInterval(() => { if(document.hidden) return; try{ cryPill(); }catch(e){} }, 1500);
 document.addEventListener('click', e => {
   if(!e.target.closest('#ptPill .cryIn65')) return; e.stopImmediatePropagation(); e.preventDefault(); sound('tap');
   if(window.__v63 && window.__v63.openExchange) window.__v63.openExchange().then(() => cryPill());
@@ -7118,7 +7120,7 @@ css.textContent = `.dlgCard #dlgBtns .btn{white-space:normal!important;word-brea
 }`;
 document.head.appendChild(css);
 const longify = () => document.querySelectorAll('.dlgCard.quiz #dlgBtns .btn, .bbOpts618 button').forEach(b => b.classList.toggle('long625', (b.textContent||'').trim().length > 9));
-new MutationObserver(longify).observe(document.body, {childList:true, subtree:true});
+{ let lq = 0; new MutationObserver(() => { if(lq || !document.querySelector('#dlg.show, .bbOpts618')) return; lq = setTimeout(() => { lq = 0; longify(); }, 120); }).observe(document.body, {childList:true, subtree:true}); }   /* v10.8 省電力：まとめて 1回 */
 
 /* ---------- しゃかい 3・4年を ぜんぶ マスター → 超レアかくていレター＋10,000pt ---------- */
 async function checkSoc34(){
@@ -10682,7 +10684,7 @@ function placeFruit(){
   fp.dataset.v647 = 1; const ab = body.querySelector('.abList'); if(ab) ab.after(fp);
   fp.querySelectorAll('[data-feed] small').forEach(sm => { const m = sm.textContent.match(/(\d+)\s*→\s*(\d+)/); if(m) sm.textContent = `${m[1]}→${m[2]}`; });
 }
-new MutationObserver(() => placeFruit()).observe(document.body, {childList:true, subtree:true});
+{ let fq = 0; new MutationObserver(() => { if(fq || !document.querySelector('#dlg.show')) return; fq = setTimeout(() => { fq = 0; placeFruit(); }, 120); }).observe(document.body, {childList:true, subtree:true}); }   /* v10.8 省電力 */
 window.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-feed]'); if(!b || !b.closest('#dlgBody')) return;
   e.stopImmediatePropagation(); e.preventDefault();
