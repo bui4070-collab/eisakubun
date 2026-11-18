@@ -6065,3 +6065,45 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
 @keyframes op110{50%{opacity:1}}`;
   document.head.appendChild(st);
 })();
+
+
+/* =====================================================================
+   v11.1：まちに もどった ときの 描きなおしを はぶく（見た目は かわらない）
+   ・ほかの 画面から まちに もどった とき、セーブデータ・画面の 大きさ・へんしゅう中か・
+     じかん（1じかん ごと）・省電力の じょうたい が まえと おなじなら、まちを つくりなおさない
+     （住民の いどうは そのまま つづきから うごく）
+   ・まちの 中で なにか かわった とき（たてる・うごかす・レベルアップ など）は いままでどおり 描きなおす
+   ===================================================================== */
+(function(){
+  'use strict';
+  try{
+    if(typeof renderMap !== 'function' || typeof show !== 'function') return;
+    let entering = false, last = null;
+    const sig = () => {
+      let a = 0; try{ a = typeof artStore !== 'undefined' && artStore ? Object.keys(artStore).length : 0; }catch(e){}
+      const d = new Date();
+      return [innerWidth, innerHeight, (typeof townEdit !== 'undefined' && townEdit) ? 1 : 0,
+        d.toDateString(), d.getHours(), document.documentElement.className, a, JSON.stringify(save)].join('|');
+    };
+    const rm0 = renderMap;
+    renderMap = function(){
+      const map = document.getElementById('townMap');
+      if(entering && last && map && map.childElementCount > 0){
+        let s = null; try{ s = sig(); }catch(e){}
+        if(s && s === last){
+          try{ if(typeof WK !== 'undefined' && !WK.timer && typeof startWalk === 'function') startWalk(); }catch(e){}
+          return;
+        }
+      }
+      const o = rm0.apply(this, arguments);
+      try{ last = sig(); }catch(e){ last = null; }
+      return o;
+    };
+    const sh0 = show;
+    show = function(name){
+      const was = typeof curScreen !== 'undefined' ? curScreen : '';
+      entering = name === 'town' && was !== 'town';
+      try{ return sh0.apply(this, arguments); } finally { entering = false; }
+    };
+  }catch(e){ console.warn('v11.1 renderMap skip', e); }
+})();
