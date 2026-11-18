@@ -4410,7 +4410,7 @@ css4.textContent = `
 #osr .mpB.on{background:linear-gradient(180deg,#FFE27A,#F6B93B);border-color:#fff}
 #osr .mpB:active{transform:translateY(2px);box-shadow:0 1px 0 #C99A4E}
 #osr .mpB small{font-size:10px;font-weight:900;line-height:1}
-#osr .mpCmp{position:absolute;z-index:4;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:118px;height:118px;padding:0;border-radius:50%}
+#osr .mpCmp{position:absolute;z-index:4;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);width:118px;height:118px;padding:0;border-radius:50%}
 .mpCmp img{position:absolute;left:14px;top:14px;width:90px;height:90px;object-fit:contain;transform:rotate(63.4deg);filter:drop-shadow(0 3px 4px rgba(60,40,20,.35));pointer-events:none}
 .mpCmp i{position:absolute;font-style:normal;font-weight:900;font-size:11px;line-height:1;height:20px;padding:0 6px;border-radius:999px;background:#fff;color:#6B4423;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none}
 .mpCmp i.n{background:#F2557E;color:#fff}
@@ -4502,14 +4502,82 @@ function mpImg(o){
 const hashXY = (x, y) => { let h = (x * 73856093) ^ (y * 19349663); h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 /* ---------- かく ---------- */
 function diamond(c, x, y, w = 1, h = 1){ c.beginPath(); c.moveTo(isoX(x, y), isoY(x, y)); c.lineTo(isoX(x + w, y), isoY(x + w, y)); c.lineTo(isoX(x + w, y + h), isoY(x + w, y + h)); c.lineTo(isoX(x, y + h), isoY(x, y + h)); c.closePath(); }
+/* ---------- v12.0：そらに うかぶ しま ---------- */
+const islK = D => Math.max(1, Math.min(3.2, (D.cols + D.rows) / 22));
+const islDep = D => Math.round(30 * islK(D));
+const islH = D => Math.max(90, Math.min(460, (D.cols + D.rows) * TH * .2));
+function islBuild(D){
+  const {cols, rows} = D, H = islH(D), K = islK(D), ISL_DEP = islDep(D);
+  let sd = (cols * 73856093 ^ rows * 19349663) >>> 0;
+  const rnd = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+  const A = [isoX(0, rows), isoY(0, rows)], B = [isoX(cols, rows), isoY(cols, rows)], C = [isoX(cols, 0), isoY(cols, 0)];
+  const P = {}, L = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  /* そくめん（くさ ＋ つち） */
+  const face = (a, b, d0, d1) => { const p = new Path2D(); p.moveTo(a[0], a[1] + d0); p.lineTo(b[0], b[1] + d0); p.lineTo(b[0], b[1] + d1); p.lineTo(a[0], a[1] + d1); p.closePath(); return p; };
+  P.soilL = face(A, B, 0, ISL_DEP); P.soilR = face(B, C, 0, ISL_DEP);
+  P.grassL = face(A, B, 0, 8 * K); P.grassR = face(B, C, 0, 8 * K);
+  /* くさの たれ（まるい ふち） */
+  P.drip = new Path2D(); [[A, B], [B, C]].forEach(([a, b]) => { const n = Math.max(4, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / (18 * K)));
+    for(let i = 0; i <= n; i++){ const q = L(a, b, i / n), r = (4 + rnd() * 5) * K; P.drip.moveTo(q[0] + r, q[1] + 7 * K); P.drip.arc(q[0], q[1] + 7 * K, r, 0, Math.PI * 2); } });
+  /* つちの しまもよう */
+  P.strata = new Path2D(); [[A, B], [B, C]].forEach(([a, b]) => [.5, .78].map(f => f * ISL_DEP).forEach(d => { const n = 14; P.strata.moveTo(a[0], a[1] + d);
+    for(let i = 1; i <= n; i++){ const q = L(a, b, i / n); P.strata.lineTo(q[0], q[1] + d + (rnd() - .5) * 4); } }));
+  P.pebble = new Path2D(); [[A, B], [B, C]].forEach(([a, b]) => { for(let i = 0; i < 16; i++){ const q = L(a, b, rnd()), r = (1.5 + rnd() * 2.5) * K; const y = q[1] + ISL_DEP * (.35 + rnd() * .55); P.pebble.moveTo(q[0] + r, y); P.pebble.arc(q[0], y, r, 0, Math.PI * 2); } });
+  /* したの いわ（ぶらさがる かたち） */
+  const N = 30, bot = [];
+  for(let i = 0; i <= N; i++){
+    const u = i / N, q = u <= .5 ? L(A, B, u * 2) : L(B, C, (u - .5) * 2);
+    const sh = Math.pow(Math.sin(Math.PI * u), 1.6), jag = i === 0 || i === N ? 0 : (rnd() * .2 + (i % 2 ? .06 : -.08));
+    bot.push([q[0] + (rnd() - .5) * 10, q[1] + ISL_DEP + H * Math.max(0, sh + jag * sh) + 4 * (1 - sh)]);
+  }
+  P.rock = new Path2D(); P.rock.moveTo(A[0], A[1] + ISL_DEP - 1); P.rock.lineTo(B[0], B[1] + ISL_DEP - 1); P.rock.lineTo(C[0], C[1] + ISL_DEP - 1);
+  for(let i = N; i >= 0; i--) P.rock.lineTo(bot[i][0], bot[i][1]); P.rock.closePath();
+  P.rockR = new Path2D(); P.rockR.moveTo(B[0], B[1] + ISL_DEP - 1); P.rockR.lineTo(C[0], C[1] + ISL_DEP - 1); for(let i = N; i >= N / 2; i--) P.rockR.lineTo(bot[i][0], bot[i][1]); P.rockR.closePath();
+  /* いわの ひび */
+  P.crack = new Path2D(); for(let i = 2; i < N - 1; i += 3){ const t = bot[i], top = i <= N / 2 ? L(A, B, i / N * 2) : L(B, C, (i / N - .5) * 2);
+    let x = top[0], y = top[1] + ISL_DEP + 6; P.crack.moveTo(x, y); const k = 3 + Math.floor(rnd() * 3);
+    for(let j = 1; j <= k; j++){ x += (rnd() - .5) * 18 * K; y += (t[1] - top[1] - ISL_DEP) * .55 / k; P.crack.lineTo(x, y); } }
+  /* ねっこ・つた */
+  P.root = new Path2D(); for(let i = 0; i < 12; i++){ const u = .08 + rnd() * .84, q = u <= .5 ? L(A, B, u * 2) : L(B, C, (u - .5) * 2), len = (20 + rnd() * 46) * K;
+    P.root.moveTo(q[0], q[1] + ISL_DEP); P.root.bezierCurveTo(q[0] + 8, q[1] + ISL_DEP + len * .4, q[0] - 8, q[1] + ISL_DEP + len * .7, q[0] + 3, q[1] + ISL_DEP + len); }
+  /* まわりの ちいさな うき石 */
+  P.bits = []; const W0 = C[0] - A[0];
+  [[-.04, .5, 24], [1.03, .46, 20], [.1, .85, 13], [.9, .8, 15]].forEach(([fx, fy, r0]) => {
+    const cx = A[0] + W0 * fx, cy = B[1] + ISL_DEP + H * (fy - .6), r = r0 * K * 2.4;
+    const top = new Path2D(); top.ellipse(cx, cy, r, r * .42, 0, 0, Math.PI * 2);
+    const body = new Path2D(); body.moveTo(cx - r, cy); body.lineTo(cx - r * .55, cy + r * .9); body.lineTo(cx + r * .1, cy + r * 1.5); body.lineTo(cx + r * .6, cy + r * .8); body.lineTo(cx + r, cy); body.closePath();
+    P.bits.push({top, body}); });
+  /* した の くも */
+  P.cloud = []; for(let i = 0; i < 5; i++){ const u = .12 + i * .19 + (rnd() - .5) * .08; P.cloud.push([A[0] + W0 * u, B[1] + ISL_DEP + H * (.55 + rnd() * .5), (60 + rnd() * 50) * K]); }
+  P.top = Math.min(A[1], C[1]); P.yb = B[1] + ISL_DEP + H * 1.35; P.H = H;
+  return P;
+}
+function drawIsland(c, D){
+  const P = D._isl || (D._isl = islBuild(D));
+  /* くも（うしろ） */
+  P.cloud.forEach(([x, y, r]) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.5, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.beginPath(); c.ellipse(x, y, r * 1.6, r * .55, 0, 0, Math.PI * 2); c.fill(); });
+  /* うき石 */
+  P.bits.forEach(b => { c.fillStyle = '#7E644C'; c.fill(b.body); c.fillStyle = '#8CC765'; c.fill(b.top); c.strokeStyle = 'rgba(60,40,20,.25)'; c.lineWidth = 1.5; c.stroke(b.body); });
+  /* したの いわ */
+  const g = c.createLinearGradient(0, P.top, 0, P.yb); g.addColorStop(0, '#9A7553'); g.addColorStop(.45, '#7A5B42'); g.addColorStop(1, '#4E3A2B');
+  c.fillStyle = g; c.fill(P.rock); c.fillStyle = 'rgba(30,18,8,.18)'; c.fill(P.rockR);
+  c.strokeStyle = 'rgba(40,25,12,.35)'; c.lineWidth = 2 * islK(D); c.stroke(P.crack);
+  c.strokeStyle = 'rgba(60,40,20,.35)'; c.lineWidth = 2.5 * islK(D); c.lineJoin = 'round'; c.stroke(P.rock);
+  /* ねっこ */
+  c.strokeStyle = '#6B8F3A'; c.lineWidth = 3 * islK(D); c.lineCap = 'round'; c.stroke(P.root); c.lineCap = 'butt';
+  /* まえの くも（いわの したを かくす） */
+  P.cloud.forEach(([x, y, r], i) => { if(i % 2) return; const g2 = c.createRadialGradient(x, y + r * .3, 0, x, y + r * .3, r * .9); g2.addColorStop(0, 'rgba(255,255,255,.85)'); g2.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g2; c.beginPath(); c.ellipse(x, y + r * .3, r * 1.3, r * .45, 0, 0, Math.PI * 2); c.fill(); });
+  /* つちの そくめん */
+  c.fillStyle = '#B98A58'; c.fill(P.soilL); c.fillStyle = '#9C6F43'; c.fill(P.soilR);
+  c.strokeStyle = 'rgba(90,60,30,.35)'; c.lineWidth = 2 * islK(D); c.stroke(P.strata);
+  c.fillStyle = 'rgba(240,225,200,.5)'; c.fill(P.pebble);
+  /* くさの ふち */
+  c.fillStyle = '#6DB34C'; c.fill(P.grassL); c.fillStyle = '#5A9E3E'; c.fill(P.grassR); c.fillStyle = '#69AE48'; c.fill(P.drip);
+}
 function drawGround(c, D){
   const {cols, rows, cells, cov} = D;
-  /* つちの そくめん（ジオラマ） */
-  const dep = 26;
-  c.fillStyle = '#B98A58';
-  c.beginPath(); c.moveTo(isoX(0, rows), isoY(0, rows)); c.lineTo(isoX(cols, rows), isoY(cols, rows)); c.lineTo(isoX(cols, rows), isoY(cols, rows) + dep); c.lineTo(isoX(0, rows), isoY(0, rows) + dep); c.closePath(); c.fill();
-  c.fillStyle = '#9C6F43';
-  c.beginPath(); c.moveTo(isoX(cols, 0), isoY(cols, 0)); c.lineTo(isoX(cols, rows), isoY(cols, rows)); c.lineTo(isoX(cols, rows), isoY(cols, rows) + dep); c.lineTo(isoX(cols, 0), isoY(cols, 0) + dep); c.closePath(); c.fill();
+  /* v12.0：そらに うかぶ しま（じめんの そくめん・した） */
+  drawIsland(c, D);
   const id = (x, y) => cells[`${x},${y}`];
   const road = (x, y) => { const v = id(x, y); return v && (isRoad(v) || v === 'road_crossing'); };
   for(let y = 0; y < rows; y++) for(let x = 0; x < cols; x++){
@@ -4605,7 +4673,7 @@ function mpDraw(){
   drawGround(c, MP.D); drawObjs(c, MP.D);
 }
 const mpReq = () => { if(!MP.raf) MP.raf = requestAnimationFrame(mpDraw); };
-function mpBounds(){ const D = MP.D; return {x0:isoX(0, D.rows) - 10, x1:isoX(D.cols, 0) + 10, y0:-TW * .8, y1:isoY(D.cols, D.rows) + 30}; }
+function mpBounds(){ const D = MP.D, H = islH(D); return {x0:isoX(0, D.rows) - 10 - (D.cols + D.rows) * 6, x1:isoX(D.cols, 0) + 10 + (D.cols + D.rows) * 6, y0:-TW * .8, y1:isoY(D.cols, D.rows) + islDep(D) + H * 1.32}; }   /* v12.0：うかぶ しまの したまで */
 function mpFit(){
   const r = MP.cv.getBoundingClientRect(), B = mpBounds(), top = 104, bot = isL() ? 20 : 70, side = isL() ? 70 : 8;
   const s = Math.min((r.width - side * 2) / (B.x1 - B.x0), (r.height - top - bot) / (B.y1 - B.y0));
@@ -5178,7 +5246,7 @@ async function gyStart(k){
   if(gyLeft(ev) <= 0){ sayT.textContent = `${ev.n}は きょうは もう おしまい。また あした あそぼうね！`; try{ sound('ng'); }catch(e){} return; }
   if(!ac()){ sayT.textContent = 'この きかいでは 音が ならせないみたい…'; return; }
   gyCnt()[k] = (gyCnt()[k] || 0) + 1; persist();
-  GY.mode = k; GY.playing = true; gyPlace();
+  GY.mode = k; GY.playing = true; GY.helpOff = 0; gyPlace();
   const box = pg.querySelector('.gyBox');
   box.insertAdjacentHTML('beforeend', `<div class="gyCap">${IC('hourglass')}がくふを くばっています…</div><div class="gyBar"><i></i></div>
     <div class="gmHud"><b class="sc">0</b><b class="cb" style="display:none"></b></div>
@@ -5189,7 +5257,7 @@ async function gyStart(k){
   if(!GY.playing) return;
   GY.t0 = AC.currentTime + 3.2; GY.end = schedule(GY.t0, {noMel:k === 'concert'}); GY.sec = -1; GY.fw = []; GY.lastFw = 0;
   [3, 2, 1].forEach((n, i) => setTimeout(() => { if(GY.playing && GY.mode === k){ const c = document.createElement('div'); c.className = 'gmCount'; c.innerHTML = `<b>${n}</b>`; box.appendChild(c); setTimeout(() => c.remove(), 950); try{ note('sn', 'sn_p1', AC.currentTime, .2, .25, {ring:1}); }catch(e){} } }, 200 + i * 1000));
-  setTimeout(() => { const h = box.querySelector('.gmHelp'); if(h) h.style.opacity = 0; }, 5200);
+  setTimeout(() => { const h = box.querySelector('.gmHelp'); if(h) h.style.opacity = 0; }, 3600);   /* v12.0：みじかく（おんがくが はじまる まえに きえる） */
   GY.game = k === 'concert' ? Concert(box) : k === 'hanabi' ? Hanabi(box) : Parade(box);
   gyLoop();
 }
@@ -5345,6 +5413,7 @@ function gyLoop(){
   const box = pg.querySelector('.gyBox'), now = AC.currentTime, el = now - GY.t0, total = GY.end - GY.t0;
   const bar = Math.max(0, Math.floor(el / BAR)), sec = bar < 4 ? 0 : bar < 12 ? 1 : bar < 20 ? 2 : 3;
   const bi = box.querySelector('.gyBar i'); if(bi) bi.style.width = clamp(el / total * 100, 0, 100) + '%';
+  if(el > -.6 && !GY.helpOff){ const hp = box.querySelector('.gmHelp'); if(hp){ GY.helpOff = 1; hp.style.opacity = 0; setTimeout(() => hp.remove(), 700); } }   /* v12.0 */
   if(el >= 0 && sec !== GY.sec){ GY.sec = sec; const c = box.querySelector('.gyCap'), S0 = SEC[sec]; if(c){ c.innerHTML = `${IC(S0.ic)}${S0.n}`; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); } }
   else if(el < 0){ const c = box.querySelector('.gyCap'); if(c && !c.dataset.rd){ c.dataset.rd = 1; c.innerHTML = `${IC('note')}じゅんび…`; } }
   try{ if(GY.game) GY.game.draw(el); }catch(e){ console.warn('game', e); }
@@ -5937,6 +6006,9 @@ html.eco108 #bgVeil{transition:none!important}
   const cmes = Orig.prototype.createMediaElementSource;
   if(cmes) Orig.prototype.createMediaElementSource = function(el){ const i = INFO.get(this); if(i) i.els.add(el); try{ el.addEventListener('play', () => wake(this)); }catch(e){} return cmes.apply(this, arguments); };
 
+  /* v12.0：タッチした ときに おきる（iPhone・iPad は タッチの ときしか おきられない） */
+  const wakeAll = () => INFO.forEach((i, c) => { if(c.state === 'suspended'){ i.sus = false; i.use = now(); try{ c.resume(); }catch(e){} } });
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, wakeAll, {capture:true, passive:true}));
   /* ときどき みて、やすませる */
   setInterval(() => {
     const t = now();
