@@ -5961,3 +5961,107 @@ html.eco108 #bgVeil{transition:none!important}
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 0)); else setTimeout(late, 0);
 })();
+
+
+/* =====================================================================
+   v11.0：見た目を かえずに しょうでんりょく（いつも 有効）
+   ① セーブ（persist）を まとめる … 0.6びょう いないの セーブは 1回に。アプリを とじる／うらに いく ときは すぐ セーブ
+   ② まちが ぜんぶ かくれて いる とき（ホテル・ものがたり・おしろ など）は、まちの うごきを とめる
+   ③ まちで 画面の そとに ある ものの アニメーションを とめる（スクロールで 見えたら すぐ うごく）
+   ④ ひかって 点滅する ところを かるい しかたに（漢字の □・もうすぐマスター・作れる へや・チュートリアルの わく）
+      ※ 超レア登場の にじいろは そのまま
+   ===================================================================== */
+(function(){
+  'use strict';
+
+  /* ---------- ① セーブを まとめる ---------- */
+  try{
+    const DELAY = 600;
+    let real = persist, pend = false, s0 = null, tm = 0, tries = 0;
+    const run = () => { tm = 0; if(!pend) return;
+      if(save !== s0){ if(++tries < 10){ tm = setTimeout(run, 500); return; } pend = false; return; }   // データの よみこみ などで save が かわった ときは ふるい ほうは かかない
+      pend = false; tries = 0; real.call(window); };
+    const flush = () => { if(tm){ clearTimeout(tm); tm = 0; } if(pend && save === s0){ pend = false; real.call(window); } };
+    const wrap = function(){ pend = true; s0 = save; tries = 0; if(!tm) tm = setTimeout(run, DELAY); };
+    wrap.__real110 = real; wrap.flush = flush;
+    persist = wrap;
+    window.__flush110 = flush;
+    document.addEventListener('visibilitychange', () => { if(document.hidden) flush(); });
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('beforeunload', flush);
+  }catch(e){ console.warn('v11.0 persist', e); }
+
+  /* ---------- ②③ まちの アニメーション ---------- */
+  const SKIP = '.air65,.mover,#railStrip,#roadStrip';     // じぶんで いどうする アニメーションは とめない
+  const paused = new Set();
+  let covered = false;
+  window.__townCovered110 = () => covered;
+  const inTown = () => typeof curScreen !== 'undefined' && curScreen === 'town' && !document.hidden;
+
+  function isCovered(){
+    const scr = document.getElementById('scr-town'); if(!scr) return false;
+    const W = innerWidth, H = innerHeight, pts = [[W * .5, H * .4], [W * .3, H * .55], [W * .7, H * .55]];
+    for(const [x, y] of pts){
+      const e = document.elementFromPoint(x, y);
+      if(!e || scr.contains(e) || e.closest('#dlg,#toast,.toast,#bnav,#topbar,header')) return false;
+    }
+    return true;
+  }
+  function scan(){
+    const world = document.getElementById('townWorld');
+    if(!world || !document.getAnimations){ return; }
+    if(!inTown()){ resumeAll(); return; }
+    covered = isCovered();
+    const wrap = document.getElementById('townMapWrap') || world;
+    const r0 = wrap.getBoundingClientRect(), M = 120;
+    const vx0 = Math.max(0, r0.left) - M, vy0 = Math.max(0, r0.top) - M, vx1 = Math.min(innerWidth, r0.right) + M, vy1 = Math.min(innerHeight, r0.bottom) + M;
+    let list; try{ list = document.getAnimations(); }catch(e){ return; }
+    for(const a of list){
+      if(!a.animationName) continue;                          // CSSの アニメーション だけ
+      const t = a.effect && a.effect.target; if(!t || !t.isConnected || !world.contains(t) || t.closest(SKIP)) continue;
+      let run = !covered;
+      if(run){ const r = t.getBoundingClientRect(); run = r.right > vx0 && r.left < vx1 && r.bottom > vy0 && r.top < vy1; }
+      if(!run && a.playState === 'running'){ try{ a.pause(); paused.add(a); }catch(e){} }
+      else if(run && paused.has(a)){ try{ a.play(); }catch(e){} paused.delete(a); }
+    }
+    paused.forEach(a => { const t = a.effect && a.effect.target; if(!t || !t.isConnected) paused.delete(a); });
+  }
+  function resumeAll(){ covered = false; paused.forEach(a => { try{ a.play(); }catch(e){} }); paused.clear(); }
+  setInterval(() => { try{ scan(); }catch(e){} }, 1200);
+  let sq = 0;
+  const soon = () => { if(sq) return; sq = setTimeout(() => { sq = 0; try{ scan(); }catch(e){} }, 120); };
+  const hookScroll = () => { const w = document.getElementById('townMapWrap'); if(w && !w.__s110){ w.__s110 = 1; w.addEventListener('scroll', soon, {passive:true}); } };
+  window.addEventListener('resize', soon);
+  document.addEventListener('visibilitychange', soon);
+
+  /* 住民の いどうも、まちが かくれて いる ときは とめる */
+  const late = () => {
+    hookScroll();
+    try{
+      if(typeof walkTick === 'function' && !walkTick.__cov110){
+        const w0 = walkTick;
+        walkTick = function(){ if(covered && inTown()) return; return w0.apply(this, arguments); };
+        walkTick.__cov110 = true;
+        try{ if(typeof WK !== 'undefined' && WK.timer){ clearInterval(WK.timer); WK.timer = setInterval(walkTick, 700); } }catch(e){}   // 新しい しくみで うごかしなおす
+      }
+    }catch(e){ console.warn('v11.0 walk', e); }
+    try{ show = (o => function(){ const r = o.apply(this, arguments); setTimeout(() => { hookScroll(); soon(); }, 60); return r; })(show); }catch(e){}
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 50)); else setTimeout(late, 50);
+
+  /* ---------- ④ 点滅を かるく（影・わくを うごかさず、うすさ だけ かえる） ---------- */
+  const st = document.createElement('style');
+  st.textContent = `
+button.kbox,.kbox{animation:none!important}
+button.kbox{position:relative}
+button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit;box-shadow:0 0 0 6px rgba(255,126,157,.3);opacity:0;pointer-events:none;animation:op110 1.8s infinite}
+.mUnit.almost,.rbRoom.rcan{animation:none!important}
+.mUnit.almost::after,.rbRoom.rcan::after{content:'';position:absolute;border-radius:inherit;box-shadow:0 0 0 4px rgba(242,185,30,.35);opacity:0;pointer-events:none;animation:op110 1.6s ease-in-out infinite}
+.mUnit.almost::after{inset:-3px}
+.rbRoom.rcan{position:relative}
+.rbRoom.rcan::after{inset:-2px}
+.tutHole{animation:none!important}
+.tutHole::after{content:'';position:absolute;inset:-8px;border:4px solid #fff;border-radius:24px;opacity:0;pointer-events:none;animation:op110 1.4s ease-in-out infinite}
+@keyframes op110{50%{opacity:1}}`;
+  document.head.appendChild(st);
+})();
