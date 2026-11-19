@@ -2252,3 +2252,99 @@ body.scr-home #bnav button{color:var(--h19sub)}
   body.scr-home .bigTile img.hb{width:170px!important;max-height:170px!important}
   body.scr-home .bigTile{min-height:200px!important}
 }
+
+/* =====================================================================
+   v20.0 ホーム：季節で 彩る デザイン（v19 の 上書き）
+   ・季節（はる／なつ／あき／ふゆ）で 色を かえる … body[data-s]
+   ・村の名前＝木の かんばん／なかまを よぶ＝布の タグ／ふきだし＝季節色
+   ・パネルの 角丸は 16px に 統一（--h20r）
+   ・iPad横：操作まわりは 中央に まとめて 間延び しない
+   ===================================================================== */
+body.scr-home{--h20r:16px;--h20w:min(760px,74vw);
+  --wd1:#EECF9E;--wd2:#D2A164;--wdInk:#5A3A1E;--wdLine:#B07F45;
+  --tag:#8FAE7A;--tagInk:#fff;--bub:#FFF0C8;--bubInk:#5A3A1E;
+  --rb1:#D86F86;--rb2:#6E9E58;--rb3:#E3962E;--glow:255,214,150;
+  --paper:rgba(255,249,238,.9);--nav:rgba(255,248,236,.94);--ink20:#4A3426}
+body.scr-home[data-s="spring"]{--wd1:#F6DDBC;--wd2:#E2B98A;--wdLine:#C4946A;--tag:#E58FA8;--bub:#FFE9F0;--rb1:#EC7FA0;--rb2:#79B86A;--rb3:#E5B53A;--glow:255,200,220;--paper:rgba(255,248,250,.9);--nav:rgba(255,246,249,.94)}
+body.scr-home[data-s="summer"]{--wd1:#EBD3A6;--wd2:#C99E62;--tag:#4FAFC6;--bub:#E4F5FF;--bubInk:#24465A;--rb1:#EF7B57;--rb2:#3FA36B;--rb3:#2F8FD0;--glow:170,220,255;--paper:rgba(248,252,255,.9);--nav:rgba(246,251,255,.94)}
+body.scr-home[data-s="winter"]{--wd1:#E3E3E0;--wd2:#AFB1B0;--wdInk:#34383D;--wdLine:#8D9093;--tag:#7F878F;--bub:#EEF1F4;--bubInk:#2C3136;
+  --rb1:#474C53;--rb2:#636B74;--rb3:#858D96;--glow:225,232,240;--paper:rgba(250,251,252,.92);--nav:rgba(248,249,250,.95);--ink20:#2F3338}
+/* 背景：ふゆは 白黒＋うすい 雪（アニメなし＝電池に やさしい） */
+body.scr-home[data-s="winter"] #bg{filter:grayscale(.88) brightness(1.1) contrast(.92)}
+body.scr-home[data-s="winter"] #bgVeil{background:
+  radial-gradient(circle at 12% 18%,rgba(255,255,255,.9) 0 2px,transparent 3px) 0 0/90px 110px,
+  radial-gradient(circle at 60% 70%,rgba(255,255,255,.8) 0 1.5px,transparent 2.5px) 0 0/70px 80px,
+  linear-gradient(180deg,rgba(240,244,248,.15),rgba(240,244,248,.15) 45%,rgba(245,247,250,.7) 78%,rgba(248,249,251,.88))!important}
+body.scr-home[data-s="spring"] #bg{filter:saturate(1.05) hue-rotate(-12deg) brightness(1.05)}
+body.scr-home[data-s="summer"] #bg{filter:saturate(1.1) hue-rotate(-28deg) brightness(1.06)}
+
+/* ヘッダー：うすく 背景に とける（白い 大きな 帯に しない） */
+body.scr-home #topbar{background:none!important;box-shadow:none!important;min-height:0;padding-top:max(8px,env(safe-area-inset-top))!important;padding-bottom:6px!important}
+body.scr-home.h19scr #topbar{background:var(--nav)!important;box-shadow:0 2px 10px rgba(60,40,20,.1)!important}
+body.scr-home #topbar .pill{border-radius:999px!important;background:rgba(255,255,255,.82)!important;border:none!important;box-shadow:0 2px 8px rgba(60,40,20,.12)!important}
+
+/* 村の 名前：木の かんばん */
+body.scr-home .welcome{background:repeating-linear-gradient(0deg,rgba(0,0,0,.035) 0 2px,transparent 2px 7px),linear-gradient(180deg,var(--wd1),var(--wd2))!important;
+  border:2px solid var(--wdLine)!important;border-radius:12px!important;padding:5px 18px 5px 6px!important;box-shadow:0 3px 0 rgba(0,0,0,.12),0 6px 12px rgba(60,40,20,.15)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+body.scr-home .welcome::before,body.scr-home .welcome::after{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--wdLine);box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+body.scr-home .welcome::before{left:-1px;display:none}body.scr-home .welcome::after{right:6px}
+body.scr-home .welcome img{background:rgba(255,255,255,.75)!important;border:2px solid var(--wdLine)}
+body.scr-home .welcome #homeTownLv{color:var(--wdInk)!important;font-size:17px!important}
+body.scr-home .welcome .h19lv{background:rgba(255,255,255,.55)!important;color:var(--wdInk)!important;border-radius:8px!important}
+body.scr-home[data-s="winter"] .welcome{box-shadow:0 -3px 0 #fff inset,0 3px 0 rgba(0,0,0,.12),0 6px 12px rgba(40,40,50,.15)!important}
+body.scr-home[data-s="winter"] .welcome::before{display:block;left:8px;right:8px;top:-5px;width:auto;height:8px;margin:0;border-radius:8px 8px 4px 4px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* なかまを よぶ：布の タグ（ちがう 形・ちがう 素材） */
+body.scr-home .rareSel{display:inline-flex!important;align-items:center;gap:5px;background:var(--tag)!important;color:var(--tagInk)!important;border:none!important;
+  border-radius:4px 10px 10px 4px!important;padding:5px 14px 5px 10px!important;font-size:12px!important;box-shadow:0 2px 0 rgba(0,0,0,.15)!important;
+  outline:1.5px dashed rgba(255,255,255,.6);outline-offset:-4px;clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%)}
+body.scr-home .rareSel svg{width:18px;height:18px;flex:none}
+
+/* ふきだし：季節の 色の 雲がた */
+body.scr-home #homeBird .bubble{background:var(--bub)!important;color:var(--bubInk)!important;border-radius:22px 22px 22px 22px/20px 20px 20px 20px!important;
+  box-shadow:0 4px 12px rgba(60,40,20,.14)!important;font-size:15px}
+body.scr-home #homeBird .bubble::after{border-top-color:var(--bub)!important}
+
+/* メイン3つ：季節の リボン */
+body.scr-home .bigTile.pink span.bt-t{background:var(--rb1)!important}
+body.scr-home .bigTile.green span.bt-t{background:var(--rb2)!important}
+body.scr-home .bigTile.orange span.bt-t{background:var(--rb3)!important}
+body.scr-home .bigTile .bt-bg{background:radial-gradient(ellipse at 50% 50%,rgba(var(--glow),.85),rgba(var(--glow),.25) 55%,transparent 72%)!important}
+body.scr-home .bigTile span.bt-t{border-radius:6px!important}
+
+/* パネルは 角丸 16px に 統一 */
+body.scr-home #homeExtra .udCard,body.scr-home .missionCard,body.scr-home .homeStats,body.scr-home .evCard{border-radius:var(--h20r)!important}
+body.scr-home .missionCard,body.scr-home .homeStats{background:var(--paper)!important}
+body.scr-home #homeExtra .udGo{border-radius:10px 0 0 10px!important;clip-path:polygon(0 0,100% 0,90% 50%,100% 100%,0 100%);padding-right:20px!important;background:var(--rb1)!important;box-shadow:none!important}
+body.scr-home[data-s="winter"] #homeExtra .udGo{background:#3F444B!important}
+/* まちがえた問題・おやつ：箱を つかわない */
+body.scr-home .homeMini .hmBtn{background:none!important;box-shadow:none!important;border-radius:var(--h20r)!important}
+body.scr-home .homeMini{position:relative}
+body.scr-home .homeMini::after{content:"";position:absolute;left:50%;top:22%;bottom:22%;width:1.5px;background:rgba(120,90,60,.25)}
+/* にがておばけ：うすい ラベンダーの かすみ */
+body.scr-home .bossCard.calm{background:radial-gradient(ellipse at 30% 50%,rgba(220,205,255,.75),rgba(235,226,255,.35) 60%,transparent 80%)!important;box-shadow:none!important;border-radius:var(--h20r)!important}
+body.scr-home .bossCard:not(.calm){border-radius:var(--h20r)!important}
+/* ミッションの イラスト */
+body.scr-home .misI{background:none!important;width:44px!important;height:44px!important}
+body.scr-home .misI svg,body.scr-home .misHead svg{width:100%;height:100%;display:block}
+body.scr-home .misHead .h20tg{display:inline-block;width:26px;height:26px;vertical-align:-6px;margin-right:4px}
+body.scr-home .misRow.ok{border-radius:10px!important}
+/* 下ナビ */
+body.scr-home #bnav{background:var(--nav)!important;border-radius:0!important}
+
+/* ---- iPad横：中央に まとめる ---- */
+@media (min-width:900px){
+  body.scr-home .homeHero{min-height:300px!important;max-width:var(--h20w);margin:0 auto}
+  body.scr-home .welcome{left:0!important;top:6px!important}
+  body.scr-home .rareSel{left:0!important;top:66px!important}
+  body.scr-home #homeBird{right:0!important}
+  body.scr-home .homeBtns{max-width:var(--h20w)!important;gap:2%!important;margin-top:-30px!important}
+  body.scr-home .bigTile img.hb{width:190px!important;max-height:190px!important}
+  body.scr-home #homeExtra,body.scr-home #evArea,body.scr-home .missionCard,body.scr-home .homeStats{max-width:var(--h20w)!important}
+  body.scr-home #bnav{justify-content:center!important;gap:0!important}
+  body.scr-home #bnav button{flex:0 0 calc(min(76vw,860px)/6)!important;max-width:none!important}
+}
+@media (max-width:600px){
+  body.scr-home .welcome #homeTownLv{font-size:15px!important}
+  body.scr-home #homeBird .bubble{font-size:12px}
+}
