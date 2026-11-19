@@ -4524,12 +4524,25 @@ function islImg(){
 function islEll(D){
   const cx = isoX(D.cols / 2, D.rows / 2), cy = isoY(D.cols / 2, D.rows / 2);
   const C = [[0, 0], [D.cols, 0], [0, D.rows], [D.cols, D.rows]].map(([x, y]) => [isoX(x, y) - cx, isoY(x, y) - cy]);
-  const A = Math.max(...C.map(([dx, dy]) => Math.hypot(dx, dy * 2))) * 1.03 + TW * .9;
+  const A = Math.max(...C.map(([dx, dy]) => Math.hypot(dx, dy * 2))) * 1.02 + TW * .45;
   return {cx, cy, A, B:A / 2};
 }
+/* v16.0：ふちに でこぼこ（なめらかな ゆらぎ ＋ 小さな 入り江・出っぱり）。まちの しかくは かならず 内がわ */
+function islBump(D){
+  if(D._bump) return D._bump;
+  let sd = (D.cols * 2654435761 ^ D.rows * 40503) >>> 0;
+  const rnd = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+  const w = [[2, .045], [3, .05], [5, .035], [7, .022], [11, .014], [17, .008]].map(([f, a]) => [f, a * (.7 + rnd() * .6), rnd() * 6.283]);
+  const lumps = [...Array(5)].map(() => [rnd() * 6.283, (rnd() < .5 ? -1 : 1) * (.03 + rnd() * .05), .18 + rnd() * .22]);
+  const f = t => { let v = 0; w.forEach(([k, a, p]) => v += a * Math.sin(k * t + p));
+    lumps.forEach(([c, a, wd]) => { let d = Math.abs(((t - c + Math.PI) % 6.283 + 6.283) % 6.283 - Math.PI); v += a * Math.exp(-(d * d) / (wd * wd)); });
+    return v; };
+  let mn = 0; for(let i = 0; i < 360; i++) mn = Math.min(mn, f(i / 360 * 6.283));
+  return (D._bump = t => 1 + f(t) - mn);     // いつも 1 いじょう
+}
 function islRim(D, grow){
-  const E = islEll(D), A = E.A + (grow || 0) * TW, B = A / 2, N = 120, pts = [];
-  for(let i = 0; i < N; i++){ const t = i / N * Math.PI * 2; pts.push([E.cx - A * Math.cos(t), E.cy + B * Math.sin(t)]); }
+  const E = islEll(D), A = E.A + (grow || 0) * TW, B = A / 2, N = 160, pts = [], bm = islBump(D);
+  for(let i = 0; i < N; i++){ const t = i / N * Math.PI * 2, m = bm(t); pts.push([E.cx - A * m * Math.cos(t), E.cy + B * m * Math.sin(t)]); }
   return pts;     // 0〜N/2 が まえがわ（ひだり → した → みぎ）
 }
 function islGrass(){
@@ -4546,7 +4559,8 @@ function islBuild(D){
   const poly = pts => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1])); p.closePath(); return p; };
   const P = {K, DEP, H};
   P.top = poly(rim);
-  P.inner = poly(islRim(D, -.35));
+  P.inner = poly(islRim(D, -.3));
+  P.back = new Path2D(); rim.slice(N / 2).concat([rim[0]]).forEach((q, i) => i ? P.back.lineTo(q[0], q[1]) : P.back.moveTo(q[0], q[1]));
   const x0 = front[0][0], x1 = front[front.length - 1][0], W = x1 - x0;
   /* つちの おび */
   P.soil = poly(front.concat(front.slice().reverse().map(q => [q[0], q[1] + DEP])));
@@ -4563,6 +4577,9 @@ function islBuild(D){
   P.bot = bot; P.x0 = x0; P.W = W;
   P.rock = poly(front.concat(bot.slice().reverse()));
   P.outline = new Path2D(); bot.forEach((q, i) => i ? P.outline.lineTo(q[0], q[1]) : P.outline.moveTo(q[0], q[1]));
+  /* v16.0：もや（したの くもの かたまり） */
+  P.mist = []; for(let i = 0; i < 7; i++){ const u = .12 + i * .127 + (rnd() - .5) * .05, b = bot[Math.round(u * M)];
+    P.mist.push([b[0] + (rnd() - .5) * 30 * K, b[1] - (H * (.05 + rnd() * .15)) * Math.pow(Math.sin(Math.PI * u), 1.2), (40 + rnd() * 50) * K]); }
   P.yTop = Math.min(...rim.map(q => q[1])); P.yb = Math.max(...bot.map(q => q[1]));
   /* くさの ふち（たれる くさ） */
   const lip = new Path2D(), tuft = new Path2D();
@@ -4580,13 +4597,19 @@ function islBuild(D){
   /* くさはらの 花・小石 */
   P.flw = []; { const E = islEll(D);
     const inDia = (x, y) => { const dx = (x - E.cx) / (TW / 2), dy = (y - E.cy) / (TH / 2); const gx = (dx + dy) / 2 + D.cols / 2, gy = (dy - dx) / 2 + D.rows / 2; return gx > -.4 && gx < D.cols + .4 && gy > -.4 && gy < D.rows + .4; };
-    for(let i = 0; i < 70; i++){ const t = rnd() * Math.PI * 2, rr = .55 + rnd() * .4, x = E.cx - E.A * rr * Math.cos(t), y = E.cy + E.B * rr * Math.sin(t);
+    for(let i = 0; i < 70; i++){ const t = rnd() * Math.PI * 2, rr = .55 + rnd() * .4, bm = islBump(D)(t), x = E.cx - E.A * bm * rr * Math.cos(t), y = E.cy + E.B * bm * rr * Math.sin(t);
       if(inDia(x, y)) continue; P.flw.push([x, y, ['#FFF6F0', '#FFD6E4', '#FFE58A', '#D9C7FF'][i % 4], (1.6 + rnd() * 1.4) * K]); } }
   return P;
 }
 function drawIsland(c, D){
   islImg();
   const P = D._isl || (D._isl = islBuild(D)), {K, DEP} = P;
+  const E0 = islEll(D);
+  /* v16.0：しまの まわりの もや（うしろ） */
+  { const cx = E0.cx, cy = (P.yTop + P.yb) / 2, R = P.W * .62, sc = (P.yb - P.yTop + P.H * .3) / (2 * R);
+    c.save(); c.translate(cx, cy); c.scale(1, Math.max(.4, sc));
+    const hg = c.createRadialGradient(0, 0, R * .55, 0, 0, R); hg.addColorStop(0, 'rgba(240,248,255,.32)'); hg.addColorStop(1, 'rgba(240,248,255,0)');
+    c.fillStyle = hg; c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill(); c.restore(); }
   /* いわはだ */
   c.save(); c.clip(P.rock);
   const im = islImg(), s = (DEP + P.H * 1.2) / 768;
@@ -4598,8 +4621,15 @@ function drawIsland(c, D){
   c.fillStyle = g; c.fillRect(P.x0 - 10, P.yTop, P.W + 20, P.yb - P.yTop + 10);
   g = c.createLinearGradient(0, P.yTop + DEP, 0, P.yb); g.addColorStop(0, 'rgba(48,30,18,0)'); g.addColorStop(.55, 'rgba(48,30,18,.3)'); g.addColorStop(1, 'rgba(36,22,14,.7)');
   c.fillStyle = g; c.fillRect(P.x0 - 10, P.yTop, P.W + 20, P.yb - P.yTop + 10);
+  /* v16.0：とおくの 空の いろに とける（したに いくほど もやの いろ） */
+  g = c.createLinearGradient(0, P.yTop + DEP + P.H * .1, 0, P.yb); g.addColorStop(0, 'rgba(214,232,248,0)'); g.addColorStop(.6, 'rgba(214,232,248,.12)'); g.addColorStop(1, 'rgba(228,240,252,.55)');
+  c.fillStyle = g; c.fillRect(P.x0 - 10, P.yTop, P.W + 20, P.yb - P.yTop + 10);
   c.restore();
-  c.strokeStyle = 'rgba(55,32,16,.5)'; c.lineWidth = 2.2 * K; c.lineJoin = 'round'; c.stroke(P.outline);
+  /* v16.0：りんかくを ぼかす（くっきりした 線の かわりに、うすい 光の ふち） */
+  c.lineJoin = 'round';
+  c.strokeStyle = 'rgba(226,238,250,.16)'; c.lineWidth = 16 * K; c.stroke(P.outline);
+  c.strokeStyle = 'rgba(226,238,250,.22)'; c.lineWidth = 8 * K; c.stroke(P.outline);
+  c.strokeStyle = 'rgba(236,244,252,.28)'; c.lineWidth = 3 * K; c.stroke(P.outline);
   /* つちの おび（くさの すぐ した） */
   c.save(); c.clip(P.soil); g = c.createLinearGradient(0, P.yTop, 0, P.yTop + (P.yb - P.yTop) * .5);
   c.fillStyle = 'rgba(70,40,15,.28)'; c.fill(P.soil); c.restore();
@@ -4611,7 +4641,7 @@ function drawIsland(c, D){
   { const E = islEll(D); g = c.createLinearGradient(0, E.cy - E.B, 0, E.cy + E.B); }
   g.addColorStop(0, '#A3D97E'); g.addColorStop(1, '#8CC765'); 
   { const E = islEll(D), gi = islGrass();
-    c.save(); c.beginPath(); c.ellipse(E.cx, E.cy, E.A, E.B, 0, 0, Math.PI * 2); c.clip();
+    c.save(); c.clip(P.top);
     if(gi){ /* v15.0：くさの イラストを じめんと おなじ ななめに はる */
       let pt = null; try{ pt = c.createPattern(gi, 'repeat'); }catch(e){}
       const u = TW / 2 / 56;      // 1マス ≒ 56px（花が まちの 大きさに あう）
@@ -4620,11 +4650,19 @@ function drawIsland(c, D){
     } else { c.fillStyle = g; c.fillRect(E.cx - E.A, E.cy - E.B, E.A * 2, E.B * 2); }
     /* ふちに むかって すこし くらく（まるみ） */
     const rg = c.createRadialGradient(E.cx, E.cy, E.A * .2, E.cx, E.cy, E.A); rg.addColorStop(0, 'rgba(255,255,230,.05)'); rg.addColorStop(.75, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(30,60,10,.25)');
-    c.save(); c.translate(E.cx, E.cy); c.scale(1, E.B / E.A); c.translate(-E.cx, -E.cy); c.fillStyle = rg; c.fillRect(E.cx - E.A, E.cy - E.A, E.A * 2, E.A * 2); c.restore();
+    c.save(); c.translate(E.cx, E.cy); c.scale(1, E.B / E.A); c.translate(-E.cx, -E.cy); c.fillStyle = rg; c.fillRect(E.cx - E.A * 1.3, E.cy - E.A * 1.3, E.A * 2.6, E.A * 2.6); c.restore();
+    /* v16.0：おくの ふちは 空に とける（もや） */
+    const bg2 = c.createLinearGradient(0, P.yTop, 0, E.cy); bg2.addColorStop(0, 'rgba(225,238,250,.5)'); bg2.addColorStop(.35, 'rgba(225,238,250,.12)'); bg2.addColorStop(1, 'rgba(225,238,250,0)');
+    c.fillStyle = bg2; c.fillRect(E.cx - E.A * 1.3, P.yTop - 10, E.A * 2.6, E.cy - P.yTop + 10);
     c.restore();
-    c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2.5 * K; c.beginPath(); c.ellipse(E.cx, E.cy, E.A - .3 * TW, E.B - .15 * TW, 0, 0, Math.PI * 2); c.stroke(); }
+    c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2.5 * K; c.stroke(P.inner);
+    c.lineJoin = 'round'; c.strokeStyle = 'rgba(230,242,252,.22)'; c.lineWidth = 10 * K; c.stroke(P.back);
+    c.strokeStyle = 'rgba(236,246,255,.3)'; c.lineWidth = 4 * K; c.stroke(P.back); }
   c.fillStyle = '#5FA843'; c.fill(P.lip); c.fillStyle = '#74BE55'; c.fill(P.tuft);
   if(!islGrass()) P.flw.forEach(([x, y, col, r]) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
+  /* v16.0：したの ほうに かかる うすい もや */
+  P.mist.forEach(([x, y, r]) => { const mg = c.createRadialGradient(x, y, 0, x, y, r * 1.6); mg.addColorStop(0, 'rgba(246,250,255,.3)'); mg.addColorStop(.6, 'rgba(246,250,255,.1)'); mg.addColorStop(1, 'rgba(246,250,255,0)');
+    c.save(); c.translate(x, y); c.scale(1.7, .55); c.translate(-x, -y); c.fillStyle = mg; c.beginPath(); c.arc(x, y, r * 1.6, 0, Math.PI * 2); c.fill(); c.restore(); });
 }
 function drawGround(c, D){
   const {cols, rows, cells, cov} = D;
