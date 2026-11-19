@@ -6317,3 +6317,169 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
     };
   }catch(e){ console.warn('v11.1 renderMap skip', e); }
 })();
+
+
+/* =====================================================================
+   v18.0：かがくの ハナ（2.5D）
+   ・まちに 科学館（bg_science）が ある とき、じゅうみん → ハナの 画面に「🔬 かがくの すがた」ボタン
+   ・おおきい 表示：こきゅう・まばたき・あたま・かみ・うで・白衣・足の おもさ いどう（タッチの ジャンプは なし）
+   ・いつもの ハナの おおきい 表示にも「かがくの ハナ」ボタン
+   ・画像：./assets/images/science/hana_sci.webp・hana_sci_close.webp（1024×1536 を 768×1152 に した もの）
+   ===================================================================== */
+(function(){
+  'use strict';
+  const SI = './assets/images/science/';
+  const hasSci = () => { try{ return Object.values(save.town.cells || {}).includes('bg_science'); }catch(e){ return false; } };
+  const IW = 1024, IH = 1536, BB = {x0:180, y0:10, x1:844, y1:1525};
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const rot = (x, y, px, py, a) => { const c = Math.cos(a), s = Math.sin(a), dx = x - px, dy = y - py; return [px + dx * c - dy * s, py + dx * s + dy * c]; };
+  const NX = 36, NY = 72, base = [], uv = [], idx = [];
+  for(let j = 0; j <= NY; j++) for(let i = 0; i <= NX; i++){ const x = BB.x0 + (BB.x1 - BB.x0) * i / NX, y = BB.y0 + (BB.y1 - BB.y0) * j / NY; base.push(x, y); uv.push(x / IW, y / IH); }
+  for(let j = 0; j < NY; j++) for(let i = 0; i < NX; i++){ const k = j * (NX + 1) + i; idx.push(k, k + 1, k + NX + 1, k + 1, k + NX + 2, k + NX + 1); }
+  let IMP = null;
+  const loadImgs = () => IMP || (IMP = Promise.all(['hana_sci', 'hana_sci_close'].map(n => new Promise((ok, ng) => { const im = new Image(); im.decoding = 'async'; im.onload = () => ok(im); im.onerror = ng; im.src = SI + n + '.webp'; }))));
+
+  function SciView(box, cv){
+    const API = {dead:false, dispose(){}, layout(){}};
+    const pos = new Float32Array(base.length);
+    const WS = {from:0, to:0, t0:-9, dur:.9, next:4, side:0};
+    const wNow = t => { const u = Math.min(1, Math.max(0, (t - WS.t0) / WS.dur)), e = u * u * (3 - 2 * u); return {w:WS.from + (WS.to - WS.from) * e, lift:u > 0 && u < 1 ? Math.sin(Math.PI * Math.min(1, u * 1.4)) : 0, side:WS.side}; };
+    const weight = t => {
+      if(t > WS.next){ WS.from = wNow(t).w; const o = [-1, 0, 1].filter(v => v !== Math.round(WS.to)); WS.to = o[Math.floor(Math.random() * o.length)];
+        WS.side = WS.to > WS.from ? -1 : 1; WS.t0 = t; WS.dur = .8 + Math.random() * .4; WS.next = t + 4.5 + Math.random() * 5; }
+      return wNow(t);
+    };
+    function deform(t){
+      const br = Math.sin(t * 2 * Math.PI / 3.4), hA = .022 * Math.sin(t * .9) + .012 * Math.sin(t * 2.3), aA = .03 * Math.sin(t * 1.1 + .6);
+      const W = weight(t), hip = 9 * W.w, tilt = -.012 * W.w, rL = Math.max(0, W.w), rR = Math.max(0, -W.w);
+      for(let k = 0; k < base.length; k += 2){
+        let x = base[k], y = base[k + 1];
+        const hs = (ss(345, 300, x) + ss(680, 725, x)) * ss(500, 440, y);
+        const aL = ss(338, 305, x) * ss(470, 560, y), aR = ss(686, 719, x) * ss(470, 560, y);
+        if(aL > 0) [x, y] = rot(x, y, 328, 470, aA * aL);
+        if(aR > 0) [x, y] = rot(x, y, 696, 470, -aA * aR);
+        const hem = ss(860, 1000, y) * ss(1060, 1020, y);
+        x += Math.sin(t * 1.4 - y * .01) * 3.2 * hem * (x < 512 ? -1 : 1) * .6 + Math.sin(t * 1.4) * 1.5 * hem;
+        const wh = Math.max(ss(450, 385, y), hs); if(wh > 0) [x, y] = rot(x, y, 512, 420, hA * wh);
+        x += Math.sin(t * 1.8 - y * .012) * 4.5 * hs * ss(230, 440, y);
+        y -= 5 * br * ss(1180, 880, y); x += (x - 512) * .004 * br * ss(1000, 700, y) * ss(380, 460, y);
+        const legF = ss(1040, 1500, y), isL = x < 508, relax = isL ? rL : rR, lift = W.side === (isL ? -1 : 1) ? W.lift : 0;
+        x += hip * (1 - legF) + (isL ? -1 : 1) * 7 * relax * legF;
+        y -= lift * 9 * ss(1200, 1500, y) - 3 * relax * ss(1150, 1300, y) * ss(1450, 1300, y);
+        if(legF < 1) [x, y] = rot(x, y, 512, 1100, tilt * (1 - legF));
+        pos[k] = x; pos[k + 1] = y;
+      }
+    }
+    const gl = cv.getContext('webgl', {premultipliedAlpha:true, alpha:true, antialias:true});
+    if(!gl){ loadImgs().then(([a]) => { if(!API.dead){ a.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain'; cv.replaceWith(a); } }).catch(() => {}); return API; }
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+    const pg = gl.createProgram();
+    gl.attachShader(pg, sh(gl.VERTEX_SHADER, 'attribute vec2 p;attribute vec2 u;varying vec2 v;uniform vec4 vp;void main(){v=u;gl_Position=vec4((p.x-vp.x)/vp.z*2.-1.,1.-(p.y-vp.y)/vp.w*2.,0.,1.);}'));
+    gl.attachShader(pg, sh(gl.FRAGMENT_SHADER, 'precision mediump float;varying vec2 v;uniform sampler2D a;uniform sampler2D c;uniform float bl;void main(){gl_FragColor=mix(texture2D(a,v),texture2D(c,v),bl);}'));
+    gl.linkProgram(pg); gl.useProgram(pg);
+    const lp = gl.getAttribLocation(pg, 'p'), lu = gl.getAttribLocation(pg, 'u'), Uvp = gl.getUniformLocation(pg, 'vp'), Ubl = gl.getUniformLocation(pg, 'bl');
+    gl.uniform1i(gl.getUniformLocation(pg, 'a'), 0); gl.uniform1i(gl.getUniformLocation(pg, 'c'), 1);
+    const pb = gl.createBuffer(), ub = gl.createBuffer(), ib = gl.createBuffer(), texs = [];
+    gl.bindBuffer(gl.ARRAY_BUFFER, ub); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+    const tex = (img, unit) => { const t = gl.createTexture(); texs.push(t); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); };
+    let raf = 0, last = 0, tt = 0, nextBlink = 2, blinkT = -1, ready = false;
+    function view(){
+      const r = box.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1), w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+      if(w > 0 && h > 0 && (cv.width !== w || cv.height !== h)){ cv.width = w; cv.height = h; }
+      const s = Math.min(r.width / (BB.x1 - BB.x0 + 80), r.height / (BB.y1 - BB.y0 + 60)), vw = r.width / s, vh = r.height / s;
+      return [512 - vw / 2, BB.y1 + 30 - vh, vw, vh];
+    }
+    function frame(now){
+      if(API.dead) return; raf = requestAnimationFrame(frame);
+      if(!ready || document.hidden || !cv.isConnected) return;
+      if(window.__pwSkip && window.__pwSkip(API, now, cv)) return;
+      const dt = last ? Math.min(.1, (now - last) / 1000) : 0; last = now; tt += dt;
+      deform(tt);
+      if(tt > nextBlink){ blinkT = tt; nextBlink = tt + 2.6 + Math.random() * 2.8; }
+      const bl = tt - blinkT >= 0 && tt - blinkT < .16 ? 1 : 0, vp = view();
+      gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(pg);
+      gl.uniform4f(Uvp, vp[0], vp[1], vp[2], vp[3]); gl.uniform1f(Ubl, bl);
+      gl.bindBuffer(gl.ARRAY_BUFFER, pb); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, ub); gl.enableVertexAttribArray(lu); gl.vertexAttribPointer(lu, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+    }
+    loadImgs().then(([a, c]) => { if(API.dead) return; tex(a, 0); tex(c, 1); ready = true; }).catch(e => console.warn('sci hana', e));
+    raf = requestAnimationFrame(frame);
+    API.layout = () => { last = 0; };
+    API.dispose = () => { if(API.dead) return; API.dead = true; cancelAnimationFrame(raf);
+      try{ texs.forEach(t => gl.deleteTexture(t)); [pb, ub, ib].forEach(b => gl.deleteBuffer(b)); const x = gl.getExtension('WEBGL_lose_context'); if(x) x.loseContext(); }catch(e){} };
+    return API;
+  }
+
+  /* ---------- 見た目 ---------- */
+  const css = document.createElement('style');
+  css.textContent = `
+.osHimeRow{gap:8px;flex-wrap:wrap}
+.sciHanaBtn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:40px;padding:0 16px;border-radius:999px;border:3px solid #fff;background:linear-gradient(180deg,#8FD3FF,#3F8FE0);color:#fff;font:inherit;font-weight:900;font-size:15px;line-height:1;box-shadow:0 3px 0 #2A69AE,0 4px 10px rgba(20,40,80,.25);cursor:pointer}
+.sciHanaBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #2A69AE}
+.sciHanaBtn img{width:22px;height:22px;object-fit:contain}
+.sciHanaSw{position:absolute;z-index:6;left:12px;top:calc(env(safe-area-inset-top,0px) + 62px)}
+#sciHanaBig{position:fixed;inset:0;z-index:170;background:radial-gradient(ellipse at 50% 42%,rgba(232,244,255,.96),rgba(30,40,92,.97) 80%);animation:osFade .25s;touch-action:none}
+#sciHanaBig .shStage{position:absolute;left:0;right:0;top:70px;bottom:40px}
+#sciHanaBig canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#sciHanaBig .shX{position:absolute;z-index:6;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:50px;height:50px;border-radius:50%;border:3px solid #fff;background:#fff;color:#6B4423;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.35);cursor:pointer;padding:0}
+#sciHanaBig .shX svg{width:24px;height:24px;display:block}
+#sciHanaBig .shNorm{position:absolute;z-index:6;top:calc(env(safe-area-inset-top,0px) + 14px);left:12px;display:inline-flex;align-items:center;gap:4px;height:40px;padding:0 16px;border-radius:999px;border:3px solid #fff;background:linear-gradient(180deg,#FF9DBA,#E9557F);color:#fff;font:inherit;font-weight:900;font-size:15px;line-height:1;box-shadow:0 3px 0 #B83A60;cursor:pointer}
+#sciHanaBig .shNorm img{width:22px;height:22px;object-fit:contain}
+#sciHanaBig .shName{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);text-align:center;color:#fff;font-weight:900;font-size:16px;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none}
+`;
+  document.head.appendChild(css);
+  const XSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const sciIc = () => `<img src="${SI}sci_cover.webp" alt="" style="border-radius:50%;object-fit:cover">`;
+  const girlIc = () => { let s = ''; try{ s = artSrc('res_girl') || ''; }catch(e){} return s ? `<img src="${s}" alt="">` : ''; };
+  let lastHost = null;
+
+  function openSciBig(){
+    if(document.getElementById('sciHanaBig')) return;
+    const ov = document.createElement('div'); ov.id = 'sciHanaBig';
+    ov.innerHTML = `<div class="shStage"><canvas></canvas></div><button class="shNorm" type="button" data-sh="norm">${girlIc()}いつもの ハナ</button>
+      <button class="shX" type="button" data-sh="x" aria-label="とじる">${XSVG}</button><div class="shName">🔬 かがくの ハナ</div>`;
+    document.body.appendChild(ov);
+    const v = SciView(ov.querySelector('.shStage'), ov.querySelector('canvas'));
+    const lay = () => v.layout(); addEventListener('resize', lay);
+    const close = () => { v.dispose(); ov.remove(); removeEventListener('resize', lay); };
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-sh]'); if(!b) return; e.stopPropagation(); try{ sound('tap'); }catch(err){}
+      close();
+      if(b.dataset.sh === 'norm'){ const bx = lastHost && lastHost.isConnected && lastHost.querySelector('.m25box'); if(bx) bx.click(); }
+    });
+  }
+  window.sciHana = openSciBig;
+
+  /* ハナの ダイアログに ボタン */
+  function addBtn(host){
+    if(!hasSci() || host.dataset.sciHana) return; host.dataset.sciHana = '1'; lastHost = host;
+    const anchor = host.closest('.dlgArt') || host;
+    let row = anchor.nextElementSibling && anchor.nextElementSibling.classList.contains('osHimeRow') ? anchor.nextElementSibling : null;
+    if(!row){ row = document.createElement('div'); row.className = 'osHimeRow'; anchor.insertAdjacentElement('afterend', row); }
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sciHanaBtn'; b.innerHTML = `${sciIc()}かがくの すがた`;
+    b.addEventListener('click', e => { e.stopPropagation(); try{ sound('tap'); }catch(err){} openSciBig(); });
+    row.appendChild(b);
+  }
+  const scan = () => setTimeout(() => document.querySelectorAll('#dlgBody [data-m25="girl"]').forEach(addBtn), 0);   // ひめの ボタンの あとに ならべる
+  const dlgB = document.getElementById('dlgBody');
+  if(dlgB && window.MutationObserver) new MutationObserver(scan).observe(dlgB, {childList:true});
+
+  /* いつもの ハナの おおきい 表示に「かがくの ハナ」 */
+  let fromGirl = false;
+  document.addEventListener('click', e => { try{ const h = e.target.closest && e.target.closest('[data-m25]'); if(h && e.target.closest('.m25box')){ fromGirl = h.dataset.m25 === 'girl'; if(fromGirl) lastHost = h; } }catch(err){} }, true);
+  if(window.MutationObserver) new MutationObserver(ms => {
+    for(const m of ms) for(const n of m.addedNodes){
+      if(n.nodeType === 1 && n.id === 'm25big' && fromGirl && hasSci() && !n.querySelector('.sciHanaSw')){
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'sciHanaBtn sciHanaSw'; b.innerHTML = `${sciIc()}かがくの ハナ`;
+        if(!n.querySelector('.osHimeSw')) b.style.top = 'calc(env(safe-area-inset-top,0px) + 14px)';
+        b.addEventListener('click', e => { e.stopPropagation(); const x = n.querySelector('.m25x'); if(x) x.click(); else n.remove(); openSciBig(); });
+        n.appendChild(b);
+      }
+    }
+  }).observe(document.body, {childList:true});
+})();
