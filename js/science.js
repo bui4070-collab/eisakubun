@@ -6742,3 +6742,38 @@ window.addEventListener('click', e => {
 }, true);
 window.__race = {open, CARS, CPU, R};
 })();
+
+/* =====================================================================
+   v22.1 レース場：えらべる 車を ふやす
+   ・ラリーカーも レースに 出られる
+   ・ショップ「のりもの」に 自家用車 4しゅ を ついか（軽ワゴン・ミニバン・SUV・ステーションワゴン）
+     買う ときの 絵＝veh_〜.webp／走る ときの 後ろ姿＝car_r_〜.webp（assets/images/race/）
+   ===================================================================== */
+(function(){
+'use strict';
+const RI = './assets/images/race/';
+const NEWCAR = [
+  {id:'keiwagon', name:'けいワゴン',         price:300, lv:3, traffic:3, pop:0.01, spd:0.94, size:0.88, tough:0.96,
+    info:'せが 高くて 四角い 小さな 車。小回りが きいて すいすい よけられる。'},
+  {id:'wagon',    name:'ステーションワゴン', price:450, lv:4, traffic:3, pop:0.02, spd:1.03, size:1.02, tough:1.04,
+    info:'うしろが 長くて にもつが たくさん つめる 車。はやさと 安定の バランスが いい。'},
+  {id:'minivan',  name:'ミニバン',           price:550, lv:4, traffic:4, pop:0.03, spd:0.97, size:1.12, tough:1.06,
+    info:'スライドドアで 大ぜい のれる 家族の 車。ねんりょうが 長もち。'},
+  {id:'suv',      name:'SUV',                price:700, lv:5, traffic:4, pop:0.03, spd:1.01, size:1.10, tough:1.14,
+    info:'じょうぶで 力もちの 車。でこぼこや ぶつかりに 強い。'}
+];
+try{
+  NEWCAR.forEach(c => {
+    DEFAULT_ART['veh_' + c.id] = RI + 'veh_' + c.id + '.webp';
+    if(!ITEM(c.id)) TOWN_ITEMS.push({id:c.id, type:'veh', name:c.name, art:'veh_' + c.id, emoji:'\uD83D\uDE97', price:c.price, lv:c.lv, traffic:c.traffic, pop:c.pop});
+    try{ ZUKAN_INFO[c.id] = c.info; }catch(e){}
+  });
+}catch(e){ console.warn('v22.1 cars', e); }
+try{
+  const C = window.__race && window.__race.CARS;
+  if(C){
+    NEWCAR.forEach(c => { C[c.id] = {rear:'car_r_' + c.id, spd:c.spd, size:c.size, tough:c.tough}; });
+    C.rally = {rear:'car_r_rally', spd:1.08, size:1.00, tough:1.16};
+  }
+}catch(e){ console.warn('v22.1 race cars', e); }
+})();
