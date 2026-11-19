@@ -3904,6 +3904,13 @@ function openOfure(){
   R.zc.classList.remove('show'); ZC.open = false;
   R.of.classList.add('show'); setTitle('ofure', 'おふれ'); renderOfure(); R.ofList.scrollTop = 0; ofSay(hanaOfLine());
   if(ST) ST.pause();
+  if(!OFH){
+    /* v17.0：まえに とじた ときに 2.5Dの 描画（WebGL）を すてた canvas は もう つかえないので、毎回 あたらしい canvas に とりかえる */
+    const old = R.hanaBox.querySelector('canvas'), cv = document.createElement('canvas');
+    if(old){ cv.className = old.className; cv.style.cssText = old.style.cssText; [...old.attributes].forEach(a => { if(a.name !== 'width' && a.name !== 'height') cv.setAttribute(a.name, a.value); }); }
+    R.hanaBox.querySelectorAll('canvas, img').forEach(e => e.remove());   // ふるい canvas・かわりの 画像（fallback）を けす
+    R.hanaBox.insertBefore(cv, R.hanaBox.firstChild);
+  }
   if(!OFH) OFH = HimeView(R.hanaBox, R.hanaBox.querySelector('canvas'), {onPose:id => { const L = HANA_OF[id] || HANA_OF.normal; ofSay(L[Math.floor(Math.random() * L.length)]); }});
 }
 function flyCoins(from, n, done){
