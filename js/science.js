@@ -4399,8 +4399,9 @@ const WATER = new Set(['river', 'sea', 'harbor']);
 const isRoad = id => { try{ return typeof isRoadId === 'function' && isRoadId(id); }catch(e){ return /^road/.test(id || ''); } };
 const css4 = document.createElement('style');
 css4.textContent = `
-.osMp{background:radial-gradient(circle at 12% 6%,rgba(255,247,215,.95),rgba(255,247,215,0) 32%),radial-gradient(ellipse 120% 40% at 50% 108%,rgba(255,226,196,.95),rgba(255,226,196,0) 70%),linear-gradient(180deg,#8FCBF3 0%,#BFE3FA 38%,#E6F4FD 62%,#FFEEDC 100%)}
-.osMp::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 30% 9% at 18% 16%,rgba(255,255,255,.9),transparent 70%),radial-gradient(ellipse 26% 8% at 78% 10%,rgba(255,255,255,.85),transparent 70%),radial-gradient(ellipse 34% 10% at 64% 30%,rgba(255,255,255,.6),transparent 70%);pointer-events:none}
+.osMp{background:#BFE3FA url(./assets/images/oshiro/chizu_bg_p.webp) center/cover no-repeat}
+@media (orientation:landscape){.osMp{background-image:url(./assets/images/oshiro/chizu_bg_l.webp)}}
+.osMp::before{display:none}
 .osMp canvas{position:absolute;left:0;right:0;bottom:0;top:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 .osMp canvas.drag{cursor:grabbing}
 .mpHint{position:absolute;z-index:3;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);height:28px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.92);color:#6B4423;font-weight:900;font-size:12px;display:flex;align-items:center;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.18);pointer-events:none;transition:opacity .6s}
@@ -4433,6 +4434,13 @@ css4.textContent = `
 @keyframes mpInL{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 /* ほうがく クイズ */
 .mpQz{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(40,30,50,.45);animation:osFade .25s}
+.mpQz.peek{background:none;pointer-events:none;align-items:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 66px)}
+.mpQz.peek .mpQzIn{pointer-events:auto;padding:8px 10px 10px;background:rgba(255,253,246,.95)}
+.mpQz.peek .mpQzIn h3,.mpQz.peek .mpQzPic,.mpQz.peek .mpQzIn p small,.mpQz.peek .mpQzLeft{display:none}
+.mpQz.peek .mpQzIn p{margin:2px 0 6px;font-size:15px}
+.mpQz.peek .mpQzIn p br{display:none}
+#osr.osL .mpQz.peek{justify-content:flex-start;padding-left:16px;padding-top:calc(env(safe-area-inset-top,0px) + 70px)}
+#osr .mpQzBtns button.hint{background:linear-gradient(180deg,#CFE9FF,#8CC4F2);border-color:#fff;color:#1C5A99}
 .mpQzIn{position:relative;width:min(92vw,440px);background:#FFFDF6;border:4px solid #E7C27A;border-radius:22px;padding:14px 14px 16px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .mpQzIn h3{margin:2px 0 6px;font-size:18px;color:#8A3D5C}
 .mpQzPic{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0}
@@ -4502,149 +4510,103 @@ function mpImg(o){
 const hashXY = (x, y) => { let h = (x * 73856093) ^ (y * 19349663); h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 /* ---------- かく ---------- */
 function diamond(c, x, y, w = 1, h = 1){ c.beginPath(); c.moveTo(isoX(x, y), isoY(x, y)); c.lineTo(isoX(x + w, y), isoY(x + w, y)); c.lineTo(isoX(x + w, y + h), isoY(x + w, y + h)); c.lineTo(isoX(x, y + h), isoY(x, y + h)); c.closePath(); }
-/* ---------- v13.0：そらに うかぶ しま（いわはだの イラスト・たき・とおくの しま） ---------- */
+/* ---------- v14.0：そらに うかぶ まるい しま（まちは しかく、どだいは だえん） ---------- */
 const islK = D => Math.max(1, Math.min(3.2, (D.cols + D.rows) / 22));
 const islDep = D => Math.round(30 * islK(D));
-const islH = D => Math.max(100, Math.min(560, (D.cols + D.rows) * TH * .26));
+const islH = D => Math.max(110, Math.min(600, (D.cols + D.rows) * TH * .3));
 function islImg(){
   if(!islImg.im){ const im = new Image(); im.decoding = 'async';
     im.onload = () => { islImg.ok = true; try{ if(MP.D) MP.D._isl = null; if(MP.open) mpReq(); }catch(e){} };
     im.src = OI + 'isl_rock.webp'; islImg.im = im; }
   return islImg.ok ? islImg.im : null;
 }
+/* だえんの ふち：画面で よこ長の だえん（ななめ上から 見た まるい しま） */
+function islEll(D){
+  const cx = isoX(D.cols / 2, D.rows / 2), cy = isoY(D.cols / 2, D.rows / 2);
+  const C = [[0, 0], [D.cols, 0], [0, D.rows], [D.cols, D.rows]].map(([x, y]) => [isoX(x, y) - cx, isoY(x, y) - cy]);
+  const A = Math.max(...C.map(([dx, dy]) => Math.hypot(dx, dy * 2))) * 1.03 + TW * .9;
+  return {cx, cy, A, B:A / 2};
+}
+function islRim(D, grow){
+  const E = islEll(D), A = E.A + (grow || 0) * TW, B = A / 2, N = 120, pts = [];
+  for(let i = 0; i < N; i++){ const t = i / N * Math.PI * 2; pts.push([E.cx - A * Math.cos(t), E.cy + B * Math.sin(t)]); }
+  return pts;     // 0〜N/2 が まえがわ（ひだり → した → みぎ）
+}
 function islBuild(D){
-  const {cols, rows, cells} = D, H = islH(D), K = islK(D), DEP = islDep(D);
-  let sd = (cols * 73856093 ^ rows * 19349663) >>> 0;
+  const H = islH(D), K = islK(D), DEP = islDep(D);
+  let sd = (D.cols * 73856093 ^ D.rows * 19349663) >>> 0;
   const rnd = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
-  const A = [isoX(0, rows), isoY(0, rows)], B = [isoX(cols, rows), isoY(cols, rows)], C = [isoX(cols, 0), isoY(cols, 0)];
-  const L = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-  const edge = u => u <= .5 ? L(A, B, u * 2) : L(B, C, (u - .5) * 2);
-  const P = {A, B, C, K, DEP, H};
-  /* したの いわの かたち（なめらかな でこぼこ ＋ つらら いわ） */
-  const N = 72, bot = [], ph = [rnd() * 6.3, rnd() * 6.3, rnd() * 6.3];
-  for(let i = 0; i <= N; i++){
-    const u = i / N, q = edge(u), base = Math.pow(Math.sin(Math.PI * u), 1.3);
-    let d = base * (1 + .13 * Math.sin(u * 8 + ph[0]) + .08 * Math.sin(u * 19 + ph[1]) + .05 * Math.sin(u * 37 + ph[2]));
-    if(i > 3 && i < N - 3 && i % 6 === 3) d *= 1.03 + rnd() * .09;
-    bot.push([q[0] + (rnd() - .5) * 3 * K, q[1] + DEP + H * Math.max(0, d)]);
-  }
-  P.bot = bot; P.botAt = u => { const f = u * N, i = Math.min(N - 1, Math.floor(f)), t = f - i; return bot[i][1] + (bot[i + 1][1] - bot[i][1]) * t; };
-  const mid = N / 2;
+  const rim = islRim(D, 0), N = rim.length, front = rim.slice(0, N / 2 + 1);
   const poly = pts => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1])); p.closePath(); return p; };
-  /* ひだりの めん（A→B）・みぎの めん（B→C）：つち ＋ いわ */
-  P.faceL = poly([A, B, [B[0], B[1] + DEP], ...bot.slice(0, mid + 1).reverse()]);
-  P.faceR = poly([B, C, ...bot.slice(mid).reverse(), [B[0], B[1] + DEP]]);
-  P.all = poly([A, B, C, ...bot.slice().reverse()]);
+  const P = {K, DEP, H};
+  P.top = poly(rim);
+  P.inner = poly(islRim(D, -.35));
+  const x0 = front[0][0], x1 = front[front.length - 1][0], W = x1 - x0;
+  /* つちの おび */
+  P.soil = poly(front.concat(front.slice().reverse().map(q => [q[0], q[1] + DEP])));
+  /* したの いわ（ぶらさがる かたち） */
+  const ph = [rnd() * 6.3, rnd() * 6.3, rnd() * 6.3], bot = [];
+  const M = 64; for(let i = 0; i <= M; i++){
+    const u = i / M, x = x0 + W * u; let k = 0; while(k < front.length - 2 && front[k + 1][0] < x) k++;
+    const a = front[k], b2 = front[k + 1], t = (x - a[0]) / Math.max(1e-6, b2[0] - a[0]), y = a[1] + (b2[1] - a[1]) * t;
+    const base = Math.pow(Math.sin(Math.PI * u), 1.4);
+    let d = base * (1 + .12 * Math.sin(u * 7 + ph[0]) + .07 * Math.sin(u * 17 + ph[1]) + .04 * Math.sin(u * 33 + ph[2]));
+    if(i > 3 && i < M - 3 && i % 6 === 3) d *= 1.04 + rnd() * .1;
+    bot.push([x + (rnd() - .5) * 2 * K, y + DEP + H * Math.max(0, d)]);
+  }
+  P.bot = bot; P.x0 = x0; P.W = W;
+  P.rock = poly(front.concat(bot.slice().reverse()));
   P.outline = new Path2D(); bot.forEach((q, i) => i ? P.outline.lineTo(q[0], q[1]) : P.outline.moveTo(q[0], q[1]));
+  P.yTop = Math.min(...rim.map(q => q[1])); P.yb = Math.max(...bot.map(q => q[1]));
   /* くさの ふち（たれる くさ） */
   const lip = new Path2D(), tuft = new Path2D();
-  [[A, B], [B, C]].forEach(([a, b]) => { const n = Math.max(6, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / (14 * K)));
-    lip.moveTo(a[0], a[1]);
-    for(let i = 0; i <= n; i++){ const q = L(a, b, i / n), dd = (5 + rnd() * 7) * K; lip.lineTo(q[0] - 3 * K, q[1] + dd * .55); lip.lineTo(q[0], q[1] + dd); lip.lineTo(q[0] + 3 * K, q[1] + dd * .55); }
-    lip.lineTo(b[0], b[1]); lip.closePath();
-    for(let i = 0; i < n * 1.5; i++){ const q = L(a, b, rnd()), hh = (4 + rnd() * 6) * K; tuft.moveTo(q[0] - 2 * K, q[1] + 2 * K); tuft.lineTo(q[0] + (rnd() - .5) * 3 * K, q[1] - hh); tuft.lineTo(q[0] + 2 * K, q[1] + 2 * K); tuft.closePath(); } });
+  lip.moveTo(front[0][0], front[0][1]);
+  front.forEach((q, i) => { if(i % 2) return; const dd = (5 + rnd() * 7) * K; lip.lineTo(q[0] - 3 * K, q[1] + dd * .55); lip.lineTo(q[0], q[1] + dd); lip.lineTo(q[0] + 3 * K, q[1] + dd * .55); });
+  for(let i = front.length - 1; i >= 0; i--) lip.lineTo(front[i][0], front[i][1] - 1);
+  lip.closePath();
+  rim.forEach((q, i) => { if(i % 2) return; const hh = (4 + rnd() * 6) * K; tuft.moveTo(q[0] - 2 * K, q[1] + 2 * K); tuft.lineTo(q[0] + (rnd() - .5) * 3 * K, q[1] - hh); tuft.lineTo(q[0] + 2 * K, q[1] + 2 * K); tuft.closePath(); });
   P.lip = lip; P.tuft = tuft;
-  /* ねっこ・つた（はっぱ つき） */
+  /* ねっこ・つた */
   P.root = new Path2D(); P.leaf = new Path2D();
-  for(let i = 0; i < 16; i++){ const u = .04 + rnd() * .92, q = edge(u), len = (18 + rnd() * 60) * K, sx = q[0], sy = q[1] + DEP * .6;
+  for(let i = 0; i < 18; i++){ const q = front[Math.floor((.04 + rnd() * .92) * (front.length - 1))], len = (18 + rnd() * 64) * K, sx = q[0], sy = q[1] + DEP * .6;
     const wob = (rnd() - .5) * 14 * K; P.root.moveTo(sx, sy); P.root.bezierCurveTo(sx + wob, sy + len * .35, sx - wob, sy + len * .7, sx + wob * .4, sy + len);
     if(i % 2 === 0) for(let j = 1; j <= 3; j++){ const ly = sy + len * j / 3.4, lx = sx + (j % 2 ? wob * .5 : -wob * .3), r = (2.4 + rnd() * 1.6) * K; P.leaf.moveTo(lx + r, ly); P.leaf.ellipse(lx, ly, r, r * .6, j % 2 ? .6 : -.6, 0, Math.PI * 2); } }
-  /* たき：はしっこの 水の マス */
-  const W = new Set(['river', 'sea', 'harbor']), wet = (x, y) => W.has(cells[`${x},${y}`]);
-  const runs = [];
-  let st = -1; for(let x = 0; x <= cols; x++){ const w = x < cols && wet(x, rows - 1); if(w && st < 0) st = x; if(!w && st >= 0){ runs.push([st / cols * .5, x / cols * .5]); st = -1; } }
-  st = -1; for(let y = rows - 1; y >= -1; y--){ const w = y >= 0 && wet(cols - 1, y); if(w && st < 0) st = y; if(!w && st >= 0){ runs.push([.5 + (rows - 1 - st) / rows * .5, .5 + (rows - 1 - y) / rows * .5]); st = -1; } }
-  P.falls = runs.map(([u0, u1]) => { const a = edge(u0), b = edge(u1), um = (u0 + u1) / 2, by = P.botAt(um), m = edge(um);
-    const end = by + H * .55, inset = Math.min(.18, 4 / Math.max(1, (u1 - u0) * (cols + rows)));
-    const a2 = L(a, b, inset), b2 = L(a, b, 1 - inset);
-    const p = new Path2D(); p.moveTo(a[0], a[1]); p.lineTo(b[0], b[1]); p.lineTo(b2[0] + 2 * K, end); p.lineTo(a2[0] - 2 * K, end); p.closePath();
-    const sk = new Path2D(); const n = Math.max(2, Math.round(Math.abs(b[0] - a[0]) / (9 * K)));
-    for(let i = 1; i < n; i++){ const q = L(a, b, i / n), y0 = q[1] + DEP * (.3 + rnd() * .5); sk.moveTo(q[0], y0); sk.lineTo(q[0] + (rnd() - .5) * 2 * K, y0 + (end - y0) * (.45 + rnd() * .4)); }
-    return {p, sk, top:Math.min(a[1], b[1]), end, mx:m[0], my:by, w:Math.abs(b[0] - a[0])}; });
-  /* まわりの ちいさな うき石 */
-  const W0 = C[0] - A[0]; P.bits = [];
-  [[-.05, .5, 22], [1.04, .44, 18], [.1, .86, 12], [.9, .8, 14], [.62, 1.05, 9]].forEach(([fx, fy, r0]) => {
-    const cx = A[0] + W0 * fx, cy = B[1] + DEP + H * (fy - .6), r = r0 * K * 2.2;
-    const top = new Path2D(); top.ellipse(cx, cy, r, r * .4, 0, 0, Math.PI * 2);
-    const body = new Path2D(); body.moveTo(cx - r, cy); body.quadraticCurveTo(cx - r * .7, cy + r * .9, cx - r * .1, cy + r * 1.7); body.quadraticCurveTo(cx + r * .5, cy + r * .9, cx + r, cy); body.closePath();
-    P.bits.push({top, body, cx, cy, r}); });
-  /* くも */
-  P.cloud = []; for(let i = 0; i < 6; i++){ const u = .06 + i * .18 + (rnd() - .5) * .06; P.cloud.push([A[0] + W0 * u, B[1] + DEP + H * (.5 + rnd() * .55), (55 + rnd() * 45) * K, rnd()]); }
-  P.top = Math.min(A[1], C[1]); P.yb = B[1] + DEP + H * 1.3;
+  /* くさはらの 花・小石 */
+  P.flw = []; { const E = islEll(D);
+    const inDia = (x, y) => { const dx = (x - E.cx) / (TW / 2), dy = (y - E.cy) / (TH / 2); const gx = (dx + dy) / 2 + D.cols / 2, gy = (dy - dx) / 2 + D.rows / 2; return gx > -.4 && gx < D.cols + .4 && gy > -.4 && gy < D.rows + .4; };
+    for(let i = 0; i < 70; i++){ const t = rnd() * Math.PI * 2, rr = .55 + rnd() * .4, x = E.cx - E.A * rr * Math.cos(t), y = E.cy + E.B * rr * Math.sin(t);
+      if(inDia(x, y)) continue; P.flw.push([x, y, ['#FFF6F0', '#FFD6E4', '#FFE58A', '#D9C7FF'][i % 4], (1.6 + rnd() * 1.4) * K]); } }
   return P;
-}
-function islPuff(c, x, y, r, a){
-  const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.55, `rgba(255,255,255,${a * .55})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-  c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
-}
-function islCloud(c, x, y, r, s, a){ [[0, 0, 1], [-.75, .12, .72], [.75, .1, .78], [-.35, -.28, .7], [.38, -.22, .66]].forEach(([dx, dy, k]) => islPuff(c, x + dx * r * 1.15, y + dy * r * .6, r * k * (.9 + s * .2), a)); }
-/* いわはだを めんの かたむきに あわせて はる */
-function islTex(c, path, ax, ay, slope, s, D, P){
-  c.save(); c.clip(path);
-  const im = islImg();
-  c.transform(s, slope * s, 0, s, ax, ay);
-  const H = (P.DEP + P.H * 1.2) / s;
-  if(im){ let pt = null; try{ pt = c.createPattern(im, 'repeat'); }catch(e){} c.fillStyle = pt || '#9A6A45'; }
-  else { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#B98A58'); g.addColorStop(.3, '#A5734A'); g.addColorStop(1, '#6E4B33'); c.fillStyle = g; }
-  c.fillRect(-4000, -60, 12000, H + 4000);
-  /* くさの した の かげ・したに いくほど くらく */
-  let g = c.createLinearGradient(0, 0, 0, (P.DEP * .9) / s); g.addColorStop(0, 'rgba(40,22,6,.5)'); g.addColorStop(1, 'rgba(40,22,6,0)');
-  c.fillStyle = g; c.fillRect(-4000, 0, 12000, P.DEP / s);
-  g = c.createLinearGradient(0, (P.DEP + P.H * .15) / s, 0, (P.DEP + P.H * 1.05) / s); g.addColorStop(0, 'rgba(48,30,18,0)'); g.addColorStop(.6, 'rgba(48,30,18,.38)'); g.addColorStop(1, 'rgba(36,22,14,.7)');
-  c.fillStyle = g; c.fillRect(-4000, 0, 12000, H + 4000);
-  c.restore();
 }
 function drawIsland(c, D){
   islImg();
-  const P = D._isl || (D._isl = islBuild(D)), {A, B, C, K, DEP} = P;
-  /* うしろの くも */
-  P.cloud.forEach(([x, y, r, s], i) => { if(i % 2 === 0) islCloud(c, x, y - r * .2, r, s, .85); });
-  /* うき石 */
-  const im = islImg(); let pt = null; if(im){ try{ pt = c.createPattern(im, 'repeat'); pt.setTransform && pt.setTransform(new DOMMatrix().scale(.12 * K)); }catch(e){ pt = null; } }
-  P.bits.forEach(b => { c.fillStyle = pt || '#7E644C'; c.fill(b.body); c.fillStyle = 'rgba(40,24,12,.35)'; c.fill(b.body);
-    c.fillStyle = '#7CC25A'; c.fill(b.top); c.strokeStyle = 'rgba(50,30,15,.35)'; c.lineWidth = 1.5 * K; c.stroke(b.body);
-    c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.ellipse(b.cx - b.r * .2, b.cy - b.r * .08, b.r * .55, b.r * .16, 0, 0, Math.PI * 2); c.fill(); });
-  /* ほんたいの いわはだ */
-  const s = (DEP + P.H * 1.2) / 768;
-  islTex(c, P.faceL, A[0], A[1], (B[1] - A[1]) / (B[0] - A[0]), s, D, P);
-  islTex(c, P.faceR, B[0], B[1], (C[1] - B[1]) / (C[0] - B[0]), s, D, P);
-  /* みぎの めんは かげ・ひだりは ひかり */
-  c.fillStyle = 'rgba(30,16,6,.24)'; c.fill(P.faceR);
-  const gl = c.createLinearGradient(A[0], 0, B[0], 0); gl.addColorStop(0, 'rgba(255,236,200,.16)'); gl.addColorStop(1, 'rgba(255,236,200,0)'); c.fillStyle = gl; c.fill(P.faceL);
-  /* りんかく */
-  c.strokeStyle = 'rgba(55,32,16,.55)'; c.lineWidth = 2.2 * K; c.lineJoin = 'round'; c.stroke(P.outline);
-  c.strokeStyle = 'rgba(255,230,190,.35)'; c.lineWidth = 1.2 * K; c.beginPath(); c.moveTo(B[0], B[1] + DEP); c.lineTo(P.bot[Math.round(P.bot.length / 2)][0], P.bot[Math.round(P.bot.length / 2)][1]); c.stroke();
+  const P = D._isl || (D._isl = islBuild(D)), {K, DEP} = P;
+  /* いわはだ */
+  c.save(); c.clip(P.rock);
+  const im = islImg(), s = (DEP + P.H * 1.2) / 768;
+  if(im){ let pt = null; try{ pt = c.createPattern(im, 'repeat'); }catch(e){} c.fillStyle = pt || '#9A6A45'; c.save(); c.translate(P.x0, P.yTop); c.scale(s, s); c.fillRect(-200, -200, P.W / s + 400, (P.yb - P.yTop) / s + 400); c.restore(); }
+  else { c.fillStyle = '#9A6A45'; c.fillRect(P.x0 - 10, P.yTop, P.W + 20, P.yb - P.yTop + 10); }
+  /* まるみの かげ：はしと したは くらく */
+  let g = c.createLinearGradient(P.x0, 0, P.x0 + P.W, 0);
+  g.addColorStop(0, 'rgba(30,16,6,.45)'); g.addColorStop(.18, 'rgba(30,16,6,.05)'); g.addColorStop(.45, 'rgba(255,236,200,.08)'); g.addColorStop(.78, 'rgba(30,16,6,.12)'); g.addColorStop(1, 'rgba(30,16,6,.5)');
+  c.fillStyle = g; c.fillRect(P.x0 - 10, P.yTop, P.W + 20, P.yb - P.yTop + 10);
+  g = c.createLinearGradient(0, P.yTop + DEP, 0, P.yb); g.addColorStop(0, 'rgba(48,30,18,0)'); g.addColorStop(.55, 'rgba(48,30,18,.3)'); g.addColorStop(1, 'rgba(36,22,14,.7)');
+  c.fillStyle = g; c.fillRect(P.x0 - 10, P.yTop, P.W + 20, P.yb - P.yTop + 10);
+  c.restore();
+  c.strokeStyle = 'rgba(55,32,16,.5)'; c.lineWidth = 2.2 * K; c.lineJoin = 'round'; c.stroke(P.outline);
+  /* つちの おび（くさの すぐ した） */
+  c.save(); c.clip(P.soil); g = c.createLinearGradient(0, P.yTop, 0, P.yTop + (P.yb - P.yTop) * .5);
+  c.fillStyle = 'rgba(70,40,15,.28)'; c.fill(P.soil); c.restore();
   /* ねっこ・つた */
   c.lineCap = 'round'; c.strokeStyle = 'rgba(92,64,34,.9)'; c.lineWidth = 2.2 * K; c.stroke(P.root);
   c.strokeStyle = 'rgba(120,170,70,.55)'; c.lineWidth = 1 * K; c.stroke(P.root); c.lineCap = 'butt';
   c.fillStyle = '#6FB24A'; c.fill(P.leaf);
-  /* くさの ふち */
+  /* うえの くさはら（だえん） */
+  { const E = islEll(D); g = c.createLinearGradient(0, E.cy - E.B, 0, E.cy + E.B); }
+  g.addColorStop(0, '#A3D97E'); g.addColorStop(1, '#8CC765'); c.fillStyle = g; { const E = islEll(D); c.beginPath(); c.ellipse(E.cx, E.cy, E.A, E.B, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 3 * K; c.beginPath(); c.ellipse(E.cx, E.cy, E.A - .35 * TW, E.B - .175 * TW, 0, 0, Math.PI * 2); c.stroke(); }
   c.fillStyle = '#5FA843'; c.fill(P.lip); c.fillStyle = '#74BE55'; c.fill(P.tuft);
-  /* たき */
-  P.falls.forEach(f => {
-    const g = c.createLinearGradient(0, f.top, 0, f.end); g.addColorStop(0, 'rgba(160,220,248,.95)'); g.addColorStop(.35, 'rgba(200,236,252,.85)'); g.addColorStop(.75, 'rgba(235,248,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    c.fillStyle = g; c.fill(f.p);
-    c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.6 * K; c.lineCap = 'round'; c.stroke(f.sk); c.lineCap = 'butt';
-    islPuff(c, f.mx, f.my + 6 * K, Math.max(18 * K, f.w * .7), .7);
-  });
-  /* まえの くも */
-  P.cloud.forEach(([x, y, r, s2], i) => { if(i % 2) islCloud(c, x, y + r * .35, r * .9, s2, .75); });
-}
-/* とおくの うかぶ しま（はいけい・画面の 座標） */
-function mpSky(c, w, h, dpr){
-  const im = islImg(); let pt = null; if(im){ try{ pt = c.createPattern(im, 'repeat'); }catch(e){} }
-  const m = Math.min(w, h), px = MP.cam.x * MP.cam.s * dpr * .025, py = MP.cam.y * MP.cam.s * dpr * .02;
-  [[.1, .3, .07], [.9, .22, .055], [.84, .68, .045], [.16, .74, .05]].forEach(([fx, fy, k], i) => {
-    const r = m * k, x = fx * w - px, y = fy * h - py;
-    c.save(); c.globalAlpha = .75;
-    const body = new Path2D(); body.moveTo(x - r, y); body.quadraticCurveTo(x - r * .6, y + r * .8, x - r * .05, y + r * 1.7); body.quadraticCurveTo(x + r * .55, y + r * .8, x + r, y); body.closePath();
-    if(pt){ try{ pt.setTransform(new DOMMatrix().translate(x, y).scale(r / 420)); }catch(e){} }
-    c.fillStyle = pt || '#8C6A4E'; c.fill(body); c.fillStyle = 'rgba(205,228,248,.42)'; c.fill(body);
-    c.fillStyle = '#9BD07E'; c.beginPath(); c.ellipse(x, y, r, r * .36, 0, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#6FB45A'; [[-.35, -.2, .26], [.1, -.32, .32], [.45, -.15, .22]].forEach(([dx, dy, k2]) => { if(i % 2 && dx > .3) return; c.beginPath(); c.arc(x + dx * r, y + dy * r, r * k2, 0, Math.PI * 2); c.fill(); });
-    if(i === 0 || i === 2){ const g = c.createLinearGradient(0, y, 0, y + r * 2.4); g.addColorStop(0, 'rgba(210,240,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(x + r * .45, y + r * .1, r * .14, r * 2.3); }
-    c.restore();
-  });
+  P.flw.forEach(([x, y, col, r]) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
 }
 function drawGround(c, D){
   const {cols, rows, cells, cov} = D;
@@ -4716,7 +4678,6 @@ function drawObjs(c, D){
   for(const L of list){
     if(L.f){ L.f(); continue; }
     const o = L.o, b = spriteBox(o);
-    c.fillStyle = 'rgba(40,60,20,.22)'; c.beginPath(); c.ellipse(b.cx, b.ay - 2, b.w * .42, b.w * .2, 0, 0, TAU); c.fill();
     if(b.im.ok) c.drawImage(b.im.im, b.x, b.y, b.w, b.h);
     else if(b.im.err){ const fi = icImg(b.im.emo); if(fi.complete && fi.naturalWidth){ const fw = b.w * .7; c.drawImage(fi, b.cx - fw / 2, b.ay - fw - 2, fw, fw); } else fi.onload = mpReq; }
     if(MP.sel && MP.sel.k === o.k){ c.strokeStyle = 'rgba(255,214,74,.95)'; c.lineWidth = 5; diamond(c, o.x, o.y, o.w, o.h); c.stroke(); }
@@ -4740,13 +4701,12 @@ function mpDraw(){
   const cv = MP.cv, c = MP.ctx, dpr = Math.min(2, devicePixelRatio || 1), r = cv.getBoundingClientRect();
   const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr); if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
-  try{ mpSky(c, w, h, dpr); }catch(e){}   /* v13.0 */
   const s = MP.cam.s * dpr; c.setTransform(s, 0, 0, s, (r.width / 2 - MP.cam.x * MP.cam.s) * dpr, (r.height / 2 - MP.cam.y * MP.cam.s) * dpr);
   c.imageSmoothingQuality = 'high';
-  drawGround(c, MP.D); drawObjs(c, MP.D);
+  drawGround(c, MP.D); drawObjs(c, MP.D); try{ mpHintDraw(c); }catch(e){}
 }
 const mpReq = () => { if(!MP.raf) MP.raf = requestAnimationFrame(mpDraw); };
-function mpBounds(){ const D = MP.D, H = islH(D); return {x0:isoX(0, D.rows) - 10 - (D.cols + D.rows) * 6, x1:isoX(D.cols, 0) + 10 + (D.cols + D.rows) * 6, y0:-TW * .8, y1:isoY(D.cols, D.rows) + islDep(D) + H * 1.45}; }   /* v12.0：うかぶ しまの したまで */
+function mpBounds(){ const D = MP.D, r = islRim(D, 0), xs = r.map(q => q[0]); return {x0:Math.min(...xs) - 10, x1:Math.max(...xs) + 10, y0:Math.min(...r.map(q => q[1])) - TW * .8, y1:Math.max(...r.map(q => q[1])) + islDep(D) + islH(D) * 1.12}; }   /* v14.0：まるい しまの したまで */
 function mpFit(){
   const r = MP.cv.getBoundingClientRect(), B = mpBounds(), top = 104, bot = isL() ? 20 : 70, side = isL() ? 70 : 8;
   const s = Math.min((r.width - side * 2) / (B.x1 - B.x0), (r.height - top - bot) / (B.y1 - B.y0));
@@ -4830,9 +4790,44 @@ function mpQuiz(){
     <p>「${H(o.it.name)}」は<br>おしろから 見て どっちの ほうがく？<small>ちずの ほういじしん（ピンクが きた）を 見て かんがえよう</small></p>
     <div class="mpQzOpts">${['n','e','s','w'].map(k => `<button data-o="mz:ans:${k}">${DIRN[k]}</button>`).join('')}</div>
     <div class="mpQzRes"></div><div class="mpQzLeft">${qzLeft() > 0 ? `きょう コインが もらえる のこり ${qzLeft()}かい` : 'きょうの コインは おしまい（クイズは つづけられるよ）'}</div>
-    <div class="mpQzBtns"><button data-o="mz:qzx">とじる</button></div></div>`;
+    <div class="mpQzBtns"><button data-o="mz:qzx">とじる</button><button class="hint" data-o="mz:qzh">${IC('compass')}ちずで さがす</button></div></div>`;
   R.el.querySelector('.osMp').appendChild(wrap);
-  mpSelect(null); MP.sel = o; mpReq();
+  mpSelect(null); MP.sel = o; MP.qzHint = false; mpReq();
+}
+/* v14.0：ほうがく クイズの ヒント … ちずを 見せて、おしろと たてものに しるしを つける */
+function mpHint(on){
+  const box = R.el.querySelector('.mpQz');
+  MP.qzHint = !!on && !!(MP.qz && MP.D && MP.D.castle);
+  if(box){ box.classList.toggle('peek', MP.qzHint); const b = box.querySelector('[data-o="mz:qzh"]'); if(b) b.innerHTML = MP.qzHint ? '◀ もんだいに もどる' : `${IC('compass')}ちずで さがす`; }
+  clearInterval(MP.qzT); MP.qzT = 0;
+  if(!MP.qzHint){ mpReq(); return; }
+  const C = MP.D.castle, o = MP.qz.o, cen = q => [isoX(q.x + q.w / 2, q.y + q.h / 2), isoY(q.x + q.w / 2, q.y + q.h / 2)];
+  const a = cen(C), b = cen(o), r = MP.cv.getBoundingClientRect();
+  const top = isL() ? 150 : 230, bot = isL() ? 40 : 170;
+  const dx = Math.abs(a[0] - b[0]) + TW * 3, dy = Math.abs(a[1] - b[1]) + TW * 3.2;
+  MP.cam.s = clamp(Math.min((r.width - 40) / dx, (r.height - top - bot) / dy), .15, 1.6);
+  MP.cam.x = (a[0] + b[0]) / 2; MP.cam.y = (a[1] + b[1]) / 2 - TW * .9 - ((top - bot) / 2) / MP.cam.s;
+  MP.qzT = setInterval(() => { if(!MP.open || !MP.qzHint){ clearInterval(MP.qzT); MP.qzT = 0; return; } mpReq(); }, 66);
+  mpReq();
+}
+function mpHintDraw(c){
+  if(!MP.qzHint || !MP.qz || !MP.D || !MP.D.castle) return;
+  const t = performance.now() / 1000, k = 1 / MP.cam.s;
+  const mark = (q, col, lab) => {
+    const x = isoX(q.x + q.w / 2, q.y + q.h / 2), y = isoY(q.x + q.w / 2, q.y + q.h / 2), ph = (t * 1.2) % 1;
+    c.save();
+    c.strokeStyle = col; c.globalAlpha = 1 - ph; c.lineWidth = 4 * k;
+    c.beginPath(); c.ellipse(x, y, TW * (.55 + ph * .9) * Math.max(1, q.w * .6), TH * (.55 + ph * .9) * Math.max(1, q.h * .6), 0, 0, TAU); c.stroke();
+    c.globalAlpha = 1; c.lineWidth = 5 * k; c.beginPath(); c.ellipse(x, y, TW * .6 * Math.max(1, q.w * .6), TH * .6 * Math.max(1, q.h * .6), 0, 0, TAU); c.stroke();
+    const bob = Math.sin(t * 4) * 6 * k, py = y - TW * (1.25 + q.h * .35) + bob, R0 = 22 * k;
+    c.fillStyle = col; c.strokeStyle = '#fff'; c.lineWidth = 3 * k;
+    c.beginPath(); c.arc(x, py, R0, Math.PI * .8, Math.PI * .2); c.lineTo(x, py + R0 * 1.75); c.closePath(); c.fill(); c.stroke();
+    if(lab === 'crown'){ const ci = icImg('crown'); if(ci.complete && ci.naturalWidth) c.drawImage(ci, x - R0 * .78, py - R0 * .78, R0 * 1.56, R0 * 1.56); else ci.onload = mpReq; }
+    else { c.fillStyle = '#fff'; c.font = `900 ${Math.round(R0 * 1.05)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(lab, x, py + 1 * k); }
+    c.restore();
+  };
+  mark(MP.D.castle, '#F2557E', 'crown');
+  mark(MP.qz.o, '#2E8BD6', '？');
 }
 function mpAnswer(k, btn){
   const q = MP.qz; if(!q || q.done) return; q.done = true;
@@ -4844,7 +4839,7 @@ function mpAnswer(k, btn){
     else msg = '<span class="okc">せいかい！ すごい！</span>';
     try{ count('study'); }catch(e){}
   } else { try{ sound('ng'); }catch(e){} msg = `<span class="ngc">ざんねん… こたえは「${DIRN[q.ans]}」</span>`; }
-  box.querySelector('.mpQzRes').innerHTML = msg;
+  box.querySelector('.mpQzRes').innerHTML = msg; if(MP.qzHint) mpHint(false);
   box.querySelector('.mpQzBtns').innerHTML = `<button data-o="mz:qzx">とじる</button><button class="gold" data-o="mz:quiz">つぎの もんだい</button>`;
   box.querySelector('.mpQzLeft').textContent = qzLeft() > 0 ? `きょう コインが もらえる のこり ${qzLeft()}かい` : 'きょうの コインは おしまい（クイズは つづけられるよ）';
 }
@@ -4884,7 +4879,8 @@ function mpAction(v, w, b){
   if(v === 'close') return mpSelect(null);
   if(v === 'go') return mpGo();
   if(v === 'quiz') return mpQuiz();
-  if(v === 'qzx'){ const q = R.el.querySelector('.mpQz'); if(q) q.remove(); MP.qz = null; MP.sel = null; return mpReq(); }
+  if(v === 'qzx'){ const q = R.el.querySelector('.mpQz'); if(q) q.remove(); MP.qz = null; MP.sel = null; mpHint(false); return mpReq(); }
+  if(v === 'qzh') return mpHint(!MP.qzHint);
   if(v === 'ans') return mpAnswer(w, b);
 }
 
