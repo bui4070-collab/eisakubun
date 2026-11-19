@@ -6580,3 +6580,165 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 0)); else setTimeout(late, 0);
 })();
+
+/* =====================================================================
+   v22.0 レース場 STEP1（まちレベル12〜）
+   ・まちの 施設「レースじょう」（2×2マス）… ./assets/images/race/bld_race.webp
+   ・タッチ → じゅんび画面（くるま／ドライバー／あいての つよさ）
+   ・くるまは まちで 買った 自家用車だけ。えらぶ 画面は 買った ときと 同じ 絵、
+     走る ときは 後ろ姿の 専用イラスト（car_r_〜.webp）
+   ・レース本体は STEP2。保存：save.race
+   ===================================================================== */
+(function(){
+'use strict';
+const RI = './assets/images/race/', ri = n => RI + n + '.webp';
+const img = (n, cls='', alt='') => `<img ${cls ? `class="${cls}" ` : ''}src="${ri(n)}" alt="${alt}" draggable="false">`;
+
+/* ---------- 施設 ---------- */
+try{
+  DEFAULT_ART.bld_race = ri('bld_race');
+  if(!ITEM('bld_race')){
+    let m = 1; try{ m = window.__v56 ? window.__v56.inflRate() : 1; }catch(e){}
+    TOWN_ITEMS.push({id:'bld_race', type:'bld', cat:'bld', art:'bld_race', name:'レースじょう', emoji:'\uD83C\uDFC1', lv:12, price0:18000, price:Math.round(18000*m/50)*50, dev:260, pop:0.04, sz:[2,2]});
+  }
+  try{ window.__big64.SZ.bld_race = [2,2]; }catch(e){}
+  try{ ZUKAN_INFO.bld_race = 'じゅうみんが ドライバーに なって 2人で きょうそう する サーキット。「うんてん」が 高いほど はやく 走れる。'; }catch(e){}
+  const _ie = itemEffect;
+  itemEffect = function(it){ const s = _ie.apply(this, arguments); return it && it.id==='bld_race' ? `${s}${s ? '・' : ''}じゅうみんと レースが できる` : s; };
+}catch(e){ console.warn('race item', e); }
+
+/* ---------- 自家用車（えらべる 車）
+   spd：さいこう そくど／size：車の はば（大きいほど よけにくい）／tough：ぶつかった ときの つよさ
+   高い 車ほど tough が 高い（ぶつかっても あまり おそく ならない） ---------- */
+const CARS = {
+  kei:       {rear:'car_r_kei',       spd:0.92, size:0.90, tough:0.95},
+  sedan:     {rear:'car_r_sedan',     spd:1.00, size:1.00, tough:1.00},
+  crossover: {rear:'car_r_crossover', spd:0.98, size:1.05, tough:1.08},
+  ev:        {rear:'car_r_ev',        spd:1.04, size:0.95, tough:1.10},
+  camper:    {rear:'car_r_camper',    spd:0.90, size:1.15, tough:1.15},
+  sports:    {rear:'car_r_sports',    spd:1.10, size:1.00, tough:1.18}
+};
+['red','orange','yellow','green','blue','purple'].forEach(c => { CARS['sci_car_' + c] = {rear:'car_r_sci_' + c, spd:1.02, size:0.92, tough:1.05}; });
+const SPD_MAX = 1.10, TOUGH_MAX = 1.18;
+const myCars = () => Object.keys(CARS).map(id => ITEM(id)).filter(it => { try{ return it && ownedCount(it) > 0; }catch(e){ return false; } });
+
+/* ---------- あいての つよさ ---------- */
+const CPU = [
+  {k:1, helm:'helm_1', drive:30,  pit:8.0, n:'はじめて'},
+  {k:2, helm:'helm_2', drive:70,  pit:6.5, n:'なれてきた'},
+  {k:3, helm:'helm_3', drive:110, pit:5.5, n:'じょうず'},
+  {k:4, helm:'helm_4', drive:150, pit:4.5, n:'とても じょうず'},
+  {k:'pro', helm:'helm_pro', drive:200, pit:3.5, n:'プロ'}
+];
+const PRO_NEED = 5;
+function R(){
+  const r = save.race || (save.race = {});
+  r.wins = r.wins || {1:0, 2:0, 3:0, 4:0, pro:0};
+  return r;
+}
+const cpuOpen = k => { const w = R().wins; return k===1 ? true : k==='pro' ? (w[4]||0) >= PRO_NEED : (w[k-1]||0) >= 1; };
+const drivers = () => (save.town?.res || []).slice().sort((a,b) => effAb(b,'drive') - effAb(a,'drive'));
+const resById = id => (save.town?.res || []).find(r => r.id===id);
+
+/* ---------- 画面 ---------- */
+let V = null;
+function root(){
+  let el = document.getElementById('rc1');
+  if(!el){ el = document.createElement('div'); el.id = 'rc1'; document.body.appendChild(el); el.addEventListener('click', onClick); }
+  return el;
+}
+const bars = (v, max) => `<i class="rcBar"><i style="width:${Math.round(Math.max(.08, Math.min(1, v/max))*100)}%"></i></i>`;
+function carPanel(){
+  const L = myCars();
+  if(!L.length) return `<div class="rcEmpty">${img('ic_lock')}<p>レースに 出られる 車が まだ ないよ。<br><small>ショップの「のりもの」で じょうよう車・ミニSUV・けいトラ などを 買おう</small></p></div>`;
+  V.ci = (V.ci + L.length) % L.length;
+  const it = L[V.ci], c = CARS[it.id];
+  return `<div class="rcCar">
+    <button class="rcArr l" data-r="car:-1" ${L.length < 2 ? 'disabled' : ''}>${img('btn_back')}</button>
+    <div class="rcCarMain"><div class="rcPlat"></div><img class="rcCarImg" src="${esc(artSrc(it.art))}" alt="" draggable="false"></div>
+    <button class="rcArr r" data-r="car:1" ${L.length < 2 ? 'disabled' : ''}>${img('btn_back')}</button>
+  </div>
+  <div class="rcCarName">${esc(it.name)}<small>${V.ci + 1} / ${L.length}</small></div>
+  <div class="rcStats">
+    <span><b>スピード</b>${bars(c.spd - 0.8, SPD_MAX - 0.8)}</span>
+    <span><b>よけやすさ</b>${bars(1.3 - c.size, 0.45)}</span>
+    <span><b>タフさ</b>${bars(c.tough - 0.85, TOUGH_MAX - 0.85)}</span>
+  </div>`;
+}
+function drvPanel(){
+  const L = drivers();
+  if(!L.length) return '<p class="rcNote">じゅうみんが まだ いないよ</p>';
+  if(!resById(V.drv)) V.drv = L[0].id;
+  return `<div class="rcDrvs">${L.map(r => { const d = effAb(r,'drive');
+    return `<button class="rcDrv ${r.id===V.drv ? 'on' : ''}" data-r="drv:${r.id}">
+      <span class="rcFace">${resPic(r)}</span>${r.id===V.drv ? img('ic_check','rcChk') : ''}
+      <b>${esc(r.name)}</b>
+      <span class="rcDv">${img('ic_wheel')}${bars(d, 200)}<em>${Math.round(d)}</em></span>
+    </button>`; }).join('')}</div>`;
+}
+function cpuPanel(){
+  const w = R().wins;
+  return `<div class="rcCpus">${CPU.map(c => { const open = cpuOpen(c.k), on = V.cpu===c.k && open, pro = c.k==='pro';
+    const stars = pro ? '' : `<span class="rcStars">${Array.from({length:c.k}, () => img('ic_star')).join('')}</span>`;
+    const need = pro ? `★4に ${Math.min(w[4]||0, PRO_NEED)}/${PRO_NEED}かち` : `★${c.k-1}に かつ`;
+    return `<button class="rcCpu ${pro ? 'pro' : ''} ${on ? 'on' : ''} ${open ? '' : 'lk'}" data-r="cpu:${c.k}">
+      ${img(c.helm,'rcHelm')}${stars}<b>${pro ? 'プロ' : c.n}</b>
+      ${open ? `<small>${img('ic_trophy','rcMini')}${w[c.k]||0}かち</small>` : `<small class="rcNeed">${need}</small>`}
+      ${open ? '' : img('ic_lock','rcLock')}
+    </button>`; }).join('')}</div>`;
+}
+function render(){
+  const el = root(); const L = myCars(), ok = L.length && drivers().length;
+  el.className = 'show';
+  el.innerHTML = `<div class="rcBg" style="background-image:url('${ri('bg_lobby')}')"></div>
+  <div class="rcWrap">
+    <div class="rcTop"><button class="rcBack" data-r="close">${img('btn_back','', 'もどる')}</button>${img('rb_title','rcTitle','まちの レース')}<span class="rcBack sp"></span></div>
+    <div class="rcBody">
+      <section class="rcSec rcSecCar">${img('lb_car','rcLb','くるま')}${carPanel()}</section>
+      <div class="rcSide">
+        <section class="rcSec">${img('lb_drv','rcLb','ドライバー')}${drvPanel()}</section>
+        <section class="rcSec">${img('lb_cpu','rcLb','あいての つよさ')}${cpuPanel()}</section>
+      </div>
+    </div>
+    <button class="rcGo" data-r="go" ${ok ? '' : 'disabled'}>${img('rb_start','', 'レースへ！')}</button>
+  </div>`;
+}
+function open(){
+  const r = R();
+  V = {ci:0, drv:r.drv, cpu:cpuOpen(r.cpu) ? (r.cpu || 1) : 1};
+  const L = myCars(), i = L.findIndex(it => it.id===r.car); if(i >= 0) V.ci = i;
+  document.body.classList.add('rcOpen'); render(); try{ sound('ok'); }catch(e){}
+}
+function close(){ const el = root(); el.className = ''; el.innerHTML = ''; V = null; document.body.classList.remove('rcOpen'); }
+function remember(){
+  const r = R(), L = myCars();
+  if(L[V.ci]) r.car = L[V.ci].id; r.drv = V.drv; r.cpu = V.cpu; persist();
+}
+async function go(){
+  const L = myCars(), it = L[V.ci], d = resById(V.drv), c = CPU.find(x => x.k===V.cpu);
+  if(!it || !d || !c) return;
+  remember(); try{ sound('fan'); }catch(e){}
+  await dialog(`<div class="rcReady"><img class="rcRear" src="${ri(CARS[it.id].rear)}" alt=""><div class="rcReadyDrv">${resPic(d)}</div></div>
+    <h2 class="dlgT">じゅんび OK！</h2>
+    <p class="dlgP"><b>${esc(d.name)}</b>が <b>${esc(it.name)}</b>で しゅつじょう！<br>あいて：${c.k==='pro' ? 'プロ' : '★' + c.k}<br><small>レースは つぎの アップデート（STEP2）で あそべるよ</small></p>`,
+    [{label:'OK', cls:'gold', v:1}], 'wide');
+}
+function onClick(e){
+  const b = e.target.closest('[data-r]'); if(!b || b.disabled || !V) return;
+  const [a, v] = b.dataset.r.split(':');
+  if(a==='close'){ remember(); close(); return; }
+  if(a==='car'){ V.ci += +v; try{ sound('tap'); }catch(e){} render(); return; }
+  if(a==='drv'){ V.drv = v; try{ sound('tap'); }catch(e){} render(); return; }
+  if(a==='cpu'){ const k = v==='pro' ? 'pro' : +v;
+    if(!cpuOpen(k)){ toast(k==='pro' ? `★4に ${PRO_NEED}かい かつと プロと たたかえるよ` : `★${k-1}に かつと えらべるよ`); return; }
+    V.cpu = k; try{ sound('tap'); }catch(e){} render(); return; }
+  if(a==='go') go();
+}
+window.addEventListener('click', e => {
+  if(typeof curScreen==='undefined' || curScreen!=='town' || townEdit || !save.town) return;
+  const c = e.target.closest('#townMap .cell'); if(!c || e.target.closest('.walker,.car2,.ship65,.air65')) return;
+  if(save.town.cells[`${c.dataset.x},${c.dataset.y}`] !== 'bld_race') return;
+  e.stopImmediatePropagation(); e.preventDefault(); open();
+}, true);
+window.__race = {open, CARS, CPU, R};
+})();

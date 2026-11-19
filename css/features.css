@@ -639,3 +639,92 @@ button.hold56{opacity:.75;filter:grayscale(.3)}
 #townMap .ship65 img,#townMap .air65 img{width:100%!important;height:100%!important;object-fit:contain}
 #townMap .ship65 .wake65{display:none}
 #townWorld{touch-action:pan-x pan-y}
+
+/* =====================================================================
+   v22.0 レース場 STEP1：じゅんび画面（#rc1）
+   ===================================================================== */
+#rc1{display:none;position:fixed;inset:0;z-index:66;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;color:#4A3426}
+#rc1.show{display:block}
+body.rcOpen #bnav{display:none!important}
+#rc1 *{box-sizing:border-box}
+#rc1 button{font:inherit;color:inherit;border:none;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#rc1 button[disabled]{opacity:.45;cursor:default}
+#rc1 img{-webkit-user-drag:none;user-select:none}
+.rcBg{position:fixed;inset:0;background:center/cover no-repeat;z-index:0}
+.rcBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0) 20%,rgba(255,250,240,.55) 60%,rgba(255,248,236,.8))}
+.rcWrap{position:relative;z-index:1;max-width:980px;min-height:100%;min-height:100dvh;margin:0 auto;justify-content:center;padding:max(8px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+.rcTop{display:flex;align-items:center;gap:6px}
+.rcBack{flex:0 0 52px;height:52px}.rcBack img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
+.rcBack.sp{visibility:hidden}
+.rcTitle{flex:1;min-width:0;max-width:440px;margin:0 auto;height:auto;filter:drop-shadow(0 4px 4px rgba(0,0,0,.2))}
+.rcBody{display:flex;flex-direction:column;gap:8px}
+.rcSec{background:rgba(255,250,241,.95);border-radius:16px;box-shadow:0 4px 16px rgba(60,40,20,.14);padding:4px 10px 10px;text-align:center}
+.rcLb{height:38px;width:auto;margin:-2px auto 4px;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.15))}
+/* くるま */
+.rcCar{display:flex;align-items:center;justify-content:center;gap:6px}
+.rcArr{flex:0 0 44px;height:44px}.rcArr img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+.rcArr.r img{transform:scaleX(-1)}
+.rcCarMain{position:relative;flex:1;max-width:340px;height:150px;display:flex;align-items:flex-end;justify-content:center}
+.rcPlat{position:absolute;left:8%;right:8%;bottom:4px;height:34px;border-radius:50%;background:radial-gradient(ellipse,rgba(255,214,120,.9),rgba(255,214,120,.25) 55%,transparent 72%)}
+.rcCarImg{position:relative;max-width:92%;max-height:140px;object-fit:contain;filter:drop-shadow(0 6px 5px rgba(60,35,10,.3));animation:rcBob 2.6s ease-in-out infinite}
+@keyframes rcBob{50%{translate:0 -4px}}
+.rcCarName{font-weight:900;font-size:18px;margin-top:2px}.rcCarName small{margin-left:8px;font-size:12px;color:#8A6F58}
+.rcStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.rcStats span{display:flex;flex-direction:column;align-items:stretch;gap:2px;font-size:11px}
+.rcStats b{font-weight:900;color:#8A6F58}
+.rcBar{display:block;height:8px;border-radius:99px;background:#EFE4D2;overflow:hidden}
+.rcBar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#FFC86B,#E8833A)}
+.rcEmpty{display:flex;align-items:center;gap:10px;justify-content:center;padding:10px;font-weight:800;text-align:left}
+.rcEmpty img{width:48px;height:48px;object-fit:contain}.rcEmpty small{font-size:12px;color:#8A6F58}
+/* ドライバー */
+.rcDrvs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-snap-type:x mandatory}
+.rcDrv{position:relative;flex:0 0 92px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 4px 6px!important;border-radius:16px!important;background:#fff!important;box-shadow:0 2px 6px rgba(60,40,20,.12)}
+.rcDrv.on{background:#FFF3D0!important;box-shadow:0 0 0 3px #F2B91E,0 2px 6px rgba(60,40,20,.12)}
+.rcFace{width:66px;height:66px;border-radius:50%;background:radial-gradient(circle,#fff 40%,#FFE7B8 80%);display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.rcFace .rpic{height:90%}
+.rcChk{position:absolute;right:2px;top:2px;width:24px;height:24px}
+.rcDrv b{font-size:12px;font-weight:900;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcDv{display:flex;align-items:center;gap:3px;width:100%}.rcDv img{width:18px;height:18px;flex:none}.rcDv .rcBar{flex:1;height:7px}.rcDv em{font-style:normal;font-size:11px;font-weight:900;color:#B5701C;min-width:20px;text-align:right}
+.rcNote{font-weight:800;color:#8A6F58}
+/* あいての つよさ */
+.rcCpus{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.rcCpu{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px!important;border-radius:16px!important;background:#fff!important;box-shadow:0 2px 6px rgba(60,40,20,.12);min-width:0}
+.rcCpu.on{background:#E9F6E4!important;box-shadow:0 0 0 3px #6BBF5A,0 2px 6px rgba(60,40,20,.12)}
+.rcCpu.pro{background:linear-gradient(180deg,#FFF6C9,#FFE08A)!important}
+.rcCpu.pro.on{box-shadow:0 0 0 3px #E0A400,0 0 14px rgba(255,200,40,.8)}
+.rcHelm{width:52px;height:46px;object-fit:contain}
+.rcStars{display:flex;justify-content:center;height:14px}.rcStars img{width:14px;height:14px;margin:0 -1px}
+.rcCpu b{font-size:11px;font-weight:900;white-space:nowrap}
+.rcCpu small{display:flex;align-items:center;gap:2px;font-size:10px;font-weight:800;color:#8A6F58}
+.rcMini{width:14px;height:14px}
+.rcCpu.lk .rcHelm,.rcCpu.lk .rcStars{filter:grayscale(.85) brightness(.9);opacity:.6}
+.rcCpu .rcNeed{font-size:9.5px;line-height:1.25;text-align:center;color:#A0662B}
+.rcLock{position:absolute;right:4px;top:4px;width:22px;height:22px}
+/* スタート */
+.rcGo{display:block;margin:2px auto 0;width:min(100%,460px)}
+.rcGo img{width:100%;height:auto;filter:drop-shadow(0 5px 5px rgba(0,0,0,.25));animation:rcPulse 1.8s ease-in-out infinite}
+.rcGo:active img{transform:scale(.96)}
+.rcGo[disabled] img{animation:none;filter:grayscale(.7)}
+@keyframes rcPulse{50%{scale:1.03}}
+/* じゅんび OK */
+.rcReady{position:relative;display:flex;align-items:flex-end;justify-content:center;gap:4px;height:150px}
+.rcRear{height:120px;width:auto;object-fit:contain;filter:drop-shadow(0 6px 5px rgba(0,0,0,.25))}
+.rcReadyDrv{height:96px}.rcReadyDrv .rpic{height:100%}
+/* iPad横：くるま（左）／ドライバー・あいて（右） */
+@media (min-width:900px) and (orientation:landscape){
+  .rcBody{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:10px;align-items:stretch}
+  .rcSecCar{display:flex;flex-direction:column;justify-content:center}
+  .rcWrap{max-width:1060px;gap:14px}
+  .rcCarMain{height:280px;max-width:460px}.rcCarImg{max-height:270px}
+  .rcDrv{flex-basis:108px}.rcFace{width:80px;height:80px}.rcDrv b{font-size:13px}
+  .rcHelm{width:64px;height:56px}.rcStars img{width:16px;height:16px}.rcStars{height:16px}.rcCpu b{font-size:12px}
+  .rcSec{padding:6px 14px 14px}.rcLb{height:42px}
+  .rcCarName{font-size:21px}.rcStats{gap:10px}.rcStats span{font-size:12px}
+  .rcSide{display:flex;flex-direction:column;gap:10px}
+  .rcTitle{max-width:520px}
+}
+@media (max-width:600px){
+  .rcCarMain{height:130px}.rcCarImg{max-height:122px}
+  .rcCpus{gap:4px}.rcHelm{width:42px;height:38px}.rcCpu b{font-size:10px}
+  .rcLb{height:32px}
+}
