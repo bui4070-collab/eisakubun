@@ -6483,3 +6483,59 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
     }
   }).observe(document.body, {childList:true});
 })();
+
+/* =====================================================================
+   v19.0 ホーム リデザイン（見た目だけ。きのう・ならび順は そのまま）
+   ===================================================================== */
+(function(){
+  const IC = {
+    c1:'<svg viewBox="0 0 32 32"><rect x="5" y="6" width="22" height="20" rx="3" fill="#FFD6E1"/><path d="M16 9v15M5 9c4-2 8-2 11 0 3-2 7-2 11 0v15c-4-2-8-2-11 0-3-2-7-2-11 0z" fill="#fff" stroke="#D2486E" stroke-width="2" stroke-linejoin="round"/></svg>',
+    c2:'<svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="20" rx="4" fill="#fff" stroke="#E08E1E" stroke-width="2"/><rect x="5" y="7" width="22" height="6" rx="3" fill="#F8AE48"/><path d="M11 4v6M21 4v6" stroke="#C66F0A" stroke-width="2.4" stroke-linecap="round"/><path d="M11 20l3 3 7-7" fill="none" stroke="#E08E1E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    c3:'<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#FFD95A" stroke="#D9A21B" stroke-width="2"/><circle cx="16" cy="16" r="7" fill="none" stroke="#F2B91E" stroke-width="1.6"/><text x="16" y="20.5" text-anchor="middle" font-size="11" font-weight="900" fill="#9A6500" font-family="sans-serif">P</text></svg>',
+    c4:'<svg viewBox="0 0 32 32"><rect x="5" y="5" width="22" height="22" rx="5" fill="#DDF3E3" stroke="#3E9B5C" stroke-width="2"/><text x="16" y="22" text-anchor="middle" font-size="14" font-weight="900" fill="#2E8B57" font-family="sans-serif">漢</text></svg>'
+  };
+  const SHORT = {'きょう といた 問題':['きょう','問'], 'れんぞく 勉強':['れんぞく','日'], 'きょうの ポイント':['ポイント','pt'], 'おぼえた 漢字':['漢字','字']};
+  function restyle(){
+    try{
+      /* きろく */
+      const hs = document.getElementById('homeStats');
+      if(hs && !hs.querySelector('.h19st')){
+        const st = [...hs.querySelectorAll('.stat')];
+        hs.innerHTML = st.map((s,i) => {
+          const lab = (s.querySelector('span')?.textContent || '').trim(), sh = SHORT[lab] || [lab, ''];
+          const b = s.querySelector('b'); let main = b ? b.cloneNode(true) : null;
+          main?.querySelectorAll('small').forEach(x => { if(/^[日]$/.test(x.textContent)) x.remove(); });
+          let html = main ? main.innerHTML : '';
+          if(sh[1] && !/small/.test(html)) html += `<small>${sh[1]}</small>`;
+          else if(sh[1]==='字') html += `<small>字</small>`;
+          return `<div class="h19st c${i+1}">${IC['c'+(i+1)]}<b>${html}</b><span>${sh[0]}</span></div>`;
+        }).join('');
+      }
+      /* ようこそ：Lv を 小さな ラベルに */
+      const tl = document.getElementById('homeTownLv');
+      if(tl && !tl.querySelector('.h19lv')){
+        const m = tl.textContent.match(/^(.*?)[\s\u3000]*(Lv\d+.*)$/);
+        if(m && m[1]) tl.innerHTML = `${esc(m[1])}<span class="h19lv">${esc(m[2])}</span>`;
+      }
+      /* まちがえた問題・おやつ：数字だけ */
+      const rv = document.querySelector('#btnReview'), fd = document.querySelector('#btnFood');
+      if(rv && !rv.querySelector('.h19n')){ const n = (rv.querySelector('small')?.textContent.match(/(\d+)/)||[])[1] || '0'; rv.querySelector('b')?.insertAdjacentHTML('afterend', `<span class="h19n">${n}</span>`); }
+      if(fd && !fd.querySelector('.h19n')){ const t = fd.querySelector('small')?.textContent || '', n = (t.match(/(\d+)こ/)||[])[1]; const x = /はつどう/.test(t) ? (t.match(/×[\d.]+/)||[''])[0] : (n || '0'); fd.querySelector('b')?.insertAdjacentHTML('afterend', `<span class="h19n">${x}</span>`); }
+      /* にがておばけ（ねている時）：一行＋まる3つ */
+      const bc = document.querySelector('#evArea .bossCard.calm');
+      if(bc && !bc.querySelector('.h19dots')){
+        const s = bc.querySelector('small'), m = (s?.textContent.match(/いま\s*(\d+)こ/)||[])[1];
+        if(m !== undefined){ const n = Math.min(3, +m); s.textContent = `あと ${3-n}問で 登場`;
+          bc.insertAdjacentHTML('beforeend', `<span class="h19dots">${[0,1,2].map(i => `<i class="${i<n?'on':''}"></i>`).join('')}</span>`); }
+      }
+    }catch(e){ console.warn('home v19', e); }
+  }
+  const late = () => {
+    try{ const _rh = renderHome; renderHome = function(){ const o = _rh.apply(this, arguments); restyle(); return o; }; }catch(e){}
+    try{ if(typeof curScreen !== 'undefined' && curScreen === 'home') restyle(); }catch(e){}
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 0)); else setTimeout(late, 0);
+  /* スクロールしたら ヘッダーを 細く（ロゴが 中身に かさならない） */
+  let tk = 0;
+  addEventListener('scroll', () => { if(tk) return; tk = requestAnimationFrame(() => { tk = 0; document.body.classList.toggle('h19scr', scrollY > 40); }); }, {passive:true});
+})();
