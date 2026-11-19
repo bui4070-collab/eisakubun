@@ -4532,6 +4532,12 @@ function islRim(D, grow){
   for(let i = 0; i < N; i++){ const t = i / N * Math.PI * 2; pts.push([E.cx - A * Math.cos(t), E.cy + B * Math.sin(t)]); }
   return pts;     // 0〜N/2 が まえがわ（ひだり → した → みぎ）
 }
+function islGrass(){
+  if(!islGrass.im){ const im = new Image(); im.decoding = 'async';
+    im.onload = () => { islGrass.ok = true; try{ if(MP.open) mpReq(); }catch(e){} };
+    im.src = OI + 'isl_grass.webp'; islGrass.im = im; }
+  return islGrass.ok ? islGrass.im : null;
+}
 function islBuild(D){
   const H = islH(D), K = islK(D), DEP = islDep(D);
   let sd = (D.cols * 73856093 ^ D.rows * 19349663) >>> 0;
@@ -4603,10 +4609,22 @@ function drawIsland(c, D){
   c.fillStyle = '#6FB24A'; c.fill(P.leaf);
   /* うえの くさはら（だえん） */
   { const E = islEll(D); g = c.createLinearGradient(0, E.cy - E.B, 0, E.cy + E.B); }
-  g.addColorStop(0, '#A3D97E'); g.addColorStop(1, '#8CC765'); c.fillStyle = g; { const E = islEll(D); c.beginPath(); c.ellipse(E.cx, E.cy, E.A, E.B, 0, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = 'rgba(255,255,255,.22)'; c.lineWidth = 3 * K; c.beginPath(); c.ellipse(E.cx, E.cy, E.A - .35 * TW, E.B - .175 * TW, 0, 0, Math.PI * 2); c.stroke(); }
+  g.addColorStop(0, '#A3D97E'); g.addColorStop(1, '#8CC765'); 
+  { const E = islEll(D), gi = islGrass();
+    c.save(); c.beginPath(); c.ellipse(E.cx, E.cy, E.A, E.B, 0, 0, Math.PI * 2); c.clip();
+    if(gi){ /* v15.0：くさの イラストを じめんと おなじ ななめに はる */
+      let pt = null; try{ pt = c.createPattern(gi, 'repeat'); }catch(e){}
+      const u = TW / 2 / 56;      // 1マス ≒ 56px（花が まちの 大きさに あう）
+      c.save(); c.translate(E.cx, E.cy); c.transform(u, u / 2, -u, u / 2, 0, 0);
+      c.fillStyle = pt || g; const R0 = E.A / u * 1.6 + 600; c.fillRect(-R0, -R0, R0 * 2, R0 * 2); c.restore();
+    } else { c.fillStyle = g; c.fillRect(E.cx - E.A, E.cy - E.B, E.A * 2, E.B * 2); }
+    /* ふちに むかって すこし くらく（まるみ） */
+    const rg = c.createRadialGradient(E.cx, E.cy, E.A * .2, E.cx, E.cy, E.A); rg.addColorStop(0, 'rgba(255,255,230,.05)'); rg.addColorStop(.75, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(30,60,10,.25)');
+    c.save(); c.translate(E.cx, E.cy); c.scale(1, E.B / E.A); c.translate(-E.cx, -E.cy); c.fillStyle = rg; c.fillRect(E.cx - E.A, E.cy - E.A, E.A * 2, E.A * 2); c.restore();
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2.5 * K; c.beginPath(); c.ellipse(E.cx, E.cy, E.A - .3 * TW, E.B - .15 * TW, 0, 0, Math.PI * 2); c.stroke(); }
   c.fillStyle = '#5FA843'; c.fill(P.lip); c.fillStyle = '#74BE55'; c.fill(P.tuft);
-  P.flw.forEach(([x, y, col, r]) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
+  if(!islGrass()) P.flw.forEach(([x, y, col, r]) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
 }
 function drawGround(c, D){
   const {cols, rows, cells, cov} = D;
@@ -4727,7 +4745,10 @@ function mpHit(cx, cy){
 }
 function mpBind(){
   const cv = MP.cv;
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); MP.ptr.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY}); MP.moved = false;
+  cv.addEventListener('pointerdown', e => {
+    /* v15.0：のこった ゆびを すてる（ドラッグ できなく なる バグ） */
+    if(e.isPrimary || (e.pointerType === 'touch' && MP.ptr.size >= 2)){ MP.ptr.clear(); MP.pinch = null; }
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){} MP.ptr.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY}); MP.moved = false;
     if(MP.ptr.size === 2){ const [a, b] = [...MP.ptr.values()]; MP.pinch = {d:Math.hypot(a.x - b.x, a.y - b.y), s:MP.cam.s}; } cv.classList.add('drag'); hideHint(); });
   cv.addEventListener('pointermove', e => {
     const p = MP.ptr.get(e.pointerId); if(!p) return;
@@ -4740,6 +4761,9 @@ function mpBind(){
   const up = e => { const had = MP.ptr.has(e.pointerId); MP.ptr.delete(e.pointerId); if(MP.ptr.size < 2) MP.pinch = null; if(!MP.ptr.size) cv.classList.remove('drag');
     if(had && !MP.moved && e.type === 'pointerup'){ const o = mpHit(e.clientX, e.clientY); mpSelect(o); } };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('lostpointercapture', e => { if(MP.ptr.has(e.pointerId)){ MP.ptr.delete(e.pointerId); if(MP.ptr.size < 2) MP.pinch = null; if(!MP.ptr.size) cv.classList.remove('drag'); } });
+  cv.addEventListener('touchend', e => { if(!e.touches.length){ MP.ptr.clear(); MP.pinch = null; cv.classList.remove('drag'); } }, {passive:true});
+  cv.addEventListener('touchcancel', () => { MP.ptr.clear(); MP.pinch = null; cv.classList.remove('drag'); }, {passive:true});
   cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); mpZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, {passive:false});
 }
 function hideHint(){ const h = R && R.el.querySelector('.mpHint'); if(h) h.style.opacity = 0; }
