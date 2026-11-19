@@ -6485,127 +6485,98 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
 })();
 
 /* =====================================================================
-   v19.0 ホーム リデザイン（見た目だけ。きのう・ならび順は そのまま）
+   v21.0 ホーム デザイン（v19・v20 を まとめて 作りなおし。見た目だけ）
+   ・イラストは ./assets/images/home21/（同じ 名前で 上書きすれば さしかえ できる）
+       sign_wood / sign_snow … 村の かんばん（ふゆは 雪）
+       tag_〈季節〉 … なかまを よぶ
+       rb_〈study|town|shop〉_〈季節〉 … べんきょう・まちづくり・ショップ の リボン
+       mi_〈名前〉 … ミッションの 絵
+   ・季節は いまの seasonNow()（背景と おなじ）。せってい「ホームの きせつ」で 手動にも できる
    ===================================================================== */
 (function(){
-  const IC = {
-    c1:'<svg viewBox="0 0 32 32"><rect x="5" y="6" width="22" height="20" rx="3" fill="#FFD6E1"/><path d="M16 9v15M5 9c4-2 8-2 11 0 3-2 7-2 11 0v15c-4-2-8-2-11 0-3-2-7-2-11 0z" fill="#fff" stroke="#D2486E" stroke-width="2" stroke-linejoin="round"/></svg>',
-    c2:'<svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="20" rx="4" fill="#fff" stroke="#E08E1E" stroke-width="2"/><rect x="5" y="7" width="22" height="6" rx="3" fill="#F8AE48"/><path d="M11 4v6M21 4v6" stroke="#C66F0A" stroke-width="2.4" stroke-linecap="round"/><path d="M11 20l3 3 7-7" fill="none" stroke="#E08E1E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    c3:'<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#FFD95A" stroke="#D9A21B" stroke-width="2"/><circle cx="16" cy="16" r="7" fill="none" stroke="#F2B91E" stroke-width="1.6"/><text x="16" y="20.5" text-anchor="middle" font-size="11" font-weight="900" fill="#9A6500" font-family="sans-serif">P</text></svg>',
-    c4:'<svg viewBox="0 0 32 32"><rect x="5" y="5" width="22" height="22" rx="5" fill="#DDF3E3" stroke="#3E9B5C" stroke-width="2"/><text x="16" y="22" text-anchor="middle" font-size="14" font-weight="900" fill="#2E8B57" font-family="sans-serif">漢</text></svg>'
-  };
+  const H = './assets/images/home21/';
+  const img = (n, cls='', alt='') => `<img ${cls ? `class="${cls}" ` : ''}src="${H}${n}.webp" alt="${alt}" draggable="false">`;
+  const MI = {'✏️':'pencil','✏':'pencil','🔢':'num','⭕':'ok','💮':'perfect','💬':'talk','🎲':'quiz','🎁':'gift','🚪':'door','📮':'post','🗾':'globe','🔬':'scope','🔤':'abc','🤖':'robot','🏅':'medal','🎯':'target'};
+  const EMO = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}]\uFE0F?/gu;
   const SHORT = {'きょう といた 問題':['きょう','問'], 'れんぞく 勉強':['れんぞく','日'], 'きょうの ポイント':['ポイント','pt'], 'おぼえた 漢字':['漢字','字']};
+  const SEASONS = ['spring','summer','autumn','winter'];
+
+  /* ---------- 季節：手動の ときだけ seasonNow を かえる（背景も いっしょに かわる） ---------- */
+  try{
+    const _sn = seasonNow;
+    seasonNow = function(){ let v; try{ v = save.h20s; }catch(e){} return SEASONS.includes(v) ? v : _sn.apply(this, arguments); };
+  }catch(e){}
+  const season = () => { try{ return seasonNow(); }catch(e){ return 'autumn'; } };
+  try{ (new Image()).src = H + 'sign_wood.webp'; }catch(e){}
+
   function restyle(){
     try{
-      /* きろく */
-      const hs = document.getElementById('homeStats');
-      if(hs && !hs.querySelector('.h19st')){
-        const st = [...hs.querySelectorAll('.stat')];
-        hs.innerHTML = st.map((s,i) => {
-          const lab = (s.querySelector('span')?.textContent || '').trim(), sh = SHORT[lab] || [lab, ''];
-          const b = s.querySelector('b'); let main = b ? b.cloneNode(true) : null;
-          main?.querySelectorAll('small').forEach(x => { if(/^[日]$/.test(x.textContent)) x.remove(); });
-          let html = main ? main.innerHTML : '';
-          if(sh[1] && !/small/.test(html)) html += `<small>${sh[1]}</small>`;
-          else if(sh[1]==='字') html += `<small>字</small>`;
-          return `<div class="h19st c${i+1}">${IC['c'+(i+1)]}<b>${html}</b><span>${sh[0]}</span></div>`;
-        }).join('');
-      }
-      /* ようこそ：Lv を 小さな ラベルに */
+      const s = season(); document.body.dataset.s = s;
+      /* リボン */
+      [['goStudy','study','べんきょう'],['goTown','town','まちづくり'],['goShop','shop','ショップ']].forEach(([id,k,lab]) => {
+        const b = document.getElementById(id); if(!b) return;
+        let r = b.querySelector('img.h21rb');
+        if(!r){ b.querySelector('.bt-t')?.insertAdjacentHTML('afterend', img(`rb_${k}_${s}`, 'h21rb', lab)); }
+        else if(!r.src.includes(`_${s}.webp`)) r.src = `${H}rb_${k}_${s}.webp`;
+      });
+      /* 村の かんばん：Lv を 小さな ラベルに */
       const tl = document.getElementById('homeTownLv');
-      if(tl && !tl.querySelector('.h19lv')){
+      if(tl && !tl.querySelector('.h21lv')){
         const m = tl.textContent.match(/^(.*?)[\s\u3000]*(Lv\d+.*)$/);
-        if(m && m[1]) tl.innerHTML = `${esc(m[1])}<span class="h19lv">${esc(m[2])}</span>`;
+        if(m && m[1]) tl.innerHTML = `${esc(m[1])}<span class="h21lv">${esc(m[2])}</span>`;
       }
+      /* なかまを よぶ */
+      const rs = document.getElementById('btnRareSel');
+      if(rs && rs.dataset.h21 !== s){ rs.innerHTML = img('tag_' + s, '', 'なかまを よぶ'); rs.dataset.h21 = s; }
       /* まちがえた問題・おやつ：数字だけ */
-      const rv = document.querySelector('#btnReview'), fd = document.querySelector('#btnFood');
-      if(rv && !rv.querySelector('.h19n')){ const n = (rv.querySelector('small')?.textContent.match(/(\d+)/)||[])[1] || '0'; rv.querySelector('b')?.insertAdjacentHTML('afterend', `<span class="h19n">${n}</span>`); }
-      if(fd && !fd.querySelector('.h19n')){ const t = fd.querySelector('small')?.textContent || '', n = (t.match(/(\d+)こ/)||[])[1]; const x = /はつどう/.test(t) ? (t.match(/×[\d.]+/)||[''])[0] : (n || '0'); fd.querySelector('b')?.insertAdjacentHTML('afterend', `<span class="h19n">${x}</span>`); }
+      const rv = document.getElementById('btnReview'), fd = document.getElementById('btnFood');
+      if(rv && !rv.querySelector('.h21n')){ const n = (rv.querySelector('small')?.textContent.match(/(\d+)/)||[])[1] || '0'; rv.querySelector('b')?.insertAdjacentHTML('afterend', `<span class="h21n">${n}</span>`); }
+      if(fd && !fd.querySelector('.h21n')){ const t = fd.querySelector('small')?.textContent || '', n = (t.match(/(\d+)こ/)||[])[1]; const x = /はつどう/.test(t) ? (t.match(/×[\d.]+/)||[''])[0] : (n || '0'); fd.querySelector('b')?.insertAdjacentHTML('afterend', `<span class="h21n">${x}</span>`); }
       /* にがておばけ（ねている時）：一行＋まる3つ */
       const bc = document.querySelector('#evArea .bossCard.calm');
-      if(bc && !bc.querySelector('.h19dots')){
-        const s = bc.querySelector('small'), m = (s?.textContent.match(/いま\s*(\d+)こ/)||[])[1];
-        if(m !== undefined){ const n = Math.min(3, +m); s.textContent = `あと ${3-n}問で 登場`;
-          bc.insertAdjacentHTML('beforeend', `<span class="h19dots">${[0,1,2].map(i => `<i class="${i<n?'on':''}"></i>`).join('')}</span>`); }
+      if(bc && !bc.querySelector('.h21dots')){
+        const sm = bc.querySelector('small'), m = (sm?.textContent.match(/いま\s*(\d+)こ/)||[])[1];
+        if(m !== undefined){ const n = Math.min(3, +m); sm.textContent = `あと ${3-n}問で 登場`;
+          bc.insertAdjacentHTML('beforeend', `<span class="h21dots">${[0,1,2].map(i => `<i class="${i<n?'on':''}"></i>`).join('')}</span>`); }
       }
-    }catch(e){ console.warn('home v19', e); }
-  }
-  const late = () => {
-    try{ const _rh = renderHome; renderHome = function(){ const o = _rh.apply(this, arguments); restyle(); return o; }; }catch(e){}
-    try{ if(typeof curScreen !== 'undefined' && curScreen === 'home') restyle(); }catch(e){}
-  };
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 0)); else setTimeout(late, 0);
-  /* スクロールしたら ヘッダーを 細く（ロゴが 中身に かさならない） */
-  let tk = 0;
-  addEventListener('scroll', () => { if(tk) return; tk = requestAnimationFrame(() => { tk = 0; document.body.classList.toggle('h19scr', scrollY > 40); }); }, {passive:true});
-})();
-
-/* =====================================================================
-   v20.0 ホーム：季節の 色・ミッションの 絵文字を イラストに・なかまを よぶ タグ
-   ===================================================================== */
-(function(){
-  const O = 'stroke="#5B3B22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
-  const S = b => `<svg viewBox="0 0 48 48" aria-hidden="true">${b}</svg>`;
-  const IC = {
-    pencil: S(`<ellipse cx="24" cy="42" rx="14" ry="3" fill="rgba(0,0,0,.08)"/><path d="M12 36l3-9 19-19 6 6-19 19z" fill="#FFC94A" ${O}/><path d="M34 8l6 6 3-3a2 2 0 000-3l-3-3a2 2 0 00-3 0z" fill="#F28CA0" ${O}/><path d="M12 36l3-9 6 6z" fill="#F6DDB5" ${O}/><path d="M12 36l1.4-4 2.6 2.6z" fill="#5B3B22"/>`),
-    num: S(`<ellipse cx="24" cy="42" rx="15" ry="3" fill="rgba(0,0,0,.08)"/><rect x="5" y="20" width="17" height="17" rx="4" fill="#7CC4F2" ${O}/><rect x="25" y="20" width="17" height="17" rx="4" fill="#FF9DB0" ${O}/><rect x="15" y="4" width="17" height="17" rx="4" fill="#FFD35A" ${O}/><text x="13.5" y="33" font-size="12" font-weight="900" text-anchor="middle" fill="#fff" font-family="sans-serif">1</text><text x="33.5" y="33" font-size="12" font-weight="900" text-anchor="middle" fill="#fff" font-family="sans-serif">2</text><text x="23.5" y="17" font-size="12" font-weight="900" text-anchor="middle" fill="#8A5A00" font-family="sans-serif">3</text>`),
-    ok: S(`<circle cx="24" cy="24" r="17" fill="#FFF3F3" ${O}/><circle cx="24" cy="24" r="11" fill="none" stroke="#E8414B" stroke-width="5"/>`),
-    perfect: S(`<path d="M24 5l4 6 7-2 1 7 7 3-4 6 4 6-7 3-1 7-7-2-4 6-4-6-7 2-1-7-7-3 4-6-4-6 7-3 1-7 7 2z" fill="#FFD9E2" ${O}/><circle cx="24" cy="24" r="10" fill="#fff" stroke="#E8414B" stroke-width="2"/><text x="24" y="28.5" font-size="11" font-weight="900" text-anchor="middle" fill="#E8414B" font-family="sans-serif">100</text>`),
-    talk: S(`<path d="M6 10h26a4 4 0 014 4v12a4 4 0 01-4 4H18l-7 6v-6H6a4 4 0 01-4-4V14a4 4 0 014-4z" fill="#BFE6FF" ${O}/><path d="M38 18h4a4 4 0 014 4v10a4 4 0 01-4 4h-2v5l-6-5h-8a4 4 0 01-4-4" fill="#FFE7A8" ${O}/><circle cx="12" cy="20" r="2" fill="#5B3B22"/><circle cx="19" cy="20" r="2" fill="#5B3B22"/><circle cx="26" cy="20" r="2" fill="#5B3B22"/>`),
-    quiz: S(`<ellipse cx="24" cy="43" rx="14" ry="3" fill="rgba(0,0,0,.08)"/><path d="M8 16l16-9 16 9v18l-16 9-16-9z" fill="#fff" ${O}/><path d="M8 16l16 9 16-9M24 25v18" fill="none" ${O}/><path d="M8 16l16 9v18l-16-9z" fill="#E8F3FF"/><path d="M24 25l16-9v18l-16 9z" fill="#D2E6FA"/><path d="M8 16l16-9 16 9-16 9z" fill="#fff" ${O}/><circle cx="24" cy="16" r="2.4" fill="#E8414B"/><circle cx="14" cy="27" r="2" fill="#5B3B22"/><circle cx="18" cy="33" r="2" fill="#5B3B22"/><circle cx="32" cy="26" r="2" fill="#5B3B22"/><circle cx="30" cy="34" r="2" fill="#5B3B22"/>`),
-    gift: S(`<ellipse cx="24" cy="43" rx="15" ry="3" fill="rgba(0,0,0,.08)"/><rect x="8" y="20" width="32" height="20" rx="3" fill="#FF8FA6" ${O}/><rect x="5" y="14" width="38" height="8" rx="3" fill="#FFB0C0" ${O}/><path d="M21 14h6v26h-6z" fill="#FFD35A" ${O}/><path d="M24 14c-3-7-12-8-11-2 1 3 7 2 11 2zM24 14c3-7 12-8 11-2-1 3-7 2-11 2z" fill="#FFD35A" ${O}/>`),
-    door: S(`<ellipse cx="24" cy="44" rx="15" ry="2.6" fill="rgba(0,0,0,.08)"/><rect x="9" y="4" width="30" height="40" rx="4" fill="#D8A36A" ${O}/><rect x="13" y="8" width="22" height="34" rx="3" fill="#B97A45" ${O}/><rect x="16" y="12" width="16" height="11" rx="2" fill="#C98C55"/><rect x="16" y="27" width="16" height="11" rx="2" fill="#C98C55"/><circle cx="31" cy="25" r="2.2" fill="#FFD35A" stroke="#5B3B22" stroke-width="1.4"/><path d="M15 6c2-3 6-3 8 0" fill="none" stroke="#7CB46A" stroke-width="3"/>`),
-    post: S(`<ellipse cx="24" cy="44" rx="12" ry="2.6" fill="rgba(0,0,0,.08)"/><rect x="21" y="30" width="6" height="13" fill="#9A6A3E" ${O}/><path d="M10 18a14 12 0 0128 0v14H10z" fill="#E8414B" ${O}/><rect x="16" y="17" width="16" height="4" rx="2" fill="#5B3B22"/><path d="M16 26h16" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="30" y="4" width="11" height="8" rx="1.5" fill="#fff" ${O} transform="rotate(12 35 8)"/>`),
-    japan: S(`<ellipse cx="24" cy="44" rx="12" ry="2.6" fill="rgba(0,0,0,.08)"/><path d="M14 41h20M24 36v5" ${O}/><path d="M9 22a15 15 0 0030 0" fill="none" stroke="#C99A63" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="20" r="13" fill="#7CC8F2" ${O}/><path d="M16 12c3-1 6 0 6 3s-4 3-4 6-3 4-5 2c-1-3 0-9 3-11zM28 10c4 1 8 4 8 8-2 0-3 2-5 1s-1-4-3-5-3-3 0-4zM27 25c2-1 5 0 5 2s-2 5-4 5-3-5-1-7z" fill="#8FD07A"/><circle cx="24" cy="20" r="13" fill="none" ${O}/>`),
-    scope: S(`<ellipse cx="24" cy="44" rx="15" ry="2.6" fill="rgba(0,0,0,.08)"/><rect x="10" y="38" width="28" height="5" rx="2.5" fill="#7A8796" ${O}/><path d="M30 38c6-3 8-10 4-15" fill="none" stroke="#5B3B22" stroke-width="5"/><path d="M30 38c6-3 8-10 4-15" fill="none" stroke="#A9B6C4" stroke-width="2.5"/><rect x="18" y="6" width="9" height="22" rx="3" fill="#7CC4F2" ${O} transform="rotate(-25 22 17)"/><rect x="14" y="28" width="12" height="4" rx="2" fill="#5B3B22"/><circle cx="20" cy="34" r="2.6" fill="#BFE6FF" stroke="#5B3B22" stroke-width="1.5"/>`),
-    abc: S(`<ellipse cx="24" cy="43" rx="16" ry="3" fill="rgba(0,0,0,.08)"/><rect x="4" y="18" width="16" height="16" rx="3" fill="#B79BFF" ${O}/><rect x="28" y="18" width="16" height="16" rx="3" fill="#7FD3A0" ${O}/><rect x="16" y="4" width="16" height="16" rx="3" fill="#FFB86B" ${O}/><text x="12" y="31" font-size="12" font-weight="900" text-anchor="middle" fill="#fff" font-family="sans-serif">A</text><text x="24" y="17" font-size="12" font-weight="900" text-anchor="middle" fill="#fff" font-family="sans-serif">B</text><text x="36" y="31" font-size="12" font-weight="900" text-anchor="middle" fill="#fff" font-family="sans-serif">C</text>`),
-    robot: S(`<ellipse cx="24" cy="44" rx="13" ry="2.6" fill="rgba(0,0,0,.08)"/><path d="M24 4v6" ${O}/><circle cx="24" cy="4" r="2.5" fill="#FFD35A" ${O}/><rect x="9" y="10" width="30" height="22" rx="7" fill="#BFE6FF" ${O}/><rect x="13" y="15" width="22" height="12" rx="5" fill="#2F4B63"/><circle cx="19" cy="21" r="2.5" fill="#7FF0FF"/><circle cx="29" cy="21" r="2.5" fill="#7FF0FF"/><rect x="15" y="32" width="18" height="10" rx="3" fill="#9CC9EE" ${O}/><circle cx="24" cy="37" r="2" fill="#FF8FA6"/>`),
-    medal: S(`<path d="M15 4h7l4 14h-7zM33 4h-7l-4 14h7z" fill="#5AA9E6" ${O}/><circle cx="24" cy="30" r="13" fill="#FFD35A" ${O}/><circle cx="24" cy="30" r="8.5" fill="#FFE58A" stroke="#D9A21B" stroke-width="1.6"/><path d="M24 24l1.8 3.7 4 .5-3 2.8.8 4-3.6-2-3.6 2 .8-4-3-2.8 4-.5z" fill="#F2B91E"/>`),
-    target: S(`<circle cx="22" cy="26" r="17" fill="#fff" ${O}/><circle cx="22" cy="26" r="11" fill="#E8414B"/><circle cx="22" cy="26" r="6" fill="#fff"/><circle cx="22" cy="26" r="2.5" fill="#E8414B"/><path d="M22 26L40 8" stroke="#5B3B22" stroke-width="2.6" stroke-linecap="round"/><path d="M36 6l6-2-2 6-4 0z" fill="#5AA9E6" ${O}/>`),
-    letter: S(`<rect x="4" y="11" width="40" height="27" rx="4" fill="#fff" stroke="rgba(0,0,0,.2)" stroke-width="2"/><path d="M6 14l18 13 18-13" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 3l2 4 4.4.6-3.2 3 .8 4.4L24 13l-4 2 .8-4.4-3.2-3L22 7z" fill="#FFE07A"/>`)
-  };
-  window.H20_IC = IC;
-  const MAP = {'✏️':'pencil','✏':'pencil','🔢':'num','⭕':'ok','💮':'perfect','💬':'talk','🎲':'quiz','🎁':'gift','🚪':'door','📮':'post','🗾':'japan','🔬':'scope','🔤':'abc','🤖':'robot','🏅':'medal'};
-  const EMO = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}]\uFE0F?/gu;
-
-  /* ---------- 季節 ---------- */
-  const autoSeason = () => { const m = new Date().getMonth() + 1; return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; };
-  const getSeason = () => { let v = 'auto'; try{ v = (save.h20s || 'auto'); }catch(e){} return v === 'auto' ? autoSeason() : v; };
-  const applySeason = () => { document.body.dataset.s = getSeason(); };
-
-  function restyle(){
-    try{
-      applySeason();
+      document.querySelectorAll('#evArea .bossCard b, #homeExtra .udCard b').forEach(b => { if(EMO.test(b.textContent)) b.textContent = b.textContent.replace(EMO,'').trim(); EMO.lastIndex = 0; });
       /* ミッション：絵文字 → イラスト */
-      document.querySelectorAll('#missionCard .misI').forEach(el => {
-        if(el.dataset.h20) return; const t = el.textContent.trim(), k = MAP[t] || MAP[t.replace(/\uFE0F/g,'')];
-        el.innerHTML = IC[k || 'medal']; el.dataset.h20 = 1;
-      });
-      const hb = document.querySelector('#missionCard .misHead b');
-      if(hb && !hb.querySelector('.h20tg')){ hb.innerHTML = `<span class="h20tg">${IC.target}</span>` + hb.textContent.replace(EMO,'').trim(); }
-      /* 見出しの 絵文字を けす（絵が となりに あるので） */
-      document.querySelectorAll('#evArea .bossCard b, #homeExtra .udCard b').forEach(b => { if(EMO.test(b.textContent)){ b.textContent = b.textContent.replace(EMO,'').trim(); } EMO.lastIndex = 0; });
-      /* なかまを よぶ：布タグ＋てがみの 絵 */
-      const rs = document.getElementById('btnRareSel');
-      if(rs && !rs.dataset.h20){ rs.innerHTML = IC.letter + '<span>なかまを よぶ</span>'; rs.dataset.h20 = 1; }
-    }catch(e){ console.warn('home v20', e); }
+      const mc = document.getElementById('missionCard');
+      if(mc){
+        const hb = mc.querySelector('.misHead b');
+        if(hb && !hb.querySelector('img')) hb.innerHTML = img('mi_target') + esc(hb.textContent.replace(EMO,'').trim());
+        mc.querySelectorAll('.misI').forEach(el => { if(el.querySelector('img')) return; const t = el.textContent.trim(); el.innerHTML = img('mi_' + (MI[t] || MI[t.replace(/\uFE0F/g,'')] || 'medal')); });
+        mc.querySelectorAll('.misDone').forEach(el => { if(!el.querySelector('img')) el.innerHTML = img('mi_ok', '', 'クリア'); });
+        const st = mc.querySelector('.stampRow small');
+        if(st && !st.querySelector('img')) st.innerHTML = esc(st.textContent).replace(EMO, img('mi_gift'));
+      }
+      /* きろく */
+      const hs = document.getElementById('homeStats');
+      if(hs && !hs.querySelector('.h21st')){
+        hs.innerHTML = [...hs.querySelectorAll('.stat')].map((x,i) => {
+          const lab = (x.querySelector('span')?.textContent || '').trim(), sh = SHORT[lab] || [lab, ''];
+          const b = x.querySelector('b'); let h = b ? b.innerHTML : '';
+          if(sh[1] && !/<small/.test(h)) h += `<small>${sh[1]}</small>`; else if(sh[1]==='字') h += '<small>字</small>';
+          return `<div class="h21st c${i+1}"><b>${h}</b><span>${sh[0]}</span></div>`;
+        }).join('');
+      }
+    }catch(e){ console.warn('home v21', e); }
   }
   /* せってい：ホームの きせつ */
   function addSetting(){
     try{
-      const card = document.querySelector('#scr-settings .card'); if(!card || document.getElementById('segH20')) return;
-      const t = card.querySelector('.title');
-      t.insertAdjacentHTML('afterend', `<div class="setSec"><h3>ホームの きせつ</h3><div class="seg" id="segH20">${[['auto','じどう（月）'],['spring','はる'],['summer','なつ'],['autumn','あき'],['winter','ふゆ']].map(([v,n]) => `<button data-v="${v}">${n}</button>`).join('')}</div><p class="note">ふだんは「じどう」。3〜5月は はる、6〜8月は なつ、9〜11月は あき、12〜2月は ふゆ に なります。</p></div>`);
-      const seg = document.getElementById('segH20');
+      const card = document.querySelector('#scr-settings .card'); if(!card || document.getElementById('seg21')) return;
+      card.querySelector('.title').insertAdjacentHTML('afterend', `<div class="setSec"><h3>ホームの きせつ</h3><div class="seg" id="seg21">${[['auto','じどう（日づけ）'],['spring','はる'],['summer','なつ'],['autumn','あき'],['winter','ふゆ']].map(([v,n]) => `<button data-v="${v}">${n}</button>`).join('')}</div><p class="note">ふだんは「じどう」に してください。背景・かんばん・リボンの 色が 季節で かわります。</p></div>`);
+      const seg = document.getElementById('seg21');
       const mark = () => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === (save.h20s || 'auto')));
       mark();
-      seg.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; save.h20s = b.dataset.v; try{ persist(); }catch(_){} mark(); applySeason(); });
+      seg.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; save.h20s = b.dataset.v; try{ persist(); }catch(_){} mark(); restyle(); });
     }catch(e){}
   }
   const late = () => {
     try{ const _rh = renderHome; renderHome = function(){ const o = _rh.apply(this, arguments); restyle(); return o; }; }catch(e){}
     try{ const _rr = renderHomeRares; renderHomeRares = function(){ const o = _rr.apply(this, arguments); restyle(); return o; }; }catch(e){}
-    applySeason(); addSetting(); restyle();
+    addSetting(); restyle();
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(late, 0)); else setTimeout(late, 0);
 })();

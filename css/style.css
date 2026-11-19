@@ -2124,227 +2124,139 @@ html.fnt-te :is(#mQ,.hissan,.mPad .mk,#mInput){font-family:"Zen Maru Gothic","Hi
 .tutQuitIn{pointer-events:auto;border:2px solid var(--line);background:#fff;color:var(--sub);border-radius:999px;font-weight:900;font-size:14px;padding:6px 14px;margin-right:8px}
 .tutTx .tutRow{display:flex;justify-content:flex-end;align-items:center;margin-top:6px}
 .tutTx .tutRow .tutBtn{margin:0}
-
 /* =====================================================================
-   v19.0 ホーム リデザイン（枠を へらして まちと キャラクターが 主役）
-   ・構成（ならび順・きのう）は そのまま、見た目だけ 変更
+   v21.0 ホーム デザイン（v19・v20 を まとめて 作りなおし）
+   ・村の かんばん／なかまを よぶ／リボン／ミッションの 絵 … assets/images/home21/ の イラスト
+   ・季節（body[data-s]）で かんばん・タグ・リボン・ふきだしの 色が かわる。背景は いまの 季節の 背景
+   ・パネルの 角丸は 16px に 統一。スクロールしても ヘッダーは かわらない
    ===================================================================== */
-body.scr-home{--h19ink:#4A3426;--h19sub:#8A6F58;--h19cream:rgba(255,250,240,.86)}
-/* ヘッダー：スクロールしたら 細い バーに まとめる */
-body.scr-home #topbar{transition:background .25s,box-shadow .25s,padding .25s}
-body.scr-home.h19scr #topbar{background:rgba(255,248,236,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 2px 12px rgba(80,50,20,.12);padding-top:max(4px,env(safe-area-inset-top))!important;padding-bottom:4px!important}
-body.scr-home.h19scr #topbar .sign.logo img.mainLogo{max-height:34px!important;transition:max-height .25s}
-body.scr-home #topbar .pill{background:rgba(255,250,235,.92)!important;border:1.5px solid rgba(242,201,76,.7)!important;box-shadow:0 2px 8px rgba(120,80,0,.12)!important}
+body.scr-home{--r21:16px;--w21:min(760px,74vw);--ink21:#4A3426;--sub21:#8A6F58;
+  --paper21:rgba(255,250,241,.95);--bub21:#FFF0C8;--bubInk21:#5A3A1E;--glow21:255,214,150;--lv21:#5A3A1E}
+body.scr-home[data-s="spring"]{--bub21:#FFE9F0;--glow21:255,200,220;--paper21:rgba(255,249,251,.95)}
+body.scr-home[data-s="summer"]{--bub21:#E4F5FF;--bubInk21:#24465A;--glow21:170,220,255;--paper21:rgba(249,252,255,.95)}
+body.scr-home[data-s="winter"]{--bub21:#EEF1F4;--bubInk21:#2C3136;--glow21:225,232,240;--paper21:rgba(250,251,252,.96);--ink21:#2F3338;--sub21:#6B7178;--lv21:#3A3F45}
 
-/* ようこそ：文を へらして 村の名前を 主役に */
-body.scr-home .welcome{background:rgba(255,252,246,.78)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(80,50,20,.1)!important;border:none!important;padding:4px 16px 4px 4px!important}
+/* ヘッダー：スクロールしても 色も 大きさも かえない */
+body.scr-home #topbar .pill{background:rgba(255,255,255,.88)!important;border:none!important;box-shadow:0 2px 8px rgba(60,40,20,.14)!important}
+
+/* 村の 名前：木の かんばん（イラスト） */
+body.scr-home .welcome{background:url(../assets/images/home21/sign_wood.webp) center/100% 100% no-repeat!important;border:none!important;border-radius:0!important;
+  box-shadow:none!important;padding:10px 28px 12px 18px!important;min-height:60px;gap:8px!important;filter:drop-shadow(0 4px 6px rgba(60,40,20,.18))}
+body.scr-home[data-s="winter"] .welcome{background-image:url(../assets/images/home21/sign_snow.webp)!important;padding-top:18px!important}
+body.scr-home .welcome img{width:38px!important;height:38px!important;background:rgba(255,255,255,.85)!important;border:none!important}
 body.scr-home .welcome small{display:none!important}
-body.scr-home .welcome #homeTownLv{font-size:15px;color:var(--h19ink);letter-spacing:.02em}
-body.scr-home .welcome .h19lv{display:inline-block;margin-left:6px;font-size:11px;font-weight:900;color:#B5701C;background:#FFF1CF;border-radius:999px;padding:1px 8px;vertical-align:2px}
-body.scr-home .rareSel{background:rgba(255,252,246,.7)!important;border:none!important;box-shadow:0 1px 6px rgba(80,50,20,.1)!important;font-size:11px!important;color:var(--h19ink)!important;padding:3px 10px!important}
-body.scr-home #homeBird .bubble{border-radius:18px;box-shadow:0 4px 14px rgba(80,50,20,.14)}
+body.scr-home .welcome #homeTownLv{color:var(--lv21)!important;font-size:17px!important;font-weight:900;white-space:nowrap}
+body.scr-home .welcome .h21lv{display:inline-block;margin-left:6px;font-size:11px;font-weight:900;color:var(--lv21);background:rgba(255,255,255,.6);border-radius:8px;padding:1px 7px;vertical-align:2px}
 
-/* メイン3つ：楕円ボタンを やめて「イラスト＋光の台座＋リボン」 */
+/* なかまを よぶ：布の タグ（イラスト） */
+body.scr-home .rareSel{background:none!important;border:none!important;box-shadow:none!important;padding:0!important;line-height:0;filter:drop-shadow(0 2px 3px rgba(60,40,20,.22))}
+body.scr-home .rareSel img{height:34px;width:auto;display:block}
+
+/* シマエナガの ふきだし：季節の 色 */
+body.scr-home #homeBird .bubble{background:var(--bub21)!important;color:var(--bubInk21)!important;border-radius:20px!important;box-shadow:0 4px 12px rgba(60,40,20,.16)!important;font-size:15px}
+body.scr-home #homeBird .bubble::after{border-top-color:var(--bub21)!important}
+
+/* メイン3つ：イラスト＋光の 台座＋リボン（イラスト） */
 body.scr-home .homeBtns{gap:6px!important;margin-top:-40px!important}
 body.scr-home .bigTile{min-height:170px!important}
-body.scr-home .bigTile .bt-bg{inset:auto 8% 22px 8%!important;height:46px;border-radius:50%!important;box-shadow:none!important;opacity:.95}
+body.scr-home .bigTile .bt-bg{inset:auto 8% 20px 8%!important;height:46px;border-radius:50%!important;box-shadow:none!important;
+  background:radial-gradient(ellipse at 50% 50%,rgba(var(--glow21),.85),rgba(var(--glow21),.25) 55%,transparent 72%)!important}
 body.scr-home .bigTile .bt-bg::after{display:none}
-body.scr-home .bigTile.pink .bt-bg{background:radial-gradient(ellipse at 50% 45%,rgba(255,170,195,.95),rgba(255,170,195,.35) 55%,transparent 72%)!important}
-body.scr-home .bigTile.green .bt-bg{background:radial-gradient(ellipse at 50% 45%,rgba(150,220,150,.95),rgba(150,220,150,.35) 55%,transparent 72%)!important}
-body.scr-home .bigTile.orange .bt-bg{background:radial-gradient(ellipse at 50% 45%,rgba(255,205,120,.95),rgba(255,205,120,.35) 55%,transparent 72%)!important}
-body.scr-home .bigTile img.hb{width:min(150px,30vw)!important;max-height:150px!important;margin-bottom:-14px;filter:drop-shadow(0 8px 6px rgba(60,35,10,.28))!important;animation:h19float 3.2s ease-in-out infinite}
-body.scr-home .bigTile.green img.hb{animation-delay:-1.1s}
-body.scr-home .bigTile.orange img.hb{animation-delay:-2.2s}
-@keyframes h19float{50%{translate:0 -5px}}
-body.scr-home .bigTile span.bt-t{position:relative;z-index:2;padding:5px 18px 6px!important;margin-bottom:6px;border-radius:6px;font-size:clamp(14px,2.2vw,20px)!important;text-shadow:0 1px 0 rgba(0,0,0,.18)!important;box-shadow:0 3px 0 rgba(0,0,0,.14)}
-body.scr-home .bigTile span.bt-t::before,body.scr-home .bigTile span.bt-t::after{content:"";position:absolute;top:5px;width:12px;height:100%;z-index:-1;background:inherit;filter:brightness(.82)}
-body.scr-home .bigTile span.bt-t::before{left:-9px;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,45% 50%)}
-body.scr-home .bigTile span.bt-t::after{right:-9px;clip-path:polygon(0 0,100% 0,55% 50%,100% 100%,0 100%)}
-body.scr-home .bigTile.pink span.bt-t{background:linear-gradient(180deg,#F57A9A,#E0577A)}
-body.scr-home .bigTile.green span.bt-t{background:linear-gradient(180deg,#5FBE76,#3E9B5C)}
-body.scr-home .bigTile.orange span.bt-t{background:linear-gradient(180deg,#F8AE48,#E08E1E)}
-body.scr-home .bigTile:active .bt-bg{transform:scale(.92)}
+body.scr-home .bigTile img.hb{width:min(150px,30vw)!important;max-height:150px!important;margin-bottom:-16px;filter:drop-shadow(0 8px 6px rgba(60,35,10,.28))!important}
+body.scr-home .bigTile span.bt-t{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);padding:0!important}
+body.scr-home .bigTile img.h21rb{position:relative;z-index:2;display:block;width:min(200px,92%);height:auto;margin-bottom:6px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.15))}
+body.scr-home .bigTile:active img.h21rb{transform:scale(.96)}
 
-/* 運動会・タワー：低い 横長バナー */
-body.scr-home #homeExtra{gap:8px!important}
-body.scr-home #homeExtra .udCard{border:none!important;box-shadow:0 4px 14px rgba(80,50,20,.16)!important;border-radius:18px!important;padding:6px 10px!important;min-height:0;background-size:cover!important}
+/* パネル（運動会・ミッション・きろく）… 角丸 16px で 統一 */
+body.scr-home #homeExtra{gap:8px!important;margin-top:10px!important}
+body.scr-home #homeExtra .udCard{border:none!important;border-radius:var(--r21)!important;box-shadow:0 4px 14px rgba(60,40,20,.16)!important;padding:6px 10px!important;background-size:cover!important}
 body.scr-home #homeExtra .udCard img{width:46px!important;height:46px!important;animation:none!important}
-body.scr-home #homeExtra .udCard b{font-size:16px!important;color:var(--h19ink)}
+body.scr-home #homeExtra .udCard b{font-size:16px!important;color:var(--ink21)}
 body.scr-home #homeExtra .udCard small{font-size:11px!important}
-body.scr-home #homeExtra .udGo{padding:6px 14px!important;font-size:14px;box-shadow:0 2px 0 #C93A63!important}
-body.scr-home #homeExtra .udCard.done .udGo{box-shadow:none!important}
+body.scr-home #homeExtra .udGo{border-radius:10px 0 0 10px!important;clip-path:polygon(0 0,100% 0,90% 50%,100% 100%,0 100%);padding:6px 22px 6px 14px!important;font-size:14px;box-shadow:none!important}
+body.scr-home[data-s="winter"] #homeExtra .udGo{background:#474C53!important}
 
-/* まちがえた問題・おやつ：カードを やめて 横ならびの 小さな チップ */
-body.scr-home .homeMini{display:flex!important;gap:8px!important}
-body.scr-home .homeMini .hmBtn{flex:1;flex-direction:row!important;justify-content:center;gap:8px!important;padding:6px 10px!important;border:none!important;border-radius:999px!important;background:var(--h19cream)!important;box-shadow:0 2px 8px rgba(80,50,20,.1)!important;text-align:left}
+/* まちがえた問題・おやつ：背景が すけない パネル（どの 背景でも 読める） */
+body.scr-home .homeMini{display:flex!important;gap:0!important;background:var(--paper21);border-radius:var(--r21);box-shadow:0 3px 12px rgba(60,40,20,.14);position:relative}
+body.scr-home .homeMini::after{content:"";position:absolute;left:50%;top:22%;bottom:22%;width:1.5px;background:rgba(120,90,60,.22)}
+body.scr-home .homeMini .hmBtn{flex:1;flex-direction:row!important;justify-content:center;align-items:center;gap:8px!important;padding:8px 10px!important;border:none!important;border-radius:var(--r21)!important;background:none!important;box-shadow:none!important}
 body.scr-home .homeMini .hmBtn .hmIco{width:34px!important;height:34px!important}
-body.scr-home .homeMini .hmBtn b{font-size:13px!important;color:var(--h19ink);white-space:nowrap}
-body.scr-home .homeMini .hmBtn small{display:none}
-body.scr-home .homeMini .hmBtn .h19n{font-size:18px;font-weight:900;color:#C93A63;font-variant-numeric:tabular-nums}
-body.scr-home .homeMini #btnFood .h19n{color:#B5701C}
-body.scr-home .homeMini .hmBadge{display:none}
+body.scr-home .homeMini .hmBtn b{font-size:13px!important;color:var(--ink21);white-space:nowrap}
+body.scr-home .homeMini .hmBtn small,body.scr-home .homeMini .hmBadge{display:none!important}
+body.scr-home .homeMini .h21n{font-size:19px;font-weight:900;color:#C93A63;font-variant-numeric:tabular-nums}
+body.scr-home .homeMini #btnFood .h21n{color:#B5701C}
 
-/* にがておばけ：大きな 紫の箱 → 淡い ラベンダーの 帯 */
-body.scr-home .bossCard{margin-top:8px!important;padding:6px 14px 6px 6px!important;gap:10px!important;border:none!important;border-radius:999px!important;background:linear-gradient(90deg,rgba(236,228,255,.95),rgba(246,240,255,.88))!important;color:#4B3A78!important;box-shadow:0 2px 10px rgba(90,60,160,.14)!important}
+/* にがておばけ：すけない ラベンダーの 帯 */
+body.scr-home .bossCard{margin-top:8px!important;padding:6px 14px 6px 8px!important;gap:10px!important;border:none!important;border-radius:var(--r21)!important;align-items:center}
+body.scr-home .bossCard.calm{background:rgba(240,233,255,.95)!important;box-shadow:0 3px 12px rgba(90,60,160,.14)!important;color:#4B3A78!important}
 body.scr-home .bossCard img{width:52px!important;height:52px!important}
-body.scr-home .bossCard b{font-size:15px!important;color:#4B3A78}
-body.scr-home .bossCard small{color:#7A68A8!important;font-size:12px!important;margin:0!important}
-body.scr-home .bossCard:not(.calm){background:linear-gradient(90deg,#5B3E9E,#8E6CD8)!important;color:#fff!important;border-radius:22px!important}
-body.scr-home .bossCard:not(.calm) b,body.scr-home .bossCard:not(.calm) small{color:#fff!important}
 body.scr-home .bossCard.calm img{filter:none!important}
-body.scr-home .h19dots{display:inline-flex;gap:5px;margin-left:auto;flex:none}
-body.scr-home .h19dots i{width:14px;height:14px;border-radius:50%;border:2px solid #B9A6E8;background:#fff}
-body.scr-home .h19dots i.on{background:#8E6CD8;border-color:#8E6CD8}
-body.scr-home .bossCard.calm{align-items:center}
 body.scr-home .bossCard.calm>div{flex:1;min-width:0}
+body.scr-home .bossCard.calm b{font-size:15px!important;color:#4B3A78}
+body.scr-home .bossCard.calm small{color:#7A68A8!important;font-size:12px!important;margin:0!important}
+body.scr-home .h21dots{display:inline-flex;gap:5px;flex:none}
+body.scr-home .h21dots i{width:14px;height:14px;border-radius:50%;border:2px solid #B9A6E8;background:#fff}
+body.scr-home .h21dots i.on{background:#8E6CD8;border-color:#8E6CD8}
 
-/* ミッション：1枚の 面に まとめて 行の 枠を なくす */
-body.scr-home .missionCard{background:var(--h19cream)!important;border:none!important;border-radius:22px!important;box-shadow:0 4px 16px rgba(80,50,20,.1)!important;padding:12px 16px 10px!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-body.scr-home .misHead{margin-bottom:2px!important;align-items:center}
-body.scr-home .misHead b{font-size:17px!important;color:var(--h19ink)}
-body.scr-home .misHead small{font-size:11px!important;background:#FFF1CF;color:#B5701C!important;border-radius:999px;padding:1px 9px}
+/* きょうの ミッション */
+body.scr-home .missionCard{background:var(--paper21)!important;border:none!important;border-radius:var(--r21)!important;box-shadow:0 4px 16px rgba(60,40,20,.12)!important;padding:12px 16px 10px!important;margin-top:10px!important}
+body.scr-home .misHead{margin-bottom:2px!important;align-items:center!important}
+body.scr-home .misHead b{display:inline-flex;align-items:center;gap:6px;font-size:17px!important;color:var(--ink21)}
+body.scr-home .misHead b img{width:28px;height:28px}
+body.scr-home .misHead small{font-size:11px!important;background:#FFF1CF;color:#B5701C!important;border-radius:8px;padding:1px 9px}
 body.scr-home .misRow{background:none!important;border:none!important;border-bottom:1.5px dashed rgba(180,150,110,.3)!important;border-radius:0!important;padding:8px 2px!important;margin:0!important;gap:12px!important}
 body.scr-home .misRow:last-of-type{border-bottom:none!important}
-body.scr-home .misRow.ok{background:linear-gradient(90deg,rgba(255,236,170,.55),transparent)!important;border-radius:12px!important}
-body.scr-home .misI{width:38px;height:38px;display:grid;place-items:center;font-size:22px!important;background:#FFF4E2;border-radius:12px}
-body.scr-home .misT b{font-size:14px!important;color:var(--h19ink)}
+body.scr-home .misRow.ok{background:linear-gradient(90deg,rgba(255,236,170,.6),transparent)!important;border-radius:10px!important}
+body.scr-home .misI{width:44px;height:44px;flex:none;display:block}
+body.scr-home .misI img{width:100%;height:100%;object-fit:contain;display:block}
 body.scr-home .misT{display:grid;grid-template-columns:1fr auto;column-gap:8px;align-items:center}
-body.scr-home .misT b{grid-column:1/-1}
+body.scr-home .misT b{grid-column:1/-1;font-size:14px!important;color:var(--ink21)}
 body.scr-home .misBar{height:7px!important;background:#F0E6D6!important;margin:3px 0!important}
 body.scr-home .misT small{font-size:11px!important;font-variant-numeric:tabular-nums}
 body.scr-home .misPt{color:#C9A25A!important}
-body.scr-home .stampRow{margin-top:8px!important;padding-top:8px;border-top:1.5px dashed rgba(180,150,110,.3);gap:5px!important;color:var(--h19sub)}
-body.scr-home .stamp{width:30px!important;height:30px!important;border:2px dashed #E7D6BB!important;background:rgba(255,255,255,.7)!important}
+body.scr-home .misDone img{width:30px;height:30px;display:block}
+body.scr-home .stampRow{margin-top:8px!important;padding-top:8px;border-top:1.5px dashed rgba(180,150,110,.3);gap:5px!important;color:var(--sub21)}
+body.scr-home .stampRow small img{width:18px;height:18px;vertical-align:-4px}
+body.scr-home .stamp{width:30px!important;height:30px!important;border:2px dashed #E7D6BB!important;background:rgba(255,255,255,.8)!important}
 body.scr-home .stamp.on{border:2px solid #F2C94C!important;background:#FFF6D6!important}
 
-/* 学習の きろく：白いカードを やめて 大きな数字＋細い区切り */
-body.scr-home .homeStats{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:0!important;margin-top:12px!important;background:var(--h19cream);border-radius:22px;box-shadow:0 4px 16px rgba(80,50,20,.1);padding:10px 4px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-body.scr-home .h19st{display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 4px;position:relative}
-body.scr-home .h19st+.h19st::before{content:"";position:absolute;left:0;top:14%;bottom:14%;width:1.5px;background:rgba(180,150,110,.28)}
-body.scr-home .h19st svg{width:28px;height:28px}
-body.scr-home .h19st b{font-size:clamp(20px,3vw,28px);font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
-body.scr-home .h19st b small{font-size:.5em;margin-left:1px;opacity:.75}
-body.scr-home .h19st span{font-size:11px;font-weight:900;color:var(--h19sub)}
-body.scr-home .h19st.c1 b{color:#D2486E}.body.scr-home .h19st.c2 b{color:#C66F0A}
-body.scr-home .h19st.c2 b{color:#C66F0A}body.scr-home .h19st.c3 b{color:#2F7DC0}body.scr-home .h19st.c4 b{color:#2E8B57}
+/* 学習の きろく：大きな 数字＋細い 区切り */
+body.scr-home .homeStats{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:0!important;margin-top:10px!important;background:var(--paper21)!important;border-radius:var(--r21)!important;box-shadow:0 4px 16px rgba(60,40,20,.12);padding:10px 4px}
+body.scr-home .h21st{display:flex;flex-direction:column;align-items:center;padding:2px 4px;position:relative}
+body.scr-home .h21st+.h21st::before{content:"";position:absolute;left:0;top:14%;bottom:14%;width:1.5px;background:rgba(180,150,110,.28)}
+body.scr-home .h21st b{font-size:clamp(20px,3vw,28px);font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
+body.scr-home .h21st b small{font-size:.5em;margin-left:1px;opacity:.75}
+body.scr-home .h21st span{font-size:11px;font-weight:900;color:var(--sub21)}
+body.scr-home .h21st.c1 b{color:#D2486E}body.scr-home .h21st.c2 b{color:#C66F0A}body.scr-home .h21st.c3 b{color:#2F7DC0}body.scr-home .h21st.c4 b{color:#2E8B57}
+body.scr-home .evCard{border:none!important;border-radius:var(--r21)!important;box-shadow:0 4px 16px rgba(60,40,20,.16)!important}
 
-/* 季節イベント（ある ときだけ）も 少し かるく */
-body.scr-home .evCard{border:none!important;border-radius:22px!important;box-shadow:0 4px 16px rgba(80,50,20,.16)!important}
-
-/* 下ナビ：枠を けして ふんわり */
-body.scr-home #bnav{background:rgba(255,250,240,.92)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:none!important;box-shadow:0 -4px 16px rgba(80,50,20,.1)!important}
-body.scr-home #bnav button{color:var(--h19sub)}
+/* 下ナビ */
+body.scr-home #bnav{background:rgba(255,250,242,.96)!important;border-top:none!important;border-radius:0!important;box-shadow:0 -4px 16px rgba(60,40,20,.1)!important}
+body.scr-home[data-s="winter"] #bnav{background:rgba(249,250,251,.97)!important}
 
 /* ---- スマホ縦 ---- */
 @media (max-width:600px){
-  body.scr-home .homeStats{grid-template-columns:repeat(2,1fr)!important;row-gap:8px!important}
-  body.scr-home .h19st:nth-child(3)::before{display:none}
+  body.scr-home .welcome{padding:8px 22px 10px 14px!important;min-height:52px}
+  body.scr-home .welcome #homeTownLv{font-size:15px!important}
+  body.scr-home .rareSel img{height:30px}
+  body.scr-home #homeBird .bubble{font-size:12px}
   body.scr-home .bigTile{min-height:150px!important}
   body.scr-home .bigTile img.hb{width:min(118px,30vw)!important}
-  body.scr-home .bigTile span.bt-t{padding:4px 10px 5px!important;font-size:14px!important}
-  body.scr-home .bigTile span.bt-t::before{left:-7px;width:9px}body.scr-home .bigTile span.bt-t::after{right:-7px;width:9px}
+  body.scr-home .bigTile img.h21rb{width:100%}
   body.scr-home .homeMini .hmBtn b{font-size:12px!important}
+  body.scr-home .homeStats{grid-template-columns:repeat(2,1fr)!important;row-gap:8px!important}
+  body.scr-home .h21st:nth-child(3)::before{display:none}
 }
-/* ---- iPad横：下の 情報は 読みやすい 幅で 中央に ---- */
+/* ---- iPad横：操作まわりは 中央に まとめる ---- */
 @media (min-width:900px){
-  body.scr-home #homeExtra,body.scr-home #evArea,body.scr-home .missionCard,body.scr-home .homeStats{max-width:860px;margin-left:auto!important;margin-right:auto!important}
-  body.scr-home .homeBtns{max-width:980px;margin-left:auto;margin-right:auto}
-  body.scr-home .bigTile img.hb{width:170px!important;max-height:170px!important}
-  body.scr-home .bigTile{min-height:200px!important}
-}
-
-/* =====================================================================
-   v20.0 ホーム：季節で 彩る デザイン（v19 の 上書き）
-   ・季節（はる／なつ／あき／ふゆ）で 色を かえる … body[data-s]
-   ・村の名前＝木の かんばん／なかまを よぶ＝布の タグ／ふきだし＝季節色
-   ・パネルの 角丸は 16px に 統一（--h20r）
-   ・iPad横：操作まわりは 中央に まとめて 間延び しない
-   ===================================================================== */
-body.scr-home{--h20r:16px;--h20w:min(760px,74vw);
-  --wd1:#EECF9E;--wd2:#D2A164;--wdInk:#5A3A1E;--wdLine:#B07F45;
-  --tag:#8FAE7A;--tagInk:#fff;--bub:#FFF0C8;--bubInk:#5A3A1E;
-  --rb1:#D86F86;--rb2:#6E9E58;--rb3:#E3962E;--glow:255,214,150;
-  --paper:rgba(255,249,238,.9);--nav:rgba(255,248,236,.94);--ink20:#4A3426}
-body.scr-home[data-s="spring"]{--wd1:#F6DDBC;--wd2:#E2B98A;--wdLine:#C4946A;--tag:#E58FA8;--bub:#FFE9F0;--rb1:#EC7FA0;--rb2:#79B86A;--rb3:#E5B53A;--glow:255,200,220;--paper:rgba(255,248,250,.9);--nav:rgba(255,246,249,.94)}
-body.scr-home[data-s="summer"]{--wd1:#EBD3A6;--wd2:#C99E62;--tag:#4FAFC6;--bub:#E4F5FF;--bubInk:#24465A;--rb1:#EF7B57;--rb2:#3FA36B;--rb3:#2F8FD0;--glow:170,220,255;--paper:rgba(248,252,255,.9);--nav:rgba(246,251,255,.94)}
-body.scr-home[data-s="winter"]{--wd1:#E3E3E0;--wd2:#AFB1B0;--wdInk:#34383D;--wdLine:#8D9093;--tag:#7F878F;--bub:#EEF1F4;--bubInk:#2C3136;
-  --rb1:#474C53;--rb2:#636B74;--rb3:#858D96;--glow:225,232,240;--paper:rgba(250,251,252,.92);--nav:rgba(248,249,250,.95);--ink20:#2F3338}
-/* 背景：ふゆは 白黒＋うすい 雪（アニメなし＝電池に やさしい） */
-body.scr-home[data-s="winter"] #bg{filter:grayscale(.88) brightness(1.1) contrast(.92)}
-body.scr-home[data-s="winter"] #bgVeil{background:
-  radial-gradient(circle at 12% 18%,rgba(255,255,255,.9) 0 2px,transparent 3px) 0 0/90px 110px,
-  radial-gradient(circle at 60% 70%,rgba(255,255,255,.8) 0 1.5px,transparent 2.5px) 0 0/70px 80px,
-  linear-gradient(180deg,rgba(240,244,248,.15),rgba(240,244,248,.15) 45%,rgba(245,247,250,.7) 78%,rgba(248,249,251,.88))!important}
-body.scr-home[data-s="spring"] #bg{filter:saturate(1.05) hue-rotate(-12deg) brightness(1.05)}
-body.scr-home[data-s="summer"] #bg{filter:saturate(1.1) hue-rotate(-28deg) brightness(1.06)}
-
-/* ヘッダー：うすく 背景に とける（白い 大きな 帯に しない） */
-body.scr-home #topbar{background:none!important;box-shadow:none!important;min-height:0;padding-top:max(8px,env(safe-area-inset-top))!important;padding-bottom:6px!important}
-body.scr-home.h19scr #topbar{background:var(--nav)!important;box-shadow:0 2px 10px rgba(60,40,20,.1)!important}
-body.scr-home #topbar .pill{border-radius:999px!important;background:rgba(255,255,255,.82)!important;border:none!important;box-shadow:0 2px 8px rgba(60,40,20,.12)!important}
-
-/* 村の 名前：木の かんばん */
-body.scr-home .welcome{background:repeating-linear-gradient(0deg,rgba(0,0,0,.035) 0 2px,transparent 2px 7px),linear-gradient(180deg,var(--wd1),var(--wd2))!important;
-  border:2px solid var(--wdLine)!important;border-radius:12px!important;padding:5px 18px 5px 6px!important;box-shadow:0 3px 0 rgba(0,0,0,.12),0 6px 12px rgba(60,40,20,.15)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
-body.scr-home .welcome::before,body.scr-home .welcome::after{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--wdLine);box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
-body.scr-home .welcome::before{left:-1px;display:none}body.scr-home .welcome::after{right:6px}
-body.scr-home .welcome img{background:rgba(255,255,255,.75)!important;border:2px solid var(--wdLine)}
-body.scr-home .welcome #homeTownLv{color:var(--wdInk)!important;font-size:17px!important}
-body.scr-home .welcome .h19lv{background:rgba(255,255,255,.55)!important;color:var(--wdInk)!important;border-radius:8px!important}
-body.scr-home[data-s="winter"] .welcome{box-shadow:0 -3px 0 #fff inset,0 3px 0 rgba(0,0,0,.12),0 6px 12px rgba(40,40,50,.15)!important}
-body.scr-home[data-s="winter"] .welcome::before{display:block;left:8px;right:8px;top:-5px;width:auto;height:8px;margin:0;border-radius:8px 8px 4px 4px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.08)}
-
-/* なかまを よぶ：布の タグ（ちがう 形・ちがう 素材） */
-body.scr-home .rareSel{display:inline-flex!important;align-items:center;gap:5px;background:var(--tag)!important;color:var(--tagInk)!important;border:none!important;
-  border-radius:4px 10px 10px 4px!important;padding:5px 14px 5px 10px!important;font-size:12px!important;box-shadow:0 2px 0 rgba(0,0,0,.15)!important;
-  outline:1.5px dashed rgba(255,255,255,.6);outline-offset:-4px;clip-path:polygon(0 0,100% 0,92% 50%,100% 100%,0 100%)}
-body.scr-home .rareSel svg{width:18px;height:18px;flex:none}
-
-/* ふきだし：季節の 色の 雲がた */
-body.scr-home #homeBird .bubble{background:var(--bub)!important;color:var(--bubInk)!important;border-radius:22px 22px 22px 22px/20px 20px 20px 20px!important;
-  box-shadow:0 4px 12px rgba(60,40,20,.14)!important;font-size:15px}
-body.scr-home #homeBird .bubble::after{border-top-color:var(--bub)!important}
-
-/* メイン3つ：季節の リボン */
-body.scr-home .bigTile.pink span.bt-t{background:var(--rb1)!important}
-body.scr-home .bigTile.green span.bt-t{background:var(--rb2)!important}
-body.scr-home .bigTile.orange span.bt-t{background:var(--rb3)!important}
-body.scr-home .bigTile .bt-bg{background:radial-gradient(ellipse at 50% 50%,rgba(var(--glow),.85),rgba(var(--glow),.25) 55%,transparent 72%)!important}
-body.scr-home .bigTile span.bt-t{border-radius:6px!important}
-
-/* パネルは 角丸 16px に 統一 */
-body.scr-home #homeExtra .udCard,body.scr-home .missionCard,body.scr-home .homeStats,body.scr-home .evCard{border-radius:var(--h20r)!important}
-body.scr-home .missionCard,body.scr-home .homeStats{background:var(--paper)!important}
-body.scr-home #homeExtra .udGo{border-radius:10px 0 0 10px!important;clip-path:polygon(0 0,100% 0,90% 50%,100% 100%,0 100%);padding-right:20px!important;background:var(--rb1)!important;box-shadow:none!important}
-body.scr-home[data-s="winter"] #homeExtra .udGo{background:#3F444B!important}
-/* まちがえた問題・おやつ：箱を つかわない */
-body.scr-home .homeMini .hmBtn{background:none!important;box-shadow:none!important;border-radius:var(--h20r)!important}
-body.scr-home .homeMini{position:relative}
-body.scr-home .homeMini::after{content:"";position:absolute;left:50%;top:22%;bottom:22%;width:1.5px;background:rgba(120,90,60,.25)}
-/* にがておばけ：うすい ラベンダーの かすみ */
-body.scr-home .bossCard.calm{background:radial-gradient(ellipse at 30% 50%,rgba(220,205,255,.75),rgba(235,226,255,.35) 60%,transparent 80%)!important;box-shadow:none!important;border-radius:var(--h20r)!important}
-body.scr-home .bossCard:not(.calm){border-radius:var(--h20r)!important}
-/* ミッションの イラスト */
-body.scr-home .misI{background:none!important;width:44px!important;height:44px!important}
-body.scr-home .misI svg,body.scr-home .misHead svg{width:100%;height:100%;display:block}
-body.scr-home .misHead .h20tg{display:inline-block;width:26px;height:26px;vertical-align:-6px;margin-right:4px}
-body.scr-home .misRow.ok{border-radius:10px!important}
-/* 下ナビ */
-body.scr-home #bnav{background:var(--nav)!important;border-radius:0!important}
-
-/* ---- iPad横：中央に まとめる ---- */
-@media (min-width:900px){
-  body.scr-home .homeHero{min-height:300px!important;max-width:var(--h20w);margin:0 auto}
+  body.scr-home .homeHero{min-height:300px!important;max-width:var(--w21);margin:0 auto}
   body.scr-home .welcome{left:0!important;top:6px!important}
-  body.scr-home .rareSel{left:0!important;top:66px!important}
+  body.scr-home .rareSel{left:0!important;top:78px!important}
   body.scr-home #homeBird{right:0!important}
-  body.scr-home .homeBtns{max-width:var(--h20w)!important;gap:2%!important;margin-top:-30px!important}
+  body.scr-home .homeBtns{max-width:var(--w21)!important;margin-left:auto!important;margin-right:auto!important;gap:2%!important;margin-top:-30px!important}
   body.scr-home .bigTile img.hb{width:190px!important;max-height:190px!important}
-  body.scr-home #homeExtra,body.scr-home #evArea,body.scr-home .missionCard,body.scr-home .homeStats{max-width:var(--h20w)!important}
+  body.scr-home .bigTile{min-height:210px!important}
+  body.scr-home #homeExtra,body.scr-home #evArea,body.scr-home .missionCard,body.scr-home .homeStats{max-width:var(--w21)!important;margin-left:auto!important;margin-right:auto!important}
   body.scr-home #bnav{justify-content:center!important;gap:0!important}
   body.scr-home #bnav button{flex:0 0 calc(min(76vw,860px)/6)!important;max-width:none!important}
-}
-@media (max-width:600px){
-  body.scr-home .welcome #homeTownLv{font-size:15px!important}
-  body.scr-home #homeBird .bubble{font-size:12px}
 }
