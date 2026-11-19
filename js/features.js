@@ -13933,7 +13933,7 @@ body.yu659on{overflow:hidden}
 .ysc>*{flex:none}
 .ycd .tx{padding:2px 0}
 .ypd .ln{height:auto;bottom:4%}
-.ypd .ln img{height:min(34vh,250px)!important;width:auto!important;max-width:none!important;max-height:none!important;aspect-ratio:1392/928;object-fit:contain}
+.ypd .ln img{height:min(34vh,250px)!important;width:auto!important;max-width:none!important;max-height:none!important;aspect-ratio:2551/928;object-fit:contain}
 .ypd .ln img.sp{height:min(18vh,130px)!important;aspect-ratio:auto}
 `;
 document.head.appendChild(css);
