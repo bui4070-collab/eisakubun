@@ -6582,17 +6582,19 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
 })();
 
 /* =====================================================================
-   v22.0 レース場 STEP1（まちレベル12〜）
-   ・まちの 施設「レースじょう」（2×2マス）… ./assets/images/race/bld_race.webp
-   ・タッチ → じゅんび画面（くるま／ドライバー／あいての つよさ）
-   ・くるまは まちで 買った 自家用車だけ。えらぶ 画面は 買った ときと 同じ 絵、
-     走る ときは 後ろ姿の 専用イラスト（car_r_〜.webp）
-   ・レース本体は STEP2。保存：save.race
+   v23.0 レース場（STEP1 ＋ STEP2）
+   ・まちの 施設「レースじょう」（2×2マス／まちレベル12〜）
+   ・じゅんび画面（くらい サーキット／ドライバーは まるい わく）
+   ・レース本体：うしろから 見た 疑似3D・3しゃせん・障害物・ねんりょう・ピット・2分割・CPU★1〜4・プロ
+   ・画像は ./assets/images/race/（同じ 名前で 上書きすると さしかえ）
+   ・保存：save.race = {wins:{1,2,3,4,pro}, car, drv, cpu, best:{}}
+   ※ 宝箱・ピットクイズ・ごほうび・うんてん経験値は STEP3
    ===================================================================== */
 (function(){
 'use strict';
 const RI = './assets/images/race/', ri = n => RI + n + '.webp';
 const img = (n, cls='', alt='') => `<img ${cls ? `class="${cls}" ` : ''}src="${ri(n)}" alt="${alt}" draggable="false">`;
+const snd = k => { try{ sound(k); }catch(e){} };
 
 /* ---------- 施設 ---------- */
 try{
@@ -6607,73 +6609,92 @@ try{
   itemEffect = function(it){ const s = _ie.apply(this, arguments); return it && it.id==='bld_race' ? `${s}${s ? '・' : ''}じゅうみんと レースが できる` : s; };
 }catch(e){ console.warn('race item', e); }
 
-/* ---------- 自家用車（えらべる 車）
-   spd：さいこう そくど／size：車の はば（大きいほど よけにくい）／tough：ぶつかった ときの つよさ
-   高い 車ほど tough が 高い（ぶつかっても あまり おそく ならない） ---------- */
+/* ---------- ショップに 自家用車を ついか ---------- */
+const NEWCAR = [
+  {id:'keiwagon', name:'けいワゴン',         price:300, lv:3, traffic:3, pop:0.01, info:'せが 高くて 四角い 小さな 車。小回りが きいて すいすい よけられる。'},
+  {id:'wagon',    name:'ステーションワゴン', price:450, lv:4, traffic:3, pop:0.02, info:'うしろが 長くて にもつが たくさん つめる 車。はやさと 安定の バランスが いい。'},
+  {id:'minivan',  name:'ミニバン',           price:550, lv:4, traffic:4, pop:0.03, info:'スライドドアで 大ぜい のれる 家族の 車。ねんりょうが 長もち。'},
+  {id:'suv',      name:'SUV',                price:700, lv:5, traffic:4, pop:0.03, info:'じょうぶで 力もちの 車。でこぼこや ぶつかりに 強い。'}
+];
+try{
+  NEWCAR.forEach(c => {
+    DEFAULT_ART['veh_' + c.id] = ri('veh_' + c.id);
+    if(!ITEM(c.id)) TOWN_ITEMS.push({id:c.id, type:'veh', name:c.name, art:'veh_' + c.id, emoji:'\uD83D\uDE97', price:c.price, lv:c.lv, traffic:c.traffic, pop:c.pop});
+    try{ ZUKAN_INFO[c.id] = c.info; }catch(e){}
+  });
+}catch(e){ console.warn('race cars', e); }
+
+/* ---------- 自家用車（spd：さいこう そくど／size：車の はば／tough：ぶつかりに つよい／fuel：ねんりょうの へり方） ---------- */
 const CARS = {
-  kei:       {rear:'car_r_kei',       spd:0.92, size:0.90, tough:0.95},
-  sedan:     {rear:'car_r_sedan',     spd:1.00, size:1.00, tough:1.00},
-  crossover: {rear:'car_r_crossover', spd:0.98, size:1.05, tough:1.08},
-  ev:        {rear:'car_r_ev',        spd:1.04, size:0.95, tough:1.10},
-  camper:    {rear:'car_r_camper',    spd:0.90, size:1.15, tough:1.15},
-  sports:    {rear:'car_r_sports',    spd:1.10, size:1.00, tough:1.18}
+  kei:       {rear:'car_r_kei',       spd:0.92, size:0.90, tough:0.95, fuel:0.95},
+  keiwagon:  {rear:'car_r_keiwagon',  spd:0.94, size:0.88, tough:0.96, fuel:0.95},
+  sedan:     {rear:'car_r_sedan',     spd:1.00, size:1.00, tough:1.00, fuel:1.00},
+  wagon:     {rear:'car_r_wagon',     spd:1.03, size:1.02, tough:1.04, fuel:0.95},
+  crossover: {rear:'car_r_crossover', spd:0.98, size:1.05, tough:1.08, fuel:1.00},
+  minivan:   {rear:'car_r_minivan',   spd:0.97, size:1.12, tough:1.06, fuel:0.88},
+  suv:       {rear:'car_r_suv',       spd:1.01, size:1.10, tough:1.14, fuel:1.02},
+  ev:        {rear:'car_r_ev',        spd:1.04, size:0.95, tough:1.10, fuel:0.90},
+  camper:    {rear:'car_r_camper',    spd:0.90, size:1.15, tough:1.15, fuel:0.92},
+  sports:    {rear:'car_r_sports',    spd:1.10, size:1.00, tough:1.18, fuel:1.05},
+  rally:     {rear:'car_r_rally',     spd:1.08, size:1.00, tough:1.16, fuel:1.03}
 };
-['red','orange','yellow','green','blue','purple'].forEach(c => { CARS['sci_car_' + c] = {rear:'car_r_sci_' + c, spd:1.02, size:0.92, tough:1.05}; });
-const SPD_MAX = 1.10, TOUGH_MAX = 1.18;
+['red','orange','yellow','green','blue','purple'].forEach(c => { CARS['sci_car_' + c] = {rear:'car_r_sci_' + c, spd:1.02, size:0.92, tough:1.05, fuel:0.95}; });
 const myCars = () => Object.keys(CARS).map(id => ITEM(id)).filter(it => { try{ return it && ownedCount(it) > 0; }catch(e){ return false; } });
 
 /* ---------- あいての つよさ ---------- */
 const CPU = [
-  {k:1, helm:'helm_1', drive:30,  pit:8.0, n:'はじめて'},
-  {k:2, helm:'helm_2', drive:70,  pit:6.5, n:'なれてきた'},
-  {k:3, helm:'helm_3', drive:110, pit:5.5, n:'じょうず'},
-  {k:4, helm:'helm_4', drive:150, pit:4.5, n:'とても じょうず'},
-  {k:'pro', helm:'helm_pro', drive:200, pit:3.5, n:'プロ'}
+  {k:1, helm:'helm_1', drive:30,  pit:8.0, n:'はじめて',       look:.35, use:.1},
+  {k:2, helm:'helm_2', drive:70,  pit:6.5, n:'なれてきた',     look:.55, use:.3},
+  {k:3, helm:'helm_3', drive:110, pit:5.5, n:'じょうず',       look:.72, use:.5},
+  {k:4, helm:'helm_4', drive:150, pit:4.5, n:'とても じょうず', look:.86, use:.7},
+  {k:'pro', helm:'helm_pro', drive:200, pit:3.5, n:'プロ',      look:.97, use:.9}
 ];
 const PRO_NEED = 5;
-function R(){
-  const r = save.race || (save.race = {});
-  r.wins = r.wins || {1:0, 2:0, 3:0, 4:0, pro:0};
-  return r;
-}
+function R(){ const r = save.race || (save.race = {}); r.wins = r.wins || {1:0, 2:0, 3:0, 4:0, pro:0}; r.best = r.best || {}; return r; }
 const cpuOpen = k => { const w = R().wins; return k===1 ? true : k==='pro' ? (w[4]||0) >= PRO_NEED : (w[k-1]||0) >= 1; };
-const drivers = () => (save.town?.res || []).slice().sort((a,b) => effAb(b,'drive') - effAb(a,'drive'));
+const drvVal = r => { try{ return Math.min(200, effAb(r,'drive')); }catch(e){ return 0; } };
+const drivers = () => (save.town?.res || []).slice().sort((a,b) => drvVal(b) - drvVal(a));
 const resById = id => (save.town?.res || []).find(r => r.id===id);
 
-/* ---------- 画面 ---------- */
+/* =====================================================================
+   じゅんび画面
+   ===================================================================== */
 let V = null;
 function root(){
   let el = document.getElementById('rc1');
   if(!el){ el = document.createElement('div'); el.id = 'rc1'; document.body.appendChild(el); el.addEventListener('click', onClick); }
   return el;
 }
-const bars = (v, max) => `<i class="rcBar"><i style="width:${Math.round(Math.max(.08, Math.min(1, v/max))*100)}%"></i></i>`;
+/* セグメントの バー（添付の イメージ：みどりの 5マス） */
+const segBar = (v, max, n=5, cls='') => { const f = Math.max(0, Math.min(1, v/max)) * n;
+  return `<i class="rcSeg ${cls}">${Array.from({length:n}, (_,i) => `<b class="${f >= i+1 ? 'on' : f > i+0.4 ? 'half' : ''}"></b>`).join('')}</i>`; };
 function carPanel(){
   const L = myCars();
-  if(!L.length) return `<div class="rcEmpty">${img('ic_lock')}<p>レースに 出られる 車が まだ ないよ。<br><small>ショップの「のりもの」で じょうよう車・ミニSUV・けいトラ などを 買おう</small></p></div>`;
+  if(!L.length) return `<div class="rcEmpty">${img('ic_lock')}<p>レースに 出られる 車が まだ ないよ。<br><small>ショップの「のりもの」で じょうよう車・けいワゴン・SUV などを 買おう</small></p></div>`;
   V.ci = (V.ci + L.length) % L.length;
   const it = L[V.ci], c = CARS[it.id];
   return `<div class="rcCar">
-    <button class="rcArr l" data-r="car:-1" ${L.length < 2 ? 'disabled' : ''}>${img('btn_back')}</button>
+    <button class="rcArr l" data-r="car:-1" ${L.length < 2 ? 'disabled' : ''}>${img('btn_left')}</button>
     <div class="rcCarMain"><div class="rcPlat"></div><img class="rcCarImg" src="${esc(artSrc(it.art))}" alt="" draggable="false"></div>
-    <button class="rcArr r" data-r="car:1" ${L.length < 2 ? 'disabled' : ''}>${img('btn_back')}</button>
+    <button class="rcArr r" data-r="car:1" ${L.length < 2 ? 'disabled' : ''}>${img('btn_right')}</button>
   </div>
   <div class="rcCarName">${esc(it.name)}<small>${V.ci + 1} / ${L.length}</small></div>
   <div class="rcStats">
-    <span><b>スピード</b>${bars(c.spd - 0.8, SPD_MAX - 0.8)}</span>
-    <span><b>よけやすさ</b>${bars(1.3 - c.size, 0.45)}</span>
-    <span><b>タフさ</b>${bars(c.tough - 0.85, TOUGH_MAX - 0.85)}</span>
+    <span><b>スピード</b>${segBar(c.spd - 0.84, 0.26)}</span>
+    <span><b>よけやすさ</b>${segBar(1.24 - c.size, 0.36)}</span>
+    <span><b>タフさ</b>${segBar(c.tough - 0.9, 0.28)}</span>
   </div>`;
 }
 function drvPanel(){
   const L = drivers();
   if(!L.length) return '<p class="rcNote">じゅうみんが まだ いないよ</p>';
   if(!resById(V.drv)) V.drv = L[0].id;
-  return `<div class="rcDrvs">${L.map(r => { const d = effAb(r,'drive');
-    return `<button class="rcDrv ${r.id===V.drv ? 'on' : ''}" data-r="drv:${r.id}">
-      <span class="rcFace">${resPic(r)}</span>${r.id===V.drv ? img('ic_check','rcChk') : ''}
+  return `<div class="rcDrvs">${L.map(r => { const d = drvVal(r), on = r.id===V.drv;
+    return `<button class="rcDrv ${on ? 'on' : ''}" data-r="drv:${r.id}">
+      <span class="rcFace"><span class="rcFaceIn">${resPic(r)}</span>${img('frame_ring','rcRing')}${on ? img('ic_check','rcChk') : ''}</span>
       <b>${esc(r.name)}</b>
-      <span class="rcDv">${img('ic_wheel')}${bars(d, 200)}<em>${Math.round(d)}</em></span>
+      <span class="rcDv">${img('ic_wheel')}${segBar(d, 200)}</span>
+      <em>${Math.round(d)}</em>
     </button>`; }).join('')}</div>`;
 }
 function cpuPanel(){
@@ -6690,7 +6711,7 @@ function cpuPanel(){
 function render(){
   const el = root(); const L = myCars(), ok = L.length && drivers().length;
   el.className = 'show';
-  el.innerHTML = `<div class="rcBg" style="background-image:url('${ri('bg_lobby')}')"></div>
+  el.innerHTML = `<div class="rcBg" style="background-image:url('${ri('bg_lobby_dark')}')"></div>
   <div class="rcWrap">
     <div class="rcTop"><button class="rcBack" data-r="close">${img('btn_back','', 'もどる')}</button>${img('rb_title','rcTitle','まちの レース')}<span class="rcBack sp"></span></div>
     <div class="rcBody">
@@ -6707,32 +6728,25 @@ function open(){
   const r = R();
   V = {ci:0, drv:r.drv, cpu:cpuOpen(r.cpu) ? (r.cpu || 1) : 1};
   const L = myCars(), i = L.findIndex(it => it.id===r.car); if(i >= 0) V.ci = i;
-  document.body.classList.add('rcOpen'); render(); try{ sound('ok'); }catch(e){}
+  document.body.classList.add('rcOpen'); render(); snd('ok');
 }
 function close(){ const el = root(); el.className = ''; el.innerHTML = ''; V = null; document.body.classList.remove('rcOpen'); }
-function remember(){
-  const r = R(), L = myCars();
-  if(L[V.ci]) r.car = L[V.ci].id; r.drv = V.drv; r.cpu = V.cpu; persist();
-}
-async function go(){
-  const L = myCars(), it = L[V.ci], d = resById(V.drv), c = CPU.find(x => x.k===V.cpu);
-  if(!it || !d || !c) return;
-  remember(); try{ sound('fan'); }catch(e){}
-  await dialog(`<div class="rcReady"><img class="rcRear" src="${ri(CARS[it.id].rear)}" alt=""><div class="rcReadyDrv">${resPic(d)}</div></div>
-    <h2 class="dlgT">じゅんび OK！</h2>
-    <p class="dlgP"><b>${esc(d.name)}</b>が <b>${esc(it.name)}</b>で しゅつじょう！<br>あいて：${c.k==='pro' ? 'プロ' : '★' + c.k}<br><small>レースは つぎの アップデート（STEP2）で あそべるよ</small></p>`,
-    [{label:'OK', cls:'gold', v:1}], 'wide');
-}
+function remember(){ const r = R(), L = myCars(); if(L[V.ci]) r.car = L[V.ci].id; r.drv = V.drv; r.cpu = V.cpu; persist(); }
 function onClick(e){
   const b = e.target.closest('[data-r]'); if(!b || b.disabled || !V) return;
   const [a, v] = b.dataset.r.split(':');
   if(a==='close'){ remember(); close(); return; }
-  if(a==='car'){ V.ci += +v; try{ sound('tap'); }catch(e){} render(); return; }
-  if(a==='drv'){ V.drv = v; try{ sound('tap'); }catch(e){} render(); return; }
+  if(a==='car'){ V.ci += +v; snd('tap'); render(); return; }
+  if(a==='drv'){ V.drv = v; snd('tap'); render(); return; }
   if(a==='cpu'){ const k = v==='pro' ? 'pro' : +v;
     if(!cpuOpen(k)){ toast(k==='pro' ? `★4に ${PRO_NEED}かい かつと プロと たたかえるよ` : `★${k-1}に かつと えらべるよ`); return; }
-    V.cpu = k; try{ sound('tap'); }catch(e){} render(); return; }
-  if(a==='go') go();
+    V.cpu = k; snd('tap'); render(); return; }
+  if(a==='go'){
+    const L = myCars(), it = L[V.ci], d = resById(V.drv), c = CPU.find(x => x.k===V.cpu);
+    if(!it || !d || !c) return;
+    remember(); const keep = {ci:V.ci, drv:V.drv, cpu:V.cpu};
+    close(); startRace(it, d, c, keep);
+  }
 }
 window.addEventListener('click', e => {
   if(typeof curScreen==='undefined' || curScreen!=='town' || townEdit || !save.town) return;
@@ -6740,40 +6754,413 @@ window.addEventListener('click', e => {
   if(save.town.cells[`${c.dataset.x},${c.dataset.y}`] !== 'bld_race') return;
   e.stopImmediatePropagation(); e.preventDefault(); open();
 }, true);
-window.__race = {open, CARS, CPU, R};
-})();
 
 /* =====================================================================
-   v22.1 レース場：えらべる 車を ふやす
-   ・ラリーカーも レースに 出られる
-   ・ショップ「のりもの」に 自家用車 4しゅ を ついか（軽ワゴン・ミニバン・SUV・ステーションワゴン）
-     買う ときの 絵＝veh_〜.webp／走る ときの 後ろ姿＝car_r_〜.webp（assets/images/race/）
+   レース本体（疑似3D）
    ===================================================================== */
-(function(){
-'use strict';
-const RI = './assets/images/race/';
-const NEWCAR = [
-  {id:'keiwagon', name:'けいワゴン',         price:300, lv:3, traffic:3, pop:0.01, spd:0.94, size:0.88, tough:0.96,
-    info:'せが 高くて 四角い 小さな 車。小回りが きいて すいすい よけられる。'},
-  {id:'wagon',    name:'ステーションワゴン', price:450, lv:4, traffic:3, pop:0.02, spd:1.03, size:1.02, tough:1.04,
-    info:'うしろが 長くて にもつが たくさん つめる 車。はやさと 安定の バランスが いい。'},
-  {id:'minivan',  name:'ミニバン',           price:550, lv:4, traffic:4, pop:0.03, spd:0.97, size:1.12, tough:1.06,
-    info:'スライドドアで 大ぜい のれる 家族の 車。ねんりょうが 長もち。'},
-  {id:'suv',      name:'SUV',                price:700, lv:5, traffic:4, pop:0.03, spd:1.01, size:1.10, tough:1.14,
-    info:'じょうぶで 力もちの 車。でこぼこや ぶつかりに 強い。'}
-];
-try{
-  NEWCAR.forEach(c => {
-    DEFAULT_ART['veh_' + c.id] = RI + 'veh_' + c.id + '.webp';
-    if(!ITEM(c.id)) TOWN_ITEMS.push({id:c.id, type:'veh', name:c.name, art:'veh_' + c.id, emoji:'\uD83D\uDE97', price:c.price, lv:c.lv, traffic:c.traffic, pop:c.pop});
-    try{ ZUKAN_INFO[c.id] = c.info; }catch(e){}
-  });
-}catch(e){ console.warn('v22.1 cars', e); }
-try{
-  const C = window.__race && window.__race.CARS;
-  if(C){
-    NEWCAR.forEach(c => { C[c.id] = {rear:'car_r_' + c.id, spd:c.spd, size:c.size, tough:c.tough}; });
-    C.rally = {rear:'car_r_rally', spd:1.08, size:1.00, tough:1.16};
+const SEG = 200, ROADW = 1200, CAMH = 1000, DEPTH = 1 / Math.tan(50 * Math.PI / 180), PZ = CAMH * DEPTH;
+const LANES = [-0.64, 0, 0.64], LAPS = 3, DRAW = 130;
+const BASE_SPD = SEG * 44;                     // うんてん0・ふつうの 車の さいこう そくど（1秒に 進む きょり）
+const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつく・loss：ロス時間（秒）・kind
+  cone:   {w:.17, loss:.8,  kind:'slip'},
+  box:    {w:.22, loss:.8,  kind:'slip'},
+  hole:   {w:.36, loss:1.0, kind:'bump', flat:1},
+  oil:    {w:.40, loss:1.5, kind:'spin', flat:1},
+  barrier:{w:.36, loss:2.5, kind:'crash'},
+  puddle: {w:.42, loss:1.2, kind:'slide', flat:1},
+  slow:   {w:.42, loss:2.5, kind:'crash'}
+};
+const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle'};
+const SC = {sc_tree:1.25, sc_pine:1.05, sc_maple:1.25, sc_bush:.8, sc_house:1.7, sc_fence:.75, sc_lamp:.32, sc_flag:.6, ic_pump:.5};
+
+/* ---------- 画像 ---------- */
+const IMG = {};
+const loadImg = n => IMG[n] || (IMG[n] = Object.assign(new Image(), {src: n.startsWith('./') || n.startsWith('data:') ? n : ri(n)}));
+const ready = im => im && im.complete && im.naturalWidth > 0;
+
+/* ---------- 乱数（2人とも 同じ コース） ---------- */
+function rng(seed){ let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+
+/* ---------- コース ---------- */
+let TRACK = null;
+function buildTrack(){
+  if(TRACK) return TRACK;
+  const segs = [], add = (n, c) => { for(let i=0;i<n;i++){ const e = i < n*0.25 ? i/(n*0.25) : i > n*0.75 ? (n-i)/(n*0.25) : 1; segs.push({i:segs.length, c:c*e, sp:[]}); } };
+  [[90,0],[70,2.2],[50,0],[80,-3],[40,0],[60,3.4],[60,-1.6],[70,0],[90,-2.6],[50,1.4],[60,0],[70,3],[50,0],[80,-2],[60,0]].forEach(([n,c]) => add(n,c*1.6));
+  const N = segs.length, rnd = rng(77);
+  const TREES = ['sc_tree','sc_pine','sc_maple','sc_bush'];
+  for(let i=0;i<N;i++){
+    const s = segs[i];
+    if(i % 5 === 0) s.sp.push({n:TREES[(rnd()*4)|0], x:-1.55 - rnd()*1.6});
+    if(i % 5 === 2) s.sp.push({n:TREES[(rnd()*4)|0], x: 1.55 + rnd()*1.6});
+    if(i % 23 === 7) s.sp.push({n:'sc_lamp', x:-1.18}); 
+    if(i % 23 === 18) s.sp.push({n:'sc_lamp', x:1.18});
+    if(i % 61 === 30) s.sp.push({n:'sc_house', x:(rnd() < .5 ? -1 : 1) * (2.6 + rnd()*0.8)});
+    if(i % 37 < 6 && i % 2 === 0) s.sp.push({n:'sc_fence', x: i % 74 < 37 ? -1.32 : 1.32});
+    if(i < 6 || i > N-4) s.sp.push({n:'sc_flag', x:(i % 2 ? -1.25 : 1.25)});
+    if(i === N-150) s.sp.push({n:'ic_pump', x:1.45});
   }
-}catch(e){ console.warn('v22.1 race cars', e); }
+  TRACK = {segs, N, len:N*SEG};
+  return TRACK;
+}
+function genObstacles(seed){
+  const T = buildTrack(), rnd = rng(seed), L = [];
+  const types = ['cone','cone','box','box','hole','oil','barrier','slow','slow','puddle'];
+  for(let lap=0; lap<LAPS; lap++){
+    let i = lap ? 24 : 60;
+    while(i < T.N - 40){
+      const t = types[(rnd()*types.length)|0], lane = (rnd()*3)|0, z = (lap*T.N + i) * SEG;
+      if(t==='puddle' && rnd() < .5){ i += 10; continue; }
+      L.push({t, x:LANES[lane], z, hit:false, v: t==='slow' ? BASE_SPD * (0.38 + rnd()*0.12) : 0, car: t==='slow' ? ['sedan','keiwagon','minivan','crossover','wagon','suv'][(rnd()*6)|0] : null});
+      if(rnd() < 0.28 && t!=='slow'){ const l2 = (lane + 1 + ((rnd()*2)|0)) % 3; L.push({t:['cone','box','hole'][(rnd()*3)|0], x:LANES[l2], z:z + SEG*2, hit:false, v:0}); }
+      i += 26 + ((rnd()*26)|0) - lap*3;
+    }
+  }
+  return L.sort((a,b) => a.z - b.z);
+}
+
+/* ---------- 1人ぶんの ようす ---------- */
+function makeRacer(o){
+  return Object.assign({pos:0, x:LANES[1], lane:1, spd:0, fuel:1, lap:0, done:false, time:0, stun:0, kind:'', fx:0, steer:0,
+    pitReq:false, pitT:0, pitMax:0, inPit:false, bgx:0, shake:0}, o);
+}
+const effDrive = r => Math.min(200, r.drive);
+const maxSpd = r => BASE_SPD * r.car.spd * (1 + effDrive(r) * 0.001) * (r.fuel <= 0 ? 0.38 : 1);
+const sideSpd = r => (2.4 + effDrive(r) / 100) / r.car.size;
+const lossOf = (r, o) => OB[o.t].loss * (1 - effDrive(r) / 400) / r.car.tough;
+const fuelUse = r => 0.6 / buildTrack().len * (1 - effDrive(r) * 0.001) * r.car.fuel;   // 1周で 60%（うんてんで へる）
+const pitTime = r => r.cpu ? r.cpuDef.pit : 6 - effDrive(r) / 100;
+
+/* ---------- 画面 ---------- */
+let G = null;
+function raceRoot(){
+  let el = document.getElementById('rc2');
+  if(!el){ el = document.createElement('div'); el.id = 'rc2'; document.body.appendChild(el); }
+  return el;
+}
+function viewHTML(k, r){
+  return `<div class="rv ${k}" id="rv_${k}">
+    <canvas></canvas>
+    <div class="rvHud">
+      <span class="rvWho">${img(k==='me' ? 'lb_you' : 'lb_cpu2','rvTag')}<span class="rvFace">${r.pic}</span></span>
+      <span class="rvFuel">${img('ic_pump')}<i><b></b></i></span>
+      <span class="rvLap">${img('ic_lap')}<em>1/${LAPS}</em></span>
+    </div>
+    <div class="rvPit">${img('lb_pit','rvPitLb')}<div class="rvPitBox">${img('ic_pump','rvPitPump')}<i><b></b></i></div><small></small></div>
+    <div class="rvMsg"></div>
+    ${k==='me' ? `<button class="rvBtn l" data-g="l">${img('btn_left')}</button><button class="rvBtn r" data-g="r">${img('btn_right')}</button>
+      <button class="rvPitBtn" data-g="pit">${img('slot_item','rvSlot')}${img('ic_pump','rvPump')}<small>ピットへ</small></button>` : ''}
+  </div>`;
+}
+function startRace(item, drv, cdef, keep){
+  const T = buildTrack(), seed = (Date.now() & 0xffff) + 1;
+  const carList = Object.keys(CARS).filter(k => !k.startsWith('sci_') && k !== item.id && k !== 'rally');
+  const cpuCarKey = cdef.k==='pro' ? 'sports' : carList[(Math.random()*carList.length)|0];
+  const me = makeRacer({name:drv.name, pic:resPic(drv), drive:drvVal(drv), car:CARS[item.id], carKey:item.id, obs:genObstacles(seed)});
+  const cp = makeRacer({name:cdef.k==='pro' ? 'プロ' : `★${cdef.k}`, pic:img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed), seen:new Map()});
+  [me, cp].forEach(r => { loadImg(r.car.rear); });
+  ['bg_horizon','ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_tree','sc_pine','sc_maple','sc_bush','sc_house','sc_fence','sc_lamp','sc_flag','ic_pump']
+    .concat(Object.values(CARS).map(c => c.rear)).forEach(loadImg);
+  const el = raceRoot();
+  el.className = 'show';
+  el.innerHTML = `<div class="rcStage">${viewHTML('cpu', cp)}<div class="rvMid"><div class="rvProg"><i class="pm"></i><i class="pc"></i>${img('ic_flag','rvGoal')}</div>
+      <button class="rvPause" data-g="pause">${img('btn_pause')}</button></div>${viewHTML('me', me)}</div>
+    <div class="rcCount"></div>`;
+  document.body.classList.add('rcRacing');
+  G = {me, cp, keep, item, drv, cdef, T, t:-3.2, last:0, acc:0, run:true, paused:false, over:false,
+    cv:{me:el.querySelector('#rv_me canvas'), cpu:el.querySelector('#rv_cpu canvas')}, el};
+  el.onpointerdown = onPtr;
+  window.addEventListener('keydown', onKey);
+  window.addEventListener('resize', fit);
+  document.addEventListener('visibilitychange', onVis);
+  fit(); G.raf = requestAnimationFrame(loop);
+  snd('ok');
+}
+function fit(){
+  if(!G) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  Object.values(G.cv).forEach(c => { const b = c.getBoundingClientRect(); c.width = Math.max(10, Math.round(b.width * dpr)); c.height = Math.max(10, Math.round(b.height * dpr)); c._dpr = dpr; });
+}
+function onVis(){ if(G && document.hidden && !G.over) pause(true); }
+function onKey(e){
+  if(!G || G.paused) return;
+  if(e.key==='ArrowLeft'){ steer(G.me, -1); e.preventDefault(); }
+  if(e.key==='ArrowRight'){ steer(G.me, 1); e.preventDefault(); }
+}
+let swipe = null;
+function onPtr(e){
+  if(!G) return;
+  const b = e.target.closest('[data-g]');
+  if(b){ e.preventDefault(); const a = b.dataset.g;
+    if(a==='l') steer(G.me, -1); else if(a==='r') steer(G.me, 1);
+    else if(a==='pit') togglePit(); else if(a==='pause') pause(true);
+    return; }
+  if(e.target.closest('#rv_me')){
+    swipe = {x:e.clientX, t:performance.now()};
+    const up = ev => { window.removeEventListener('pointerup', up);
+      if(!swipe) return; const dx = ev.clientX - swipe.x;
+      if(Math.abs(dx) > 24) steer(G.me, dx < 0 ? -1 : 1);
+      else { const rc = G.cv.me.getBoundingClientRect(); steer(G.me, ev.clientX < rc.left + rc.width/2 ? -1 : 1); }
+      swipe = null; };
+    window.addEventListener('pointerup', up);
+  }
+}
+function steer(r, d){
+  if(!G || G.t < 0 || r.done || r.inPit || (r.stun > 0 && r.kind==='spin')) return;
+  const n = Math.max(0, Math.min(2, r.lane + d)); if(n === r.lane) return;
+  r.lane = n; r.steer = d; if(!r.cpu) snd('tap');
+}
+function togglePit(){
+  const r = G.me; if(r.done || r.lap >= LAPS - 1){ toast('さいごの 1しゅうは ピットに 入れないよ'); return; }
+  r.pitReq = !r.pitReq; snd('tap');
+  toast(r.pitReq ? 'つぎの スタートラインで ピットに 入るよ' : 'ピットを やめたよ');
+}
+async function pause(on){
+  if(!G || G.over) return;
+  G.paused = true; drawHud();
+  const v = await dialog(`<h2 class="dlgT">いったん ストップ</h2><p class="dlgP">レースを つづける？</p>`,
+    [{label:'つづける', cls:'gold', v:'go'}, {label:'やめる', cls:'white', v:'quit'}]);
+  if(!G) return;
+  if(v==='quit'){ endRace(true); return; }
+  G.paused = false; G.last = 0;
+}
+
+/* ---------- 1コマ ---------- */
+function loop(ts){
+  if(!G) return;
+  G.raf = requestAnimationFrame(loop);
+  if(G.paused || document.hidden){ G.last = ts; return; }
+  if(!G.last) G.last = ts;
+  let dt = (ts - G.last) / 1000; G.last = ts;
+  if(dt > 0.1) dt = 0.1;
+  G.acc += dt; if(G.acc < 1/31) return;          // 30fps（でんちに やさしく）
+  dt = G.acc; G.acc = 0;
+  step(dt); draw(G.me, G.cv.me); draw(G.cp, G.cv.cpu); drawHud();
+}
+function step(dt){
+  const prev = G.t; G.t += dt;
+  const cd = G.el.querySelector('.rcCount');
+  if(G.t < 0){ const n = Math.ceil(-G.t); if(cd.dataset.n != n){ cd.dataset.n = n; cd.innerHTML = `<b>${n}</b>`; cd.className = 'rcCount on'; snd('tap'); } return; }
+  if(prev < 0){ cd.innerHTML = '<b class="go">GO!</b>'; cd.className = 'rcCount on go'; snd('fan'); setTimeout(() => { if(cd) cd.className = 'rcCount'; }, 700); }
+  [G.me, G.cp].forEach(r => update(r, dt));
+  if(G.me.done && G.cp.done && !G.over) finish();
+  else if((G.me.done || G.cp.done) && !G.over && !G.endT) G.endT = G.t;
+  if(G.endT && G.t - G.endT > 6 && !G.over) finish();   // 負けた方も 6秒で おわり
+}
+function update(r, dt){
+  if(r.done) return;
+  const T = G.T, tot = LAPS * T.len;
+  r.time += dt;
+  /* ピット */
+  if(r.inPit){
+    r.pitT += dt; r.fuel = Math.min(1, r.fuel0 + (1 - r.fuel0) * r.pitT / r.pitMax); r.spd = 0;
+    if(r.pitT >= r.pitMax){ r.inPit = false; r.fuel = 1; if(!r.cpu) msg(r, 'GO!'); }
+    return;
+  }
+  if(r.cpu) cpuThink(r);
+  /* よこ移動 */
+  const tx = LANES[r.lane], sx = sideSpd(r) * dt * (r.kind==='slide' && r.stun > 0 ? 0.4 : 1);
+  if(Math.abs(r.x - tx) <= sx){ r.x = tx; r.steer = 0; } else r.x += Math.sign(tx - r.x) * sx;
+  /* そくど */
+  const mx = maxSpd(r);
+  if(r.stun > 0){
+    r.stun -= dt;
+    const lim = r.kind==='crash' ? 0 : r.kind==='spin' ? mx * 0.25 : mx * 0.45;
+    r.spd = Math.max(lim, r.spd - mx * 2.2 * dt);
+    if(r.stun <= 0) r.kind = '';
+  } else r.spd = Math.min(mx, r.spd + mx / 2.4 * dt);
+  const d = r.spd * dt, z0 = r.pos + PZ;
+  r.pos += d;
+  r.fuel = Math.max(0, r.fuel - d * fuelUse(r));
+  if(r.fuel <= 0 && !r.cpu && !r.fuelMsg){ r.fuelMsg = 1; msg(r, 'ねんりょう ぎれ！ピットへ'); }
+  if(r.fuel > 0.05) r.fuelMsg = 0;
+  r.bgx += (T.segs[Math.floor(r.pos / SEG) % T.N].c) * d / SEG * 0.004;
+  /* おそい車は すすむ */
+  r.obs.forEach(o => { if(o.v && !o.hit && o.z > r.pos - SEG*4 && o.z < r.pos + SEG*DRAW) o.z += o.v * dt; });
+  /* あたりはんてい */
+  const z1 = r.pos + PZ;
+  for(const o of r.obs){
+    if(o.hit || o.z < z0 - SEG || o.z > z1 + SEG*0.5) continue;
+    if(o.z >= z0 - (o.v ? SEG : 0) && o.z <= z1 + (o.v ? SEG*0.4 : 0)){
+      if(Math.abs(o.x - r.x) < (OB[o.t].w * 0.5 + 0.2 * r.car.size)){
+        o.hit = true; const ob = OB[o.t];
+        r.stun = lossOf(r, o); r.kind = ob.kind; r.fx = 0; r.shake = ob.kind==='crash' ? 0.5 : 0.25;
+        if(o.v) o.v = 0;
+        if(!r.cpu){ snd(ob.kind==='crash' ? 'ng' : 'tap'); msg(r, {slip:'スリップ！', bump:'ガタン！', spin:'くるくる〜！', crash:'ドーン！', slide:'つるっ！'}[ob.kind]); try{ navigator.vibrate && navigator.vibrate(ob.kind==='crash' ? 120 : 40); }catch(e){} }
+      }
+    }
+  }
+  r.fx += dt; if(r.shake > 0) r.shake -= dt;
+  /* しゅうかい */
+  const dist = r.pos + PZ, lap = Math.floor(dist / T.len);
+  if(dist >= tot){ r.done = true; r.pos = tot - PZ; r.spd = 0; if(!r.cpu) { msg(r, 'ゴール！'); snd('fan'); } return; }
+  if(lap > r.lap){
+    r.lap = lap;
+    const wantPit = r.cpu ? r.fuel < 0.62 : r.pitReq;
+    if(wantPit && lap < LAPS){ r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu) snd('ok'); }
+    else if(!r.cpu) msg(r, lap === LAPS - 1 ? 'ファイナルラップ！' : `${lap + 1}しゅうめ`);
+  }
+}
+function cpuThink(r){
+  if(r.stun > 0 && r.kind==='spin') return;
+  const look = SEG * (8 + 26 * r.cpuDef.look), z = r.pos + PZ;
+  const ahead = r.obs.filter(o => !o.hit && o.z > z && o.z < z + look);
+  const danger = lane => ahead.some(o => Math.abs(o.x - LANES[lane]) < OB[o.t].w * 0.5 + 0.22 && (o.z - z) < look);
+  const near = ahead.find(o => Math.abs(o.x - LANES[r.lane]) < OB[o.t].w * 0.5 + 0.22);
+  if(!near) return;
+  if(!r.seen.has(near)) r.seen.set(near, Math.random() < r.cpuDef.look);   // つよい ほど 気づく
+  if(!r.seen.get(near)) return;
+  const opts = [r.lane - 1, r.lane + 1].filter(l => l >= 0 && l <= 2 && !danger(l));
+  if(opts.length){ r.lane = opts[(Math.random()*opts.length)|0]; }
+}
+function msg(r, t){
+  const el = G.el.querySelector(r.cpu ? '#rv_cpu .rvMsg' : '#rv_me .rvMsg'); if(!el) return;
+  el.textContent = t; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+}
+
+/* ---------- えがく ---------- */
+const COL = {sky:'#8FCBF2', grassA:'#8DCB5C', grassB:'#7CBD4E', rumA:'#E0544E', rumB:'#FBF4E6', roadA:'#73777F', roadB:'#6B6F77', lane:'#F7F2E4', start:'#FFFFFF'};
+function poly(c, x1,y1,x2,y2,x3,y3,x4,y4, col){ c.fillStyle = col; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.lineTo(x3,y3); c.lineTo(x4,y4); c.closePath(); c.fill(); }
+function draw(r, cv){
+  const c = cv.getContext('2d'), w = cv.width, h = cv.height, T = G.T, hz = Math.round(h * 0.4);
+  const speedR = Math.min(1, r.spd / BASE_SPD);
+  const sh = r.shake > 0 ? (Math.random() - .5) * 8 * r.shake * cv._dpr : 0;
+  c.save(); c.translate(sh, sh * 0.5);
+  /* 空・遠景 */
+  c.fillStyle = COL.sky; c.fillRect(-10, -10, w + 20, hz + 12);
+  const bg = loadImg('bg_horizon');
+  if(ready(bg)){
+    const bw = w * 1.6, bh = bw * bg.naturalHeight / bg.naturalWidth, by = hz - bh + 2;
+    let bx = (-(r.bgx * w) % bw); if(bx > 0) bx -= bw;
+    for(let x = bx - bw; x < w + bw; x += bw) c.drawImage(bg, x, by, bw, bh);
+    if(by > 0){ c.fillStyle = COL.sky; c.fillRect(0, 0, w, by + 1); }
+  }
+  c.fillStyle = COL.grassA; c.fillRect(-10, hz, w + 20, h - hz + 10);
+  /* 道 */
+  const base = Math.floor(r.pos / SEG), pct = (r.pos % SEG) / SEG, camX = r.x * ROADW;
+  let x = 0, dx = -(T.segs[base % T.N].c * pct), maxy = h;
+  const P = [];
+  for(let n = 0; n < DRAW; n++){
+    const i = base + n, s = T.segs[i % T.N];
+    const z1 = i * SEG - r.pos, z2 = z1 + SEG;
+    const sc1 = DEPTH / Math.max(1, z1), sc2 = DEPTH / Math.max(1, z2);
+    const X1 = w/2 + sc1 * (-camX + x) * w/2, Y1 = hz + sc1 * CAMH * h * 0.6, W1 = sc1 * ROADW * w/2;
+    const X2 = w/2 + sc2 * (-camX + x + dx) * w/2, Y2 = hz + sc2 * CAMH * h * 0.6, W2 = sc2 * ROADW * w/2;
+    x += dx; dx += s.c;
+    P[n] = {X:X1, Y:Y1, W:W1, sc:sc1, clip:maxy, i};
+    if(z1 <= PZ * 0.3 || Y2 >= Y1 || Y2 >= maxy) continue;
+    const band = Math.floor(i / 3) % 2, isStart = (i % T.N) < 2;
+    c.fillStyle = band ? COL.grassB : COL.grassA; c.fillRect(-10, Y2, w + 20, Y1 - Y2 + 1);
+    const r1 = W1 * 1.14, r2 = W2 * 1.14;
+    poly(c, X1-r1,Y1, X1+r1,Y1, X2+r2,Y2, X2-r2,Y2, band ? COL.rumA : COL.rumB);
+    poly(c, X1-W1,Y1, X1+W1,Y1, X2+W2,Y2, X2-W2,Y2, isStart ? COL.start : band ? COL.roadA : COL.roadB);
+    if(isStart){ /* チェッカー */
+      const k = 10; for(let q=0;q<k;q++){ if((q + (i%2)) % 2) continue; const a1 = -1 + q*2/k, a2 = a1 + 2/k;
+        poly(c, X1 + W1*a1, Y1, X1 + W1*a2, Y1, X2 + W2*a2, Y2, X2 + W2*a1, Y2, '#2D2D33'); } }
+    else if(band){ /* しゃせん */
+      [-1/3, 1/3].forEach(f => { const l1 = W1*0.035, l2 = W2*0.035;
+        poly(c, X1 + W1*f*1.94 - l1, Y1, X1 + W1*f*1.94 + l1, Y1, X2 + W2*f*1.94 + l2, Y2, X2 + W2*f*1.94 - l2, Y2, COL.lane); });
+    }
+    maxy = Y2;
+  }
+  /* スピード線（はやいほど たくさん） */
+  if(speedR > 0.55 && G.t > 0){
+    c.strokeStyle = `rgba(255,255,255,${Math.min(.75, (speedR - 0.55) * 1.6)})`; c.lineWidth = Math.max(1, 2 * cv._dpr);
+    for(let k=0;k<14;k++){ const side = k % 2 ? 1 : -1, yy = hz + Math.random() * (h - hz) * 0.9, xx = side > 0 ? w * (0.82 + Math.random()*0.18) : w * Math.random() * 0.18, len = (30 + Math.random()*60) * cv._dpr * speedR;
+      c.beginPath(); c.moveTo(xx, yy); c.lineTo(xx + side * len, yy + len * 0.45); c.stroke(); }
+  }
+  /* けしき・障害物（おくから じゅんに） */
+  const zEnd = r.pos + SEG * DRAW;
+  const obs = r.obs.filter(o => !o.hit && o.z > r.pos + PZ * 0.5 && o.z < zEnd);
+  for(let n = DRAW - 1; n > 0; n--){
+    const p = P[n]; if(!p) continue;
+    const s = T.segs[p.i % T.N];
+    s.sp.forEach(sp => sprite(c, sp.n, p.X + sp.x * p.W, p.Y, SC[sp.n] * p.W, p.clip, false));
+    obs.forEach(o => { const on = Math.floor(o.z / SEG); if(on !== p.i) return;
+      const name = o.t==='slow' ? CARS[o.car].rear : OB_IMG[o.t];
+      sprite(c, name, p.X + o.x * p.W, p.Y, OB[o.t].w * p.W, p.clip, !!OB[o.t].flat); });
+  }
+  /* じぶんの 車 */
+  const car = loadImg(r.car.rear);
+  if(ready(car)){
+    const cw = w * 0.27 * r.car.size, ch = cw * car.naturalHeight / car.naturalWidth;
+    let rot = r.steer * 0.06, bob = Math.sin(G.t * 26) * speedR * 1.2 * cv._dpr, cy = h * 0.965;
+    if(r.stun > 0){
+      if(r.kind==='spin') rot = (r.fx / 1.2) * Math.PI * 2;
+      else if(r.kind==='slip' || r.kind==='slide') rot = Math.sin(r.fx * 30) * 0.12;
+      else if(r.kind==='bump') bob -= Math.max(0, Math.sin(r.fx * 9)) * 14 * cv._dpr * Math.max(0, 1 - r.fx);
+      else if(r.kind==='crash') rot = Math.sin(r.fx * 40) * 0.05 * Math.max(0, 1 - r.fx);
+    }
+    c.save(); c.translate(w/2, cy + bob);
+    c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(0, -2, cw * 0.48, ch * 0.09, 0, 0, Math.PI*2); c.fill();
+    c.rotate(rot); c.drawImage(car, -cw/2, -ch, cw, ch); c.restore();
+    const st = loadImg('ic_star');
+    if(r.stun > 0 && r.kind==='crash' && ready(st)){ const sz = cw * 0.16;   /* くらくら：星が まわる */
+      for(let q=0;q<3;q++){ const a = G.t * 5 + q * 2.1; c.drawImage(st, w/2 + Math.cos(a) * cw * 0.3 - sz/2, cy - ch * 1.05 + Math.sin(a) * ch * 0.08 - sz/2, sz, sz); } }
+  }
+  /* ねんりょう ぎれ・ピットの くらさ */
+  if(r.inPit){ c.fillStyle = 'rgba(20,16,40,.35)'; c.fillRect(0, 0, w, h); }
+  c.restore();
+}
+function sprite(c, name, x, y, wd, clip, flat){
+  const im = loadImg(name); if(!ready(im) || wd < 1) return;
+  const hd = wd * im.naturalHeight / im.naturalWidth * (flat ? 0.55 : 1);
+  const top = y - hd; if(top >= clip) return;
+  const vis = Math.min(hd, clip - top);
+  c.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight * vis / hd, x - wd/2, top, wd, vis);
+}
+function drawHud(){
+  const T = G.T, tot = LAPS * T.len;
+  [['me', G.me], ['cpu', G.cp]].forEach(([k, r]) => {
+    const v = G.el.querySelector('#rv_' + k); if(!v) return;
+    v.querySelector('.rvFuel b').style.width = Math.round(r.fuel * 100) + '%';
+    v.querySelector('.rvFuel').classList.toggle('low', r.fuel < 0.25);
+    v.querySelector('.rvLap em').textContent = `${Math.min(LAPS, r.lap + 1)}/${LAPS}`;
+    const pit = v.querySelector('.rvPit'); pit.classList.toggle('on', r.inPit);
+    if(r.inPit){ pit.querySelector('.rvPitBox b').style.width = Math.round(r.fuel * 100) + '%'; pit.querySelector('small').textContent = `ほきゅう中… ${Math.max(0, r.pitMax - r.pitT).toFixed(1)}びょう`; }
+  });
+  const pb = G.el.querySelector('.rvPitBtn');
+  if(pb){ pb.classList.toggle('req', G.me.pitReq); pb.classList.toggle('need', G.me.fuel < 0.45 && !G.me.pitReq && G.me.lap < LAPS - 1); pb.classList.toggle('off', G.me.lap >= LAPS - 1 || G.me.done); }
+  const pm = G.el.querySelector('.rvProg .pm'), pc = G.el.querySelector('.rvProg .pc');
+  const vert = matchMedia('(orientation: landscape) and (min-width: 700px)').matches;
+  [[pm, G.me], [pc, G.cp]].forEach(([e, r]) => { if(!e) return; const v = Math.min(100, (r.pos + PZ) / tot * 100) + '%';
+    if(vert){ e.style.bottom = v; e.style.top = 'auto'; e.style.marginBottom = '-8px'; } else { e.style.left = v; e.style.bottom = ''; e.style.top = ''; e.style.marginBottom = ''; } });
+}
+
+/* ---------- けっか（STEP2：かんたん。ごほうびは STEP3） ---------- */
+async function finish(){
+  if(G.over) return; G.over = true;
+  const me = G.me, cp = G.cp, win = me.done && (!cp.done || me.time <= cp.time);
+  const r = R(), k = G.cdef.k;
+  if(win){ r.wins[k] = (r.wins[k]||0) + 1; }
+  const best = r.best[k]; if(me.done && (!best || me.time < best)) r.best[k] = me.time;
+  persist();
+  const nextOpen = win && k !== 'pro' && (k===4 ? r.wins[4] === PRO_NEED : r.wins[k] === 1);
+  const ft = t => `${Math.floor(t/60)}:${(t%60).toFixed(2).padStart(5,'0')}`;
+  if(win){ snd('fan'); try{ confetti(1800); }catch(e){} } else snd('ng');
+  const el = G.el;
+  el.insertAdjacentHTML('beforeend', `<div class="rcRes ${win ? 'win' : 'lose'}"><div class="rcResIn">
+    ${img(win ? 'rb_win' : 'rb_lose','rcResRb')}
+    <div class="rcResRow"><span class="rcResFace">${me.pic}</span><b>${esc(me.name)}</b><em>${me.done ? ft(me.time) : '―'}</em></div>
+    <div class="rcResRow cpu"><span class="rcResFace">${cp.pic}</span><b>${esc(cp.name)}</b><em>${cp.done ? ft(cp.time) : '―'}</em></div>
+    ${nextOpen ? `<p class="rcResNew">${img('ic_star','rcMini')} ${k===4 ? 'プロ' : '★' + (k+1)} と たたかえるように なったよ！</p>` : ''}
+    ${k===4 && !nextOpen && r.wins[4] < PRO_NEED ? `<p class="rcResNew">${img('helm_pro','rcMini')} プロまで あと ${PRO_NEED - r.wins[4]}かち</p>` : ''}
+    <div class="rcResBtns"><button data-res="again">${img('rb_retry','', 'もういちど')}</button><button data-res="lobby">${img('rb_lobby','', 'じゅんびへ')}</button></div>
+  </div></div>`);
+  el.querySelector('.rcRes').addEventListener('click', e => { const b = e.target.closest('[data-res]'); if(!b) return;
+    const again = b.dataset.res === 'again', keep = G.keep, item = G.item, drv = G.drv, cdef = G.cdef;
+    endRace(false);
+    if(again) startRace(item, drv, cdef, keep); else open(); });
+}
+function endRace(toLobby){
+  if(!G) return;
+  cancelAnimationFrame(G.raf);
+  window.removeEventListener('keydown', onKey); window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', onVis);
+  const el = raceRoot(); el.className = ''; el.innerHTML = ''; el.onpointerdown = null;
+  document.body.classList.remove('rcRacing');
+  G = null;
+  if(toLobby) open();
+}
+
+window.__race = {open, CARS, CPU, R, startRace, dbg:() => G};
 })();
