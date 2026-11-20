@@ -815,3 +815,109 @@ body.rcOpen #bnav,body.rcRacing #bnav{display:none!important}
   .rvPause{right:auto;left:50%;top:auto;bottom:12px;margin:0 0 0 -17px}
   .rv.me .rvHud{padding-top:max(6px,env(safe-area-inset-top))}
 }
+
+/* =====================================================================
+   v24.0 レース場 STEP3：宝箱・ピットクイズ・けっか画面
+   ===================================================================== */
+/* 宝箱：つかう ボタン（左の ←の 上）・あいての 持っている 表示 */
+.rvItemBtn{position:absolute;left:14px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + clamp(64px,19vw,96px) + 22px);width:62px;height:62px;z-index:3;opacity:0;pointer-events:none;transform:scale(.6);transition:opacity .25s,transform .25s}
+.rvItemBtn.on{opacity:1;pointer-events:auto;transform:scale(1)}
+.rvItemBtn .rvSlot{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:rcPulse 1s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(255,210,70,.95))}
+.rvItemBtn .rvChest{position:absolute;left:18%;top:16%;width:64%;height:64%;object-fit:contain}
+.rvItemBtn small{position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:900;color:#5A3A00;background:#FFD45A;border-radius:99px;padding:0 7px}
+.rvHold{position:absolute;right:10px;top:46px;width:40px;height:40px;z-index:2;display:none;filter:drop-shadow(0 0 8px rgba(255,210,70,.9));animation:rcPulse 1.2s ease-in-out infinite}
+.rvHold img{width:100%;height:100%;object-fit:contain}
+.rv.cpu.hasItem .rvHold{display:block}
+.rvWarn{position:absolute;left:50%;top:24%;transform:translate(-50%,0) scale(.6);opacity:0;z-index:3;display:flex;align-items:center;gap:6px;background:rgba(255,250,240,.96);border-radius:16px;padding:6px 14px 6px 6px;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
+.rvWarn img{width:40px;height:40px;object-fit:contain}
+.rvWarn b{font-size:14px;font-weight:900;color:#C0392B}
+.rv.warn .rvWarn{animation:rcWarn 2.2s ease-out}
+.rv.warn canvas{animation:rcRed .5s ease-in-out 3}
+@keyframes rcWarn{0%{opacity:0;transform:translate(-50%,0) scale(.6)}12%{opacity:1;transform:translate(-50%,0) scale(1.08)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0}}
+@keyframes rcRed{50%{filter:sepia(.4) saturate(1.6) hue-rotate(-20deg)}}
+.rv.cpu .rvWarn b{color:#3E4FA8}
+/* ピットクイズ */
+.rvQuiz{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:8px 10px 10px;background:#2A2250 center 45%/cover no-repeat}
+.rvQuiz.on{display:flex;animation:fadeIn .25s}
+.rvQuiz::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,16,44,.05) 0%,rgba(20,16,44,.15) 40%,rgba(20,16,44,.55) 100%);pointer-events:none}
+.rvQuiz>*{position:relative}
+.rqTop{display:flex;align-items:center;gap:8px;width:100%;max-width:560px}
+.rqTitle{flex:1;min-width:0;height:auto;max-height:54px;object-fit:contain;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+.rqGauge{flex:none;display:flex;align-items:center;gap:4px;background:rgba(255,250,240,.95);border-radius:99px;padding:3px 10px 3px 3px;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+.rqGauge img{width:28px;height:28px;object-fit:contain}
+.rqGauge i{display:block;width:80px;height:10px;border-radius:99px;background:#EFE4D2;overflow:hidden}
+.rqGauge b{display:block;height:100%;background:linear-gradient(90deg,#6FD38A,#2FA557);transition:width .3s}
+.rqGauge em{font-style:normal;font-weight:900;font-size:13px;color:#2E7D32;min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
+.rqCard{width:100%;max-width:560px;margin-top:auto;background:rgba(255,250,240,.97);border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.35);padding:8px 10px 10px;color:#4A3426;text-align:center}
+.rqNo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:900;color:#8A6F58}
+.rqStk{display:inline-flex;align-items:center;gap:2px;background:#FFF1CF;color:#B5701C;border-radius:99px;padding:0 8px 0 2px}
+.rqStk img{width:18px;height:18px;object-fit:contain}
+.rqQ{max-height:30vh;overflow:auto;margin:2px 0 6px}
+.rqQ .mqSent{font-size:clamp(17px,4.6vw,26px)!important;margin:4px 0!important;line-height:1.5}
+.rqQ .mqAsk{font-size:12px}
+.rqQ .hsGridWrap,.rqQ .mqHint{display:none!important}
+.rqQ img{max-height:90px;max-width:100%;object-fit:contain}
+.rqOpts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rqOpt{border-radius:14px!important;padding:8px 4px!important;font-weight:900!important;font-size:clamp(15px,4vw,20px)!important;color:#fff!important;box-shadow:0 3px 0 rgba(0,0,0,.18);min-height:44px;line-height:1.25;word-break:keep-all;overflow-wrap:anywhere}
+.rqOpt.o0{background:linear-gradient(180deg,#6FB8E8,#3E8FC9)!important}.rqOpt.o1{background:linear-gradient(180deg,#8FCF7A,#5AA94A)!important}
+.rqOpt.o2{background:linear-gradient(180deg,#FFC069,#E8962E)!important}.rqOpt.o3{background:linear-gradient(180deg,#F59AAE,#E0577A)!important}
+.rqOpt:active{transform:translateY(2px);box-shadow:none}
+.rqOpt.ok{background:linear-gradient(180deg,#FFE27A,#F2B91E)!important;color:#5A3A00!important;box-shadow:0 0 0 3px #fff,0 0 14px rgba(255,210,70,.9)}
+.rqOpt.ng{filter:grayscale(.6) brightness(.85);animation:wiggle .1s 4 alternate}
+.rqSpd{position:absolute!important;left:50%;top:42%;transform:translate(-50%,-50%) scale(.4);opacity:0;pointer-events:none;width:min(70%,300px)}
+.rqSpd img{width:100%;height:auto;filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+.rqSpd.go{animation:rqSpd 1s ease-out}
+@keyframes rqSpd{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}35%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+.rqDone{margin-top:auto;display:flex;align-items:center;gap:8px;background:rgba(255,250,240,.96);border-radius:16px;padding:8px 14px;font-size:15px;color:#4A3426}
+.rqDone img{width:40px;height:40px;object-fit:contain;animation:wiggle .4s infinite alternate}
+@media (orientation:landscape) and (min-width:700px){.rqQ{max-height:26vh}.rqCard{padding:10px 14px 12px}}
+/* けっか */
+.rcRes{background:#1C1838!important;overflow-y:auto;align-items:flex-start!important;padding:max(10px,env(safe-area-inset-top)) 10px max(14px,env(safe-area-inset-bottom))}
+.rrBg{position:fixed;inset:0;background:center 20%/cover no-repeat}
+.rrBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,16,44,0) 0%,rgba(20,16,44,.15) 40%,rgba(20,16,44,.7) 100%)}
+.rcRes .rcResIn{position:relative;width:min(94vw,520px)!important;margin:auto;gap:6px!important}
+.rcResRb{width:92%!important}
+.rrPodium{position:relative;height:clamp(120px,22vh,180px);width:100%;display:flex;align-items:flex-end;justify-content:center}
+.rrCar{height:78%;display:flex;align-items:flex-end}.rrCar img{height:100%;width:auto;filter:drop-shadow(0 8px 8px rgba(0,0,0,.45));animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+.rrWho{position:absolute;left:calc(50% + 70px);bottom:6%;width:74px;height:74px;border-radius:50%;overflow:hidden;background:radial-gradient(circle,#FFF7E6,#EBCF9F);border:3px solid #FFE27A;display:flex;align-items:flex-end;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.4);animation:bob 2s ease-in-out infinite}
+.rrWho .rpic{height:96%}.rrWho .rvHelm{width:86%;height:86%;object-fit:contain;margin:auto}
+.rrTro{position:absolute;left:calc(50% - 130px);bottom:8%;width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 0 12px rgba(255,210,70,.9));animation:rcPulse 1.4s ease-in-out infinite}
+.rrPanel{width:100%;background:rgba(255,250,240,.97);border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.4);padding:4px 10px 10px;color:#4A3426;display:flex;flex-direction:column;gap:6px}
+.rrHead{width:62%;height:auto;margin:-18px auto 0;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
+.rrRow{display:flex;align-items:center;gap:8px;padding:4px 4px;border-radius:12px}
+.rrRow.me{background:linear-gradient(90deg,rgba(242,85,126,.12),transparent)}.rrRow.cpu{background:linear-gradient(90deg,rgba(91,108,196,.12),transparent)}
+.rrPl{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+.rrMed{width:30px;height:30px;object-fit:contain}
+.rr2{font-style:normal;width:26px;height:26px;border-radius:50%;background:linear-gradient(180deg,#E9EDF2,#AEB6C2);color:#4A505A;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.rrFace{flex:none;width:42px;height:42px;border-radius:50%;overflow:hidden;background:radial-gradient(circle,#FFF7E6,#EBCF9F);border:2px solid #fff;display:flex;align-items:flex-end;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.rrFace .rpic{height:96%}.rrFace .rvHelm{width:86%;height:86%;object-fit:contain;margin:auto}
+.rrFace.sm{width:34px;height:34px}
+.rrMid{flex:1;min-width:0}.rrMid b{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrBar{display:block;height:8px;border-radius:99px;background:#EFE4D2;overflow:hidden;margin-top:2px}
+.rrBar i{display:block;height:100%;border-radius:99px}
+.rrRow.me .rrBar i{background:linear-gradient(90deg,#F59AAE,#E0577A)}.rrRow.cpu .rrBar i{background:linear-gradient(90deg,#9AA8E8,#5B6CC4)}
+.rrRow em{flex:none;font-style:normal;font-weight:900;font-size:16px;font-variant-numeric:tabular-nums}
+.rrBest{margin:0;text-align:center;font-size:12px;font-weight:900;color:#B5701C}
+.rrGets{display:grid;grid-template-columns:1fr 1fr;gap:6px;border-top:1.5px dashed rgba(180,150,110,.35);padding-top:6px}
+.rrGet{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.rrLb{height:28px;width:auto;max-width:100%;object-fit:contain}
+.rrCoin{display:flex;align-items:center;gap:4px}.rrCoin img{width:40px;height:40px;object-fit:contain}.rrCoin b{font-size:22px;font-weight:900;color:#C66F0A;font-variant-numeric:tabular-nums}
+.rrDrv{display:flex;align-items:center;gap:4px}.rrWh{width:26px;height:26px;object-fit:contain}
+.rrDrv b{font-size:20px;font-weight:900;color:#2E8B57;font-variant-numeric:tabular-nums}.rrDrv b i{font-style:normal;margin-left:4px;color:#E0577A;animation:bump .8s 2}
+.rrExp{display:block;width:90%;height:9px;border-radius:99px;background:#EFE4D2;overflow:hidden}
+.rrExp i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9BE07A,#36A85C);transition:width 1s .4s}
+.rrGet small{font-size:10.5px;font-weight:800;color:#8A6F58;text-align:center;line-height:1.35}
+.rrPro{display:flex;flex-direction:column;align-items:center;gap:2px;border-top:1.5px dashed rgba(180,150,110,.35);padding-top:6px}
+.rrStamps{display:flex;align-items:center;gap:4px}
+.rrSt{width:34px;height:34px;object-fit:contain}.rrSt.new{animation:pop .7s .5s cubic-bezier(.2,1.8,.4,1) both}
+.rrProI{width:34px;height:34px;object-fit:contain;margin-left:4px}
+.rcRes .rcResNew{text-align:center;margin:0!important}
+.rcRes .rcResBtns{grid-template-columns:1fr 1fr 1fr!important;gap:4px!important}
+@media (orientation:landscape) and (min-width:900px){
+  .rcRes .rcResIn{width:min(92vw,880px)!important;display:grid!important;grid-template-columns:1fr 1.15fr;grid-template-areas:"rb rb" "pod panel" "btn btn";align-items:center}
+  .rcRes .rcResRb{grid-area:rb;width:min(70%,560px)!important;margin:0 auto}
+  .rrPodium{grid-area:pod;height:min(46vh,320px)}
+  .rrPanel{grid-area:panel}
+  .rcRes .rcResBtns{grid-area:btn;width:min(100%,680px);margin:0 auto}
+  .rrWho{width:96px;height:96px;left:calc(50% + 90px)}
+}

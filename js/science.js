@@ -6582,13 +6582,13 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
 })();
 
 /* =====================================================================
-   v23.0 レース場（STEP1 ＋ STEP2）
+   v24.0 レース場（STEP1 ＋ STEP2 ＋ STEP3）
    ・まちの 施設「レースじょう」（2×2マス／まちレベル12〜）
    ・じゅんび画面（くらい サーキット／ドライバーは まるい わく）
    ・レース本体：うしろから 見た 疑似3D・3しゃせん・障害物・ねんりょう・ピット・2分割・CPU★1〜4・プロ
    ・画像は ./assets/images/race/（同じ 名前で 上書きすると さしかえ）
    ・保存：save.race = {wins:{1,2,3,4,pro}, car, drv, cpu, best:{}}
-   ※ 宝箱・ピットクイズ・ごほうび・うんてん経験値は STEP3
+   ・STEP3：宝箱（あいてに 障害物を 3つ 送る）・ピットクイズ・ごほうび・うんてん経験値・けっか画面
    ===================================================================== */
 (function(){
 'use strict';
@@ -6770,7 +6770,9 @@ const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつ
   puddle: {w:.42, loss:1.2, kind:'slide', flat:1},
   slow:   {w:.42, loss:2.5, kind:'crash'}
 };
-const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle'};
+OB.chest = {w:.30, loss:0, kind:'item'};
+const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle', chest:'it_chest'};
+const SEND = ['cone','cone','box','box','hole','oil','oil','barrier'];   // 宝箱で 送れる 障害物（工事の さくは レア）
 const SC = {sc_tree:1.25, sc_pine:1.05, sc_maple:1.25, sc_bush:.8, sc_house:1.7, sc_fence:.75, sc_lamp:.32, sc_flag:.6, ic_pump:.5};
 
 /* ---------- 画像 ---------- */
@@ -6815,6 +6817,10 @@ function genObstacles(seed){
       if(rnd() < 0.28 && t!=='slow'){ const l2 = (lane + 1 + ((rnd()*2)|0)) % 3; L.push({t:['cone','box','hole'][(rnd()*3)|0], x:LANES[l2], z:z + SEG*2, hit:false, v:0}); }
       i += 26 + ((rnd()*26)|0) - lap*3;
     }
+    /* 宝箱：1しゅうに 3こ（障害物と かさならない 車線に） */
+    [0.22, 0.52, 0.8].forEach(f => { const i2 = Math.floor(T.N * f) + ((rnd()*20)|0), z = (lap*T.N + i2) * SEG;
+      const busy = new Set(L.filter(o => Math.abs(o.z - z) < SEG*6).map(o => o.x));
+      const free = LANES.filter(x => !busy.has(x)); if(free.length) L.push({t:'chest', x:free[(rnd()*free.length)|0], z, hit:false, v:0}); });
   }
   return L.sort((a,b) => a.z - b.z);
 }
@@ -6822,7 +6828,7 @@ function genObstacles(seed){
 /* ---------- 1人ぶんの ようす ---------- */
 function makeRacer(o){
   return Object.assign({pos:0, x:LANES[1], lane:1, spd:0, fuel:1, lap:0, done:false, time:0, stun:0, kind:'', fx:0, steer:0,
-    pitReq:false, pitT:0, pitMax:0, inPit:false, bgx:0, shake:0}, o);
+    pitReq:false, pitT:0, pitMax:0, inPit:false, bgx:0, shake:0, item:0, itemT:0, hits:0, qOk:0, qN:0}, o);
 }
 const effDrive = r => Math.min(200, r.drive);
 const maxSpd = r => BASE_SPD * r.car.spd * (1 + effDrive(r) * 0.001) * (r.fuel <= 0 ? 0.38 : 1);
@@ -6848,8 +6854,12 @@ function viewHTML(k, r){
     </div>
     <div class="rvPit">${img('lb_pit','rvPitLb')}<div class="rvPitBox">${img('ic_pump','rvPitPump')}<i><b></b></i></div><small></small></div>
     <div class="rvMsg"></div>
+    <div class="rvWarn">${img('ic_warn')}<b>あいてから 障害物が とどいた！</b></div>
+    <span class="rvHold">${img('it_chest')}</span>
     ${k==='me' ? `<button class="rvBtn l" data-g="l">${img('btn_left')}</button><button class="rvBtn r" data-g="r">${img('btn_right')}</button>
-      <button class="rvPitBtn" data-g="pit">${img('slot_item','rvSlot')}${img('ic_pump','rvPump')}<small>ピットへ</small></button>` : ''}
+      <button class="rvPitBtn" data-g="pit">${img('slot_item','rvSlot')}${img('ic_pump','rvPump')}<small>ピットへ</small></button>
+      <button class="rvItemBtn" data-g="item">${img('slot_item','rvSlot')}${img('it_chest','rvChest')}<small>つかう</small></button>
+      <div class="rvQuiz" style="background-image:url('${ri('bg_pit')}')"></div>` : ''}
   </div>`;
 }
 function startRace(item, drv, cdef, keep){
@@ -6859,7 +6869,7 @@ function startRace(item, drv, cdef, keep){
   const me = makeRacer({name:drv.name, pic:resPic(drv), drive:drvVal(drv), car:CARS[item.id], carKey:item.id, obs:genObstacles(seed)});
   const cp = makeRacer({name:cdef.k==='pro' ? 'プロ' : `★${cdef.k}`, pic:img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed), seen:new Map()});
   [me, cp].forEach(r => { loadImg(r.car.rear); });
-  ['bg_horizon','ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_tree','sc_pine','sc_maple','sc_bush','sc_house','sc_fence','sc_lamp','sc_flag','ic_pump']
+  ['bg_pit','bg_result','rb_pitquiz','lb_spd','it_chest','ic_warn','bg_horizon','ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_tree','sc_pine','sc_maple','sc_bush','sc_house','sc_fence','sc_lamp','sc_flag','ic_pump']
     .concat(Object.values(CARS).map(c => c.rear)).forEach(loadImg);
   const el = raceRoot();
   el.className = 'show';
@@ -6894,6 +6904,8 @@ function onPtr(e){
   if(b){ e.preventDefault(); const a = b.dataset.g;
     if(a==='l') steer(G.me, -1); else if(a==='r') steer(G.me, 1);
     else if(a==='pit') togglePit(); else if(a==='pause') pause(true);
+    else if(a==='item') useItem(G.me);
+    else if(a.startsWith('qa')) pitAnswer(+a.slice(3));
     return; }
   if(e.target.closest('#rv_me')){
     swipe = {x:e.clientX, t:performance.now()};
@@ -6953,11 +6965,11 @@ function update(r, dt){
   r.time += dt;
   /* ピット */
   if(r.inPit){
-    r.pitT += dt; r.fuel = Math.min(1, r.fuel0 + (1 - r.fuel0) * r.pitT / r.pitMax); r.spd = 0;
-    if(r.pitT >= r.pitMax){ r.inPit = false; r.fuel = 1; if(!r.cpu) msg(r, 'GO!'); }
+    r.pitT = Math.min(r.pitMax, r.pitT + dt); r.fuel = Math.min(1, r.fuel0 + (1 - r.fuel0) * r.pitT / r.pitMax); r.spd = 0;
+    if(r.pitT >= r.pitMax){ r.inPit = false; r.fuel = 1; if(!r.cpu){ pitClose(); msg(r, 'GO!'); } }
     return;
   }
-  if(r.cpu) cpuThink(r);
+  if(r.cpu){ cpuThink(r); if(r.item){ r.itemT += dt; if(r.itemT > 1.5 && Math.random() < r.cpuDef.use * dt * 0.6) useItem(r); } }
   /* よこ移動 */
   const tx = LANES[r.lane], sx = sideSpd(r) * dt * (r.kind==='slide' && r.stun > 0 ? 0.4 : 1);
   if(Math.abs(r.x - tx) <= sx){ r.x = tx; r.steer = 0; } else r.x += Math.sign(tx - r.x) * sx;
@@ -6984,6 +6996,8 @@ function update(r, dt){
     if(o.z >= z0 - (o.v ? SEG : 0) && o.z <= z1 + (o.v ? SEG*0.4 : 0)){
       if(Math.abs(o.x - r.x) < (OB[o.t].w * 0.5 + 0.2 * r.car.size)){
         o.hit = true; const ob = OB[o.t];
+        if(o.t==='chest'){ if(!r.item){ r.item = 1; r.itemT = 0; if(!r.cpu){ snd('fan'); msg(r, 'たからばこ！'); } } continue; }
+        r.hits++;
         r.stun = lossOf(r, o); r.kind = ob.kind; r.fx = 0; r.shake = ob.kind==='crash' ? 0.5 : 0.25;
         if(o.v) o.v = 0;
         if(!r.cpu){ snd(ob.kind==='crash' ? 'ng' : 'tap'); msg(r, {slip:'スリップ！', bump:'ガタン！', spin:'くるくる〜！', crash:'ドーン！', slide:'つるっ！'}[ob.kind]); try{ navigator.vibrate && navigator.vibrate(ob.kind==='crash' ? 120 : 40); }catch(e){} }
@@ -6997,7 +7011,7 @@ function update(r, dt){
   if(lap > r.lap){
     r.lap = lap;
     const wantPit = r.cpu ? r.fuel < 0.62 : r.pitReq;
-    if(wantPit && lap < LAPS){ r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu) snd('ok'); }
+    if(wantPit && lap < LAPS){ r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu){ snd('ok'); pitOpen(); } }
     else if(!r.cpu) msg(r, lap === LAPS - 1 ? 'ファイナルラップ！' : `${lap + 1}しゅうめ`);
   }
 }
@@ -7119,6 +7133,8 @@ function drawHud(){
     const pit = v.querySelector('.rvPit'); pit.classList.toggle('on', r.inPit);
     if(r.inPit){ pit.querySelector('.rvPitBox b').style.width = Math.round(r.fuel * 100) + '%'; pit.querySelector('small').textContent = `ほきゅう中… ${Math.max(0, r.pitMax - r.pitT).toFixed(1)}びょう`; }
   });
+  [['me', G.me], ['cpu', G.cp]].forEach(([k, r]) => { const v = G.el.querySelector('#rv_' + k); if(v) v.classList.toggle('hasItem', !!r.item); });
+  const ib = G.el.querySelector('.rvItemBtn'); if(ib) ib.classList.toggle('on', !!G.me.item && !G.me.done);
   const pb = G.el.querySelector('.rvPitBtn');
   if(pb){ pb.classList.toggle('req', G.me.pitReq); pb.classList.toggle('need', G.me.fuel < 0.45 && !G.me.pitReq && G.me.lap < LAPS - 1); pb.classList.toggle('off', G.me.lap >= LAPS - 1 || G.me.done); }
   const pm = G.el.querySelector('.rvProg .pm'), pc = G.el.querySelector('.rvProg .pc');
@@ -7127,30 +7143,134 @@ function drawHud(){
     if(vert){ e.style.bottom = v; e.style.top = 'auto'; e.style.marginBottom = '-8px'; } else { e.style.left = v; e.style.bottom = ''; e.style.top = ''; e.style.marginBottom = ''; } });
 }
 
-/* ---------- けっか（STEP2：かんたん。ごほうびは STEP3） ---------- */
+/* =====================================================================
+   STEP3：宝箱
+   ===================================================================== */
+function useItem(r){
+  if(!G || !r.item || r.done || G.t < 0) return;
+  const op = r === G.me ? G.cp : G.me; if(op.done) return;
+  r.item = 0; r.itemT = 0;
+  const base = op.pos + PZ + SEG * 24, lanes = [0,1,2].sort(() => Math.random() - .5);
+  for(let i=0;i<3;i++){
+    let t = SEND[(Math.random()*SEND.length)|0]; if(t==='barrier' && Math.random() < .5) t = 'cone';
+    op.obs.push({t, x:LANES[lanes[i]], z:base + SEG * (i * 9 + ((Math.random()*4)|0)), hit:false, v:0, sent:1});
+  }
+  op.obs.sort((a,b) => a.z - b.z);
+  const v = G.el.querySelector(op.cpu ? '#rv_cpu' : '#rv_me');
+  if(v){ v.classList.remove('warn'); void v.offsetWidth; v.classList.add('warn'); setTimeout(() => v && v.classList.remove('warn'), 2200); }
+  if(!r.cpu){ snd('fan'); msg(r, 'えいっ！'); } else { snd('ng'); }
+}
+
+/* =====================================================================
+   STEP3：ピットクイズ（正解で ほきゅうが はやく なる）
+   ===================================================================== */
+const PIT_Q = 4;
+try{ const _mq = mqFromP; mqFromP = function(p, u){ const m = _mq.apply(this, arguments); if(m && p) m._p = Object.assign({u: u || p.u}, p); return m; }; }catch(e){}
+function newQ(){ try{ return makeMiniQ(); }catch(e){ const a = 2 + ((Math.random()*8)|0), b = 2 + ((Math.random()*8)|0); return {html:`<div class="mqSent math">${a} ＋ ${b} ＝ ？</div>`, ans:String(a+b), opts:[a+b, a+b+1, a+b-1, a+b+2].sort(() => Math.random()-.5).map(String)}; } }
+function pitOpen(){
+  const r = G.me; r.pq = {n:0, streak:0, lock:false}; pitNext();
+}
+function pitClose(){ const q = G && G.el.querySelector('.rvQuiz'); if(q) q.classList.remove('on'); }
+function pitNext(){
+  const r = G.me, P = r.pq, box = G.el.querySelector('.rvQuiz'); if(!box || !r.inPit) return;
+  if(P.n >= PIT_Q){ box.innerHTML = pitHead() + `<div class="rqDone">${img('ic_clock')}<b>ほきゅうが おわるまで まってね</b></div>`; box.classList.add('on'); return; }
+  P.m = newQ(); P.lock = false;
+  box.innerHTML = pitHead() + `<div class="rqCard"><div class="rqNo">もんだい ${P.n + 1} / ${PIT_Q}${P.streak >= 1 ? `<span class="rqStk">${img('ic_bolt')}${P.streak}れんぞく</span>` : ''}</div>
+    <div class="rqQ">${P.m.html}</div>
+    <div class="rqOpts">${P.m.opts.map((o,i) => `<button class="rqOpt o${i%4}" data-g="qa:${i}">${esc(o)}</button>`).join('')}</div></div>
+    <div class="rqSpd">${img('lb_spd')}</div>`;
+  box.classList.add('on'); pitGauge();
+}
+function pitHead(){ return `<div class="rqTop">${img('rb_pitquiz','rqTitle')}<div class="rqGauge">${img('ic_pump')}<i><b></b></i><em></em></div></div>`; }
+function pitGauge(){
+  const r = G && G.me, box = G && G.el.querySelector('.rvQuiz'); if(!box || !r || !r.inPit) return;
+  const b = box.querySelector('.rqGauge b'), e = box.querySelector('.rqGauge em');
+  if(b) b.style.width = Math.round(r.fuel * 100) + '%'; if(e) e.textContent = Math.round(r.fuel * 100) + '%';
+}
+function pitAnswer(i){
+  const r = G.me, P = r.pq; if(!P || P.lock || !r.inPit || !P.m) return;
+  P.lock = true; const m = P.m, pick = m.opts[i], ans = m.ansF || m.ans, ok = String(pick) === String(ans);
+  const box = G.el.querySelector('.rvQuiz'); r.qN++;
+  box.querySelectorAll('.rqOpt').forEach((b, j) => { const v = String(m.opts[j]); if(v === String(ans)) b.classList.add('ok'); else if(j === i) b.classList.add('ng'); });
+  if(ok){
+    r.qOk++; P.streak++;
+    const add = r.pitMax * (0.25 + 0.08 * Math.min(3, P.streak - 1));
+    r.pitT = Math.min(r.pitMax, r.pitT + add); snd('ok');
+    const s = box.querySelector('.rqSpd'); if(s){ s.classList.remove('go'); void s.offsetWidth; s.classList.add('go'); }
+    try{ if(m.wk) delWeak(m.wk); if(m.kq) addStat(m.kq, 'read', true, 1); }catch(e){}
+  } else {
+    P.streak = 0; snd('ng');
+    try{ if(m._p) addWeak(m._p); if(m.kq) addStat(m.kq, 'read', false, 1); }catch(e){}
+  }
+  try{ persist(); }catch(e){}
+  P.n++;
+  setTimeout(() => { if(G && G.me.inPit) pitNext(); }, ok ? 650 : 1300);
+}
+
+/* =====================================================================
+   STEP3：ごほうび・うんてん経験値・けっか画面
+   ===================================================================== */
+const COIN = {1:50, 2:100, 3:180, 4:300, pro:500}, DAY_MAX = 5, EXP_LV = 100;
+function rewardToday(){ const r = R(), d = dayKey(); if(r.day !== d){ r.day = d; r.cnt = 0; } return r; }
+function giveExp(res, win, k){
+  const lvK = k==='pro' ? 5 : k;
+  let ex = win ? 30 + 10 * lvK : 10 + 2 * lvK;
+  const before = drvVal(res); let up = 0;
+  res.rcx = (res.rcx || 0) + ex;
+  while(res.rcx >= EXP_LV){
+    if(drvVal(res) >= Math.min(200, abCap(res)) - 1e-6){ res.rcx = EXP_LV - 1; break; }
+    res.rcx -= EXP_LV; res.ab.drive = (res.ab.drive || 0) + 1; up++;
+  }
+  return {ex, up, before, after:drvVal(res), pct:Math.round((res.rcx || 0) / EXP_LV * 100)};
+}
 async function finish(){
-  if(G.over) return; G.over = true;
+  if(G.over) return; G.over = true; pitClose();
   const me = G.me, cp = G.cp, win = me.done && (!cp.done || me.time <= cp.time);
-  const r = R(), k = G.cdef.k;
+  const r = rewardToday(), k = G.cdef.k;
   if(win){ r.wins[k] = (r.wins[k]||0) + 1; }
-  const best = r.best[k]; if(me.done && (!best || me.time < best)) r.best[k] = me.time;
+  const best = r.best[k], newBest = me.done && (!best || me.time < best); if(newBest) r.best[k] = me.time;
+  /* ごほうび（1日 5かいまで） */
+  let coin = 0; const canCoin = r.cnt < DAY_MAX;
+  if(canCoin){ r.cnt++; coin = Math.round((COIN[k] || 50) * (win ? 1 : 0.2)) + (win ? me.qOk * 10 : 0); try{ coin = givePts(coin, `レースじょう（${k==='pro' ? 'プロ' : '★' + k}）${win ? 'で かった' : 'に しゅつじょう'}`) || coin; }catch(e){} }
+  /* うんてん経験値 */
+  const res = resById(G.drv.id) || G.drv, ex = giveExp(res, win, k);
+  /* プロ・チャンピオン */
+  const firstChamp = win && k==='pro' && !r.champ; if(firstChamp){ r.champ = 1; try{ givePts(1000, 'まちの チャンピオンに なった'); }catch(e){} }
   persist();
   const nextOpen = win && k !== 'pro' && (k===4 ? r.wins[4] === PRO_NEED : r.wins[k] === 1);
   const ft = t => `${Math.floor(t/60)}:${(t%60).toFixed(2).padStart(5,'0')}`;
-  if(win){ snd('fan'); try{ confetti(1800); }catch(e){} } else snd('ng');
+  if(win){ snd('fan'); try{ confetti(2200); }catch(e){} } else snd('ng');
+  const tMax = Math.max(me.done ? me.time : 0, cp.done ? cp.time : 0) || 1;
+  const row = (x, cls, place) => `<div class="rrRow ${cls}"><span class="rrPl">${place}</span><span class="rrFace">${x.pic}</span>
+      <div class="rrMid"><b>${esc(x.name)}</b><i class="rrBar"><i style="width:${x.done ? Math.max(12, Math.round(x.time / tMax * 100)) : 100}%"></i></i></div>
+      <em>${x.done ? ft(x.time) : 'リタイア'}</em></div>`;
+  const first = win ? me : cp, second = win ? cp : me;
+  const stamps = k===4 || k==='pro' ? `<div class="rrPro">${img('lb_pro','rrLb')}<div class="rrStamps">${Array.from({length:PRO_NEED}, (_,i) => img(i < Math.min(PRO_NEED, r.wins[4]||0) ? 'st_on' : 'st_off','rrSt' + (win && k===4 && i === (r.wins[4]||0) - 1 ? ' new' : ''))).join('')}${img(cpuOpen('pro') ? 'helm_pro' : 'ic_lock','rrProI')}</div></div>` : '';
   const el = G.el;
-  el.insertAdjacentHTML('beforeend', `<div class="rcRes ${win ? 'win' : 'lose'}"><div class="rcResIn">
-    ${img(win ? 'rb_win' : 'rb_lose','rcResRb')}
-    <div class="rcResRow"><span class="rcResFace">${me.pic}</span><b>${esc(me.name)}</b><em>${me.done ? ft(me.time) : '―'}</em></div>
-    <div class="rcResRow cpu"><span class="rcResFace">${cp.pic}</span><b>${esc(cp.name)}</b><em>${cp.done ? ft(cp.time) : '―'}</em></div>
-    ${nextOpen ? `<p class="rcResNew">${img('ic_star','rcMini')} ${k===4 ? 'プロ' : '★' + (k+1)} と たたかえるように なったよ！</p>` : ''}
-    ${k===4 && !nextOpen && r.wins[4] < PRO_NEED ? `<p class="rcResNew">${img('helm_pro','rcMini')} プロまで あと ${PRO_NEED - r.wins[4]}かち</p>` : ''}
-    <div class="rcResBtns"><button data-res="again">${img('rb_retry','', 'もういちど')}</button><button data-res="lobby">${img('rb_lobby','', 'じゅんびへ')}</button></div>
+  el.insertAdjacentHTML('beforeend', `<div class="rcRes ${win ? 'win' : 'lose'}"><div class="rrBg" style="background-image:url('${ri('bg_result')}')"></div>
+  <div class="rcResIn">
+    ${img(firstChamp ? 'rb_champ' : win ? 'rb_win' : 'rb_lose','rcResRb')}
+    <div class="rrPodium"><div class="rrCar"><img src="${ri(first.car.rear)}" alt=""></div><div class="rrWho">${first.pic}</div>${win ? img('ic_trophy','rrTro') : ''}</div>
+    <div class="rrPanel">
+      ${img('rb_result','rrHead')}
+      ${row(first, first === me ? 'me' : 'cpu', img('st_on','rrMed'))}
+      ${row(second, second === me ? 'me' : 'cpu', '<i class="rr2">2</i>')}
+      ${newBest ? `<p class="rrBest">${img('ic_clock','rcMini')} じこベスト こうしん！</p>` : ''}
+      <div class="rrGets">
+        <div class="rrGet">${img('lb_coin','rrLb')}<div class="rrCoin">${img('ic_coins')}<b>${canCoin ? '+' + nf(coin) : '0'}</b></div><small>${canCoin ? `きょう あと ${DAY_MAX - r.cnt}かい` : 'きょうの ごほうびは おしまい'}</small>${win && me.qOk ? `<small>ピットクイズ せいかい ${me.qOk}もん ボーナス</small>` : ''}</div>
+        <div class="rrGet">${img('lb_drv','rrLb')}<div class="rrDrv"><span class="rrFace sm">${me.pic}</span>${img('ic_wheel','rrWh')}<b>${Math.round(ex.before)}${ex.up ? `<i>→ ${Math.round(ex.after)}</i>` : ''}</b></div>
+          <i class="rrExp"><i style="width:${ex.pct}%"></i></i><small>けいけんち +${ex.ex}${ex.up ? `　うんてん +${ex.up}！` : ''}</small></div>
+      </div>
+      ${stamps}
+      ${nextOpen ? `<p class="rcResNew">${img(k===4 ? 'helm_pro' : 'ic_star','rcMini')} ${k===4 ? 'プロ' : '★' + (k+1)} と たたかえるように なったよ！</p>` : ''}
+      ${firstChamp ? `<p class="rcResNew">${img('ic_champ','rcMini')} しょうごう「まちの チャンピオン」と ボーナス 1000pt！</p>` : ''}
+    </div>
+    <div class="rcResBtns"><button data-res="again">${img('rb_retry','', 'もういちど')}</button><button data-res="lobby">${img('rb_lobby','', 'じゅんびへ')}</button><button data-res="town">${img('rb_town','', 'まちへ')}</button></div>
   </div></div>`);
   el.querySelector('.rcRes').addEventListener('click', e => { const b = e.target.closest('[data-res]'); if(!b) return;
-    const again = b.dataset.res === 'again', keep = G.keep, item = G.item, drv = G.drv, cdef = G.cdef;
+    const a = b.dataset.res, keep = G.keep, item = G.item, drv = G.drv, cdef = G.cdef;
     endRace(false);
-    if(again) startRace(item, drv, cdef, keep); else open(); });
+    if(a==='again') startRace(item, drv, cdef, keep); else if(a==='lobby') open(); else { try{ renderCurrent(); }catch(e){} } });
 }
 function endRace(toLobby){
   if(!G) return;
