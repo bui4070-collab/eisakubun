@@ -938,3 +938,42 @@ body.rcOpen #bnav,body.rcRacing #bnav{display:none!important}
   .rcSide{gap:8px!important}.rcSide .rcSec{padding:4px 12px 10px}
   .rcDrv{flex-basis:96px}.rcFace{width:86px;height:86px}
 }
+
+/* =====================================================================
+   v26.0 レース場 STEP4：コースの かいほう・プロ・チャンピオン
+   ===================================================================== */
+.rcCourse.lk .rcCTh,.rcCourse.lk .rcCObs{filter:grayscale(.9) brightness(.6);opacity:.6}
+.rcCourse.lk b{color:#C9BFA8}
+.rcCourse .rcLock{position:absolute;left:50%;top:24%;right:auto;transform:translate(-50%,-50%);width:28px;height:28px;z-index:2}
+.rcCourse .rcNeed{order:5;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#FFC98A;line-height:1.1;white-space:nowrap}
+.rcCourse.lk .rcCObs{display:none}
+.rcCourse .rcCTh{order:1}.rcCourse b{order:2}.rcCourse .rcCObs{order:3}
+.rcCTh.sm{display:inline-block;width:54px;aspect-ratio:2.6/1;border-radius:6px;vertical-align:middle;margin-right:6px}
+.rcNewC{display:flex;align-items:center;justify-content:center}
+.rcChamp{flex:0 0 52px;display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 0 8px rgba(255,210,70,.8))}
+.rcChamp img{width:44px;height:44px;object-fit:contain;animation:rcPulse 1.6s ease-in-out infinite}
+.rcChamp small{font-size:8.5px;font-weight:900;color:#FFE27A;white-space:nowrap;margin-top:-2px}
+.rcCpu.pro .rcProFace{border-radius:50%;background:radial-gradient(circle,#FFF7E6,#EBCF9F);object-fit:cover;object-position:50% 20%;width:48px;height:48px;border:2px solid #FFD45A}
+.proPic{display:flex!important;align-items:flex-end;justify-content:center;width:100%;height:100%}
+.proPic img{width:118%;height:auto;max-width:none;object-fit:contain;margin-bottom:-12%}
+.rvFace .proPic img,.rcResFace .proPic img,.rrFace .proPic img{width:120%}
+/* プロ 登場 */
+.rcPro{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;animation:fadeIn .3s}
+.rcPro.out{animation:rcProOut .35s forwards}
+@keyframes rcProOut{to{opacity:0;transform:scale(1.05)}}
+.rcProBg{position:absolute;inset:0;background:radial-gradient(circle at 40% 50%,rgba(255,214,90,.55),rgba(28,24,56,.92) 60%)}
+.rcProBg::before{content:"";position:absolute;inset:-40%;background:repeating-conic-gradient(rgba(255,230,150,.22) 0 8deg,transparent 8deg 20deg);animation:spin 12s linear infinite}
+.rcProIn{position:relative;display:flex;align-items:center;gap:10px;width:min(94vw,720px);padding:10px}
+.rcProImg{height:min(52vh,380px);width:auto;filter:drop-shadow(0 8px 12px rgba(0,0,0,.5));animation:rcProIn .6s cubic-bezier(.2,1.4,.4,1)}
+@keyframes rcProIn{from{transform:translateX(-60%) scale(.8);opacity:0}}
+.rcProTxt{flex:1;min-width:0;background:rgba(255,250,240,.97);border-radius:16px;padding:12px 14px;color:#4A3426;box-shadow:0 6px 18px rgba(0,0,0,.4);animation:pop .5s .2s both}
+.rcProTxt b{display:block;font-size:20px;font-weight:900;color:#B5701C}
+.rcProTxt p{margin:6px 0;font-size:15px;font-weight:800;line-height:1.6}
+.rcProTxt small{font-size:11px;color:#8A6F58;font-weight:800;animation:bob 1.2s infinite}
+.rcProHelm{float:right;width:46px;height:40px;object-fit:contain}
+@media (orientation:portrait){.rcProIn{flex-direction:column}.rcProImg{height:38vh}}
+/* けっか：プロ */
+.rrProWin{height:100%;width:auto;filter:drop-shadow(0 8px 10px rgba(0,0,0,.45));animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+.rrProSay{display:flex;align-items:center;gap:8px;width:100%;background:rgba(255,246,214,.97);border:2px solid #F2C94C;border-radius:16px;padding:6px 12px;color:#4A3426;font-size:13px;font-weight:800;line-height:1.5}
+.rrProSay b{display:block;font-size:11px;color:#B5701C}
+.rrProF{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:50% 20%;background:#FFF1CF;flex:none}

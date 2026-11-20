@@ -6582,7 +6582,7 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
 })();
 
 /* =====================================================================
-   v25.0 レース場（STEP1〜3 ＋ コース6つ・車と うんてんの 差を 大きく・よこ移動の 音なし）
+   v26.0 レース場（STEP1〜4：プロ・チャンピオン・BGM・効果音・省電力・コースの かいほう）
    ・まちの 施設「レースじょう」（2×2マス／まちレベル12〜）
    ・じゅんび画面（くらい サーキット／ドライバーは まるい わく）
    ・レース本体：うしろから 見た 疑似3D・3しゃせん・障害物・ねんりょう・ピット・2分割・CPU★1〜4・プロ
@@ -6595,6 +6595,35 @@ button.kbox::after{content:'';position:absolute;inset:-2px;border-radius:inherit
 const RI = './assets/images/race/', ri = n => RI + n + '.webp';
 const img = (n, cls='', alt='') => `<img ${cls ? `class="${cls}" ` : ''}src="${ri(n)}" alt="${alt}" draggable="false">`;
 const snd = k => { try{ sound(k); }catch(e){} };
+let AX = null;
+const sfxOn = () => { try{ return !(save.settings && (save.settings.sound===false || save.settings.mute)); }catch(e){ return true; } };
+function ax(){ try{ AX = AX || new (window.AudioContext || window.webkitAudioContext)(); if(AX.state==='suspended') AX.resume(); return AX; }catch(e){ return null; } }
+function tone(c, f, t, d, type, v, f2){ const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if(f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(c.destination); o.start(t); o.stop(t + d + .02); }
+function noise(c, t, d, v, lp, hp){ const n = Math.floor(c.sampleRate * d), b = c.createBuffer(1, n, c.sampleRate), a = b.getChannelData(0); for(let i=0;i<n;i++) a[i] = (Math.random()*2-1) * Math.pow(1 - i/n, 1.6);
+  const s = c.createBufferSource(); s.buffer = b; let node = s; if(lp){ const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; node.connect(f); node = f; } if(hp){ const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; node.connect(f); node = f; }
+  const g = c.createGain(); g.gain.value = v; node.connect(g).connect(c.destination); s.start(t); }
+function sfx(k){
+  if(!sfxOn()) return; const c = ax(); if(!c) return; const t = c.currentTime + .01;
+  switch(k){
+    case 'cnt':   tone(c, 660, t, .16, 'square', .08); break;
+    case 'go':    tone(c, 990, t, .45, 'square', .09); tone(c, 1320, t + .02, .45, 'triangle', .06); break;
+    case 'crash': noise(c, t, .45, .5, 900); tone(c, 140, t, .35, 'sawtooth', .12, 50); break;
+    case 'slip':  tone(c, 1500, t, .32, 'sawtooth', .035, 900); noise(c, t, .25, .12, 0, 2500); break;
+    case 'spin':  for(let i=0;i<4;i++) tone(c, 900 - i*120, t + i*.09, .09, 'sawtooth', .03, 700 - i*120); noise(c, t, .4, .1, 0, 2000); break;
+    case 'bump':  tone(c, 180, t, .18, 'sine', .25, 70); noise(c, t, .12, .2, 600); break;
+    case 'slide': tone(c, 420, t, .3, 'sine', .08, 260); noise(c, t, .3, .08, 1200); break;
+    case 'chest': [784, 988, 1175, 1568].forEach((f, i) => tone(c, f, t + i*.06, .22, 'triangle', .08)); break;
+    case 'send':  tone(c, 300, t, .25, 'square', .06, 900); [1047, 1319].forEach((f, i) => tone(c, f, t + .18 + i*.07, .15, 'triangle', .06)); break;
+    case 'warn':  [880, 660, 880, 660].forEach((f, i) => tone(c, f, t + i*.12, .1, 'square', .05)); break;
+    case 'pitIn': tone(c, 520, t, .12, 'triangle', .08); tone(c, 780, t + .1, .2, 'triangle', .08); break;
+    case 'fuel':  tone(c, 600, t, .5, 'sine', .04, 1100); break;
+    case 'lap':   [659, 784, 1047].forEach((f, i) => tone(c, f, t + i*.08, .14, 'triangle', .07)); break;
+    case 'final': [784, 784, 784, 1047].forEach((f, i) => tone(c, f, t + i*.12, i===3 ? .4 : .1, 'square', .06)); break;
+    case 'goal':  [523, 659, 784, 1047, 1319].forEach((f, i) => tone(c, f, t + i*.09, .3, 'triangle', .08)); noise(c, t + .45, .6, .08, 0, 3000); break;
+    case 'pro':   [392, 523, 659, 784].forEach((f, i) => tone(c, f, t + i*.1, .3, 'sawtooth', .04)); break;
+  }
+}
 
 /* ---------- 施設 ---------- */
 try{
@@ -6703,15 +6732,15 @@ function cpuPanel(){
     const stars = pro ? '' : `<span class="rcStars">${Array.from({length:c.k}, () => img('ic_star')).join('')}</span>`;
     const need = pro ? `★4に ${Math.min(w[4]||0, PRO_NEED)}/${PRO_NEED}かち` : `★${c.k-1}に かつ`;
     return `<button class="rcCpu ${pro ? 'pro' : ''} ${on ? 'on' : ''} ${open ? '' : 'lk'}" data-r="cpu:${c.k}">
-      ${img(c.helm,'rcHelm')}${stars}<b>${pro ? 'プロ' : c.n}</b>
+      ${pro && open ? img(PRO.face,'rcHelm rcProFace') : img(c.helm,'rcHelm')}${stars}<b>${pro ? (open ? 'ハヤテ' : 'プロ') : c.n}</b>
       ${open ? `<small>${img('ic_trophy','rcMini')}${w[c.k]||0}かち</small>` : `<small class="rcNeed">${need}</small>`}
       ${open ? '' : img('ic_lock','rcLock')}
     </button>`; }).join('')}</div>`;
 }
 function coursePanel(){
   const best = R().best || {};
-  return `<div class="rcCourses">${COURSES.map(c => { const on = V.course===c.id;
-    return `<button class="rcCourse ${on ? 'on' : ''}" data-r="crs:${c.id}">
+  return `<div class="rcCourses">${COURSES.map((c, i) => { const op = courseOpen(c.id), on = V.course===c.id && op;
+    return `<button class="rcCourse ${on ? 'on' : ''} ${op ? '' : 'lk'}" data-r="crs:${c.id}">${op ? '' : img('ic_lock','rcLock') + `<small class="rcNeed">${COURSES[i-1].n}で かつ</small>`}
       <span class="rcCTh" style="background-image:url('${ri(c.th)}')"></span>
       <b>${c.n}</b>
       <span class="rcCObs">${[...new Set(c.obs)].slice(0,3).map(t => img(OB_IMG[t] || CARS.sedan.rear)).join('')}</span>
@@ -6719,12 +6748,25 @@ function coursePanel(){
     </button>`; }).join('')}</div>
     <p class="rcCDesc">${esc(COURSE(V.course).d)}</p>`;
 }
+const PRO = {name:'プロレーサー ハヤテ', face:'pro_face', stand:'pro_stand', win:'pro_win',
+  lines:['きみが うわさの ドライバーだね。ぼくは 手かげん しないよ！','いい 走りを 見せてくれ。さあ、勝負だ！','このコースは ぼくの とくい。ついてこられるかな？']};
+const proPic = () => `<span class="rpic proPic">${img(PRO.face)}</span>`;
+function proIntro(){
+  return new Promise(res => {
+    const el = raceRoot(); const d = document.createElement('div'); d.className = 'rcPro';
+    d.innerHTML = `<div class="rcProBg"></div><div class="rcProIn">${img(PRO.stand,'rcProImg')}<div class="rcProTxt">${img('helm_pro','rcProHelm')}<b>${PRO.name}</b><p>${PRO.lines[(Math.random()*PRO.lines.length)|0]}</p><small>タッチで スタート</small></div></div>`;
+    el.appendChild(d); sfx('pro');
+    const go = () => { d.classList.add('out'); setTimeout(() => { d.remove(); res(); }, 350); };
+    d.addEventListener('pointerdown', e => { e.stopPropagation(); go(); }, {once:true});
+    setTimeout(() => { if(d.isConnected) go(); }, 5000);
+  });
+}
 function render(){
   const el = root(); const L = myCars(), ok = L.length && drivers().length;
   el.className = 'show';
   el.innerHTML = `<div class="rcBg" style="background-image:url('${ri('bg_lobby_dark')}')"></div>
   <div class="rcWrap">
-    <div class="rcTop"><button class="rcBack" data-r="close">${img('btn_back','', 'もどる')}</button>${img('rb_title','rcTitle','まちの レース')}<span class="rcBack sp"></span></div>
+    <div class="rcTop"><button class="rcBack" data-r="close">${img('btn_back','', 'もどる')}</button>${img('rb_title','rcTitle','まちの レース')}${R().champ ? `<span class="rcChamp" title="まちの チャンピオン">${img('ic_champ2')}<small>チャンピオン</small></span>` : '<span class="rcBack sp"></span>'}</div>
     <div class="rcBody">
       <section class="rcSec rcSecCar">${img('lb_car','rcLb','くるま')}${carPanel()}</section>
       <div class="rcSide">
@@ -6738,7 +6780,7 @@ function render(){
 }
 function open(){
   const r = R();
-  V = {ci:0, drv:r.drv, cpu:cpuOpen(r.cpu) ? (r.cpu || 1) : 1, course:COURSE(r.course).id};
+  V = {ci:0, drv:r.drv, cpu:cpuOpen(r.cpu) ? (r.cpu || 1) : 1, course:courseOpen(COURSE(r.course).id) ? COURSE(r.course).id : 'town'};
   const L = myCars(), i = L.findIndex(it => it.id===r.car); if(i >= 0) V.ci = i;
   document.body.classList.add('rcOpen'); render(); snd('ok');
 }
@@ -6750,7 +6792,7 @@ function onClick(e){
   if(a==='close'){ remember(); close(); return; }
   if(a==='car'){ V.ci += +v; snd('tap'); render(); return; }
   if(a==='drv'){ V.drv = v; snd('tap'); render(); return; }
-  if(a==='crs'){ V.course = v; snd('tap'); render(); return; }
+  if(a==='crs'){ if(!courseOpen(v)){ const i = COURSES.findIndex(c => c.id===v); toast(`「${COURSES[i-1].n}」で 1かい かつと えらべるよ`); return; } V.course = v; snd('tap'); render(); return; }
   if(a==='cpu'){ const k = v==='pro' ? 'pro' : +v;
     if(!cpuOpen(k)){ toast(k==='pro' ? `★4に ${PRO_NEED}かい かつと プロと たたかえるよ` : `★${k-1}に かつと えらべるよ`); return; }
     V.cpu = k; snd('tap'); render(); return; }
@@ -6794,8 +6836,8 @@ const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつ
 OB.chest = {w:.30, loss:0, kind:'item'};
 const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle', chest:'it_chest',
   log:'ob_log', rock:'ob_rock', ice:'ob_ice', snowman:'ob_snowman', ball:'ob_ball', sand:'ob_sand', drum:'ob_drum', leaves:'ob_leaves'};
-const SC = {sc_tree:1.25, sc_pine:1.05, sc_maple:1.25, sc_bush:.8, sc_house:1.7, sc_fence:.75, sc_lamp:.32, sc_flag:.6, ic_pump:.5,
-  sc_palm:1.35, sc_umbrella:.9, sc_snowpine:1.1, sc_snowhouse:1.7, sc_building:2.0, sc_nlamp:.34, sc_digger:1.6, sc_works:1.0};
+const SC = {sc_tree:1.25, sc_pine:1.05, sc_maple:1.25, sc_bush:.8, sc_house:1.25, sc_fence:.75, sc_lamp:.32, sc_flag:.6, ic_pump:.5,
+  sc_palm:1.35, sc_umbrella:.9, sc_snowpine:1.1, sc_snowhouse:1.25, sc_building:1.6, sc_nlamp:.34, sc_digger:1.3, sc_works:1.0};
 
 /* =====================================================================
    コース（6つ）… 景色・道の 形・出る 障害物が ちがう
@@ -6829,6 +6871,8 @@ const COURSES = [
     obs:['slow','slow','slow','oil','oil','cone','box','hole'], send:['cone','oil','box']}
 ];
 const COURSE = id => COURSES.find(c => c.id===id) || COURSES[0];
+/* コースは じゅんばんに かいほう：1つ まえの コースで 1かい かつと つぎが ひらく */
+const courseOpen = id => { const i = COURSES.findIndex(c => c.id===id); if(i <= 0) return true; return ((R().cw || {})[COURSES[i-1].id] || 0) >= 1; };
 
 /* ---------- 画像 ---------- */
 const IMG = {};
@@ -6851,15 +6895,20 @@ function buildTrack(cid){
   const TREES = C.trees, SIDE = C.side;
   for(let i=0;i<N;i++){
     const s = segs[i];
-    if(i % 5 === 0) s.sp.push({n:TREES[(rnd()*4)|0], x:-1.55 - rnd()*1.6});
-    if(i % 5 === 2) s.sp.push({n:TREES[(rnd()*4)|0], x: 1.55 + rnd()*1.6});
+    const nearBig = side => { for(let d=-6; d<=6; d++){ const q = segs[(i + d + N) % N]; if(q && q.sp.some(p => p.big && Math.sign(p.x)===side)) return true; } return false; };
+    if(i % 5 === 0 && !nearBig(-1)) s.sp.push({n:TREES[(rnd()*4)|0], x:-1.55 - rnd()*1.6});
+    if(i % 5 === 2 && !nearBig(1)) s.sp.push({n:TREES[(rnd()*4)|0], x: 1.55 + rnd()*1.6});
     if(i % 23 === 7) s.sp.push({n:SIDE[1]==='sc_lamp' || SIDE[1]==='sc_nlamp' ? SIDE[1] : 'sc_lamp', x:-1.18});
     if(i % 23 === 18) s.sp.push({n:SIDE[1]==='sc_lamp' || SIDE[1]==='sc_nlamp' ? SIDE[1] : 'sc_lamp', x:1.18});
-    if(i % 61 === 30) s.sp.push({n:SIDE[0], x:(rnd() < .5 ? -1 : 1) * (2.4 + rnd()*0.8)});
+    if(i % 83 === 40){ const sd = (i / 83 | 0) % 2 ? 1 : -1;   /* 大きな たてもの：左右 こうごに・まわりの 木は どける */
+      for(let d=-6; d<=6; d++){ const q = segs[(i + d + N) % N]; if(q) q.sp = q.sp.filter(p => Math.sign(p.x)!==sd || Math.abs(p.x) < 1.4); }
+      s.sp.push({n:SIDE[0], x:sd * 3.0, big:1}); }
     if(i % 37 < 6 && i % 2 === 0) s.sp.push({n:SIDE[2], x: i % 74 < 37 ? -1.32 : 1.32});
     if(i < 6 || i > N-4) s.sp.push({n:'sc_flag', x:(i % 2 ? -1.25 : 1.25)});
     if(i === N-150) s.sp.push({n:'ic_pump', x:1.45});
   }
+  /* 道（はば 1＋ふち）に はみ出さない：絵の はんぶんの はばを 足した いちより 外に */
+  segs.forEach(q => q.sp.forEach(p => { const half = (SC[p.n] || 1) / 2, min = 1.3 + half; if(Math.abs(p.x) < min && p.n!=='sc_lamp' && p.n!=='sc_nlamp' && p.n!=='sc_flag' && p.n!=='sc_fence') p.x = Math.sign(p.x || 1) * min; }));
   TRACK = TRACKS[cid] = {segs, N, len:N*SEG, C};
   return TRACK;
 }
@@ -6930,7 +6979,7 @@ function startRace(item, drv, cdef, keep){
   const carList = Object.keys(CARS).filter(k => !k.startsWith('sci_') && k !== item.id && k !== 'rally');
   const cpuCarKey = cdef.k==='pro' ? 'sports' : carList[(Math.random()*carList.length)|0];
   const me = makeRacer({name:drv.name, pic:resPic(drv), drive:drvVal(drv), car:CARS[item.id], carKey:item.id, obs:genObstacles(seed, cid)});
-  const cp = makeRacer({name:cdef.k==='pro' ? 'プロ' : `★${cdef.k}`, pic:img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed, cid), seen:new Map()});
+  const cp = makeRacer({name:cdef.k==='pro' ? PRO.name : `★${cdef.k}`, pic:cdef.k==='pro' ? proPic() : img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed, cid), seen:new Map()});
   [me, cp].forEach(r => { loadImg(r.car.rear); });
   ['bg_pit','bg_result','rb_pitquiz','lb_spd','it_chest','ic_warn',T.C.hz,'ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_flag','ic_pump','sc_lamp'].concat(T.C.trees, T.C.side, T.C.obs.map(t => OB_IMG[t]).filter(Boolean))
     .concat(Object.values(CARS).map(c => c.rear)).forEach(loadImg);
@@ -6946,12 +6995,13 @@ function startRace(item, drv, cdef, keep){
   window.addEventListener('keydown', onKey);
   window.addEventListener('resize', fit);
   document.addEventListener('visibilitychange', onVis);
-  fit(); G.raf = requestAnimationFrame(loop);
-  snd('ok');
+  fit();
+  if(cdef.k==='pro'){ G.paused = true; proIntro().then(() => { if(!G) return; G.paused = false; G.last = 0; }); }
+  G.raf = requestAnimationFrame(loop);
 }
 function fit(){
   if(!G) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const dpr = (window.__ecoOn && window.__ecoOn()) ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
   Object.values(G.cv).forEach(c => { const b = c.getBoundingClientRect(); c.width = Math.max(10, Math.round(b.width * dpr)); c.height = Math.max(10, Math.round(b.height * dpr)); c._dpr = dpr; });
 }
 function onVis(){ if(G && document.hidden && !G.over) pause(true); }
@@ -6991,13 +7041,14 @@ function togglePit(){
   toast(r.pitReq ? 'つぎの スタートラインで ピットに 入るよ' : 'ピットを やめたよ');
 }
 async function pause(on){
+  try{ window.__fbgm && window.__fbgm.stop(); }catch(e){}
   if(!G || G.over) return;
   G.paused = true; drawHud();
   const v = await dialog(`<h2 class="dlgT">いったん ストップ</h2><p class="dlgP">レースを つづける？</p>`,
     [{label:'つづける', cls:'gold', v:'go'}, {label:'やめる', cls:'white', v:'quit'}]);
   if(!G) return;
   if(v==='quit'){ endRace(true); return; }
-  G.paused = false; G.last = 0;
+  G.paused = false; G.last = 0; if(G.t > 0) music(G.me.lap >= LAPS - 1 ? 'rc_final' : 'rc_play');
 }
 
 /* ---------- 1コマ ---------- */
@@ -7008,15 +7059,16 @@ function loop(ts){
   if(!G.last) G.last = ts;
   let dt = (ts - G.last) / 1000; G.last = ts;
   if(dt > 0.1) dt = 0.1;
-  G.acc += dt; if(G.acc < 1/31) return;          // 30fps（でんちに やさしく）
+  const eco = window.__ecoOn && window.__ecoOn();
+  G.acc += dt; if(G.acc < (eco ? 1/21 : 1/31)) return;          // 30fps（省電力では 20fps）
   dt = G.acc; G.acc = 0;
   step(dt); draw(G.me, G.cv.me); draw(G.cp, G.cv.cpu); drawHud();
 }
 function step(dt){
   const prev = G.t; G.t += dt;
   const cd = G.el.querySelector('.rcCount');
-  if(G.t < 0){ const n = Math.ceil(-G.t); if(cd.dataset.n != n){ cd.dataset.n = n; cd.innerHTML = `<b>${n}</b>`; cd.className = 'rcCount on'; snd('tap'); } return; }
-  if(prev < 0){ cd.innerHTML = '<b class="go">GO!</b>'; cd.className = 'rcCount on go'; snd('fan'); setTimeout(() => { if(cd) cd.className = 'rcCount'; }, 700); }
+  if(G.t < 0){ const n = Math.ceil(-G.t); if(cd.dataset.n != n){ cd.dataset.n = n; cd.innerHTML = `<b>${n}</b>`; cd.className = 'rcCount on'; sfx('cnt'); } return; }
+  if(prev < 0){ cd.innerHTML = '<b class="go">GO!</b>'; cd.className = 'rcCount on go'; sfx('go'); music('rc_play'); setTimeout(() => { if(cd) cd.className = 'rcCount'; }, 700); }
   [G.me, G.cp].forEach(r => update(r, dt));
   if(G.me.done && G.cp.done && !G.over) finish();
   else if((G.me.done || G.cp.done) && !G.over && !G.endT) G.endT = G.t;
@@ -7059,23 +7111,24 @@ function update(r, dt){
     if(o.z >= z0 - (o.v ? SEG : 0) && o.z <= z1 + (o.v ? SEG*0.4 : 0)){
       if(Math.abs(o.x - r.x) < (OB[o.t].w * 0.5 + hitW(r))){
         o.hit = true; const ob = OB[o.t];
-        if(o.t==='chest'){ if(!r.item){ r.item = 1; r.itemT = 0; if(!r.cpu){ snd('fan'); msg(r, 'たからばこ！'); } } continue; }
+        if(o.t==='chest'){ if(!r.item){ r.item = 1; r.itemT = 0; if(!r.cpu){ sfx('chest'); msg(r, 'たからばこ！'); } } continue; }
         r.hits++;
         r.stun = lossOf(r, o); r.kind = ob.kind; r.fx = 0; r.shake = ob.kind==='crash' ? 0.5 : 0.25;
         if(o.v) o.v = 0;
-        if(!r.cpu){ snd(ob.kind==='crash' ? 'ng' : 'tap'); msg(r, {slip:'スリップ！', bump:'ガタン！', spin:'くるくる〜！', crash:'ドーン！', slide:'つるっ！'}[ob.kind]); try{ navigator.vibrate && navigator.vibrate(ob.kind==='crash' ? 120 : 40); }catch(e){} }
+        if(!r.cpu){ sfx(ob.kind); msg(r, {slip:'スリップ！', bump:'ガタン！', spin:'くるくる〜！', crash:'ドーン！', slide:'つるっ！'}[ob.kind]); try{ navigator.vibrate && navigator.vibrate(ob.kind==='crash' ? 120 : 40); }catch(e){} }
       }
     }
   }
   r.fx += dt; if(r.shake > 0) r.shake -= dt;
   /* しゅうかい */
   const dist = r.pos + PZ, lap = Math.floor(dist / T.len);
-  if(dist >= tot){ r.done = true; r.pos = tot - PZ; r.spd = 0; if(!r.cpu) { msg(r, 'ゴール！'); snd('fan'); } return; }
+  if(dist >= tot){ r.done = true; r.pos = tot - PZ; r.spd = 0; if(!r.cpu) { msg(r, 'ゴール！'); sfx('goal'); } return; }
   if(lap > r.lap){
     r.lap = lap;
     const wantPit = r.cpu ? r.fuel < 0.62 : r.pitReq;
-    if(wantPit && lap < LAPS){ r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu){ snd('ok'); pitOpen(); } }
-    else if(!r.cpu) msg(r, lap === LAPS - 1 ? 'ファイナルラップ！' : `${lap + 1}しゅうめ`);
+    if(wantPit && lap < LAPS){ r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu){ sfx('pitIn'); pitOpen(); } }
+    else if(!r.cpu){ msg(r, lap === LAPS - 1 ? 'ファイナルラップ！' : `${lap + 1}しゅうめ`); sfx(lap === LAPS - 1 ? 'final' : 'lap'); }
+    if(!r.cpu && lap === LAPS - 1) music('rc_final', true);
   }
 }
 function cpuThink(r){
@@ -7141,7 +7194,8 @@ function draw(r, cv){
     maxy = Y2;
   }
   /* スピード線（はやいほど たくさん） */
-  if(speedR > 0.55 && G.t > 0){
+  const ECO = window.__ecoOn && window.__ecoOn();
+  if(speedR > 0.55 && G.t > 0 && !ECO){
     c.strokeStyle = `rgba(255,255,255,${Math.min(.75, (speedR - 0.55) * 1.6)})`; c.lineWidth = Math.max(1, 2 * cv._dpr);
     for(let k=0;k<14;k++){ const side = k % 2 ? 1 : -1, yy = hz + Math.random() * (h - hz) * 0.9, xx = side > 0 ? w * (0.82 + Math.random()*0.18) : w * Math.random() * 0.18, len = (30 + Math.random()*60) * cv._dpr * speedR;
       c.beginPath(); c.moveTo(xx, yy); c.lineTo(xx + side * len, yy + len * 0.45); c.stroke(); }
@@ -7224,7 +7278,7 @@ function useItem(r){
   op.obs.sort((a,b) => a.z - b.z);
   const v = G.el.querySelector(op.cpu ? '#rv_cpu' : '#rv_me');
   if(v){ v.classList.remove('warn'); void v.offsetWidth; v.classList.add('warn'); setTimeout(() => v && v.classList.remove('warn'), 2200); }
-  if(!r.cpu){ snd('fan'); msg(r, 'えいっ！'); } else { snd('ng'); }
+  if(!r.cpu){ sfx('send'); msg(r, 'えいっ！'); } else { sfx('warn'); }
 }
 
 /* =====================================================================
@@ -7261,7 +7315,7 @@ function pitAnswer(i){
   if(ok){
     r.qOk++; P.streak++;
     const add = r.pitMax * (0.25 + 0.08 * Math.min(3, P.streak - 1));
-    r.pitT = Math.min(r.pitMax, r.pitT + add); snd('ok');
+    r.pitT = Math.min(r.pitMax, r.pitT + add); snd('ok'); sfx('fuel');
     const s = box.querySelector('.rqSpd'); if(s){ s.classList.remove('go'); void s.offsetWidth; s.classList.add('go'); }
     try{ if(m.wk) delWeak(m.wk); if(m.kq) addStat(m.kq, 'read', true, 1); }catch(e){}
   } else {
@@ -7290,10 +7344,12 @@ function giveExp(res, win, k){
   return {ex, up, before, after:drvVal(res), pct:Math.round((res.rcx || 0) / EXP_LV * 100)};
 }
 async function finish(){
-  if(G.over) return; G.over = true; pitClose();
+  if(G.over) return; G.over = true; pitClose(); musicStop();
   const me = G.me, cp = G.cp, win = me.done && (!cp.done || me.time <= cp.time);
   const r = rewardToday(), k = G.cdef.k;
-  if(win){ r.wins[k] = (r.wins[k]||0) + 1; }
+  const cid = G.T.C.id, ci = COURSES.findIndex(c => c.id===cid), nextC = COURSES[ci + 1];
+  r.cw = r.cw || {}; const cNew = win && nextC && !(r.cw[cid] >= 1);
+  if(win){ r.wins[k] = (r.wins[k]||0) + 1; r.cw[cid] = (r.cw[cid]||0) + 1; }
   const best = r.best[k], newBest = me.done && (!best || me.time < best); if(newBest) r.best[k] = me.time;
   /* ごほうび（1日 5かいまで） */
   let coin = 0; const canCoin = r.cnt < DAY_MAX;
@@ -7305,7 +7361,8 @@ async function finish(){
   persist();
   const nextOpen = win && k !== 'pro' && (k===4 ? r.wins[4] === PRO_NEED : r.wins[k] === 1);
   const ft = t => `${Math.floor(t/60)}:${(t%60).toFixed(2).padStart(5,'0')}`;
-  if(win){ snd('fan'); try{ confetti(2200); }catch(e){} } else snd('ng');
+  if(win){ sfx('goal'); try{ confetti(2200); }catch(e){} } else snd('ng');
+  setTimeout(() => music(win ? 'bb_win' : 'bb_lose'), 600);
   const tMax = Math.max(me.done ? me.time : 0, cp.done ? cp.time : 0) || 1;
   const row = (x, cls, place) => `<div class="rrRow ${cls}"><span class="rrPl">${place}</span><span class="rrFace">${x.pic}</span>
       <div class="rrMid"><b>${esc(x.name)}</b><i class="rrBar"><i style="width:${x.done ? Math.max(12, Math.round(x.time / tMax * 100)) : 100}%"></i></i></div>
@@ -7316,7 +7373,9 @@ async function finish(){
   el.insertAdjacentHTML('beforeend', `<div class="rcRes ${win ? 'win' : 'lose'}"><div class="rrBg" style="background-image:url('${ri('bg_result')}')"></div>
   <div class="rcResIn">
     ${img(firstChamp ? 'rb_champ' : win ? 'rb_win' : 'rb_lose','rcResRb')}
-    <div class="rrPodium"><div class="rrCar"><img src="${ri(first.car.rear)}" alt=""></div><div class="rrWho">${first.pic}</div>${win ? img('ic_trophy','rrTro') : ''}</div>
+    <div class="rrPodium">${!win && k==='pro' ? img(PRO.win,'rrProWin') : `<div class="rrCar"><img src="${ri(first.car.rear)}" alt=""></div><div class="rrWho">${first.pic}</div>`}${win ? img(firstChamp ? 'ic_champ2' : 'ic_trophy','rrTro') : ''}</div>
+    ${!win && k==='pro' ? `<div class="rrProSay"><b>ハヤテ</b>${esc(['いい 走りだったよ！ また ちょうせん してね','おしかった！ つぎは わからないな','もっと うんてんを みがいて おいで！'][(Math.random()*3)|0])}</div>` : ''}
+    ${firstChamp ? `<div class="rrProSay win">${img(PRO.face,'rrProF')}<span><b>ハヤテ</b>まいった！ きみこそ まちの チャンピオンだ！</span></div>` : ''}
     <div class="rrPanel">
       ${img('rb_result','rrHead')}
       ${row(first, first === me ? 'me' : 'cpu', img('st_on','rrMed'))}
@@ -7329,7 +7388,8 @@ async function finish(){
       </div>
       ${stamps}
       ${nextOpen ? `<p class="rcResNew">${img(k===4 ? 'helm_pro' : 'ic_star','rcMini')} ${k===4 ? 'プロ' : '★' + (k+1)} と たたかえるように なったよ！</p>` : ''}
-      ${firstChamp ? `<p class="rcResNew">${img('ic_champ','rcMini')} しょうごう「まちの チャンピオン」と ボーナス 1000pt！</p>` : ''}
+      ${cNew ? `<p class="rcResNew rcNewC"><span class="rcCTh sm" style="background-image:url('${ri(nextC.th)}')"></span>あたらしい コース「${nextC.n}」が ひらいたよ！</p>` : ''}
+      ${firstChamp ? `<p class="rcResNew">${img('ic_champ2','rcMini')} しょうごう「まちの チャンピオン」と ボーナス 1000pt！</p>` : ''}
     </div>
     <div class="rcResBtns"><button data-res="again">${img('rb_retry','', 'もういちど')}</button><button data-res="lobby">${img('rb_lobby','', 'じゅんびへ')}</button><button data-res="town">${img('rb_town','', 'まちへ')}</button></div>
   </div></div>`);
@@ -7344,9 +7404,33 @@ function endRace(toLobby){
   window.removeEventListener('keydown', onKey); window.removeEventListener('resize', fit); document.removeEventListener('visibilitychange', onVis);
   const el = raceRoot(); el.className = ''; el.innerHTML = ''; el.onpointerdown = null;
   document.body.classList.remove('rcRacing');
-  G = null;
+  G = null; musicStop();
   if(toLobby) open();
 }
 
-window.__race = {open, CARS, CPU, R, startRace, dbg:() => G};
+/* ---------- BGM ---------- */
+const RSONG = {
+  rc_play:{bpm:146, sec:[
+    {c:'D|A|Bm|G|D|A|G|A7', m:'A4@0:.5 D5@.5:.5 F#5@1:.5 A5@1.5:1 F#5@2.5:.5 A5@3:1|E5@0:.5 A4@.5:.5 C#5@1:.5 E5@1.5:1 C#5@2.5:.5 E5@3:1|F#5@0:.5 B4@.5:.5 D5@1:.5 F#5@1.5:1 D5@2.5:.5 F#5@3:1|G5@0:1 F#5@1:.5 E5@1.5:.5 D5@2:2|A4@0:.5 D5@.5:.5 F#5@1:.5 A5@1.5:1 B5@2.5:.5 A5@3:1|E5@0:.5 C#5@.5:.5 A4@1:.5 E5@1.5:1 F#5@2.5:.5 E5@3:1|D5@0:.5 G5@.5:.5 B5@1:1 A5@2:.5 G5@2.5:.5 F#5@3:1|E5@0:1 A4@1:.5 C#5@1.5:.5 E5@2:2'},
+    {c:'G|A|F#m|Bm|G|A|D|D', shout:true, m:'B4@0:1 B4@1:.5 D5@1.5:.5 G5@2:1 F#5@3:1|C#5@0:1 C#5@1:.5 E5@1.5:.5 A5@2:1 G5@3:1|F#5@0:1 E5@1:.5 F#5@1.5:.5 A5@2:2|F#5@0:.5 D5@.5:.5 B4@1:1 D5@2:2|B4@0:1 D5@1:1 G5@2:1 B5@3:1|A5@0:1 G5@1:.5 F#5@1.5:.5 E5@2:2|F#5@0:.5 A5@.5:.5 D6@1:2|A5@0:.5 F#5@.5:.5 D5@1:1 A4@2:2'}]},
+  rc_final:{bpm:170, fast:true, sec:[
+    {c:'Bm|G|D|A|Bm|G|A|A7', m:'F#5@0:.5 B4@.5:.5 D5@1:.5 F#5@1.5:.5 B5@2:1 A5@3:1|G5@0:.5 B4@.5:.5 D5@1:.5 G5@1.5:.5 B5@2:1 G5@3:1|F#5@0:.5 A4@.5:.5 D5@1:.5 F#5@1.5:.5 A5@2:1 F#5@3:1|E5@0:.5 A4@.5:.5 C#5@1:.5 E5@1.5:.5 A5@2:2|F#5@0:.5 B4@.5:.5 D5@1:.5 F#5@1.5:.5 B5@2:1 D6@3:1|B5@0:.5 G5@.5:.5 D5@1:.5 G5@1.5:.5 B5@2:2|A5@0:.5 C#6@.5:.5 E6@1:1 C#6@2:.5 A5@2.5:.5 E5@3:1|A5@0:4'}]}
+};
+let MUSK = null;
+function music(k, xf){
+  try{
+    const F = window.__fbgm; if(!F || (window.__ecoBgmOff && window.__ecoBgmOff()) || (save.settings && save.settings.bgm===false)) return;
+    const S = F.songs;
+    if(RSONG[k] && !S[k]){ const base = RSONG[k].fast ? S.bb_chance : S.bb_play; if(!base) return;
+      S[k] = Object.assign({}, base, {name:k, bpm:RSONG[k].bpm, gain:(base.gain || 1) * .9, sec:RSONG[k].sec.map(x => Object.assign({}, x))}); }
+    if(!S[k]) return; MUSK = k; F.load(k);
+    const tryStart = n => { if(MUSK !== k) return; if(F.ready(k)){ F.start(k, xf ? {fk:'race', manual:true, vol:.34, soft:true} : {fk:'race', manual:true, vol:.34}); return; } if(n < 40) setTimeout(() => tryStart(n + 1), 250); };
+    tryStart(0);
+  }catch(e){ console.warn('race bgm', e); }
+}
+function musicStop(){ MUSK = null; try{ window.__fbgm && window.__fbgm.stop(); }catch(e){} }
+try{ const W = window.__bgm643; if(W){ const t0 = W.target; W.target = () => { const v = t0(); const r2 = document.querySelector('#rc2.show'); if(r2) return 0; if(document.querySelector('#rc1.show')) return Math.min(v, .14); return v; }; } }catch(e){}
+document.addEventListener('visibilitychange', () => { if(document.hidden && MUSK) musicStop(); });
+
+window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, sfx, music};
 })();
