@@ -6683,6 +6683,12 @@ const CARS = {
 ['red','orange','yellow','green','blue','purple'].forEach(c => { CARS['sci_car_' + c] = {rear:'car_r_sci_' + c, spd:1.02, size:0.92, tough:1.05, fuel:0.95}; });
 /* v26.1：科学館の ★を ぜんぶ あつめて もらえる「ぎんいろの タイムカー」… ぜんぶ さいこうせいのう（スピードは スポーツカー 1.10 より すこし はやい 1.12） */
 CARS.sci_delorean = {rear:'car_r_sci_delorean', spd:1.12, size:0.88, tough:1.20, fuel:0.86};
+/* v26.3：ずかん・やきゅうの ごほうび 4台（スポーツカーより すこし おとるが、それぞれ とくべつな とくちょう つき）
+   rs＝絵の 大きさ補正／armor＝車いがいの 障害物の ロスを この 倍率に（ステンレス トラック）／note＝じゅんび画面の ひとこと */
+CARS.prize_zoo   = {rear:'car_r_prize_zoo',   spd:1.05, size:1.06, tough:1.18, fuel:0.96, rs:1.0};
+CARS.prize_aq    = {rear:'car_r_prize_aq',    spd:1.04, size:0.92, tough:1.10, fuel:0.92, rs:0.88, note:'ちいさくて よけやすい！'};
+CARS.prize_fish  = {rear:'car_r_prize_fish',  spd:1.03, size:1.02, tough:1.15, fuel:0.82, rs:0.95, note:'ねんりょうが へりにくい！'};
+CARS.prize_cyber = {rear:'car_r_prize_cyber', spd:1.06, size:1.10, tough:1.22, fuel:0.95, rs:1.0, armor:0.1, note:'くるま いがいの 障害物は ほとんど へっちゃら！'};
 const myCars = () => Object.keys(CARS).map(id => ITEM(id)).filter(it => { try{ return it && ownedCount(it) > 0; }catch(e){ return false; } });
 
 /* ---------- あいての つよさ ---------- */
@@ -6701,7 +6707,9 @@ const proMsg = () => `ハヤテとは 1日 ${PRO_DAY}かいまで。きょうは
 function R(){ const r = save.race || (save.race = {}); r.wins = r.wins || {1:0, 2:0, 3:0, 4:0, pro:0}; r.best = r.best || {}; return r; }
 const cpuOpen = k => { const w = R().wins; return k===1 ? true : k==='pro' ? (w[4]||0) >= PRO_NEED : (w[k-1]||0) >= 1; };
 const drvVal = r => { try{ return Math.min(200, effAb(r,'drive')); }catch(e){ return 0; } };
-const drivers = () => (save.town?.res || []).slice().sort((a,b) => drvVal(b) - drvVal(a));
+const isHuman = r => { try{ return !!SP(r.sp).human; }catch(e){ return false; } };
+/* v26.3：レース場では ハナ（人間の じゅうみん）は えらべない */
+const drivers = () => (save.town?.res || []).filter(r => !isHuman(r)).sort((a,b) => drvVal(b) - drvVal(a));
 const resById = id => (save.town?.res || []).find(r => r.id===id);
 
 /* =====================================================================
@@ -6731,12 +6739,12 @@ function carPanel(){
     <span><b>スピード</b>${segBar(c.spd - 0.84, 0.26)}</span>
     <span><b>よけやすさ</b>${segBar(1.24 - c.size, 0.36)}</span>
     <span><b>タフさ</b>${segBar(c.tough - 0.9, 0.28)}</span>
-  </div>`;
+  </div>${c.note ? `<p class="rcCDesc rcCarNote">${esc(c.note)}</p>` : ''}`;
 }
 function drvPanel(){
   const L = drivers();
-  if(!L.length) return '<p class="rcNote">じゅうみんが まだ いないよ</p>';
-  if(!resById(V.drv)) V.drv = L[0].id;
+  if(!L.length) return '<p class="rcNote">レースに 出られる どうぶつの じゅうみんが まだ いないよ</p>';
+  if(!L.some(r => r.id === V.drv)) V.drv = L[0].id;     // v26.3：ハナを えらんでいた セーブも じどうで なおす
   return `<div class="rcDrvs">${L.map(r => { const d = drvVal(r), on = r.id===V.drv;
     return `<button class="rcDrv ${on ? 'on' : ''}" data-r="drv:${r.id}">
       <span class="rcFace"><span class="rcFaceIn">${resPic(r)}</span>${img('frame_ring','rcRing')}${on ? img('ic_check','rcChk') : ''}</span>
@@ -6821,7 +6829,7 @@ function onClick(e){
     V.cpu = k; snd('tap'); render(); return; }
   if(a==='go'){
     const L = myCars(), it = L[V.ci], d = resById(V.drv), c = CPU.find(x => x.k===V.cpu);
-    if(!it || !d || !c) return;
+    if(!it || !d || !c || isHuman(d)) return;
     if(c.k==='pro' && proLeft() <= 0){ toast(proMsg()); V.cpu = 4; render(); return; }
     remember(); const keep = {ci:V.ci, drv:V.drv, cpu:V.cpu, course:V.course};
     close(); startRace(it, d, c, keep);
@@ -6969,7 +6977,9 @@ const carK = (v, k) => 1 + (v - 1) * k;
 const maxSpd = r => BASE_SPD * carK(r.car.spd, 3) * (1 + effDrive(r) * 0.0025) * (r.fuel <= 0 ? 0.38 : 1);
 const sideSpd = r => (2.0 + effDrive(r) / 70) / carK(r.car.size, 2.5);
 const hitW = r => 0.2 * carK(r.car.size, 2.5);
-const lossOf = (r, o) => OB[o.t].loss * Math.max(0.28, 1 - effDrive(r) / 280) / carK(r.car.tough, 3);
+/* v26.3：ステンレス トラック（armor）… 車いがいの 障害物は ほとんど えいきょうを うけない（おそい車は ふつうに ぶつかる） */
+const armored = (r, o) => !!(r.car.armor && o.t !== 'slow');
+const lossOf = (r, o) => OB[o.t].loss * Math.max(0.28, 1 - effDrive(r) / 280) / carK(r.car.tough, 3) * (armored(r, o) ? r.car.armor : 1);
 const fuelUse = r => 0.6 / G.T.len * (1 - effDrive(r) * 0.0025) * carK(r.car.fuel, 2);   // 1周で 60%（うんてん 200 で 半分）
 const pitTime = r => r.cpu ? r.cpuDef.pit : 7 - effDrive(r) / 40;
 
@@ -7004,7 +7014,7 @@ function startRace(item, drv, cdef, keep){
     const rr = R(); rr.proCnt = (rr.proCnt || 0) + 1; try{ persist(); }catch(e){}
   }
   const cid = (keep && keep.course) || R().course || 'town', T = buildTrack(cid), seed = (Date.now() & 0xffff) + 1;
-  const carList = Object.keys(CARS).filter(k => !k.startsWith('sci_') && k !== item.id && k !== 'rally');
+  const carList = Object.keys(CARS).filter(k => !k.startsWith('sci_') && !k.startsWith('prize_') && k !== item.id && k !== 'rally');
   const cpuCarKey = cdef.k==='pro' ? 'sports' : carList[(Math.random()*carList.length)|0];
   const me = makeRacer({name:drv.name, pic:resPic(drv), drive:drvVal(drv), car:CARS[item.id], carKey:item.id, obs:genObstacles(seed, cid)});
   const cp = makeRacer({name:cdef.k==='pro' ? PRO.name : `★${cdef.k}`, pic:cdef.k==='pro' ? proPic() : img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed, cid), seen:new Map()});
@@ -7141,6 +7151,11 @@ function update(r, dt){
       if(Math.abs(o.x - r.x) < (OB[o.t].w * 0.5 + hitW(r))){
         o.hit = true; const ob = OB[o.t];
         if(o.t==='chest'){ if(!r.item){ r.item = 1; r.itemT = 0; if(!r.cpu){ sfx('chest'); msg(r, 'たからばこ！'); } } continue; }
+        if(armored(r, o)){   // v26.3：はじき飛ばす（ごく みじかい ガタンだけ）
+          r.stun = lossOf(r, o); r.kind = 'bump'; r.fx = 0.55; r.shake = 0.08;
+          if(!r.cpu){ sfx('bump'); msg(r, 'へっちゃら！'); }
+          continue;
+        }
         r.hits++;
         r.stun = lossOf(r, o); r.kind = ob.kind; r.fx = 0; r.shake = ob.kind==='crash' ? 0.5 : 0.25;
         if(o.v) o.v = 0;
@@ -7243,7 +7258,7 @@ function draw(r, cv){
   /* じぶんの 車 */
   const car = loadImg(r.car.rear);
   if(ready(car)){
-    const cw = w * 0.27 * r.car.size, ch = cw * car.naturalHeight / car.naturalWidth;
+    const cw = w * 0.27 * r.car.size * (r.car.rs || 1), ch = cw * car.naturalHeight / car.naturalWidth;   // v26.3：rs＝絵の 大きさ補正
     let rot = r.steer * 0.06, bob = Math.sin(G.t * 26) * speedR * 1.2 * cv._dpr, cy = h * 0.965;
     if(r.stun > 0){
       if(r.kind==='spin') rot = (r.fx / 1.2) * Math.PI * 2;
@@ -7676,4 +7691,109 @@ window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, sfx, music};
   show = (orig => function(name){ const o = orig.apply(this, arguments); if(name === 'town' || name === 'residents') setTimeout(tick, 900); return o; })(show);
   setInterval(tick, 30000);
   window.__hy262 = {join, arrive, has, tick};
+})();
+
+
+/* =====================================================================
+   v26.3：ごほうびの 車 4台
+   ・どうぶつえん ずかん コンプリート → サファリカー
+   ・すいぞくかん ずかん コンプリート → すいぞくかんカー
+   ・つりの ずかん（さかな）コンプリート → つりカー
+   ・やきゅう：にがて大王から わすれものを ぜんぶ とりもどす → ステンレス トラック（車いがいの 障害物は ほとんど へっちゃら）
+   ・もらった 車は「まちを はしる のりもの」に なり、レース場でも えらべる（はしれる 台数が いっぱいなら しゃこで まつ）
+   ・じょうけんを みたした あと、まちの 画面で 自動で もらえる（すでに コンプリートずみの セーブも OK）
+   ===================================================================== */
+(function(){
+  'use strict';
+  const FORGOT_N = 8;   // features.js の FORGOT（にがて大王の わすれもの）の 数
+  const SI = './assets/images/science/';
+  const fishAll = () => { const F = (window.__v614 && window.__v614.FISH) || []; const C = (save.fish70 && save.fish70.caught) || {}; return F.length > 0 && F.every(f => C[f.id]); };
+  const DEF = [
+    {id:'prize_zoo', n:'サファリカー', from:'どうぶつえんの しゃしんずかん', cond:() => !!(save.zoo644 && save.zoo644.complete),
+      tr:3, inc:6, pop:0.02, info:'どうぶつえんの ずかんを ぜんぶ あつめて もらえる、キリンがらの サファリカー。',
+      desc:'キリンがらの サファリカー。じょうぶで、がたがた みちも へっちゃら！'},
+    {id:'prize_aq', n:'すいぞくかんカー', from:'すいぞくかんの かいがらずかん', cond:() => !!(save.aq644 && save.aq644.complete),
+      tr:3, inc:6, pop:0.02, info:'すいぞくかんの ずかんを ぜんぶ あつめて もらえる、やねに すいそうが ついた かわいい 車。',
+      desc:'やねの すいそうで きんぎょが およぐ、イルカもようの かわいい 車。ちいさくて よけやすいよ！'},
+    {id:'prize_fish', n:'つりカー', from:'つりの さかなずかん', cond:fishAll,
+      tr:3, inc:6, pop:0.02, info:'つりの ずかんを ぜんぶ あつめて もらえる、つりざおを のせた ピックアップ。',
+      desc:'つりざおと クーラーボックスを のせた ピックアップ。ねんりょうが へりにくいよ！'},
+    {id:'prize_cyber', n:'ステンレス トラック', from:'にがて大王から わすれものを ぜんぶ とりもどした', cond:() => ((save.stadium && save.stadium.bossWins) || 0) >= FORGOT_N,
+      tr:4, inc:8, pop:0.03, info:'にがて大王から わすれものを ぜんぶ とりもどして もらえる、カクカクの ステンレスの トラック。',
+      desc:'カクカクの ステンレスの トラック。レース場では 車いがいの 障害物は ほとんど へっちゃら！（おそい 車には ぶつかるよ）'}
+  ];
+  try{
+    DEF.forEach(d => {
+      DEFAULT_ART[d.id] = SI + d.id + '.webp';
+      if(!ITEM(d.id)) TOWN_ITEMS.push({id:d.id, type:'veh', name:d.n, art:d.id, emoji:'\uD83D\uDE97', price:0, lv:1, traffic:d.tr, income:d.inc, pop:d.pop, ev:'prize'});
+      try{ ZUKAN_INFO[d.id] = d.info; }catch(e){}
+      try{ window.NOPARK623 && window.NOPARK623.add(d.id); }catch(e){}
+    });
+  }catch(e){ console.warn('prize cars', e); }
+
+  const PZ = () => save.prize263 || (save.prize263 = {});
+  let busy = false;
+  async function giveCar(d){
+    const t = save.town; if(!t || PZ()[d.id]) return;
+    PZ()[d.id] = Date.now();
+    t.veh = t.veh || []; let cap = 99; try{ cap = townCalc().vehCap; }catch(e){}
+    let wait = false;
+    if(t.veh.length >= cap){ try{ garage().push(d.id); (t.autoGar = t.autoGar || []).push(d.id); wait = true; }catch(e){ t.veh.push(d.id); } } else t.veh.push(d.id);
+    try{ discover(d.id); }catch(e){}
+    persist();
+    try{ sound('fan'); confetti(2600); }catch(e){}
+    await dialog(`<div class="dlgArt big pop"><img src="${esc(artSrc(d.id))}" alt=""></div>
+      <h2 class="dlgT">🚗 とくべつな 車を もらったよ！</h2>
+      <p class="dlgP"><b>${esc(d.n)}</b><br><small>${esc(d.from)}ごほうび</small></p>
+      <p class="dlgP" style="font-size:14px">${esc(d.desc)}<br>${wait ? 'はしれる 台数が いっぱいなので しゃこで まっているよ（わくが ふえたら じどうで はしるよ）' : 'まちを はしるよ。'}レース場でも えらべるよ！</p>`,
+      [{label:'やったー！', cls:'gold', v:1}], 'gold');
+    try{ checkBadges(); renderCurrent(); }catch(e){}
+  }
+  const overlayOpen = () => ['#zq644', '#fish614', '#bb618', '#sc700', '#rc1', '#rc2', '#htl'].some(q => {
+    const e = document.querySelector(q); if(!e) return false;
+    const c = getComputedStyle(e); return c.display !== 'none' && c.visibility !== 'hidden' && parseFloat(c.opacity) > 0.01; });
+  async function tick(){
+    if(busy || !save.town || document.hidden) return;
+    if(typeof curScreen === 'undefined' || !['town', 'residents', 'shop', 'home'].includes(curScreen)) return;
+    const dl = document.getElementById('dlg'); if(dl && dl.classList.contains('show')) return;
+    if(overlayOpen()) return;
+    const d = DEF.find(x => !PZ()[x.id] && (() => { try{ return x.cond(); }catch(e){ return false; } })());
+    if(!d) return;
+    busy = true; try{ await giveCar(d); } finally{ busy = false; }
+  }
+  setInterval(tick, 3000);
+  show = (orig => function(name){ const o = orig.apply(this, arguments); if(name === 'town' || name === 'residents') setTimeout(tick, 900); return o; })(show);
+
+  /* ごほうびの ヒント（ずかん・やきゅう・さかなの ページ） */
+  const byId = id => DEF.find(x => x.id === id);
+  function patch(n){
+    const z = document.getElementById('zq644');
+    if(z){
+      const zc = n.matches && n.matches('.zc644') ? n : (n.querySelector ? n.querySelector('.zc644') : null);
+      if(zc && !zc.dataset.pz){
+        zc.dataset.pz = 1; const d = byId(z.classList.contains('aq') ? 'prize_aq' : 'prize_zoo');
+        zc.textContent = zc.classList.contains('s') ? `ぜんぶ そろえると とくべつな ごほうび！（+500pt と 車「${d.n}」）` : `ぜんぶ そろった！ きんいろの わくと 車「${d.n}」を ゲット！`;
+      }
+    }
+    const dl = document.getElementById('dlg');
+    if(dl && dl.classList.contains('show')){
+      const bs = n.matches && n.matches('.boss620') ? n : (n.querySelector ? n.querySelector('.boss620') : null);
+      if(bs && !bs.dataset.pz){
+        bs.dataset.pz = 1; const sm = bs.querySelector('small'), d = byId('prize_cyber');
+        if(sm && !bs.classList.contains('got')) sm.textContent += `　ぜんぶ とりもどすと 車「${d.n}」が もらえるよ！`;
+      }
+    }
+  }
+  try{
+    new MutationObserver(ms => {
+      if(!document.getElementById('zq644') && !(document.getElementById('dlg') || {classList:{contains:() => false}}).classList.contains('show')) return;
+      ms.forEach(m => m.addedNodes.forEach(n => { if(n.nodeType === 1) try{ patch(n); }catch(e){} }));
+    }).observe(document.body, {childList:true, subtree:true});
+  }catch(e){ console.warn('prize hint', e); }
+  try{
+    renderZukan = (orig => function(){ const r = orig.apply(this, arguments);
+      try{ if(zukanTab === 'fish'){ const nt = $('#zukanNote'), d = byId('prize_fish'); if(nt && !nt.textContent.includes('が もらえるよ！')){ nt.textContent += `　ぜんぶ つると 車「${d.n}」が もらえるよ！`; } } }catch(e){}
+      return r; })(renderZukan);
+  }catch(e){ console.warn('prize zukan', e); }
+  window.__prize263 = {DEF, tick, giveCar, has:id => !!PZ()[id]};
 })();

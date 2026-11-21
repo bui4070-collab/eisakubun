@@ -1008,3 +1008,8 @@ body.rcOpen #bnav,body.rcRacing #bnav{display:none!important}
    ===================================================================== */
 .rrGet small.rrPb{display:flex;align-items:center;justify-content:center;gap:3px;color:#C66F0A;font-weight:900;font-size:11.5px;line-height:1.3}
 .rrGet small.rrPb img{width:18px;height:16px;object-fit:contain}
+
+/* =====================================================================
+   v26.3 レース場：ごほうびの 車の ひとこと
+   ===================================================================== */
+.rcCarNote{text-align:center;color:#9CE8B0!important;font-weight:900!important;font-size:12px!important}
