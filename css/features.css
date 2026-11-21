@@ -1002,3 +1002,9 @@ body.rcOpen #bnav,body.rcRacing #bnav{display:none!important}
 .rcCpu .rcDay{font-weight:900;color:#FFD47A;white-space:nowrap}
 .rcCpu.pro.day0 .rcHelm,.rcCpu.pro.day0 .rcProFace{filter:grayscale(.85) brightness(.75)}
 .rcCpu.pro.day0 .rcDay{color:#FFC98A}
+
+/* =====================================================================
+   v26.2 レース場：ハヤテに かった ごほうび（けっか画面）
+   ===================================================================== */
+.rrGet small.rrPb{display:flex;align-items:center;justify-content:center;gap:3px;color:#C66F0A;font-weight:900;font-size:11.5px;line-height:1.3}
+.rrGet small.rrPb img{width:18px;height:16px;object-fit:contain}

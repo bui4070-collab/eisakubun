@@ -6694,6 +6694,7 @@ const CPU = [
   {k:'pro', helm:'helm_pro', drive:200, pit:3.5, n:'プロ',      look:.97, use:.9}
 ];
 const PRO_NEED = 5;
+const PRO_DRV = 3;   // v26.2：ハヤテに 2かいめ いこう かつと、そのドライバーの うんてんが +3
 const PRO_DAY = 3;   // v26.1：ハヤテ（プロ）に ちょうせん できるのは 1日 3かいまで（レースを はじめた ときに 1かい へる）
 function proLeft(){ const r = R(), d = dayKey(); if(r.proDay !== d){ r.proDay = d; r.proCnt = 0; } return Math.max(0, PRO_DAY - (r.proCnt || 0)); }
 const proMsg = () => `ハヤテとは 1日 ${PRO_DAY}かいまで。きょうは おしまい！ また あした ちょうせん してね`;
@@ -7411,6 +7412,15 @@ async function finish(){
   const res = resById(G.drv.id) || G.drv, ex = giveExp(res, win, k);
   /* プロ・チャンピオン */
   const firstChamp = win && k==='pro' && !r.champ; if(firstChamp){ r.champ = 1; try{ givePts(1000, 'まちの チャンピオンに なった'); }catch(e){} }
+  /* v26.2：ハヤテに かった ごほうび
+     ・はじめて かつ → ちょうレアの ハヤテが じゅうみんに（家か 住民わくが たりない ときは「来たい」ままにして、あいたら 来る）
+     ・2かいめ いこう かつ → そのドライバーの うんてんが +3（レア度の じょうげんまで） */
+  let pb = 0, hy = null;
+  if(win && k==='pro'){
+    if((r.wins.pro || 0) >= 2){ if(drvVal(res) < Math.min(200, abCap(res)) - 1e-6){ res.ab.drive = (res.ab.drive || 0) + PRO_DRV; pb = PRO_DRV; } else pb = -1; }
+    try{ const H = window.__hy262; if(H && r.hy !== 1) hy = H.join(); }catch(e){ console.warn('hayate join', e); }
+  }
+  if(pb > 0){ ex.after = drvVal(res); }
   persist();
   const nextOpen = win && k !== 'pro' && (k===4 ? r.wins[4] === PRO_NEED : r.wins[k] === 1);
   const ft = t => `${Math.floor(t/60)}:${(t%60).toFixed(2).padStart(5,'0')}`;
@@ -7436,14 +7446,16 @@ async function finish(){
       ${newBest ? `<p class="rrBest">${img('ic_clock','rcMini')} じこベスト こうしん！</p>` : ''}
       <div class="rrGets">
         <div class="rrGet">${img('lb_coin','rrLb')}<div class="rrCoin">${img('ic_coins')}<b>${canCoin ? '+' + nf(coin) : '0'}</b></div><small>${canCoin ? `きょう あと ${DAY_MAX - r.cnt}かい` : 'きょうの ごほうびは おしまい'}</small>${win && me.qOk ? `<small>ピットクイズ せいかい ${me.qOk}もん ボーナス</small>` : ''}</div>
-        <div class="rrGet">${img('lb_unten','rrLb')}<div class="rrDrv"><span class="rrFace sm">${me.pic}</span>${img('ic_wheel','rrWh')}<b>${Math.round(ex.before)}${ex.up ? `<i>→ ${Math.round(ex.after)}</i>` : ''}</b></div>
-          <i class="rrExp"><i style="width:${ex.pct}%"></i></i><small>けいけんち +${ex.ex}${ex.up ? `　うんてん +${ex.up}！` : ''}</small></div>
+        <div class="rrGet">${img('lb_unten','rrLb')}<div class="rrDrv"><span class="rrFace sm">${me.pic}</span>${img('ic_wheel','rrWh')}<b>${Math.round(ex.before)}${(ex.up || pb > 0) ? `<i>→ ${Math.round(ex.after)}</i>` : ''}</b></div>
+          <i class="rrExp"><i style="width:${ex.pct}%"></i></i><small>けいけんち +${ex.ex}${ex.up ? `　うんてん +${ex.up}！` : ''}</small>${pb > 0 ? `<small class="rrPb">${img('helm_pro','rcMini')} ハヤテに かった ごほうび！ うんてん +${pb}</small>` : pb < 0 ? '<small class="rrPb">うんてんは もう さいこうだよ！</small>' : ''}</div>
       </div>
       ${stamps}
       ${k==='pro' ? `<p class="rrBest">ハヤテに ちょうせん できるのは 1日 ${PRO_DAY}かい（きょう あと ${proLeft()}かい）</p>` : ''}
       ${nextOpen ? `<p class="rcResNew">${img(k===4 ? 'helm_pro' : 'ic_star','rcMini')} ${k===4 ? 'プロ' : '★' + (k+1)} と たたかえるように なったよ！</p>` : ''}
       ${cNew ? `<p class="rcResNew rcNewC"><span class="rcCTh sm" style="background-image:url('${ri(nextC.th)}')"></span>あたらしい コース「${nextC.n}」が ひらいたよ！</p>` : ''}
       ${firstChamp ? `<p class="rcResNew">${img('ic_champ2','rcMini')} しょうごう「まちの チャンピオン」と ボーナス 1000pt！</p>` : ''}
+      ${hy && hy.st==='in' ? `<p class="rcResNew">${img('helm_pro','rcMini')} ちょうレアの ハヤテが この まちの じゅうみんに なったよ！</p>` : ''}
+      ${hy && hy.st==='pend' ? `<p class="rcResNew">${img('helm_pro','rcMini')} ハヤテが この まちに すみたいって！ ${hy.noHome ? 'すむ 家（いえ）' : ''}${hy.noHome && hy.full ? 'と ' : ''}${hy.full ? '住民わく' : ''}が あくと 来てくれるよ</p>` : ''}
     </div>
     <div class="rcResBtns"><button data-res="again">${img('rb_retry','', 'もういちど')}</button><button data-res="lobby">${img('rb_lobby','', 'じゅんびへ')}</button><button data-res="town">${img('rb_town','', 'まちへ')}</button></div>
   </div></div>`);
@@ -7451,6 +7463,7 @@ async function finish(){
     const a = b.dataset.res, keep = G.keep, item = G.item, drv = G.drv, cdef = G.cdef;
     endRace(false);
     if(a==='again') startRace(item, drv, cdef, keep); else if(a==='lobby') open(); else { try{ renderCurrent(); }catch(e){} } });
+  if(hy && hy.st==='in') setTimeout(() => { try{ window.__hy262.arrive(hy.r); }catch(e){} }, 1700);
 }
 function endRace(toLobby){
   if(!G) return;
@@ -7569,4 +7582,98 @@ window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, sfx, music};
       L.cols = c; L.rows = r;
     }
   }catch(e){ console.warn('town size', e); }
+})();
+
+
+/* =====================================================================
+   v26.2：ちょうレア「ハヤテ」（プロレーサー）
+   ・ハヤテに はじめて かつと、ちょうレアの ハヤテが じゅうみんに なる
+       （家や 住民わくが ないときは「来たい」ままにして、あいたら 来てくれる）
+   ・立ち絵は レース場の ハヤテ（assets/images/race/pro_stand.webp）を そのまま つかう
+   ・専用イラスト 5まい：assets/images/chara/scu_hayate_〈場面〉.webp
+        park（こうえん）／festival（なつまつり）／stars（ほしぞら）／fountain（ふんすい）／onsen（おんせん）
+   ・2.5D は まだ なし（ふつうの 立ち絵）
+   ・ふつうの 招待（レター）・ホテルでは 来ない（w:0）。ハヤテに かった ときだけ
+   ===================================================================== */
+(function(){
+  'use strict';
+  const CIMG = './assets/images/chara/';
+  const SC = ['park', 'festival', 'stars', 'fountain', 'onsen'];
+  const AB = {work:24, biz:22, know:26, pop:32, drive:60};
+  const LINES = ['ぼくは ハヤテ。まちの レース場の プロレーサー だよ！', 'はしるのが だいすき。かぜに なった きぶんに なれるんだ',
+    'うんてんの コツは 力まない こと。ハンドルは やさしく にぎるんだ', 'レースの まえの ストレッチは ひっす！ けがを しないのが いちばんだよ',
+    'ピットでは あわてない。ひとつ ふかく いきを すって、ていねいに！', 'また しょうぶ しよう。いつでも まってるよ！',
+    'コースの すみずみまで おぼえてる。目を とじても はしれる…は ちょっと いいすぎかな'];
+  const SCL = {
+    park:     ['こうえんは いい トレーニングじょうだね。みんなで おいかけっこ だ！', 'はしると かぜが きもちいい！ ほら、ついておいで'],
+    festival: ['たこやき、ふーふー…あつっ！ ヘルメットを もったままでも たべられるよ', 'はなび、ドーン！ レースの スタートの ごうれいみたいだ'],
+    stars:    ['ながれぼし！ ねがいごとは「もっと はやく」…いや「みんなで ゴール」かな', 'よるの ドライブも すき。ほしが ついてくるみたいでしょ'],
+    fountain: ['はしったあとの おみずは さいこう！ にじも きれいだね', 'トロフィーより、この ひとくちが うれしいな'],
+    onsen:    ['ふぃ〜。はしったあとの おんせんは ごくらく', 'ヘルメットも いっしょに ぽかぽか。もみじも きれいだなあ']
+  };
+  try{
+    DEFAULT_ART.res_hayate = './assets/images/race/pro_stand.webp';
+    SC.forEach(k => { DEFAULT_ART['scu_hayate_' + k] = CIMG + 'scu_hayate_' + k + '.webp'; });
+    if(!SPECIES.some(s => s.id === 'hayate')) SPECIES.push({id:'hayate', name:'ハヤテ', art:'res_hayate', emoji:'\uD83D\uDC06', rar:4, w:0, bias:'drive', home:'house',
+      info:'まちの レース場の プロレーサー。金の レーシングスーツが トレードマークの チーター。はしるのが だいすきで、うんてんの うでは まちいちばん。'});
+    ZUKAN_INFO.hayate = 'まちの レース場の プロレーサー。金の レーシングスーツが トレードマークの チーター。はしるのが だいすきで、うんてんの うでは まちいちばん。';
+    SP_SKILL.hayate = ['mult', 'bonus'];
+    KUCHI.hayate = '';
+    const V = window.__v53; if(V && V.SPL) V.SPL.hayate = LINES.join('|');
+  }catch(e){ console.warn('hayate species', e); }
+
+  /* 専用イラストの 場面（5まい） */
+  const _ss = speciesScenes;
+  speciesScenes = function(sp){ return sp === 'hayate' ? SC.slice() : _ss.apply(this, arguments); };
+
+  /* なまえ・のうりょく（うんてんが たかい） */
+  const _nr = newResident;
+  newResident = function(sp){
+    const r = _nr.apply(this, arguments);
+    if(sp && sp.id === 'hayate'){ r.name = 'ハヤテ'; r.ab = Object.assign({}, AB); r.ur66 = 1; r.kuchi = ''; }
+    return r;
+  };
+
+  /* はなしかた：口ぐせなし */
+  const _sp = speak;
+  speak = function(r, line){ if(r && r.sp === 'hayate'){ if(r.kuchi) r.kuchi = ''; return String(line); } return _sp.apply(this, arguments); };
+  const _tl = talkLine;
+  talkLine = function(r, ctx){ if(r && r.sp === 'hayate'){ if(r.kuchi) r.kuchi = ''; return choice(LINES); } return _tl.apply(this, arguments); };
+  const _ph = persHTML;
+  persHTML = function(r){ const h = _ph.apply(this, arguments); return (r && r.sp === 'hayate' && h) ? h.replace(/口ぐせ：<b>[^<]*<\/b>/, '口ぐせ：<b>なし</b>') : h; };
+  const _sc = sceneCard;
+  sceneCard = function(r, sp, k, isNew){
+    let h = _sc.apply(this, arguments);
+    try{ const L = sp === 'hayate' && SCL[k]; if(L) h = h.replace(/(<div class="scLine"><b>[^<]*<\/b>)[^<]*(<\/div>)/, (m, a, b) => a + esc(choice(L)) + b); }catch(e){}
+    return h;
+  };
+
+  /* ハヤテが じゅうみんに なる（レース場の けっか画面から よばれる） */
+  const has = () => (save.town && save.town.res || []).some(r => r.sp === 'hayate');
+  function join(){
+    const t = save.town; if(!t) return null;
+    const R0 = save.race || (save.race = {});
+    if(has()){ R0.hy = 1; return {st:'have'}; }
+    const sp = SP('hayate'); let maxRes = 0; try{ maxRes = townCalc().maxRes; }catch(e){}
+    const home = findHome(sp), full = t.res.length >= maxRes;
+    if(full || !home){ R0.hy = 'pend'; return {st:'pend', full, noHome:!home}; }
+    const r = newResident(sp); r.home = home.key; t.res.push(r); R0.hy = 1;
+    try{ discover('hayate'); }catch(e){}
+    persist();
+    return {st:'in', r};
+  }
+  async function arrive(r){
+    try{ await arrival(r, 'ちょうレアの ハヤテが すみに 来てくれた！'); }catch(e){ console.warn(e); }
+    try{ checkBadges(); renderCurrent(); }catch(e){}
+  }
+  /* 「来たい」ままの ときは、家や わくが あいたら まちの 画面で 来てくれる */
+  async function tick(){
+    const R0 = save.race; if(!R0 || R0.hy !== 'pend') return;
+    if(document.hidden || $('#dlg').classList.contains('show')) return;
+    if(curScreen !== 'town' && curScreen !== 'residents') return;
+    const o = join(); if(o && o.st === 'in') await arrive(o.r);
+  }
+  show = (orig => function(name){ const o = orig.apply(this, arguments); if(name === 'town' || name === 'residents') setTimeout(tick, 900); return o; })(show);
+  setInterval(tick, 30000);
+  window.__hy262 = {join, arrive, has, tick};
 })();
