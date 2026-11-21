@@ -977,3 +977,28 @@ body.rcOpen #bnav,body.rcRacing #bnav{display:none!important}
 .rrProSay{display:flex;align-items:center;gap:8px;width:100%;background:rgba(255,246,214,.97);border:2px solid #F2C94C;border-radius:16px;padding:6px 12px;color:#4A3426;font-size:13px;font-weight:800;line-height:1.5}
 .rrProSay b{display:block;font-size:11px;color:#B5701C}
 .rrProF{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:50% 20%;background:#FFF1CF;flex:none}
+
+/* =====================================================================
+   v26.1 レース場：ピットクイズ（2択）… スマホ縦で 選択肢が 画面の 下に はみ出す 問題の 修正
+   ・もんだいの ぶぶんだけ 小さく（スクロール）して、せんたくしは かならず 画面の 中に のこす
+   ・ハヤテ 1日3かい の 表示
+   ===================================================================== */
+.rvQuiz{overflow:hidden;gap:4px;padding:6px 10px max(10px,env(safe-area-inset-bottom))}
+.rqTop{flex:none}
+.rqTitle{max-height:44px}
+.rqCard{flex:0 1 auto;min-height:0;max-height:100%;display:flex;flex-direction:column}
+.rqNo{flex:none}
+.rqQ{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.rqOpts{flex:none;grid-template-columns:1fr 1fr;gap:8px}
+.rqOpt{min-height:56px;font-size:clamp(17px,4.8vw,24px)!important}
+@media (orientation:portrait){
+  .rqQ{max-height:20vh}
+  .rqQ .mqSent{font-size:clamp(16px,4.4vw,22px)!important}
+  .rqQ img{max-height:64px}
+  .rqTitle{max-height:36px}
+  .rqCard{padding:6px 8px 8px}
+}
+@supports (height:1dvh){ @media (orientation:portrait){ .rqQ{max-height:20dvh} } }
+.rcCpu .rcDay{font-weight:900;color:#FFD47A;white-space:nowrap}
+.rcCpu.pro.day0 .rcHelm,.rcCpu.pro.day0 .rcProFace{filter:grayscale(.85) brightness(.75)}
+.rcCpu.pro.day0 .rcDay{color:#FFC98A}

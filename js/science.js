@@ -243,7 +243,10 @@ const TOWNR = [
   {id:'sci_stardeck', n:'流れ星台', img:'town_stardeck', condT:'うちゅう・ちきゅうドーム マスター', cond:() => zoneMaster('space'), prog:() => [zoneClears('space'), zoneImpl('space').length],
    eff:'タッチすると ながれ星を さがす ミニゲーム（1日3かい）', o:{dev:30, pop:0.02}},
   {id:'sci_fountain', n:'かがくの ふんすい', img:'town_fountain', condT:'ぜんぶの ゾーンで ★3 クリア', cond:() => allStar(3), prog:() => [allStarN(3), 6],
-   eff:'まちの ランドマーク。人気が ぐんと 上がるよ', o:{dev:50, pop:0.04}}
+   eff:'まちの ランドマーク。人気が ぐんと 上がるよ', o:{dev:50, pop:0.04}},
+  /* v26.1：6つの ゾーンの ★（マスター）を ぜんぶ あつめると もらえる 1台（まちを はしる／レース場で さいこうせいのう） */
+  {id:'sci_delorean', n:'ぎんいろの タイムカー', img:'car_delorean', car:1, condT:'6つの ゾーンの ★を ぜんぶ あつめる', cond:() => ZONES.every(z => zoneMaster(z.id)), prog:() => [ZONES.filter(z => zoneMaster(z.id)).length, ZONES.length],
+   eff:'ガルウィングドアの ぎんいろの 車。まちを はしるし、レース場でも つかえる さいこうせいのうの 1台！', o:{traffic:4, income:8, pop:0.02}}
 ];
 /* ---------- ごほうび（わたしの家：上から見た絵つき） ---------- */
 const HOMER = [
@@ -264,6 +267,11 @@ function register(){
   try{
     TOWNR.forEach(r => {
       DEFAULT_ART[r.id] = IC(r.img);
+      if(r.car){   /* のりもの（車）として とうろく */
+        if(!ITEM(r.id)) TOWN_ITEMS.push({id:r.id, type:'veh', name:r.n, art:r.id, emoji:'\uD83D\uDE97', price:0, lv:1, traffic:r.o.traffic, income:r.o.income, pop:r.o.pop, ev:'science'});
+        try{ ZUKAN_INFO[r.id] = r.eff; }catch(e){}
+        return;
+      }
       if(!ITEM(r.id)) TOWN_ITEMS.push(Object.assign({id:r.id, type:'bld', cat:'deco', name:r.n, art:r.id, emoji:'🔬', price:0, lv:1, ev:'science'}, r.o));
       try{ ZUKAN_INFO[r.id] = r.eff; }catch(e){}
     });
@@ -285,6 +293,11 @@ register();
 function giveReward(r){
   const s = SC(); if(s.got[r.id]) return false;
   s.got[r.id] = 1;
+  if(r.car){   /* 車：はしれる 台数が いっぱいなら しゃこで まつ */
+    const t = save.town; t.veh = t.veh || []; let cap = 99; try{ cap = townCalc().vehCap; }catch(e){}
+    if(t.veh.length >= cap){ try{ garage().push(r.id); (t.autoGar = t.autoGar || []).push(r.id); }catch(e){ t.veh.push(r.id); } } else t.veh.push(r.id);
+    try{ discover(r.id); }catch(e){} persist(); return true;
+  }
   if(r.t === 'town'){ const t = save.town; t.inv = t.inv || {}; t.inv[r.id] = (t.inv[r.id] || 0) + 1; try{ discover(r.id); }catch(e){} }
   else { const H = ensureHome(); H.inv[r.id] = (H.inv[r.id] || 0) + 1; }
   persist(); return true;
@@ -1657,7 +1670,7 @@ async function claim(id){
   const r = REWARDS.find(x => x.id === id); if(!r || rwState(r) !== 'ready') return;
   if(!giveReward(r)) return; snd('fan'); try{ confetti(2000); }catch(e){}
   await modal(`<div class="sxMArt"><img src="${IC(r.img)}" alt=""></div><h3 class="sxMT">ごほうび ゲット！</h3><p class="sxMP"><b>${X(r.n)}</b><br>${RB(r.eff)}</p>
-    <p class="sxMS">${r.t === 'town' ? '「まち」の「もようがえ」で おいてね' : '「わたしの家」の「もようがえ」で かざってね（上から見た絵も あるよ）'}</p>`, [{t:'やったー！', c:'g', v:1}], 'gold');
+    <p class="sxMS">${r.car ? 'まちを はしるよ（はしれる 台数が いっぱいの ときは しゃこで まっているよ）。レース場でも えらべるよ！' : r.t === 'town' ? '「まち」の「もようがえ」で おいてね' : '「わたしの家」の「もようがえ」で かざってね（上から見た絵も あるよ）'}</p>`, [{t:'やったー！', c:'g', v:1}], 'gold');
   render();
 }
 function onClick(e){
@@ -6668,6 +6681,8 @@ const CARS = {
   rally:     {rear:'car_r_rally',     spd:1.08, size:1.00, tough:1.16, fuel:1.03}
 };
 ['red','orange','yellow','green','blue','purple'].forEach(c => { CARS['sci_car_' + c] = {rear:'car_r_sci_' + c, spd:1.02, size:0.92, tough:1.05, fuel:0.95}; });
+/* v26.1：科学館の ★を ぜんぶ あつめて もらえる「ぎんいろの タイムカー」… ぜんぶ さいこうせいのう（スピードは スポーツカー 1.10 より すこし はやい 1.12） */
+CARS.sci_delorean = {rear:'car_r_sci_delorean', spd:1.12, size:0.88, tough:1.20, fuel:0.86};
 const myCars = () => Object.keys(CARS).map(id => ITEM(id)).filter(it => { try{ return it && ownedCount(it) > 0; }catch(e){ return false; } });
 
 /* ---------- あいての つよさ ---------- */
@@ -6679,6 +6694,9 @@ const CPU = [
   {k:'pro', helm:'helm_pro', drive:200, pit:3.5, n:'プロ',      look:.97, use:.9}
 ];
 const PRO_NEED = 5;
+const PRO_DAY = 3;   // v26.1：ハヤテ（プロ）に ちょうせん できるのは 1日 3かいまで（レースを はじめた ときに 1かい へる）
+function proLeft(){ const r = R(), d = dayKey(); if(r.proDay !== d){ r.proDay = d; r.proCnt = 0; } return Math.max(0, PRO_DAY - (r.proCnt || 0)); }
+const proMsg = () => `ハヤテとは 1日 ${PRO_DAY}かいまで。きょうは おしまい！ また あした ちょうせん してね`;
 function R(){ const r = save.race || (save.race = {}); r.wins = r.wins || {1:0, 2:0, 3:0, 4:0, pro:0}; r.best = r.best || {}; return r; }
 const cpuOpen = k => { const w = R().wins; return k===1 ? true : k==='pro' ? (w[4]||0) >= PRO_NEED : (w[k-1]||0) >= 1; };
 const drvVal = r => { try{ return Math.min(200, effAb(r,'drive')); }catch(e){ return 0; } };
@@ -6731,11 +6749,13 @@ function cpuPanel(){
   return `<div class="rcCpus">${CPU.map(c => { const open = cpuOpen(c.k), on = V.cpu===c.k && open, pro = c.k==='pro';
     const stars = pro ? '' : `<span class="rcStars">${Array.from({length:c.k}, () => img('ic_star')).join('')}</span>`;
     const need = pro ? `★4に ${Math.min(w[4]||0, PRO_NEED)}/${PRO_NEED}かち` : `★${c.k-1}に かつ`;
-    return `<button class="rcCpu ${pro ? 'pro' : ''} ${on ? 'on' : ''} ${open ? '' : 'lk'}" data-r="cpu:${c.k}">
+    const day = pro && open ? proLeft() : -1;
+    return `<button class="rcCpu ${pro ? 'pro' : ''} ${on ? 'on' : ''} ${open ? '' : 'lk'} ${day === 0 ? 'day0' : ''}" data-r="cpu:${c.k}">
       ${pro && open ? img(PRO.face,'rcHelm rcProFace') : img(c.helm,'rcHelm')}${stars}<b>${pro ? (open ? 'ハヤテ' : 'プロ') : c.n}</b>
       ${open ? `<small>${img('ic_trophy','rcMini')}${w[c.k]||0}かち</small>` : `<small class="rcNeed">${need}</small>`}
+      ${day >= 0 ? `<small class="rcNeed rcDay">${day ? `あと${day}かい` : 'おしまい'}</small>` : ''}
       ${open ? '' : img('ic_lock','rcLock')}
-    </button>`; }).join('')}</div>`;
+    </button>`; }).join('')}</div>${cpuOpen('pro') ? `<p class="rcCDesc">ハヤテには 1日 ${PRO_DAY}かいまで ちょうせん できるよ（きょう あと ${proLeft()}かい）</p>` : ''}`;
 }
 function coursePanel(){
   const best = R().best || {};
@@ -6781,6 +6801,7 @@ function render(){
 function open(){
   const r = R();
   V = {ci:0, drv:r.drv, cpu:cpuOpen(r.cpu) ? (r.cpu || 1) : 1, course:courseOpen(COURSE(r.course).id) ? COURSE(r.course).id : 'town'};
+  if(V.cpu==='pro' && proLeft() <= 0) V.cpu = 4;     // v26.1：きょうの ハヤテせんは おしまい
   const L = myCars(), i = L.findIndex(it => it.id===r.car); if(i >= 0) V.ci = i;
   document.body.classList.add('rcOpen'); render(); snd('ok');
 }
@@ -6795,10 +6816,12 @@ function onClick(e){
   if(a==='crs'){ if(!courseOpen(v)){ const i = COURSES.findIndex(c => c.id===v); toast(`「${COURSES[i-1].n}」で 1かい かつと えらべるよ`); return; } V.course = v; snd('tap'); render(); return; }
   if(a==='cpu'){ const k = v==='pro' ? 'pro' : +v;
     if(!cpuOpen(k)){ toast(k==='pro' ? `★4に ${PRO_NEED}かい かつと プロと たたかえるよ` : `★${k-1}に かつと えらべるよ`); return; }
+    if(k==='pro' && proLeft() <= 0){ toast(proMsg()); return; }
     V.cpu = k; snd('tap'); render(); return; }
   if(a==='go'){
     const L = myCars(), it = L[V.ci], d = resById(V.drv), c = CPU.find(x => x.k===V.cpu);
     if(!it || !d || !c) return;
+    if(c.k==='pro' && proLeft() <= 0){ toast(proMsg()); V.cpu = 4; render(); return; }
     remember(); const keep = {ci:V.ci, drv:V.drv, cpu:V.cpu, course:V.course};
     close(); startRace(it, d, c, keep);
   }
@@ -6975,6 +6998,10 @@ function viewHTML(k, r){
   </div>`;
 }
 function startRace(item, drv, cdef, keep){
+  if(cdef.k==='pro'){   // v26.1：ハヤテは 1日 3かいまで（はじめた ときに 1かい へる）
+    if(proLeft() <= 0){ toast(proMsg()); open(); return; }
+    const rr = R(); rr.proCnt = (rr.proCnt || 0) + 1; try{ persist(); }catch(e){}
+  }
   const cid = (keep && keep.course) || R().course || 'town', T = buildTrack(cid), seed = (Date.now() & 0xffff) + 1;
   const carList = Object.keys(CARS).filter(k => !k.startsWith('sci_') && k !== item.id && k !== 'rally');
   const cpuCarKey = cdef.k==='pro' ? 'sports' : carList[(Math.random()*carList.length)|0];
@@ -6989,14 +7016,14 @@ function startRace(item, drv, cdef, keep){
       <button class="rvPause" data-g="pause">${img('btn_pause')}</button></div>${viewHTML('me', me)}</div>
     <div class="rcCount"></div>`;
   document.body.classList.add('rcRacing');
-  G = {me, cp, keep, item, drv, cdef, T, t:-3.2, last:0, acc:0, run:true, paused:false, over:false,
+  G = {me, cp, keep, item, drv, cdef, T, t:-3, last:0, acc:0, run:true, paused:false, over:false,
     cv:{me:el.querySelector('#rv_me canvas'), cpu:el.querySelector('#rv_cpu canvas')}, el};
   el.onpointerdown = onPtr;
   window.addEventListener('keydown', onKey);
   window.addEventListener('resize', fit);
   document.addEventListener('visibilitychange', onVis);
   fit();
-  if(cdef.k==='pro'){ G.paused = true; proIntro().then(() => { if(!G) return; G.paused = false; G.last = 0; }); }
+  if(cdef.k==='pro'){ G.paused = true; G.introOn = true; proIntro().then(() => { if(!G) return; G.introOn = false; if(!G.pdlg) G.paused = false; G.last = 0; }); }
   G.raf = requestAnimationFrame(loop);
 }
 function fit(){
@@ -7004,7 +7031,7 @@ function fit(){
   const dpr = (window.__ecoOn && window.__ecoOn()) ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
   Object.values(G.cv).forEach(c => { const b = c.getBoundingClientRect(); c.width = Math.max(10, Math.round(b.width * dpr)); c.height = Math.max(10, Math.round(b.height * dpr)); c._dpr = dpr; });
 }
-function onVis(){ if(G && document.hidden && !G.over) pause(true); }
+function onVis(){ if(G && document.hidden && !G.over && !G.pdlg) pause(true); }   // v26.1：すでに ストップ中なら ダイアログを かさねない
 function onKey(e){
   if(!G || G.paused) return;
   if(e.key==='ArrowLeft'){ steer(G.me, -1); e.preventDefault(); }
@@ -7041,14 +7068,15 @@ function togglePit(){
   toast(r.pitReq ? 'つぎの スタートラインで ピットに 入るよ' : 'ピットを やめたよ');
 }
 async function pause(on){
-  try{ window.__fbgm && window.__fbgm.stop(); }catch(e){}
-  if(!G || G.over) return;
-  G.paused = true; drawHud();
+  musicStop();                                   // v26.1：BGMを とめて、まっている 曲の よみこみも ぜんぶ やめる
+  if(!G || G.over || G.pdlg) return;
+  G.pdlg = true; G.paused = true; drawHud();
   const v = await dialog(`<h2 class="dlgT">いったん ストップ</h2><p class="dlgP">レースを つづける？</p>`,
     [{label:'つづける', cls:'gold', v:'go'}, {label:'やめる', cls:'white', v:'quit'}]);
   if(!G) return;
+  G.pdlg = false;
   if(v==='quit'){ endRace(true); return; }
-  G.paused = false; G.last = 0; if(G.t > 0) music(G.me.lap >= LAPS - 1 ? 'rc_final' : 'rc_play');
+  G.paused = !!G.introOn; G.last = 0; if(G.t > 0 && !document.hidden) music(G.me.lap >= LAPS - 1 ? 'rc_final' : 'rc_play');
 }
 
 /* ---------- 1コマ ---------- */
@@ -7286,7 +7314,32 @@ function useItem(r){
    ===================================================================== */
 const PIT_Q = 4;
 try{ const _mq = mqFromP; mqFromP = function(p, u){ const m = _mq.apply(this, arguments); if(m && p) m._p = Object.assign({u: u || p.u}, p); return m; }; }catch(e){}
-function newQ(){ try{ return makeMiniQ(); }catch(e){ const a = 2 + ((Math.random()*8)|0), b = 2 + ((Math.random()*8)|0); return {html:`<div class="mqSent math">${a} ＋ ${b} ＝ ？</div>`, ans:String(a+b), opts:[a+b, a+b+1, a+b-1, a+b+2].sort(() => Math.random()-.5).map(String)}; } }
+/* v26.1：ピットクイズは「すぐに こたえられる 2択」。みじかい もんだいを えらび、まちがいの せんたくしを 1つだけ のこす */
+const QUICK_LEN = 34;   // もんだい文（タグを のぞく）の めやす 文字数
+function quickQ(){
+  const txtOf = h => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, '');
+  let best = null;
+  for(let i = 0; i < 14; i++){
+    let m = null; try{ m = makeMiniQ(); }catch(e){ m = null; }
+    if(!m || !Array.isArray(m.opts) || m.opts.length < 2 || m.optHtml || m.listen) continue;
+    const ans = String(m.ansF != null ? m.ansF : m.ans);
+    if(!m.opts.some(o => String(o) === ans) || !m.opts.some(o => String(o) !== ans)) continue;
+    if(/<(svg|table|canvas)/i.test(m.html) && i < 10) continue;                 // ず・ひょうは はぶく
+    const len = txtOf(m.html).length;
+    if(/^\d+$/.test(String(ans).replace(/,/g, '')) && String(ans).replace(/,/g, '').length > 3 && i < 10) continue;   // 大きな けいさんは はぶく
+    if(!best || len < best.len) best = {m, ans, len};
+    if(len <= QUICK_LEN) break;
+  }
+  if(!best) return null;
+  const m = best.m, ok = m.opts.find(o => String(o) === best.ans), ng = m.opts.filter(o => String(o) !== best.ans);
+  const two = [ok, ng[(Math.random() * ng.length) | 0]]; if(Math.random() < .5) two.reverse();
+  return Object.assign({}, m, {opts:two});
+}
+function newQ(){
+  try{ const q = quickQ(); if(q) return q; }catch(e){}
+  const a = 2 + ((Math.random()*8)|0), b = 2 + ((Math.random()*8)|0), ans = a + b, wr = ans + (Math.random() < .5 ? 1 : -1);
+  return {html:`<div class="mqSent math">${a} ＋ ${b} ＝ ？</div>`, ans:String(ans), opts:[String(ans), String(wr)].sort(() => Math.random()-.5)};
+}
 function pitOpen(){
   const r = G.me; r.pq = {n:0, streak:0, lock:false}; pitNext();
 }
@@ -7387,6 +7440,7 @@ async function finish(){
           <i class="rrExp"><i style="width:${ex.pct}%"></i></i><small>けいけんち +${ex.ex}${ex.up ? `　うんてん +${ex.up}！` : ''}</small></div>
       </div>
       ${stamps}
+      ${k==='pro' ? `<p class="rrBest">ハヤテに ちょうせん できるのは 1日 ${PRO_DAY}かい（きょう あと ${proLeft()}かい）</p>` : ''}
       ${nextOpen ? `<p class="rcResNew">${img(k===4 ? 'helm_pro' : 'ic_star','rcMini')} ${k===4 ? 'プロ' : '★' + (k+1)} と たたかえるように なったよ！</p>` : ''}
       ${cNew ? `<p class="rcResNew rcNewC"><span class="rcCTh sm" style="background-image:url('${ri(nextC.th)}')"></span>あたらしい コース「${nextC.n}」が ひらいたよ！</p>` : ''}
       ${firstChamp ? `<p class="rcResNew">${img('ic_champ2','rcMini')} しょうごう「まちの チャンピオン」と ボーナス 1000pt！</p>` : ''}
@@ -7433,4 +7487,86 @@ try{ const W = window.__bgm643; if(W){ const t0 = W.target; W.target = () => { c
 document.addEventListener('visibilitychange', () => { if(document.hidden && MUSK) musicStop(); });
 
 window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, sfx, music};
+})();
+
+/* =====================================================================
+   v26.1：アプリを さいしょうか → もういちど ひらいた ときの BGM
+   ・うらに いく しゅんかんに、しせつ・レースの BGM（けいかくして ならす しくみ）を とめる
+       → もどった ときに、とまっていた ぶんの 音が いっきに なる ことを ふせぐ
+   ・iPhone は うらに いくと 音の しくみが「interrupted」に なる ことが ある。いままでは「suspended」の ときしか おこして いなかった
+       → 「running」いがいは ぜんぶ おこす
+   ・もどった あと、BGMの 音量・再生を もういちど つなぎなおす（さいしょの タッチでも）
+   ===================================================================== */
+(function(){
+  'use strict';
+  const CT = new Set();
+  const own = (P, k) => { while(P && !Object.prototype.hasOwnProperty.call(P, k)) P = Object.getPrototypeOf(P); return P; };
+  const hook = (P, k) => { try{ const o = P && P[k]; if(typeof o !== 'function' || o.__trk261) return; const f = function(){ try{ CT.add(this); }catch(e){} return o.apply(this, arguments); }; f.__trk261 = 1; P[k] = f; }catch(e){} };
+  try{ const A = window.AudioContext || window.webkitAudioContext; if(A) ['createGain', 'createBufferSource', 'createOscillator', 'createMediaElementSource'].forEach(k => hook(own(A.prototype, k), k)); }catch(e){}
+  const W = () => window.__bgm643;
+  let away = false, gest = false;
+  const live = c => { try{ return c && c.state !== 'running' && c.state !== 'closed'; }catch(e){ return false; } };
+  function wakeCtx(){
+    try{ const B = W() && W().B; if(B && live(B.ctx)) B.ctx.resume().catch(() => {}); }catch(e){}
+    CT.forEach(c => { try{ if(c.state === 'interrupted') c.resume().catch(() => {}); }catch(e){} });
+  }
+  function resync(hard){
+    if(document.hidden) return;
+    const w = W(); wakeCtx(); if(!w) return;
+    try{
+      const B = w.B;
+      if(hard && B && B.el){
+        if(B.el.error || B.el.readyState === 0){ try{ B.el.load(); }catch(e){} }
+        B.cur = -1;                                                     // 音量を かならず もういちど せっていする（0から ふわっと）
+        if(B.gain && B.ctx){ try{ const g = B.gain.gain, t = B.ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(0, t); }catch(e){} }
+        w.apply(true);
+      }
+      if(B && B.el && B.el.paused && B.ok && (w.target ? w.target() : 1) > 0) B.el.play().catch(() => {});
+    }catch(e){ console.warn('bgm resync', e); }
+  }
+  function onHide(){
+    away = true; gest = true;
+    try{ window.__fbgm && window.__fbgm.stop(true); }catch(e){}         // しせつ・レースの 曲を すぐ とめる（タイマーも けす）
+    try{
+      const w = W(), B = w && w.B;
+      if(B && B.el && !B.el.paused) B.el.pause();
+      if(B && B.gain && B.ctx){ const g = B.gain.gain; g.cancelScheduledValues(B.ctx.currentTime); g.value = 0; }
+      if(B) B.cur = 0;
+    }catch(e){}
+  }
+  function onShow(){
+    if(!away) return; away = false;
+    resync(true); setTimeout(() => resync(false), 400); setTimeout(() => resync(false), 1500);
+  }
+  document.addEventListener('visibilitychange', () => { if(document.hidden) onHide(); else onShow(); });
+  window.addEventListener('pagehide', onHide);
+  window.addEventListener('pageshow', () => { if(away) onShow(); });
+  ['pointerdown', 'touchend', 'keydown'].forEach(n => document.addEventListener(n, () => { if(gest && !document.hidden){ gest = false; resync(false); } }, {capture:true, passive:true}));
+  /* レースの BGM を はじめる ときも 音の しくみを おこす */
+  try{ const F = window.__fbgm; if(F && F.start && !F.start.__w261){ const s0 = F.start; F.start = function(){ try{ wakeCtx(); }catch(e){} return s0.apply(this, arguments); }; F.start.__w261 = 1; } }catch(e){}
+})();
+
+/* =====================================================================
+   v26.1：まちの 土地（マス）が ふえない レベルが あった
+   ・Lv13〜30 の 大きさは「Lv12 の 大きさ ＋ レベル÷3（よこ）／÷4（たて）」で きめていたので、
+     Lv13→14→15 は ぜんぶ 23×17 の まま（レベルアップの ダイアログでは「ひろがった」と 出ていた）
+   ・Lv13 から いままでの 大きさを ぜったいに へらさない まま、さいだい（28×20）まで 1レベルごとに 1マスずつ ひろげる
+   ===================================================================== */
+(function(){
+  try{
+    if(typeof TOWN_LEVELS === 'undefined' || !Array.isArray(TOWN_LEVELS) || TOWN_LEVELS.length < 13) return;
+    const MAXC = 28, MAXR = 20, L12 = TOWN_LEVELS[11];
+    let c = L12.cols, r = L12.rows;
+    for(let i = 12; i < TOWN_LEVELS.length; i++){
+      const L = TOWN_LEVELS[i], s = i - 11;
+      const oc = Math.min(MAXC, 22 + Math.ceil(s / 3)), or = Math.min(MAXR, 16 + Math.ceil(s / 4));   // いままでの 大きさ
+      if(L.cols !== oc || L.rows !== or){ c = L.cols; r = L.rows; continue; }                          // じぶんで かえた レベルは そのまま
+      if(i === 12){ c += 1; r += 1; }
+      else if(c < MAXC && (s % 2 === 0 || r >= MAXR)) c++;
+      else if(r < MAXR) r++;
+      else if(c < MAXC) c++;
+      c = Math.max(c, oc); r = Math.max(r, or);                                                         // いままでより せまく しない
+      L.cols = c; L.rows = r;
+    }
+  }catch(e){ console.warn('town size', e); }
 })();
