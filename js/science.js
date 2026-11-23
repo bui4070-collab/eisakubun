@@ -6855,7 +6855,7 @@ window.addEventListener('click', e => {
    ===================================================================== */
 const SEG = 200, ROADW = 1200, CAMH = 1000, DEPTH = 1 / Math.tan(50 * Math.PI / 180), PZ = CAMH * DEPTH;
 const LANES = [-0.64, 0, 0.64], LAPS = 3, DRAW = 130;
-const BASE_SPD = SEG * 37;   // v27.0：ぜんたいに すこし おそく（44 → 37）                     // うんてん0・ふつうの 車の さいこう そくど（1秒に 進む きょり）
+const BASE_SPD = SEG * 31;   /* v27.1：さらに ゆっくり（37 → 31） */   // v27.0：ぜんたいに すこし おそく（44 → 37）                     // うんてん0・ふつうの 車の さいこう そくど（1秒に 進む きょり）
 const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつく・loss：ロス時間（秒）・kind
   cone:   {w:.17, loss:.8,  kind:'slip'},
   box:    {w:.22, loss:.8,  kind:'slip'},
@@ -6875,9 +6875,10 @@ const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつ
 };
 OB.chest = {w:.30, loss:0, kind:'item'};
 /* v27.0：かそくブースター（ふむと かそく）・ねんりょう */
-OB.boost = {w:.42, loss:0, kind:'boost', flat:1, pick:1};
+OB.boost = {w:.56, loss:0, kind:'boost', flat:1, pick:1};
+OB.crystal = {w:.24, loss:0, kind:'crystal', pick:1};
 OB.fuel  = {w:.26, loss:0, kind:'fuel', pick:1};
-const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle', chest:'it_chest', boost:'ob_boost', fuel:'it_fuelcan',
+const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle', chest:'it_chest', boost:'ob_boost', fuel:'it_fuelcan', crystal:'it_crystal',
   log:'ob_log', rock:'ob_rock', ice:'ob_ice', snowman:'ob_snowman', ball:'ob_ball', sand:'ob_sand', drum:'ob_drum', leaves:'ob_leaves'};
 const SC = {sc_tree:1.25, sc_pine:1.05, sc_maple:1.25, sc_bush:.8, sc_house:1.25, sc_fence:.75, sc_lamp:.32, sc_flag:.6, ic_pump:.5,
   sc_palm:1.35, sc_umbrella:.9, sc_snowpine:1.1, sc_snowhouse:1.25, sc_building:1.6, sc_nlamp:.34, sc_digger:1.3, sc_works:1.0};
@@ -6919,7 +6920,7 @@ const courseOpen = id => { const i = COURSES.findIndex(c => c.id===id); if(i <= 
 
 /* ---------- 画像 ---------- */
 const IMG = {};
-const loadImg = n => IMG[n] || (IMG[n] = Object.assign(new Image(), {src: n.startsWith('./') || n.startsWith('data:') ? n : ri(n)}));
+const loadImg = n => IMG[n] || (IMG[n] = Object.assign(new Image(), {src: n.startsWith('./') || n.startsWith('data:') ? n : ri(n)}));   /* v27.1：水晶は 専用イラスト it_crystal */
 const ready = im => im && im.complete && im.naturalWidth > 0;
 
 /* ---------- 乱数（2人とも 同じ コース） ---------- */
@@ -6946,8 +6947,8 @@ function buildTrack(cid){
     if(i % 83 === 40){ const sd = (i / 83 | 0) % 2 ? 1 : -1;   /* 大きな たてもの：左右 こうごに・まわりの 木は どける */
       for(let d=-6; d<=6; d++){ const q = segs[(i + d + N) % N]; if(q) q.sp = q.sp.filter(p => Math.sign(p.x)!==sd || Math.abs(p.x) < 1.4); }
       s.sp.push({n:SIDE[0], x:sd * 3.0, big:1}); }
-    if(i % 37 < 6 && i % 2 === 0) s.sp.push({n:SIDE[2], x: i % 74 < 37 ? -1.32 : 1.32});
-    if(i < 6 || i > N-4) s.sp.push({n:'sc_flag', x:(i % 2 ? -1.25 : 1.25)});
+    if(i % 37 < 6 && i % 2 === 0){ const fn = SIDE.find(n => n==='sc_fence' || n==='sc_works') || 'sc_fence'; s.sp.push({n:fn, x: i % 74 < 37 ? -1.32 : 1.32}); }   /* v27.1：さくの 場所に 家が 3つ 重なっていたのを 修正 */
+    if(i === 1){ s.sp.push({n:'sc_flag', x:-1.25}); s.sp.push({n:'sc_flag', x:1.25}); }   /* v27.1：ゴールの 旗は 左右 1本ずつ */
     if(i === N-150) s.sp.push({n:'ic_pump', x:1.45});
   }
   /* 道（はば 1＋ふち）に はみ出さない：絵の はんぶんの はばを 足した いちより 外に */
@@ -6963,8 +6964,8 @@ function genObstacles(seed, cid){
     while(i < T.N - 40){
       const t = types[(rnd()*types.length)|0], lane = (rnd()*3)|0, z = (lap*T.N + i) * SEG;
       L.push({t, x:LANES[lane], z, hit:false, v: t==='slow' ? BASE_SPD * (0.38 + rnd()*0.12) : 0, car: t==='slow' ? ['sedan','keiwagon','minivan','crossover','wagon','suv'][(rnd()*6)|0] : null});
-      if(rnd() < 0.28 && t!=='slow'){ const l2 = (lane + 1 + ((rnd()*2)|0)) % 3; L.push({t:small[(rnd()*small.length)|0], x:LANES[l2], z:z + SEG*2, hit:false, v:0}); }
-      i += 26 + ((rnd()*26)|0) - lap*3;
+      if(rnd() < 0.14 && t!=='slow'){ const l2 = (lane + 1 + ((rnd()*2)|0)) % 3; L.push({t:small[(rnd()*small.length)|0], x:LANES[l2], z:z + SEG*2, hit:false, v:0}); }
+      i += 40 + ((rnd()*30)|0) - lap*3;   /* v27.1：障害物の 間かくを ひろく */
     }
     /* v27.0：かそくブースター 1しゅうに 4こ・ねんりょう 1こ（障害物と かさならない 車線に） */
     const put = (t, f) => { const i2 = Math.floor(T.N * f) + ((rnd()*14)|0), z = (lap*T.N + i2) * SEG;
@@ -6972,6 +6973,7 @@ function genObstacles(seed, cid){
       const free = LANES.filter(x => !busy.has(x)); if(free.length) L.push({t, x:free[(rnd()*free.length)|0], z, hit:false, v:0}); };
     [0.14, 0.38, 0.62, 0.86].forEach(f => put('boost', f));
     put('fuel', 0.70 + rnd()*0.1);
+    if(lap === 1 && Math.random() < 0.1) put('crystal', 0.45 + rnd()*0.2);   /* v27.1：10回に 1回 くらい 水晶が おちている（じぶんの コースだけ） */
     /* 宝箱：1しゅうに 3こ（障害物と かさならない 車線に） */
     [0.22, 0.52, 0.8].forEach(f => { const i2 = Math.floor(T.N * f) + ((rnd()*20)|0), z = (lap*T.N + i2) * SEG;
       const busy = new Set(L.filter(o => Math.abs(o.z - z) < SEG*6).map(o => o.x));
@@ -7041,7 +7043,7 @@ function startRace(item, drv, cdef, keep){
   const me = makeRacer({name:drv.name, pic:resPic(drv), drive:drvVal(drv), car:CARS[item.id], carKey:item.id, obs:genObstacles(seed, cid)});
   const cp = makeRacer({name:cdef.k==='pro' ? PRO.name : `★${cdef.k}`, pic:cdef.k==='pro' ? proPic() : img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed, cid), seen:new Map()});
   [me, cp].forEach(r => { loadImg(r.car.rear); });
-  ['bg_pit','bg_result','rb_pitquiz','lb_spd','it_chest','ic_warn','ob_boost','it_fuelcan','it_nitro','it_catapult','fx_bang','fx_puff',T.C.hz,'ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_flag','ic_pump','sc_lamp'].concat(T.C.trees, T.C.side, T.C.obs.map(t => OB_IMG[t]).filter(Boolean))
+  ['bg_pit','bg_result','rb_pitquiz','lb_spd','it_chest','ic_warn','ob_boost','it_fuelcan','it_crystal','it_nitro','it_catapult','fx_bang','fx_puff',T.C.hz,'ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_flag','ic_pump','sc_lamp'].concat(T.C.trees, T.C.side, T.C.obs.map(t => OB_IMG[t]).filter(Boolean))
     .concat(Object.values(CARS).map(c => c.rear)).forEach(loadImg);
   const el = raceRoot();
   el.className = 'show';
@@ -7176,6 +7178,7 @@ function update(r, dt){
         o.hit = true; const ob = OB[o.t];
         if(o.t==='chest'){ if(!r.item){ r.item = Math.random() < 0.5 ? 'nitro' : 'send'; r.itemT = 0; if(!r.cpu){ sfx('chest'); msg(r, r.item==='nitro' ? 'ニトロ ゲット！' : 'いたずらカタパルト！'); } } continue; }
         if(o.t==='boost'){ startBoost(r); continue; }
+        if(o.t==='crystal'){ if(!r.cpu){ r.cry = (r.cry||0) + 1; sfx('chest'); } continue; }
         if(o.t==='fuel'){ r.fuel = Math.min(1, r.fuel + 0.4); if(!r.cpu){ sfx('fuel'); msg(r, 'ねんりょう +40%'); } continue; }
         if(r.bst > 0){   // v27.0：かそく中は 障害物を はじき とばす（ロス なし）
           o.knock = G.t; o.kdir = (o.x >= r.x ? 1 : -1); if(o.v) o.v = 0;
@@ -7224,6 +7227,7 @@ function cpuThink(r){
   if(opts.length){ r.lane = opts[(Math.random()*opts.length)|0]; }
 }
 function msg(r, t){
+  return;   // v27.1：画面の まん中の 文字は 出さない
   const el = G.el.querySelector(r.cpu ? '#rv_cpu .rvMsg' : '#rv_me .rvMsg'); if(!el) return;
   el.textContent = t; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
 }
@@ -7294,6 +7298,15 @@ function draw(r, cv){
         c.save(); c.globalAlpha = Math.max(0, 1 - k); sprite(c, name, p.X + (o.x + o.kdir * k * 2.2) * p.W, p.Y - k * p.W * 1.2, OB[o.t].w * p.W * (1 + k * .3), h + 999, false, o.kdir * k * 6); c.restore();
         if(k < 0.4) sprite(c, 'fx_bang', p.X + o.x * p.W, p.Y - OB[o.t].w * p.W * .3, OB[o.t].w * p.W * 1.1, h + 999, false);
         return; }
+      if(o.t==='boost'){   /* v27.1：加速板は 道に はりついた 光る 帯（ほかの アイテムと 見分けやすく） */
+        const pw = OB.boost.w * p.W, ph = pw * 0.9, x0 = p.X + o.x * p.W, a = 0.45 + 0.25 * Math.sin(G.t * 10);
+        if(p.Y - ph < p.clip){ c.save(); c.globalAlpha = a; c.fillStyle = '#FFB020'; c.beginPath(); c.moveTo(x0 - pw*0.62, p.Y); c.lineTo(x0 + pw*0.62, p.Y); c.lineTo(x0 + pw*0.38, p.Y - ph); c.lineTo(x0 - pw*0.38, p.Y - ph); c.closePath(); c.fill(); c.restore(); }
+        sprite(c, name, x0, p.Y, pw, p.clip, true); return; }
+      if(OB[o.t].pick || o.t==='chest'){   /* アイテムは ふわふわ うかぶ ＋ かげ */
+        const wd = OB[o.t].w * p.W, x0 = p.X + o.x * p.W, up = (0.35 + 0.12 * Math.sin(G.t * 6 + o.z)) * wd;
+        if(p.Y < p.clip + 2){ c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(x0, p.Y - 1, wd * 0.42, wd * 0.1, 0, 0, Math.PI*2); c.fill(); }
+        if(o.t==='crystal' && p.Y - up - wd < p.clip){ c.save(); c.globalAlpha = 0.5; c.fillStyle = '#CFE8FF'; c.beginPath(); c.arc(x0, p.Y - up - wd*0.5, wd*0.75, 0, Math.PI*2); c.fill(); c.restore(); }
+        sprite(c, name, x0, p.Y - up, wd, p.clip, false); return; }
       sprite(c, name, p.X + o.x * p.W, p.Y, OB[o.t].w * p.W, p.clip, !!OB[o.t].flat); });
     if(p.i === opSeg && opZ > r.pos + PZ * 1.05 && !op.inPit){
       c.save(); c.globalAlpha = 0.45; sprite(c, op.car.rear, p.X + op.x * p.W, p.Y, 0.42 * op.car.size * (op.car.rs || 1) * p.W, p.clip, false); c.restore(); }
@@ -7481,6 +7494,7 @@ async function finish(){
   const cid = G.T.C.id, ci = COURSES.findIndex(c => c.id===cid), nextC = COURSES[ci + 1];
   r.cw = r.cw || {}; const cNew = win && nextC && !(r.cw[cid] >= 1);
   if(win){ r.wins[k] = (r.wins[k]||0) + 1; r.cw[cid] = (r.cw[cid]||0) + 1; }
+  const cryGot = me.cry || 0; if(cryGot){ save.crystal = (save.crystal || 0) + cryGot; try{ renderCurrent(); }catch(e){} }
   const best = r.best[k], newBest = me.done && (!best || me.time < best); if(newBest) r.best[k] = me.time;
   /* ごほうび（1日 5かいまで） */
   let coin = 0; const canCoin = r.cnt < DAY_MAX;
@@ -7520,6 +7534,7 @@ async function finish(){
       ${img('rb_result','rrHead')}
       ${row(first, first === me ? 'me' : 'cpu', img('st_on','rrMed'))}
       ${row(second, second === me ? 'me' : 'cpu', '<i class="rr2">2</i>')}
+      ${cryGot ? `<p class="rcResNew">${img('it_crystal','rcMini')} 水晶を ${cryGot}こ ひろったよ！</p>` : ''}
       ${newBest ? `<p class="rrBest">${img('ic_clock','rcMini')} じこベスト こうしん！</p>` : ''}
       <div class="rrGets">
         <div class="rrGet">${img('lb_coin','rrLb')}<div class="rrCoin">${img('ic_coins')}<b>${canCoin ? '+' + nf(coin) : '0'}</b></div><small>${canCoin ? `きょう あと ${DAY_MAX - r.cnt}かい` : 'きょうの ごほうびは おしまい'}</small>${win && me.qOk ? `<small>ピットクイズ せいかい ${me.qOk}もん ボーナス</small>` : ''}</div>
