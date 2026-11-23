@@ -17258,6 +17258,27 @@ function crAuTick(){
 }
 setTimeout(() => { try{ const d = document.querySelector('#muCredit div'); if(d && CR_SHOW) d.insertAdjacentHTML('beforeend', '<br>lulu.（サビ）・共犯（サビ）：Mrs. GREEN APPLE（作詞・作曲 大森元貴）。家庭内で つかう ためだけ ／ lulu. の 楽譜は ピアノ アレンジ（結菜）、共犯は ピアノ演奏の 音源から 作成'); }catch(e){} }, 1200);
 /* ★END [著作権あり] ★ */
+/* =====================================================================
+   v28.0：クリスマスの うた 3きょく（楽譜 PDF から）＋「あの雲のように」（3年 リコーダー 楽譜）
+   ・ジングルベル（ト長調・4/4）／きよしこの夜（変ロ長調・6/8）／ウィッシュ・ユー・ア・メリークリスマス（イ長調・3/4）
+     … ピアノ楽譜の 右手の いちばん 上の 音（メロディー）
+   ・あの雲のように（ニ長調・3/4）… 1ばんの パート。ド は ド♯（調号）
+   ・まえの かんたん版「ジングルベル」「きよしこのよる」は この 楽譜版に おきかえ
+   ・クリスマスの 3きょくを ぜんぶ ★1いじょうで クリア → サンタカー（science.js）
+   ===================================================================== */
+for(let i = SONGS.length - 1; i >= 0; i--){ if(SONGS[i].id === 'jingle' || SONGS[i].id === 'silent') SONGS.splice(i, 1); }
+SONGS.push(
+  {id:'anokumo', t:'あの雲のように', g:'3年 リコーダー（3拍子）', d:1, bpm:96, lo:60, school:1, free:1,
+   n:'B4:2 B4:1 C#5:1 B4:1 C#5:1 D5:2 D5:1 D5:2 R:1 G4:2 G4:1 A4:1 G4:1 A4:1 B4:2 B4:1 A4:2 R:1 B4:2 B4:1 C#5:1 B4:1 C#5:1 D5:2 D5:1 D5:2 R:1 B4:2 B4:1 A4:1 B4:1 A4:1 G4:4 R:2'},
+  {id:'xm_silent', t:'きよしこの夜', g:'クリスマス（6/8拍子）・3きょく クリアで サンタカー', d:2, bpm:66, lo:58, xmas:1, free:1,
+   n:'F4:.75 G4:.25 F4:.5 D4:1.5 F4:.75 G4:.25 F4:.5 D4:1.5 C5:1 C5:.5 A4:1.5 A#4:1 A#4:.5 F4:1.5 G4:1 G4:.5 A#4:.75 A4:.25 G4:.5 F4:.75 G4:.25 F4:.5 D4:1.5 G4:1 G4:.5 A#4:.75 A4:.25 G4:.5 F4:.75 G4:.25 F4:.5 D4:1.5 C5:1 C5:.5 D#5:.75 C5:.25 A4:.5 A#4:1.5 D5:1.5 A#4:.5 F4:.5 D4:.5 F4:.75 D#4:.25 C4:.5 A#3:3'},
+  {id:'xm_wish', t:'ウィッシュ・ユー・ア・メリークリスマス', g:'クリスマス（3拍子）・3きょく クリアで サンタカー', d:2, bpm:112, lo:60, xmas:1, free:1,
+   n:'R:2 E4:1 A4:1 A4:.5 B4:.5 A4:.5 G#4:.5 F#4:1 F#4:1 F#4:1 B4:1 B4:.5 C#5:.5 B4:.5 A4:.5 G#4:1 E4:1 E4:1 C#5:1 C#5:.5 D5:.5 C#5:.5 B4:.5 A4:1 F#4:1 E4:.5 E4:.5 F#4:1 B4:1 G#4:1 A4:2 E4:1 A4:1 A4:1 A4:1 G#4:2 G#4:1 A4:1 G#4:1 F#4:1 E4:2 B4:1 C#5:1 B4:.5 B4:.5 A4:.5 A4:.5 E5:1 E4:1 E4:.5 E4:.5 F#4:1 B4:1 G#4:1 A4:3'},
+  {id:'xm_jingle', t:'ジングルベル', g:'クリスマス（8分音ふ）・3きょく クリアで サンタカー', d:3, bpm:96, lo:60, xmas:1, free:1, fx:[{b:32, t:'サビ！'}],
+   n:'D4:.5 B4:.5 A4:.5 G4:.5 D4:1.5 D4:.25 D4:.25 D4:.5 B4:.5 A4:.5 G4:.5 E4:2 E4:.5 C5:.5 B4:.5 A4:.5 F#4:2 D5:.5 D5:.5 C5:.5 A4:.5 B4:2 D4:.5 B4:.5 A4:.5 G4:.5 D4:2 D4:.5 B4:.5 A4:.5 G4:.5 E4:1.5 E4:.5 E4:.5 C5:.5 B4:.5 A4:.5 D5:.5 D5:.5 D5:.5 D5:.5 E5:.5 D5:.5 C5:.5 A4:.5 G4:.5 R:.5 D5:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 B4:1 B4:.5 D5:.5 G4:.75 A4:.25 B4:2 C5:.5 C5:.5 C5:.5 C5:.5 C5:.5 B4:.5 B4:.5 B4:.5 B4:.5 A4:.5 A4:.5 B4:.5 A4:1 D5:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 B4:1 B4:.5 D5:.5 G4:.75 A4:.25 B4:2 C5:.5 C5:.5 C5:.5 C5:.5 C5:.5 B4:.5 B4:.5 B4:.5 D5:.5 D5:.5 C5:.5 A4:.5 G4:.5 R:.5 G4:1'}
+);
+
+window.__mu280 = {xmasIds:['xm_jingle', 'xm_silent', 'xm_wish'], rec:id => songRec(id)};
 SONGS.sort((a, b) => a.d - b.d);
 const DIFF = {1:['かんたん', 30, '#40C057'], 2:['ふつう', 50, '#339AF0'], 3:['むずかしい', 80, '#E0457B'], 4:['ちょう むずかしい', 120, '#8E44AD']};
 const SPEEDS = [0.5, 0.75, 1];
@@ -17308,6 +17329,12 @@ const CHORDS = {
   fate:{st:'march', c:'Cm|G7|Cm|G7|Cm|G7|Cm|G7|Cm'},
   elise:{st:'waltz', bt:3, pk:1, c:'Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am'}
 };
+Object.assign(CHORDS, {
+  anokumo:{st:'waltz', bt:3, c:'G|A|D|D|G|D|G|D|G|A|D|D|G|D|G|G'},
+  xm_silent:{st:'soft', bt:3, c:'A#|A#|F7|A#|D#|A#|D#|A#|F7|Gm|A# F|A#'},
+  xm_wish:{st:'waltz', bt:3, pk:3, c:'A|D|B|E|C#|F#m|D|A|A|C#m|F#m|E|A|A|D|A'},
+  xm_jingle:{st:'pop', c:'G|G|C Am|D|G|G|C Am|D G|G|G|D7|G|G|G|D7|G'}
+});
 CHORDS.turkish = {st:'march', pk:1, c:turkChords(TURK)};
 const PCN = {C:0, D:2, E:4, F:5, G:7, A:9, B:11};
 function chordPcs(ch){ const r = PCN[ch[0]] + (ch[1] === '#' ? 1 : ch[1] === 'b' ? -1 : 0), minor = /m(?!aj)/.test(ch.slice(1)), sev = /7/.test(ch);

@@ -7890,3 +7890,44 @@ window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, step:dt => step(dt)
   }catch(e){ console.warn('prize zukan', e); }
   window.__prize263 = {DEF, tick, giveCar, has:id => !!PZ()[id]};
 })();
+
+/* =====================================================================
+   v28.0：サンタカー
+   ・おんがく（リズムゲーム）の クリスマスの 3きょく（ジングルベル／きよしこの夜／ウィッシュ・ユー・ア・メリークリスマス）を
+     ぜんぶ ★1いじょうで クリア → まちを はしる「サンタカー」を もらえる（レース場でも えらべる）
+   ・もらいかたは v26.3 の ごほうびの 車と おなじ（まちの 画面で 自動で もらえる）
+   ===================================================================== */
+(function(){
+  'use strict';
+  const ID = 'prize_santa', XM = ['xm_jingle', 'xm_silent', 'xm_wish'];
+  const D = {id:ID, n:'サンタカー', from:'クリスマスの うた 3きょく クリアの ',
+    info:'おんがくの クリスマスの うたを 3きょく ぜんぶ クリアして もらえる、サンタさんと ツリーを のせた まっかな 車。',
+    desc:'サンタさんと クリスマスツリーを のせた まっかな 車。レース場では すこし かるくて よけやすいよ！'};
+  const rec = id => { try{ return (save.music && save.music.songs && save.music.songs[id]) || {st:0}; }catch(e){ return {st:0}; } };
+  const done = () => XM.every(id => (rec(id).st || 0) >= 1);
+  try{
+    DEFAULT_ART[ID] = './assets/images/science/' + ID + '.webp';
+    if(!ITEM(ID)) TOWN_ITEMS.push({id:ID, type:'veh', name:D.n, art:ID, emoji:'\uD83D\uDE97', price:0, lv:1, traffic:3, income:6, pop:0.03, ev:'prize'});
+    try{ ZUKAN_INFO[ID] = D.info; }catch(e){}
+    try{ window.NOPARK623 && window.NOPARK623.add(ID); }catch(e){}
+  }catch(e){ console.warn('santa car', e); }
+  /* レース場の 性能（スポーツカーより すこし おそいが かるくて よけやすい） */
+  const addCar = () => { try{ const C = window.__race && window.__race.CARS; if(C && !C[ID]) C[ID] = {rear:'car_r_' + ID, spd:1.05, size:0.92, tough:1.12, fuel:0.92, rs:0.95, note:'かるくて よけやすい！'}; }catch(e){} };
+  addCar(); setTimeout(addCar, 0);
+  /* もらう */
+  const P = () => save.prize263 || (save.prize263 = {});
+  let busy = false;
+  async function tick(){
+    if(busy || !save.town || document.hidden || P()[ID] || !done()) return;
+    if(typeof curScreen === 'undefined' || !['town', 'residents', 'shop', 'home'].includes(curScreen)) return;
+    const dl = document.getElementById('dlg'); if(dl && dl.classList.contains('show')) return;
+    const Z = window.__prize263;
+    busy = true;
+    try{
+      if(Z && Z.giveCar) await Z.giveCar(D);
+      else { P()[ID] = Date.now(); (save.town.veh = save.town.veh || []).push(ID); persist(); }
+    } finally{ busy = false; }
+  }
+  setInterval(tick, 3000);
+  window.__santa280 = {done, tick, XM};
+})();
