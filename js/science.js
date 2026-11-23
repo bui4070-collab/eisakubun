@@ -6939,14 +6939,19 @@ function buildTrack(cid){
   const TREES = C.trees, SIDE = C.side;
   for(let i=0;i<N;i++){
     const s = segs[i];
-    const nearBig = side => { for(let d=-6; d<=6; d++){ const q = segs[(i + d + N) % N]; if(q && q.sp.some(p => p.big && Math.sign(p.x)===side)) return true; } return false; };
-    if(i % 5 === 0 && !nearBig(-1)) s.sp.push({n:TREES[(rnd()*4)|0], x:-1.55 - rnd()*1.6});
-    if(i % 5 === 2 && !nearBig(1)) s.sp.push({n:TREES[(rnd()*4)|0], x: 1.55 + rnd()*1.6});
+    const nearBig = (side, w) => { for(let d=-(w||6); d<=(w||6); d++){ const q = segs[(i + d + N) % N]; if(q && q.sp.some(p => p.big && Math.sign(p.x)===side)) return true; } return false; };
+    /* v27.2：ショベルカー・家・ビルなど 大きな ものは 木の かわりに 出ても まわりに 大きな ものが ない ときだけ（3台 かさなり 防止） */
+    const BIGK = ['sc_digger','sc_house','sc_snowhouse','sc_building'];
+    const plant = side => { if(nearBig(side)) return; let n = TREES[(rnd()*4)|0], big = BIGK.includes(n);
+      if(big && nearBig(side, 14)) n = TREES.find(t => !BIGK.includes(t)) || 'sc_bush', big = false;
+      s.sp.push(big ? {n, x:side * 3.0, big:1} : {n, x:side * (1.55 + rnd()*1.6)}); };
+    if(i % 5 === 0) plant(-1);
+    if(i % 5 === 2) plant(1);
     if(i % 23 === 7) s.sp.push({n:SIDE[1]==='sc_lamp' || SIDE[1]==='sc_nlamp' ? SIDE[1] : 'sc_lamp', x:-1.18});
     if(i % 23 === 18) s.sp.push({n:SIDE[1]==='sc_lamp' || SIDE[1]==='sc_nlamp' ? SIDE[1] : 'sc_lamp', x:1.18});
     if(i % 83 === 40){ const sd = (i / 83 | 0) % 2 ? 1 : -1;   /* 大きな たてもの：左右 こうごに・まわりの 木は どける */
       for(let d=-6; d<=6; d++){ const q = segs[(i + d + N) % N]; if(q) q.sp = q.sp.filter(p => Math.sign(p.x)!==sd || Math.abs(p.x) < 1.4); }
-      s.sp.push({n:SIDE[0], x:sd * 3.0, big:1}); }
+      if(!nearBig(sd, 14)) s.sp.push({n:SIDE[0], x:sd * 3.0, big:1}); }
     if(i % 37 < 6 && i % 2 === 0){ const fn = SIDE.find(n => n==='sc_fence' || n==='sc_works') || 'sc_fence'; s.sp.push({n:fn, x: i % 74 < 37 ? -1.32 : 1.32}); }   /* v27.1：さくの 場所に 家が 3つ 重なっていたのを 修正 */
     if(i === 1){ s.sp.push({n:'sc_flag', x:-1.25}); s.sp.push({n:'sc_flag', x:1.25}); }   /* v27.1：ゴールの 旗は 左右 1本ずつ */
     if(i === N-150) s.sp.push({n:'ic_pump', x:1.45});
@@ -6972,7 +6977,7 @@ function genObstacles(seed, cid){
       const busy = new Set(L.filter(o => Math.abs(o.z - z) < SEG*5).map(o => o.x));
       const free = LANES.filter(x => !busy.has(x)); if(free.length) L.push({t, x:free[(rnd()*free.length)|0], z, hit:false, v:0}); };
     [0.14, 0.38, 0.62, 0.86].forEach(f => put('boost', f));
-    put('fuel', 0.70 + rnd()*0.1);
+    if(lap === 1) put('fuel', 0.55 + rnd()*0.2);   /* v27.2：ねんりょうは 2しゅうめに 1こだけ（+20％） */
     if(lap === 1 && Math.random() < 0.1) put('crystal', 0.45 + rnd()*0.2);   /* v27.1：10回に 1回 くらい 水晶が おちている（じぶんの コースだけ） */
     /* 宝箱：1しゅうに 3こ（障害物と かさならない 車線に） */
     [0.22, 0.52, 0.8].forEach(f => { const i2 = Math.floor(T.N * f) + ((rnd()*20)|0), z = (lap*T.N + i2) * SEG;
@@ -7000,10 +7005,12 @@ const hitW = r => 0.2 * carK(r.car.size, 2.5);
 /* v26.3：ステンレス トラック（armor）… 車いがいの 障害物は ほとんど えいきょうを うけない（おそい車は ふつうに ぶつかる） */
 const armored = (r, o) => !!(r.car.armor && o.t !== 'slow');
 const lossOf = (r, o) => OB[o.t].loss * Math.max(0.28, 1 - effDrive(r) / 280) / carK(r.car.tough, 3) * (armored(r, o) ? r.car.armor : 1);
-const fuelUse = r => 0.6 / G.T.len * (1 - effDrive(r) * 0.0025) * carK(r.car.fuel, 2);   // 1周で 60%（うんてん 200 で 半分）
+/* v27.2：1周で 約50〜57％ へる（車と うんてんの 差は 小さめ）。3周で 150％以上 つかうので、どの 車でも 1かいは ピットに 入らないと 足りない */
+const fuelUse = r => 0.55 / G.T.len * (1 - effDrive(r) * 0.0003) * carK(r.car.fuel, 0.6);
 const pitTime = r => r.cpu ? r.cpuDef.pit : 7 - effDrive(r) / 40;
 
 function startBoost(r, t){
+  if(r.fuel <= 0) return;   /* v27.2：ねんりょう ぎれ では かそく しない */
   const b = boostOf(r); r.bst = Math.max(r.bst, b.t * (t || 1)); r.bstM = b.m; r.bstN++; r.stun = 0; r.kind = '';
   if(!r.cpu){ sfx('boost'); msg(r, 'ブースト！'); try{ navigator.vibrate && navigator.vibrate(30); }catch(e){} }
 }
@@ -7158,12 +7165,12 @@ function update(r, dt){
     const lim = r.kind==='crash' ? 0 : r.kind==='spin' ? mx * 0.25 : mx * 0.45;
     r.spd = Math.max(lim, r.spd - mx * 2.2 * dt);
     if(r.stun <= 0) r.kind = '';
-  } else if(r.bst > 0){
+  } else if(r.bst > 0 && r.fuel > 0){
     r.bst -= dt; r.spd = Math.min(mx * r.bstM, r.spd + mx * 1.6 * dt);
   } else r.spd = r.spd > mx ? Math.max(mx, r.spd - mx * 0.6 * dt) : Math.min(mx, r.spd + mx / 2.4 * dt);
   const d = r.spd * dt, z0 = r.pos + PZ;
   r.pos += d;
-  r.fuel = Math.max(0, r.fuel - d * fuelUse(r));
+  r.fuel = Math.max(0, r.fuel - d * fuelUse(r)); if(r.fuel <= 0) r.bst = 0;
   if(r.fuel <= 0 && !r.cpu && !r.fuelMsg){ r.fuelMsg = 1; msg(r, 'ねんりょう ぎれ！ピットへ'); }
   if(r.fuel > 0.05) r.fuelMsg = 0;
   r.bgx += (T.segs[Math.floor(r.pos / SEG) % T.N].c) * d / SEG * 0.004;
@@ -7179,7 +7186,7 @@ function update(r, dt){
         if(o.t==='chest'){ if(!r.item){ r.item = Math.random() < 0.5 ? 'nitro' : 'send'; r.itemT = 0; if(!r.cpu){ sfx('chest'); msg(r, r.item==='nitro' ? 'ニトロ ゲット！' : 'いたずらカタパルト！'); } } continue; }
         if(o.t==='boost'){ startBoost(r); continue; }
         if(o.t==='crystal'){ if(!r.cpu){ r.cry = (r.cry||0) + 1; sfx('chest'); } continue; }
-        if(o.t==='fuel'){ r.fuel = Math.min(1, r.fuel + 0.4); if(!r.cpu){ sfx('fuel'); msg(r, 'ねんりょう +40%'); } continue; }
+        if(o.t==='fuel'){ r.fuel = Math.min(1, r.fuel + 0.2); if(!r.cpu){ sfx('fuel'); } continue; }
         if(r.bst > 0){   // v27.0：かそく中は 障害物を はじき とばす（ロス なし）
           o.knock = G.t; o.kdir = (o.x >= r.x ? 1 : -1); if(o.v) o.v = 0;
           if(!r.cpu){ sfx(o.t==='slow' ? 'bang' : 'bump'); msg(r, o.t==='slow' ? 'どかーん！' : 'はじいた！'); }
@@ -7200,11 +7207,11 @@ function update(r, dt){
   r.fx += dt; if(r.shake > 0) r.shake -= dt;
   /* しゅうかい */
   const dist = r.pos + PZ, lap = Math.floor(dist / T.len);
-  if(dist >= tot){ r.done = true; r.pos = tot - PZ; r.spd = 0; if(!r.cpu) { msg(r, 'ゴール！'); sfx('goal'); } return; }
+  if(dist >= tot){ r.bst = 0; r.done = true; r.pos = tot - PZ; r.spd = 0; if(!r.cpu) { msg(r, 'ゴール！'); sfx('goal'); } return; }
   if(lap > r.lap){
     r.lap = lap;
-    const wantPit = r.cpu ? r.fuel < 0.62 : r.pitReq;
-    if(wantPit && lap < LAPS){ r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu){ sfx('pitIn'); pitOpen(); } }
+    const wantPit = r.cpu ? r.fuel < (LAPS - lap) * fuelUse(r) * T.len - 0.12 : r.pitReq;   /* v27.2：CPUは のこりの 周に たりない ときだけ ピット */
+    if(wantPit && lap < LAPS){ r.bst = 0; r.inPit = true; r.pitT = 0; r.fuel0 = r.fuel; r.pitMax = pitTime(r); r.pitReq = false; if(!r.cpu){ sfx('pitIn'); pitOpen(); } }
     else if(!r.cpu){ msg(r, lap === LAPS - 1 ? 'ファイナルラップ！' : `${lap + 1}しゅうめ`); sfx(lap === LAPS - 1 ? 'final' : 'lap'); }
     if(!r.cpu && lap === LAPS - 1) music('rc_final', true);
   }
@@ -7305,8 +7312,17 @@ function draw(r, cv){
       if(OB[o.t].pick || o.t==='chest'){   /* アイテムは ふわふわ うかぶ ＋ かげ */
         const wd = OB[o.t].w * p.W, x0 = p.X + o.x * p.W, up = (0.35 + 0.12 * Math.sin(G.t * 6 + o.z)) * wd;
         if(p.Y < p.clip + 2){ c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(x0, p.Y - 1, wd * 0.42, wd * 0.1, 0, 0, Math.PI*2); c.fill(); }
-        if(o.t==='crystal' && p.Y - up - wd < p.clip){ c.save(); c.globalAlpha = 0.5; c.fillStyle = '#CFE8FF'; c.beginPath(); c.arc(x0, p.Y - up - wd*0.5, wd*0.75, 0, Math.PI*2); c.fill(); c.restore(); }
+        /* v27.2：アイテムは 色つきの 光の わ ＋ まわる キラキラ（障害物には つかない） */
+        const cy0 = p.Y - up - wd * 0.5, gc = {chest:'255,214,90', fuel:'120,230,140', crystal:'170,210,255'}[o.t] || '255,230,140';
+        if(cy0 - wd < p.clip && wd > 3){
+          const pul = 0.75 + 0.25 * Math.sin(G.t * 7 + o.z), g = c.createRadialGradient(x0, cy0, wd * 0.15, x0, cy0, wd * 0.95 * pul);
+          g.addColorStop(0, `rgba(${gc},.75)`); g.addColorStop(.6, `rgba(${gc},.3)`); g.addColorStop(1, `rgba(${gc},0)`);
+          c.fillStyle = g; c.beginPath(); c.arc(x0, cy0, wd * 0.95 * pul, 0, Math.PI*2); c.fill();
+          c.save(); c.strokeStyle = `rgba(${gc},.95)`; c.lineWidth = Math.max(1.5, wd * 0.05); c.beginPath(); c.arc(x0, cy0, wd * 0.72, 0, Math.PI*2); c.stroke(); c.restore();
+          const st = loadImg('ic_star'); if(ready(st) && wd > 10){ const ss = wd * 0.22;
+            for(let q=0;q<3;q++){ const a = G.t * 2.4 + q * 2.09; c.globalAlpha = 0.6 + 0.4 * Math.sin(G.t * 9 + q); c.drawImage(st, x0 + Math.cos(a) * wd * 0.72 - ss/2, cy0 + Math.sin(a) * wd * 0.72 - ss/2, ss, ss); } c.globalAlpha = 1; } }
         sprite(c, name, x0, p.Y - up, wd, p.clip, false); return; }
+      if(!OB[o.t].flat && p.Y < p.clip + 2){ const wd = OB[o.t].w * p.W; c.fillStyle = 'rgba(30,20,10,.28)'; c.beginPath(); c.ellipse(p.X + o.x * p.W, p.Y - 1, wd * 0.5, wd * 0.11, 0, 0, Math.PI*2); c.fill(); }
       sprite(c, name, p.X + o.x * p.W, p.Y, OB[o.t].w * p.W, p.clip, !!OB[o.t].flat); });
     if(p.i === opSeg && opZ > r.pos + PZ * 1.05 && !op.inPit){
       c.save(); c.globalAlpha = 0.45; sprite(c, op.car.rear, p.X + op.x * p.W, p.Y, 0.42 * op.car.size * (op.car.rs || 1) * p.W, p.clip, false); c.restore(); }
@@ -7386,7 +7402,7 @@ function drawHud(){
    ===================================================================== */
 function useItem(r){
   if(!G || !r.item || r.done || G.t < 0) return;
-  if(r.item === 'nitro'){ if(r.inPit) return; r.item = 0; r.itemT = 0; startBoost(r, 1.2); return; }   // v27.0：すきな ときに かそく
+  if(r.item === 'nitro'){ if(r.inPit || r.fuel <= 0) return; r.item = 0; r.itemT = 0; startBoost(r, 1.2); return; }   // v27.0：すきな ときに かそく
   const op = r === G.me ? G.cp : G.me; if(op.done) return;
   r.item = 0; r.itemT = 0;
   const base = op.pos + PZ + SEG * 24, lanes = [0,1,2].sort(() => Math.random() - .5);
