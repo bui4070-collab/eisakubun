@@ -1013,3 +1013,13 @@ body.rcOpen #bnav,body.rcRacing #bnav{display:none!important}
    v26.3 レース場：ごほうびの 車の ひとこと
    ===================================================================== */
 .rcCarNote{text-align:center;color:#9CE8B0!important;font-weight:900!important;font-size:12px!important}
+
+/* =====================================================================
+   v27.0 レース場：かそくブースター・ねんりょう・アイテム 2しゅ・あいての 車
+   ===================================================================== */
+.rvItemBtn .rvChest{object-fit:contain}
+.rvItemBtn[data-k="nitro"] .rvSlot{filter:drop-shadow(0 0 12px rgba(90,170,255,.95))}
+.rvItemBtn[data-k="nitro"] small{background:#5AB0FF;color:#fff}
+.rvItemBtn[data-k="send"] small{background:#FFB347;color:#5A3A00}
+.rv.bst .rvHud{filter:drop-shadow(0 0 6px rgba(255,220,90,.9))}
+.rv.bst .rvMsg{-webkit-text-stroke-color:#E08E1E}

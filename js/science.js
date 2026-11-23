@@ -6634,6 +6634,8 @@ function sfx(k){
     case 'lap':   [659, 784, 1047].forEach((f, i) => tone(c, f, t + i*.08, .14, 'triangle', .07)); break;
     case 'final': [784, 784, 784, 1047].forEach((f, i) => tone(c, f, t + i*.12, i===3 ? .4 : .1, 'square', .06)); break;
     case 'goal':  [523, 659, 784, 1047, 1319].forEach((f, i) => tone(c, f, t + i*.09, .3, 'triangle', .08)); noise(c, t + .45, .6, .08, 0, 3000); break;
+    case 'boost': tone(c, 300, t, .5, 'sawtooth', .07, 1200); noise(c, t, .5, .14, 0, 1500); break;
+    case 'bang':  noise(c, t, .3, .35, 1600); tone(c, 520, t, .2, 'square', .06, 180); break;
     case 'pro':   [392, 523, 659, 784].forEach((f, i) => tone(c, f, t + i*.1, .3, 'sawtooth', .04)); break;
   }
 }
@@ -6689,6 +6691,12 @@ CARS.prize_zoo   = {rear:'car_r_prize_zoo',   spd:1.05, size:1.06, tough:1.18, f
 CARS.prize_aq    = {rear:'car_r_prize_aq',    spd:1.04, size:0.92, tough:1.10, fuel:0.92, rs:0.88, note:'ちいさくて よけやすい！'};
 CARS.prize_fish  = {rear:'car_r_prize_fish',  spd:1.03, size:1.02, tough:1.15, fuel:0.82, rs:0.95, note:'ねんりょうが へりにくい！'};
 CARS.prize_cyber = {rear:'car_r_prize_cyber', spd:1.06, size:1.10, tough:1.22, fuel:0.95, rs:1.0, armor:0.1, note:'くるま いがいの 障害物は ほとんど へっちゃら！'};
+/* v27.0：かそくの うら数値（画面には 出さない）… bm＝かそくの はやさ／bt＝つづく 時間（秒）
+   かるい 車ほど ぐんと かそく、大きな 車は ながく つづく。うんてんが 高いほど どちらも のびる */
+const BOOSTX = {kei:[1.12,0.95], keiwagon:[1.12,0.95], sedan:[1.0,1.0], wagon:[1.02,1.02], crossover:[0.98,1.06], minivan:[0.95,1.12], suv:[0.98,1.10],
+  ev:[1.10,0.92], camper:[0.92,1.18], sports:[1.0,0.95], rally:[1.04,1.0], sci_delorean:[1.06,1.0], prize_zoo:[1.0,1.06], prize_aq:[1.10,0.95], prize_fish:[1.0,1.05], prize_cyber:[0.97,1.10]};
+const boostOf = r => { const x = BOOSTX[r.carKey] || (String(r.carKey).startsWith('sci_car') ? [1.08,0.98] : [1,1]), d = effDrive(r);
+  return {m:(1.30 + d * 0.0012) * x[0], t:(1.3 + d * 0.004) * x[1]}; };
 const myCars = () => Object.keys(CARS).map(id => ITEM(id)).filter(it => { try{ return it && ownedCount(it) > 0; }catch(e){ return false; } });
 
 /* ---------- あいての つよさ ---------- */
@@ -6847,7 +6855,7 @@ window.addEventListener('click', e => {
    ===================================================================== */
 const SEG = 200, ROADW = 1200, CAMH = 1000, DEPTH = 1 / Math.tan(50 * Math.PI / 180), PZ = CAMH * DEPTH;
 const LANES = [-0.64, 0, 0.64], LAPS = 3, DRAW = 130;
-const BASE_SPD = SEG * 44;                     // うんてん0・ふつうの 車の さいこう そくど（1秒に 進む きょり）
+const BASE_SPD = SEG * 37;   // v27.0：ぜんたいに すこし おそく（44 → 37）                     // うんてん0・ふつうの 車の さいこう そくど（1秒に 進む きょり）
 const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつく・loss：ロス時間（秒）・kind
   cone:   {w:.17, loss:.8,  kind:'slip'},
   box:    {w:.22, loss:.8,  kind:'slip'},
@@ -6866,7 +6874,10 @@ const OB = {   // w：はば（道の 半分＝1）・flat：地面に はりつ
   leaves: {w:.42, loss:1.0, kind:'slide', flat:1}
 };
 OB.chest = {w:.30, loss:0, kind:'item'};
-const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle', chest:'it_chest',
+/* v27.0：かそくブースター（ふむと かそく）・ねんりょう */
+OB.boost = {w:.42, loss:0, kind:'boost', flat:1, pick:1};
+OB.fuel  = {w:.26, loss:0, kind:'fuel', pick:1};
+const OB_IMG = {cone:'ob_cone', box:'ob_box', hole:'ob_hole', oil:'ob_oil', barrier:'ob_barrier', puddle:'ob_puddle', chest:'it_chest', boost:'ob_boost', fuel:'it_fuelcan',
   log:'ob_log', rock:'ob_rock', ice:'ob_ice', snowman:'ob_snowman', ball:'ob_ball', sand:'ob_sand', drum:'ob_drum', leaves:'ob_leaves'};
 const SC = {sc_tree:1.25, sc_pine:1.05, sc_maple:1.25, sc_bush:.8, sc_house:1.25, sc_fence:.75, sc_lamp:.32, sc_flag:.6, ic_pump:.5,
   sc_palm:1.35, sc_umbrella:.9, sc_snowpine:1.1, sc_snowhouse:1.25, sc_building:1.6, sc_nlamp:.34, sc_digger:1.3, sc_works:1.0};
@@ -6955,6 +6966,12 @@ function genObstacles(seed, cid){
       if(rnd() < 0.28 && t!=='slow'){ const l2 = (lane + 1 + ((rnd()*2)|0)) % 3; L.push({t:small[(rnd()*small.length)|0], x:LANES[l2], z:z + SEG*2, hit:false, v:0}); }
       i += 26 + ((rnd()*26)|0) - lap*3;
     }
+    /* v27.0：かそくブースター 1しゅうに 4こ・ねんりょう 1こ（障害物と かさならない 車線に） */
+    const put = (t, f) => { const i2 = Math.floor(T.N * f) + ((rnd()*14)|0), z = (lap*T.N + i2) * SEG;
+      const busy = new Set(L.filter(o => Math.abs(o.z - z) < SEG*5).map(o => o.x));
+      const free = LANES.filter(x => !busy.has(x)); if(free.length) L.push({t, x:free[(rnd()*free.length)|0], z, hit:false, v:0}); };
+    [0.14, 0.38, 0.62, 0.86].forEach(f => put('boost', f));
+    put('fuel', 0.70 + rnd()*0.1);
     /* 宝箱：1しゅうに 3こ（障害物と かさならない 車線に） */
     [0.22, 0.52, 0.8].forEach(f => { const i2 = Math.floor(T.N * f) + ((rnd()*20)|0), z = (lap*T.N + i2) * SEG;
       const busy = new Set(L.filter(o => Math.abs(o.z - z) < SEG*6).map(o => o.x));
@@ -6966,7 +6983,7 @@ function genObstacles(seed, cid){
 /* ---------- 1人ぶんの ようす ---------- */
 function makeRacer(o){
   return Object.assign({pos:0, x:LANES[1], lane:1, spd:0, fuel:1, lap:0, done:false, time:0, stun:0, kind:'', fx:0, steer:0,
-    pitReq:false, pitT:0, pitMax:0, inPit:false, bgx:0, shake:0, item:0, itemT:0, hits:0, qOk:0, qN:0}, o);
+    pitReq:false, pitT:0, pitMax:0, inPit:false, bgx:0, shake:0, item:0, itemT:0, hits:0, qOk:0, qN:0, bst:0, bstM:1, bstN:0}, o);
 }
 const effDrive = r => Math.min(200, r.drive);
 /* v25：車と うんてんの 差を 大きく
@@ -6974,7 +6991,8 @@ const effDrive = r => Math.min(200, r.drive);
    ・ぶつかった ロス：うんてん 200 で 約3わり、タフな 車ほど さらに へる
    ・よこ移動：うんてん 200 で 2倍以上、小さい 車ほど はやい／あたり はんていも 車の 大きさで かわる */
 const carK = (v, k) => 1 + (v - 1) * k;
-const maxSpd = r => BASE_SPD * carK(r.car.spd, 3) * (1 + effDrive(r) * 0.0025) * (r.fuel <= 0 ? 0.38 : 1);
+/* v27.0：うんてんが 高いほど 車の 差を うめられる（うんてん 200 で 車の スピード差は 約7%に ちぢむ）。どの 車でも うまく 走れば ハヤテに かてる */
+const maxSpd = r => BASE_SPD * carK(r.car.spd, 2.4 * Math.max(0.09, 1 - effDrive(r) / 215)) * (1 + effDrive(r) * 0.0025) * (r.fuel <= 0 ? 0.38 : 1);
 const sideSpd = r => (2.0 + effDrive(r) / 70) / carK(r.car.size, 2.5);
 const hitW = r => 0.2 * carK(r.car.size, 2.5);
 /* v26.3：ステンレス トラック（armor）… 車いがいの 障害物は ほとんど えいきょうを うけない（おそい車は ふつうに ぶつかる） */
@@ -6983,6 +7001,10 @@ const lossOf = (r, o) => OB[o.t].loss * Math.max(0.28, 1 - effDrive(r) / 280) / 
 const fuelUse = r => 0.6 / G.T.len * (1 - effDrive(r) * 0.0025) * carK(r.car.fuel, 2);   // 1周で 60%（うんてん 200 で 半分）
 const pitTime = r => r.cpu ? r.cpuDef.pit : 7 - effDrive(r) / 40;
 
+function startBoost(r, t){
+  const b = boostOf(r); r.bst = Math.max(r.bst, b.t * (t || 1)); r.bstM = b.m; r.bstN++; r.stun = 0; r.kind = '';
+  if(!r.cpu){ sfx('boost'); msg(r, 'ブースト！'); try{ navigator.vibrate && navigator.vibrate(30); }catch(e){} }
+}
 /* ---------- 画面 ---------- */
 let G = null;
 function raceRoot(){
@@ -7019,7 +7041,7 @@ function startRace(item, drv, cdef, keep){
   const me = makeRacer({name:drv.name, pic:resPic(drv), drive:drvVal(drv), car:CARS[item.id], carKey:item.id, obs:genObstacles(seed, cid)});
   const cp = makeRacer({name:cdef.k==='pro' ? PRO.name : `★${cdef.k}`, pic:cdef.k==='pro' ? proPic() : img(cdef.helm,'rvHelm'), drive:cdef.drive, car:CARS[cpuCarKey], carKey:cpuCarKey, cpu:true, cpuDef:cdef, obs:genObstacles(seed, cid), seen:new Map()});
   [me, cp].forEach(r => { loadImg(r.car.rear); });
-  ['bg_pit','bg_result','rb_pitquiz','lb_spd','it_chest','ic_warn',T.C.hz,'ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_flag','ic_pump','sc_lamp'].concat(T.C.trees, T.C.side, T.C.obs.map(t => OB_IMG[t]).filter(Boolean))
+  ['bg_pit','bg_result','rb_pitquiz','lb_spd','it_chest','ic_warn','ob_boost','it_fuelcan','it_nitro','it_catapult','fx_bang','fx_puff',T.C.hz,'ic_star','ob_cone','ob_box','ob_hole','ob_oil','ob_barrier','ob_puddle','sc_flag','ic_pump','sc_lamp'].concat(T.C.trees, T.C.side, T.C.obs.map(t => OB_IMG[t]).filter(Boolean))
     .concat(Object.values(CARS).map(c => c.rear)).forEach(loadImg);
   const el = raceRoot();
   el.className = 'show';
@@ -7134,7 +7156,9 @@ function update(r, dt){
     const lim = r.kind==='crash' ? 0 : r.kind==='spin' ? mx * 0.25 : mx * 0.45;
     r.spd = Math.max(lim, r.spd - mx * 2.2 * dt);
     if(r.stun <= 0) r.kind = '';
-  } else r.spd = Math.min(mx, r.spd + mx / 2.4 * dt);
+  } else if(r.bst > 0){
+    r.bst -= dt; r.spd = Math.min(mx * r.bstM, r.spd + mx * 1.6 * dt);
+  } else r.spd = r.spd > mx ? Math.max(mx, r.spd - mx * 0.6 * dt) : Math.min(mx, r.spd + mx / 2.4 * dt);
   const d = r.spd * dt, z0 = r.pos + PZ;
   r.pos += d;
   r.fuel = Math.max(0, r.fuel - d * fuelUse(r));
@@ -7150,7 +7174,14 @@ function update(r, dt){
     if(o.z >= z0 - (o.v ? SEG : 0) && o.z <= z1 + (o.v ? SEG*0.4 : 0)){
       if(Math.abs(o.x - r.x) < (OB[o.t].w * 0.5 + hitW(r))){
         o.hit = true; const ob = OB[o.t];
-        if(o.t==='chest'){ if(!r.item){ r.item = 1; r.itemT = 0; if(!r.cpu){ sfx('chest'); msg(r, 'たからばこ！'); } } continue; }
+        if(o.t==='chest'){ if(!r.item){ r.item = Math.random() < 0.5 ? 'nitro' : 'send'; r.itemT = 0; if(!r.cpu){ sfx('chest'); msg(r, r.item==='nitro' ? 'ニトロ ゲット！' : 'いたずらカタパルト！'); } } continue; }
+        if(o.t==='boost'){ startBoost(r); continue; }
+        if(o.t==='fuel'){ r.fuel = Math.min(1, r.fuel + 0.4); if(!r.cpu){ sfx('fuel'); msg(r, 'ねんりょう +40%'); } continue; }
+        if(r.bst > 0){   // v27.0：かそく中は 障害物を はじき とばす（ロス なし）
+          o.knock = G.t; o.kdir = (o.x >= r.x ? 1 : -1); if(o.v) o.v = 0;
+          if(!r.cpu){ sfx(o.t==='slow' ? 'bang' : 'bump'); msg(r, o.t==='slow' ? 'どかーん！' : 'はじいた！'); }
+          continue;
+        }
         if(armored(r, o)){   // v26.3：はじき飛ばす（ごく みじかい ガタンだけ）
           r.stun = lossOf(r, o); r.kind = 'bump'; r.fx = 0.55; r.shake = 0.08;
           if(!r.cpu){ sfx('bump'); msg(r, 'へっちゃら！'); }
@@ -7179,9 +7210,14 @@ function cpuThink(r){
   if(r.stun > 0 && r.kind==='spin') return;
   const look = SEG * (8 + 26 * r.cpuDef.look), z = r.pos + PZ;
   const ahead = r.obs.filter(o => !o.hit && o.z > z && o.z < z + look);
-  const danger = lane => ahead.some(o => Math.abs(o.x - LANES[lane]) < OB[o.t].w * 0.5 + 0.22 && (o.z - z) < look);
-  const near = ahead.find(o => Math.abs(o.x - LANES[r.lane]) < OB[o.t].w * 0.5 + 0.22);
-  if(!near) return;
+  const danger = lane => ahead.some(o => !OB[o.t].pick && o.t!=='chest' && Math.abs(o.x - LANES[lane]) < OB[o.t].w * 0.5 + 0.22 && (o.z - z) < look);
+  const near = ahead.find(o => !OB[o.t].pick && o.t!=='chest' && Math.abs(o.x - LANES[r.lane]) < OB[o.t].w * 0.5 + 0.22);
+  if(!near){   /* v27.0：ブースター・ねんりょうを ねらう（つよい ほど よく ねらう） */
+    const goal = ahead.find(o => (o.t==='boost' || (o.t==='fuel' && r.fuel < 0.7)) && (o.z - z) < SEG * 18);
+    if(goal && !r.seen.has(goal)) r.seen.set(goal, Math.random() < r.cpuDef.look * 0.75);
+    if(goal && r.seen.get(goal)){ const gl = LANES.indexOf(goal.x); if(gl >= 0 && gl !== r.lane && !danger(gl) && Math.abs(gl - r.lane) === 1) r.lane = gl; }
+    return;
+  }
   if(!r.seen.has(near)) r.seen.set(near, Math.random() < r.cpuDef.look);   // つよい ほど 気づく
   if(!r.seen.get(near)) return;
   const opts = [r.lane - 1, r.lane + 1].filter(l => l >= 0 && l <= 2 && !danger(l));
@@ -7246,14 +7282,31 @@ function draw(r, cv){
   }
   /* けしき・障害物（おくから じゅんに） */
   const zEnd = r.pos + SEG * DRAW;
-  const obs = r.obs.filter(o => !o.hit && o.z > r.pos + PZ * 0.5 && o.z < zEnd);
+  const obs = r.obs.filter(o => (!o.hit || (o.knock != null && G.t - o.knock < 0.7)) && o.z > r.pos + PZ * 0.5 && o.z < zEnd);
+  const op = r === G.me ? G.cp : G.me, opZ = op.pos + PZ, opSeg = Math.floor(opZ / SEG);   // v27.0：あいての 車（すけて 見える）
   for(let n = DRAW - 1; n > 0; n--){
     const p = P[n]; if(!p) continue;
     const s = T.segs[p.i % T.N];
     s.sp.forEach(sp => sprite(c, sp.n, p.X + sp.x * p.W, p.Y, SC[sp.n] * p.W, p.clip, false));
     obs.forEach(o => { const on = Math.floor(o.z / SEG); if(on !== p.i) return;
       const name = o.t==='slow' ? CARS[o.car].rear : OB_IMG[o.t];
+      if(o.knock != null){ const k = (G.t - o.knock) / 0.7;   /* はじき とばされた もの */
+        c.save(); c.globalAlpha = Math.max(0, 1 - k); sprite(c, name, p.X + (o.x + o.kdir * k * 2.2) * p.W, p.Y - k * p.W * 1.2, OB[o.t].w * p.W * (1 + k * .3), h + 999, false, o.kdir * k * 6); c.restore();
+        if(k < 0.4) sprite(c, 'fx_bang', p.X + o.x * p.W, p.Y - OB[o.t].w * p.W * .3, OB[o.t].w * p.W * 1.1, h + 999, false);
+        return; }
       sprite(c, name, p.X + o.x * p.W, p.Y, OB[o.t].w * p.W, p.clip, !!OB[o.t].flat); });
+    if(p.i === opSeg && opZ > r.pos + PZ * 1.05 && !op.inPit){
+      c.save(); c.globalAlpha = 0.45; sprite(c, op.car.rear, p.X + op.x * p.W, p.Y, 0.42 * op.car.size * (op.car.rs || 1) * p.W, p.clip, false); c.restore(); }
+  }
+  /* v27.0：かそく中の 集中線 */
+  if(r.bst > 0 && G.t > 0){
+    const cx0 = w/2, cy0 = hz + (h - hz) * 0.18, R0 = Math.min(w, h) * 0.22, R1 = Math.hypot(w, h);
+    const a0 = Math.min(1, r.bst * 2);
+    c.save(); c.globalAlpha = 0.55 * a0;
+    for(let k=0;k<(ECO ? 18 : 36);k++){ const a = Math.random() * Math.PI * 2, r1 = R0 + Math.random() * R0, wd2 = (2 + Math.random() * 5) * cv._dpr;
+      c.strokeStyle = k % 3 ? '#FFFFFF' : '#FFE27A'; c.lineWidth = wd2;
+      c.beginPath(); c.moveTo(cx0 + Math.cos(a) * r1, cy0 + Math.sin(a) * r1); c.lineTo(cx0 + Math.cos(a) * R1, cy0 + Math.sin(a) * R1); c.stroke(); }
+    c.restore();
   }
   /* じぶんの 車 */
   const car = loadImg(r.car.rear);
@@ -7268,7 +7321,10 @@ function draw(r, cv){
     }
     c.save(); c.translate(w/2, cy + bob);
     c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(0, -2, cw * 0.48, ch * 0.09, 0, 0, Math.PI*2); c.fill();
-    c.rotate(rot); c.drawImage(car, -cw/2, -ch, cw, ch); c.restore();
+    c.rotate(rot); c.drawImage(car, -cw/2, -ch, cw, ch);
+    if(r.bst > 0){ const pf = loadImg('fx_puff'); if(ready(pf)){ const pw = cw * 0.42; c.globalAlpha = 0.8;   /* うしろに けむり */
+      [-1, 1].forEach(sd => c.drawImage(pf, sd * cw * 0.28 - pw/2 + Math.random()*4, -ch * 0.18 + Math.random()*3, pw, pw * pf.naturalHeight / pf.naturalWidth)); c.globalAlpha = 1; } }
+    c.restore();
     const st = loadImg('ic_star');
     if(r.stun > 0 && r.kind==='crash' && ready(st)){ const sz = cw * 0.16;   /* くらくら：星が まわる */
       for(let q=0;q<3;q++){ const a = G.t * 5 + q * 2.1; c.drawImage(st, w/2 + Math.cos(a) * cw * 0.3 - sz/2, cy - ch * 1.05 + Math.sin(a) * ch * 0.08 - sz/2, sz, sz); } }
@@ -7280,11 +7336,12 @@ function draw(r, cv){
   if(r.inPit){ c.fillStyle = 'rgba(20,16,40,.35)'; c.fillRect(0, 0, w, h); }
   c.restore();
 }
-function sprite(c, name, x, y, wd, clip, flat){
+function sprite(c, name, x, y, wd, clip, flat, rot){
   const im = loadImg(name); if(!ready(im) || wd < 1) return;
   const hd = wd * im.naturalHeight / im.naturalWidth * (flat ? 0.55 : 1);
   const top = y - hd; if(top >= clip) return;
   const vis = Math.min(hd, clip - top);
+  if(rot){ c.save(); c.translate(x, y - hd/2); c.rotate(rot); c.drawImage(im, -wd/2, -hd/2, wd, hd); c.restore(); return; }
   c.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight * vis / hd, x - wd/2, top, wd, vis);
 }
 function drawHud(){
@@ -7298,7 +7355,11 @@ function drawHud(){
     if(r.inPit){ pit.querySelector('.rvPitBox b').style.width = Math.round(r.fuel * 100) + '%'; pit.querySelector('small').textContent = `ほきゅう中… ${Math.max(0, r.pitMax - r.pitT).toFixed(1)}びょう`; }
   });
   [['me', G.me], ['cpu', G.cp]].forEach(([k, r]) => { const v = G.el.querySelector('#rv_' + k); if(v) v.classList.toggle('hasItem', !!r.item); });
-  const ib = G.el.querySelector('.rvItemBtn'); if(ib) ib.classList.toggle('on', !!G.me.item && !G.me.done);
+  const ib = G.el.querySelector('.rvItemBtn');
+  if(ib){ ib.classList.toggle('on', !!G.me.item && !G.me.done); const k = G.me.item || '';
+    if(ib.dataset.k !== k){ ib.dataset.k = k; const im2 = ib.querySelector('.rvChest'); if(im2 && k) im2.src = ri(k==='nitro' ? 'it_nitro' : 'it_catapult'); const sm = ib.querySelector('small'); if(sm) sm.textContent = k==='nitro' ? 'かそく！' : 'じゃまする'; } }
+  [['me', G.me], ['cpu', G.cp]].forEach(([k, r]) => { const v = G.el.querySelector('#rv_' + k); if(v){ v.classList.toggle('bst', r.bst > 0);
+    const hd = v.querySelector('.rvHold img'); if(hd && r.item){ const want = ri(r.item==='nitro' ? 'it_nitro' : 'it_catapult'); if(!hd.src.endsWith(want.slice(1))) hd.src = want; } } });
   const pb = G.el.querySelector('.rvPitBtn');
   if(pb){ pb.classList.toggle('req', G.me.pitReq); pb.classList.toggle('need', G.me.fuel < 0.45 && !G.me.pitReq && G.me.lap < LAPS - 1); pb.classList.toggle('off', G.me.lap >= LAPS - 1 || G.me.done); }
   const pm = G.el.querySelector('.rvProg .pm'), pc = G.el.querySelector('.rvProg .pc');
@@ -7312,6 +7373,7 @@ function drawHud(){
    ===================================================================== */
 function useItem(r){
   if(!G || !r.item || r.done || G.t < 0) return;
+  if(r.item === 'nitro'){ if(r.inPit) return; r.item = 0; r.itemT = 0; startBoost(r, 1.2); return; }   // v27.0：すきな ときに かそく
   const op = r === G.me ? G.cp : G.me; if(op.done) return;
   r.item = 0; r.itemT = 0;
   const base = op.pos + PZ + SEG * 24, lanes = [0,1,2].sort(() => Math.random() - .5);
@@ -7514,7 +7576,7 @@ function musicStop(){ MUSK = null; try{ window.__fbgm && window.__fbgm.stop(); }
 try{ const W = window.__bgm643; if(W){ const t0 = W.target; W.target = () => { const v = t0(); const r2 = document.querySelector('#rc2.show'); if(r2) return 0; if(document.querySelector('#rc1.show')) return Math.min(v, .14); return v; }; } }catch(e){}
 document.addEventListener('visibilitychange', () => { if(document.hidden && MUSK) musicStop(); });
 
-window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, sfx, music};
+window.__race = {open, CARS, CPU, R, startRace, dbg:() => G, step:dt => step(dt), sfx, music};
 })();
 
 /* =====================================================================
