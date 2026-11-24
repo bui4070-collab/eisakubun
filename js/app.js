@@ -4541,6 +4541,13 @@ let openBuilding = async function(key){
    住民の おねがい（へんな おねがいを なくす）
    ===================================================================== */
 const REQ_KINDS = ['fur','quiz','study','visit','has'];
+/* v29：ショップで ほんとうに 買える たてものか（ごほうび限定・イベント限定・お店限定・0ptの ものは「おねがい」に しない） */
+function reqSellable(it){
+  if(!it || it.type!=='bld' || it.cat!=='bld' || it.req || it.ev) return false;
+  if(!((it.price||0) > 0)) return false;
+  try{ if(SHOP_ONLY[it.id]) return false; }catch(e){}
+  return true;
+}
 makeReq = function(r){
   const t = save.town, lv = t.lv + 1, H = ensureHome(), opts = [];
   const furs = FURNITURE.filter(f => !f.special && f.price <= 700 && (f.lv||1) <= lv + 2);
@@ -4548,7 +4555,7 @@ makeReq = function(r){
   opts.push({w:3, f:() => ({kind:'quiz', id:'quiz', pt:80})});
   opts.push({w:2, f:() => ({kind:'study', id:'study', day:dayKey(), base:(save.days[dayKey()]||{n:0}).n, pt:70})});
   if(r.home && r.home!=='me') opts.push({w:2, f:() => ({kind:'visit', id:'visit', pt:60})});
-  const blds = TOWN_ITEMS.filter(it => it.type==='bld' && it.cat==='bld' && !it.req && (it.lv||1) <= lv && !placedCount(it.id) && it.price <= Math.max(600, save.points.earned/10));
+  const blds = TOWN_ITEMS.filter(it => reqSellable(it) && (it.lv||1) <= lv && !placedCount(it.id) && it.price <= Math.max(600, save.points.earned/10));   // v29：ショップで 買える たてものだけ
   if(blds.length) opts.push({w:1, f:() => { const it = choice(blds); return {kind:'has', id:it.id, base:0, target:1, pt:Math.round((80 + it.price*0.2)/10)*10}; }});
   let s = Math.random() * opts.reduce((a,o) => a+o.w, 0);
   for(const o of opts){ s -= o.w; if(s <= 0) return Object.assign(o.f(), {rid:r.id, at:Date.now()}); }
@@ -4573,7 +4580,7 @@ reqText = function(q){
 };
 const reqPic = q => q.kind==='fur' ? `<img src="${esc(artSrc(FUR(q.id)?.art))}" alt="">` : q.kind==='quiz' ? `<img src="${esc(artSrc('ui_bulb'))}" alt="">`
   : q.kind==='study' ? `<img src="${esc(artSrc('ui_study'))}" alt="">` : q.kind==='visit' ? `<img src="${esc(artSrc('ui_myhome'))}" alt="">` : picHTML(ITEM(q.id)||{emoji:'🏠'});
-function reqClean(){ const D = reqData(); D.list = D.list.filter(q => REQ_KINDS.includes(q.kind) && !(q.kind==='has' && q.target > 1) && (q.kind!=='fur' || FUR(q.id))); }
+function reqClean(){ const D = reqData(); D.list = D.list.filter(q => REQ_KINDS.includes(q.kind) && !(q.kind==='has' && q.target > 1) && (q.kind!=='fur' || FUR(q.id)) && (q.kind!=='has' || reqSellable(ITEM(q.id)))); }   // v29：すでに 出ている 売っていない たてものの おねがいも けす
 renderReqPanel = function(){
   const box = $('#reqPanel'); if(!box) return; reqClean();
   const D = reqData(), t = save.town;
@@ -8506,7 +8513,7 @@ misEv = function(ev, k=1){ if(ev==='prog'){ save.history.push({d:Date.now(), mod
    ===================================================================== */
 /* ---------- 漢字テスト：えらんだ 漢字を のこす ---------- */
 const kata2hira = s => String(s||'').replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
-let tselQ = '';
+let tselQ = '', tselComposing = false;
 function tselSave(){ save.tselSaved = save.tselSaved || {}; save.tselSaved[save.menu.kind] = [...tsel]; persist(); }
 function tselLoad(){ const S = (save.tselSaved||{})[save.menu.kind] || []; tsel = new Set(S.filter(k => tselMap.has(k))); }
 openTestSelect = function(){ buildTselMap(); tselLoad(); tselTab = tsel.size ? 'sel' : 'all'; tselQ = ''; renderTsel(); show('tsel'); };
@@ -8525,11 +8532,14 @@ renderTsel = function(){
   $('#tselTabs').insertAdjacentHTML('afterbegin', `<button data-v="sel" class="${tselTab==='sel'&&!tselQ?'on':''}">✅ えらんだ漢字（${tsel.size}）</button>` + (last ? `<button data-v="last" class="${tselTab==='last'&&!tselQ?'on':''}">🕘 まえの テスト（${last}）</button>` : ''));
   if(tselQ) $$('#tselTabs button').forEach(b => b.classList.remove('on'));
   if(!$('#tselSearch')) $('.tselHead').insertAdjacentHTML('afterbegin', `<div class="tselSearch"><input id="tselSearch" placeholder="🔍 漢字・ことば・よみで さがす（れい：安、やす、がっき）" autocomplete="off"><button class="btn small white" id="tselClr">✕</button></div>`);
-  $('#tselSearch').value = tselQ;
+  { const si = $('#tselSearch'); if(si && !tselComposing && si.value !== tselQ) si.value = tselQ; }   // v29：変換中に value を 書きかえない（ローマ字・ひらがなが ふえる バグ）
   if(tselQ && !visibleKanji().length) $('#kgrid').innerHTML = `<div class="note" style="grid-column:1/-1;padding:20px;text-align:center">「${esc(tselQ)}」は 見つからなかったよ</div>`;
   tselSave();
 };
-document.addEventListener('input', e => { if(e.target.id!=='tselSearch') return; tselQ = e.target.value; const pos = e.target.selectionStart; renderTsel(); const i = $('#tselSearch'); i.focus(); try{ i.setSelectionRange(pos,pos); }catch(_){} });
+/* v29：日本語入力（IME）の 変換中は けんさくを しない。かくていした ときに だけ けんさく する */
+document.addEventListener('compositionstart', e => { if(e.target.id==='tselSearch') tselComposing = true; });
+document.addEventListener('compositionend', e => { if(e.target.id!=='tselSearch') return; const el = e.target; tselComposing = false; setTimeout(() => { if(tselComposing) return; tselQ = el.value; renderTsel(); }, 0); });
+document.addEventListener('input', e => { if(e.target.id!=='tselSearch') return; if(e.isComposing || tselComposing) return; tselQ = e.target.value; renderTsel(); });
 document.addEventListener('click', e => {
   if(e.target.closest('#tselClr')){ tselQ = ''; renderTsel(); return; }
   const b = e.target.closest('#tselTabs button'); if(b){ tselQ = ''; }
