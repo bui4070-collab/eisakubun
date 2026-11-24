@@ -1,5 +1,7 @@
 /* =====================================================================
-   まなびタウン v31.0：ランドマークタワー STEP1＋STEP2（スカイラウンジ）
+   まなびタウン v32.0：ランドマークタワー STEP1〜3（ロビー・スカイラウンジ・展望デッキ）
+   ・STEP3：展望デッキ（★2）… 双眼鏡で まちさがし（60秒で 3もん・1日1かい）／夜景フォト（1日3まい・アルバム）／流れ星（夜だけ・1日3かい）
+            BGM「夜空のピアノ」ほしぞら版（ハープ・ビブラフォン 多め）
    ・STEP2：スカイラウンジ（★1）… ピアノ リクエスト／住民の 来店（1日3〜4人）／モクテルの ちゅうもん（わりあい・計算の 問題 1日3かい）
             BGM「夜空のピアノ」ラウンジ版（28小節・約60秒）
    ----------------------------------------------------------------------
@@ -16,6 +18,7 @@ const ID = 'landmark', IMG = './assets/images/landmark/';
 const im = n => IMG + n + '.webp';
 const now = () => Date.now();
 ['lm_tower','lm_tower_l','lm_lobby','lm_bird_wave','lm_bird_bow','lm_bird_gift','ic_lm_elev','ic_lm_music','ic_lm_camera','ic_lm_gift','ic_lm_lock',
+  'lm_deck','lm_townview','lm_bird_scope','lm_bird_cam','lm_bird_wish','ic_lm_scope','ic_lm_album','lm_shootstar','lm_polaroid','lm_wishmedal',
   'lm_lounge','lm_bird_piano','lm_glass_lemon','lm_glass_orange','lm_glass_berry','lm_glass_grape','lm_fr_lemon','lm_fr_orange','lm_fr_berry','lm_fr_grape','lm_cup','ic_lm_score','ic_lm_shaker']
   .forEach(k => { try{ DEFAULT_ART[k] = im(k); }catch(e){} });
 
@@ -23,7 +26,8 @@ const now = () => Date.now();
 function D(){
   const d = save.lm || (save.lm = {});
   d.day = d.day || ''; d.talk = d.talk || {}; d.got = d.got || 0;
-  if(d.day !== dayKey()){ d.day = dayKey(); d.talk = {}; d.gift = false; d.talkL = {}; d.mk = 0; }
+  if(d.day !== dayKey()){ d.day = dayKey(); d.talk = {}; d.gift = false; d.talkL = {}; d.mk = 0; d.hunt = 0; d.shot = 0; d.wish = 0; }
+  d.album = d.album || []; d.hunt = d.hunt || 0; d.shot = d.shot || 0; d.wish = d.wish || 0;
   d.talkL = d.talkL || {}; d.mk = d.mk || 0; d.mkOk = d.mkOk || 0;
   return d;
 }
@@ -33,7 +37,7 @@ const grade = () => cellsOf().reduce((a, k) => Math.max(a, (save.town.glv || {})
 /* ---------- フロア ---------- */
 /* z：タワーの 絵の 上の タッチ範囲（％：left, top, width, height）… lm_tower.webp（2:3） */
 const FLOORS = [
-  {id:'deck',     n:'展望デッキ',     s:'屋上',  g:2, step:3, z:[24, 12, 52, 11], c:'#9FB8FF', d:'双眼鏡で まちさがし・夜景フォト・流れ星'},
+  {id:'deck',     n:'展望デッキ',     s:'屋上',  g:2, step:1, z:[24, 12, 52, 11], c:'#9FB8FF', d:'双眼鏡で まちさがし・夜景フォト・流れ星'},
   {id:'lounge',   n:'スカイラウンジ', s:'上層',  g:1, step:1, z:[29, 27, 42, 15], c:'#F3C76A', d:'ピアノ リクエスト・住民の 来店・モクテル'},
   {id:'boutique', n:'ブティック',     s:'中層',  g:0, step:4, z:[29, 47, 42, 14], c:'#F0A6C0', d:'タワー限定の 家具・衣装・フォト こうかん'},
   {id:'lobby',    n:'ロビー',         s:'1F',    g:0, step:1, z:[30, 66, 40, 21], c:'#E9D38E', d:'コンシェルジュ・きょうの ごほうび・住民と おはなし'}
@@ -121,17 +125,18 @@ const PART_C = [
 const OUTRO = [['o',['Abmaj7'],[[0,79,2],[2,75,2]]], ['o',['Gm7'],[[0,77,2],[2,74,2]]], ['o',['Fm7','Bb7'],[[0,72,1],[1,74,1],[2,77,2]]], ['o',['Ebmaj9'],[[0,75,4]]]];
 const TRACKS = {
   quiet:{t:'夜空のピアノ', sub:'しずかな バージョン', bpm:112, bars:INTRO.concat(PART_A)},
-  full: {t:'夜空のピアノ', sub:'ラウンジ バージョン', bpm:112, bars:INTRO.concat(PART_A, PART_B, PART_C, OUTRO)}
+  full: {t:'夜空のピアノ', sub:'ラウンジ バージョン', bpm:112, bars:INTRO.concat(PART_A, PART_B, PART_C, OUTRO)},
+  deck: {t:'夜空のピアノ', sub:'ほしぞら バージョン', bpm:96, bars:INTRO.concat(PART_A, OUTRO), dk:1}
 };
 /* 小節 → イベント */
-function barsToEv(bars){
+function barsToEv(bars, dk){
   const ev = [], E = (b, k, m, d, v) => ev.push({b, k, m, d, v});
   bars.forEach(([sec, chs, mel], i) => {
     const b0 = i * 4, per = 4 / chs.length, big = sec === 'c', mid = sec === 'b', aa = sec === 'a' || sec === 'a2';
     chs.forEach((c, j) => {
       const v = CH[c], r = ROOT[c], bt = b0 + j * per;
       if(sec === 'in' || sec === 'o'){
-        v.concat([v[0] + 12, v[1] + 12]).forEach((m, q) => E(bt + q * .5 * (per / 4), 'pf', m, 1.5, sec === 'o' ? .12 : .15));
+        v.concat([v[0] + 12, v[1] + 12]).forEach((m, q) => E(bt + q * .5 * (per / 4), dk ? 'hp' : 'pf', m, 1.5, sec === 'o' ? .12 : dk ? .18 : .15));
         if(j === 0) E(bt, 'vb', v[3] + 12, 2, .07);
         if(sec === 'o') E(bt, 'cb', r, per * .9, .22);
         return;
@@ -144,13 +149,14 @@ function barsToEv(bars){
       E(bt, 'cb', r, .8, big ? .46 : .4); E(bt + (per > 2 ? 2 : 1), 'cb', r + 7, .7, big ? .34 : .28);
       if(per > 2){ E(bt + 1, 'cb', r + 4, .6, .2); E(bt + 3, 'cb', r + 5, .6, .2); }
       /* のばす 音：A2 から ストリングス、サビで ホルン */
-      if(sec === 'a2' || mid || big){ E(bt, 'vn', v[3] + 12, per, mid ? .07 : big ? .08 : .05); }
+      if(sec === 'a2' || mid || big || dk){ E(bt, 'vn', v[3] + 12, per, mid ? .07 : big ? .08 : .05); }
+      if(dk) v.concat([v[0] + 12]).forEach((m, q) => E(bt + q * (per / 5), 'hp', m + 12, 1, .08));
       if(mid || big) E(bt, 'vc', r + 12, per, .1);
       if(big) E(bt, 'hn', v[1] + 12, per * .9, .1);
     });
     /* メロディー */
     mel.forEach(([b, m, l]) => {
-      E(b0 + b, 'pf', m, l, big ? .32 : .3);
+      E(b0 + b, 'pf', m, l, dk ? .2 : big ? .32 : .3); if(dk){ E(b0 + b, 'vb', m, l, .1); }
       if(big){ E(b0 + b, 'fl', m, l, .12); E(b0 + b, 'sx', m - 12, l, .14); }
       if(sec === 'a2') E(b0 + b, 'vb', m, l, .06);
     });
@@ -159,7 +165,7 @@ function barsToEv(bars){
     /* サビ：トランペットの キメ・グロッケン */
     if(big){ if(i % 2 === 0) E(b0, 'gl', 91 + (i % 4 ? 0 : 3), 1, .07); if(i % 4 === 3){ E(b0 + 3, 'tp', 70, .5, .14); E(b0 + 3.5, 'tp', 75, .5, .16); } }
     /* ドラム：A＝ブラシ風（かるく）／B＝だんだん 強く／サビ＝スティック */
-    if(aa || mid || big){
+    if((aa || mid || big) && !dk){
       for(let q = 0; q < 8; q++) E(b0 + q * .5, 'dr', q % 2 ? 'hhc' : 'hhc', 0, aa ? (q % 2 ? .07 : .11) : big ? (q % 2 ? .14 : .2) : .13);
       E(b0, 'dr', 'kick', 0, aa ? .25 : .5); E(b0 + 2, 'dr', 'kick', 0, aa ? .18 : .42);
       if(!aa){ E(b0 + 1, 'dr', 'snare', 0, mid ? .12 + .05 * (i % 4) : .3); E(b0 + 3, 'dr', 'snare', 0, mid ? .14 + .05 * (i % 4) : .32); }
@@ -208,7 +214,7 @@ function trackOf(key){
     return {t:s.t, sub:'ラウンジ風 アレンジ', bpm, beats:Math.ceil(s.beats) + 4, ev:songEv(s)};
   }
   const T = TRACKS[key] || TRACKS.quiet;
-  return {t:T.t, sub:T.sub, bpm:T.bpm, beats:T.bars.length * 4, ev:barsToEv(T.bars).sort((a, b) => a.b - b.b)};
+  return {t:T.t, sub:T.sub, bpm:T.bpm, beats:T.bars.length * 4, ev:barsToEv(T.bars, T.dk).sort((a, b) => a.b - b.b)};
 }
 function mAC(){
   if(!M.ac){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; M.ac = new C();
@@ -267,7 +273,7 @@ function bgmStart(key){
 function bgmStop(){
   if(!M.on) return; M.on = false; clearInterval(M.timer); dropTrack(); M.key = ''; paintMusic();
 }
-function wantKey(){ if(!V) return 'quiet'; if(V.view === 'lounge') return V.req ? 'song:' + V.req : 'full'; return 'quiet'; }
+function wantKey(){ if(!V) return 'quiet'; if(V.view === 'lounge') return V.req ? 'song:' + V.req : 'full'; if(V.view === 'deck') return 'deck'; return 'quiet'; }
 function syncBgm(){ if(M.on && M.key !== wantKey()) bgmStart(wantKey()); }
 document.addEventListener('visibilitychange', () => { if(!V) return; if(document.hidden) bgmStop(); else bgmStart(); });
 /* まちの BGM は タワーの 中では ながさない */
@@ -282,6 +288,9 @@ let V = null;   // {view:'top'|'lobby', key, elev}
 function root(){
   let el = document.getElementById('lm');
   if(!el){ el = document.createElement('div'); el.id = 'lm'; document.body.appendChild(el); el.addEventListener('click', onClick);
+    el.addEventListener('pointerdown', e => { if(e.target.closest('#lmHuntMap') && !e.target.closest('.lmHuntP')) huntMove(e); });
+    el.addEventListener('pointermove', e => { if(e.target.closest('#lmHuntMap') && (e.buttons || e.pointerType === 'touch')) huntMove(e); });
+    el.addEventListener('touchmove', e => { if(e.target.closest('#lmHuntMap')){ e.preventDefault(); huntMove(e); } }, {passive:false});
     let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if(V) render(); }, 150); }); }
   return el;
 }
@@ -441,9 +450,164 @@ function vMk(){
     <div class="lmMkOpts">${Q.o.map((o, i) => `<button class="lmMkO" data-l="mka:${i}">${esc(o.t)}</button>`).join('')}</div>
     <p class="lmNote">きょう あと ${MK_MAX - D().mk}かい（せいかいで 60pt・なかよし度 +1）</p></div></div>`;
 }
+/* ====================================================================
+   展望デッキ（★2）
+   ==================================================================== */
+const HUNT_SEC = 60, HUNT_Q = 3, SHOT_MAX = 3, WISH_MAX = 3, ALBUM_MAX = 60;
+/* まちの 絵（lm_townview・2:3）の 上の 場所（％） */
+const SPOTS = [
+  {n:'えき',         x:22, y:22}, {n:'かんらんしゃ', x:66, y:15}, {n:'池の はし',   x:66, y:27},
+  {n:'びょういん',   x:86, y:31}, {n:'がっこう',     x:47, y:41}, {n:'ゆうびんきょく', x:82, y:52},
+  {n:'パンやさん',   x:17, y:58}, {n:'ふんすい',     x:51, y:67}, {n:'はなやさん', x:84, y:65},
+  {n:'カフェ',       x:30, y:92}, {n:'としょかん',   x:72, y:89}, {n:'こうえんの ベンチ', x:38, y:71}
+];
+const isNight = () => tod() === 'ngt' || tod() === 'eve';
+function vDeck(){
+  const L = isL(), d = D();
+  const stars = isNight() && d.wish < WISH_MAX ? '<div class="lmSkyFx" id="lmSkyFx"></div>' : '';
+  const stage = `<div class="lmStage deck t-${tod()}"><img class="lmBg" src="${esc(im('lm_deck'))}" alt="" draggable="false"><i class="lmSky"></i>${stars}
+    <img class="lmDeckBird" src="${esc(im('lm_bird_scope'))}" alt="" data-l="hunt"></div>`;
+  const huntLeft = d.hunt ? 0 : 1, shotLeft = SHOT_MAX - d.shot, wishLeft = WISH_MAX - d.wish;
+  const say = !d.hunt ? '双眼鏡で まちを のぞいて、住民を さがしてみませんか？'
+    : isNight() ? (wishLeft > 0 ? '夜空を 見ていてね。流れ星が 来たら すぐ タッチ！' : 'きょうは たくさん ねがいごとが できましたね。')
+    : '夜（ゆうがた〜あさ）に 来ると、流れ星が 見られるかも しれませんよ。';
+  const card = (ic, t, sub, l, on, cls = '') => `<button class="lmDkCard ${on ? 'on' : 'off'} ${cls}" data-l="${l}">${ico(ic)}<span><b>${t}</b><small>${sub}</small></span></button>`;
+  const info = `<div class="lmInfo"><div class="lmInfoHd">${ico('lm_bird_scope', 'lmInfoBird')}<p id="lmSay">${say}</p></div>
+    <div class="lmDkCards">
+      ${card('ic_lm_scope', '双眼鏡で まちさがし', huntLeft ? `${HUNT_SEC}びょうで ${HUNT_Q}もん・1日1かい` : 'きょうは おしまい（また あした）', 'hunt', huntLeft)}
+      ${card('ic_lm_camera', '夜景フォト', `パシャ！ きょう あと ${Math.max(0, shotLeft)}まい`, 'shoot', shotLeft > 0)}
+      ${card('ic_lm_album', 'アルバム', `${d.album.length}まい あつめたよ`, 'album', true)}
+      ${card('lm_shootstar', '流れ星', isNight() ? `ねがいごと あと ${Math.max(0, wishLeft)}かい` : '夜だけ 見られるよ', 'wishInfo', isNight() && wishLeft > 0, 'star')}
+    </div>
+    <div class="lmBtns"><button class="lmB" data-l="music">${ico('ic_lm_music')}<span>${M.on ? 'BGM オン' : 'BGM オフ'}</span></button>
+      <button class="lmB" data-l="elev">${ico('ic_lm_elev')}<span>エレベーター</span></button></div></div>`;
+  return bar('展望デッキ', true) + `<div class="lmBody ${L ? 'lobL' : 'lobP'} dck">${stage}${info}</div>`;
+}
+/* ---------- 流れ星 ---------- */
+let starT = 0;
+function starLoop(){
+  clearTimeout(starT);
+  if(!V || V.view !== 'deck' || !isNight() || D().wish >= WISH_MAX) return;
+  starT = setTimeout(() => {
+    const fx = document.getElementById('lmSkyFx'); if(!fx || V.huntOn || V.wishOn) return starLoop();
+    if(Math.random() < .6){
+      const b = document.createElement('button'); b.className = 'lmStarFall'; b.dataset.l = 'wish';
+      b.style.left = (40 + Math.random() * 45) + '%'; b.style.top = (4 + Math.random() * 22) + '%';
+      b.innerHTML = `<img src="${esc(im('lm_shootstar'))}" alt="流れ星">`;
+      fx.appendChild(b); setTimeout(() => b.remove(), 3200);
+    }
+    starLoop();
+  }, 5000 + Math.random() * 7000);
+}
+async function wish(){
+  const d = D(); if(d.wish >= WISH_MAX) return;
+  document.querySelectorAll('.lmStarFall').forEach(e => e.remove());
+  d.wish++; V.wishOn = true; const pt = 30 + Math.round(Math.random() * 7) * 10;
+  givePts(pt, '展望デッキで 流れ星に ねがいごと'); persist();
+  try{ sound('fan'); confetti(1200); }catch(e){}
+  const W = ['あした いい てんきに なりますように','みんなが なかよく くらせますように','テストで 100てん とれますように','まちが もっと すてきに なりますように','おいしい パンが たべられますように'];
+  await dialog(`<div class="lmWishDlg"><img src="${esc(im('lm_bird_wish'))}" alt=""><h2 class="dlgT">流れ星に ねがいごと</h2>
+    <p class="dlgP">「${esc(pick(W))}」<br><span class="coin sm">P</span> <b>+${pt}</b></p><small>きょう あと ${WISH_MAX - d.wish}かい</small></div>`, [{label:'かなうと いいな', cls:'gold', v:1}], 'gold');
+  V.wishOn = false; render(); starLoop();
+}
+/* ---------- 夜景フォト・アルバム ---------- */
+const TOD_N = {mor:'あさ', day:'ひる', eve:'ゆうがた', ngt:'よる'};
+function photoHTML(p, big){
+  const pos = `${p.px}% ${p.py}%`;
+  return `<span class="lmPhoto ${big ? 'big' : ''}"><img class="lmPolF" src="${esc(im('lm_polaroid'))}" alt=""><span class="lmPhIn t-${p.t}" style="background-image:url('${esc(im(p.v === 'town' ? 'lm_townview' : 'lm_deck'))}');background-position:${pos};background-size:${p.z}% auto">${p.s ? `<img class="lmPhStar" src="${esc(im('lm_shootstar'))}" alt="">` : ''}</span>
+    <small>${esc(p.d)}　${TOD_N[p.t] || ''}</small></span>`;
+}
+async function shoot(){
+  const d = D(); if(d.shot >= SHOT_MAX){ toast('きょうの フォトは おしまい。また あした！'); return; }
+  const t = tod(), v = Math.random() < .35 ? 'town' : 'deck';
+  const p = {at:now(), d:dayKey().slice(5).replace('-', '/'), t, v, px:Math.round(v === 'town' ? Math.random() * 100 : 20 + Math.random() * 60), py:Math.round(v === 'town' ? Math.random() * 100 : 30 + Math.random() * 40), z:v === 'town' ? 260 : 200, s:isNight() && Math.random() < .3};
+  d.shot++; d.album.unshift(p); if(d.album.length > ALBUM_MAX) d.album.length = ALBUM_MAX; persist();
+  const el = document.getElementById('lm'); if(el){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  try{ sound('ok'); }catch(e){}
+  await dialog(`<div class="lmShotDlg">${photoHTML(p, true)}<h2 class="dlgT">パシャ！</h2><p class="dlgP">アルバムに 入れたよ（${d.album.length}まい）<br><small>きょう あと ${SHOT_MAX - d.shot}まい</small></p></div>`, [{label:'すてき！', cls:'gold', v:1}], 'gold');
+  render();
+}
+function vAlbum(){
+  const A = D().album;
+  return `<div class="lmOv" data-l="ovx"><div class="lmElev lmAlb"><div class="lmElHd">${ico('ic_lm_album', 'lmElIc')}<b>夜景アルバム</b><button class="lmX" data-l="ovx" aria-label="とじる">✕</button></div>
+    ${A.length ? `<div class="lmAlbGrid">${A.map(p => photoHTML(p)).join('')}</div>` : `<div class="lmAlbEmpty">${ico('lm_bird_cam')}<p>まだ しゃしんが ないよ。<br>「夜景フォト」で パシャ！</p></div>`}
+    <p class="lmNote">あさ・ひる・ゆうがた・よるで 色が かわるよ。夜は 流れ星が うつることも！（ブティックで 限定品と こうかん できるように なる予定）</p></div></div>`;
+}
+/* ---------- 双眼鏡で まちさがし ---------- */
+function huntStart(){
+  const d = D(); if(d.hunt){ toast('まちさがしは 1日1かい。また あした！'); return; }
+  const rs = nonHuman(); if(rs.length < 2){ toast('住民が 2人いじょう いると あそべるよ'); return; }
+  const qs = [];
+  const sp = SPOTS.slice().sort(() => Math.random() - .5);
+  for(let i = 0; i < HUNT_Q; i++){
+    const who = rs.slice().sort(() => Math.random() - .5).slice(0, Math.min(5, rs.length));
+    const places = sp.slice().sort(() => Math.random() - .5).slice(0, who.length);
+    qs.push({tg:0, ppl:who.map((r, j) => ({id:r.id, x:places[j].x, y:places[j].y, n:places[j].n}))});
+  }
+  V.hunt = {qs, i:0, ok:0, t0:now(), lx:50, ly:50, done:false}; V.huntOn = true;
+  try{ sound('tap'); }catch(e){} render(); huntTick();
+}
+let huntTimer = 0;
+function huntTick(){
+  clearInterval(huntTimer);
+  huntTimer = setInterval(() => {
+    const H = V && V.hunt; if(!H || H.done){ clearInterval(huntTimer); return; }
+    const left = Math.max(0, HUNT_SEC - (now() - H.t0) / 1000);
+    const b = document.querySelector('.lmHuntTime b'), i = document.querySelector('.lmHuntTime i');
+    if(b) b.textContent = Math.ceil(left); if(i) i.style.width = (left / HUNT_SEC * 100) + '%';
+    if(left <= 0) huntEnd();
+  }, 250);
+}
+function vHunt(){
+  const H = V.hunt; if(!H) return '';
+  if(H.done) return '';
+  const Q = H.qs[H.i], tg = Q.ppl[Q.tg], r = save.town.res.find(x => x.id === tg.id) || {};
+  const ppl = Q.ppl.map((p, j) => { const rr = save.town.res.find(x => x.id === p.id); return rr ? `<button class="lmHuntP" data-l="hp:${j}" style="left:${p.x}%;top:${p.y}%">${resPic(rr)}</button>` : ''; }).join('');
+  return `<div class="lmOv lmHuntOv"><div class="lmHunt">
+    <div class="lmHuntHd">${ico('ic_lm_scope', 'lmElIc')}<div class="lmHuntQ"><small>もんだい ${H.i + 1} / ${HUNT_Q}</small><b>「${esc(tg.n)}」の ちかくに いる <em>${esc(r.name || '')}</em> を さがせ！</b></div>
+      <span class="lmHuntWho">${r.id ? resPic(r) : ''}</span></div>
+    <div class="lmHuntTime"><i></i><b>${HUNT_SEC}</b></div>
+    <div class="lmHuntMap" id="lmHuntMap" style="--x:${H.lx}%;--y:${H.ly}%"><img src="${esc(im('lm_townview'))}" alt="" draggable="false">${ppl}<i class="lmLens"></i></div>
+    <p class="lmNote">ゆびで うごかして 双眼鏡で のぞいてね。見つけたら タッチ！</p>
+    <button class="lmB wide" data-l="huntx">やめる</button></div></div>`;
+}
+function huntMove(e){
+  const H = V && V.hunt; if(!H || H.done) return;
+  const m = document.getElementById('lmHuntMap'); if(!m) return;
+  const r = m.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+  H.lx = Math.max(0, Math.min(100, (p.clientX - r.left) / r.width * 100)); H.ly = Math.max(0, Math.min(100, (p.clientY - r.top) / r.height * 100));
+  m.style.setProperty('--x', H.lx + '%'); m.style.setProperty('--y', H.ly + '%');
+}
+function inLens(px, py){
+  const m = document.getElementById('lmHuntMap'); if(!m) return true;
+  const r = m.getBoundingClientRect(), H = V.hunt, R = Math.min(r.width, r.height) * .2;
+  const dx = (px - H.lx) / 100 * r.width, dy = (py - H.ly) / 100 * r.height;
+  return Math.hypot(dx, dy) <= R * 1.1;
+}
+function huntPick(j){
+  const H = V.hunt; if(!H || H.done) return; const Q = H.qs[H.i], p = Q.ppl[j];
+  if(!inLens(p.x, p.y)){ toast('双眼鏡で のぞいてから タッチしてね'); return; }
+  if(j === Q.tg){ H.ok++; try{ sound('ok'); }catch(e){} toast('みつけた！');
+    const rr = save.town.res.find(x => x.id === p.id); if(rr) rr.fr = (rr.fr || 0) + 1;
+    H.i++; if(H.i >= HUNT_Q) return huntEnd(); H.lx = 50; H.ly = 50; render(); }
+  else { try{ sound('ng'); }catch(e){} const rr = save.town.res.find(x => x.id === p.id); toast(`それは ${rr ? rr.name : 'ちがう 住民'}だよ`); }
+}
+async function huntEnd(){
+  const H = V.hunt; if(!H || H.done) return; H.done = true; clearInterval(huntTimer);
+  const d = D(); d.hunt = 1; const all = H.ok >= HUNT_Q, pt = all ? 200 : H.ok * 50;
+  if(pt) givePts(pt, '展望デッキで まちさがし');
+  let ph = null;
+  if(all){ ph = {at:now(), d:dayKey().slice(5).replace('-', '/'), t:tod(), v:'town', px:Math.round(Math.random() * 100), py:Math.round(Math.random() * 100), z:240, s:false};
+    d.album.unshift(ph); if(d.album.length > ALBUM_MAX) d.album.length = ALBUM_MAX; }
+  persist(); V.hunt = null; V.huntOn = false; render();
+  try{ sound(all ? 'fan' : 'ok'); if(all) confetti(1600); }catch(e){}
+  await dialog(`<div class="lmShotDlg">${ph ? photoHTML(ph, true) : ico('lm_bird_scope', 'lmHuntEndI')}<h2 class="dlgT">${all ? 'ぜんぶ みつけた！' : `${H.ok}にん みつけたよ`}</h2>
+    <p class="dlgP">${pt ? `<span class="coin sm">P</span> <b>+${pt}</b>` : 'また あした ちょうせん してね'}${all ? '<br>夜景フォトも アルバムに 入ったよ' : ''}<br><small>見つけた 住民と なかよし度 +1</small></p></div>`, [{label:'OK', cls:'gold', v:1}], 'gold');
+  render();
+}
 /* ---------- エレベーター ---------- */
 function vElev(){
-  const g = grade(), cur = V.view === 'lobby' || V.view === 'lounge' ? V.view : '';
+  const g = grade(), cur = ['lobby', 'lounge', 'deck'].includes(V.view) ? V.view : '';
   const rows = FLOORS.map(f => { const lock = f.g > g, soon = !lock && f.step > 1;
     return `<button class="lmEl ${lock ? 'lk' : soon ? 'soon' : 'on'} ${cur === f.id ? 'cur' : ''}" data-l="go:${f.id}" ${lock || soon ? 'aria-disabled="true"' : ''}>
       <i class="lmElN">${f.s}</i><span><b>${f.n}</b><small>${lock ? `タワーを ★${f.g} に すると ひらくよ` : soon ? `STEP${f.step}で オープン予定` : esc(f.d)}</small></span>
@@ -455,7 +619,9 @@ function vElev(){
 function render(){
   if(!V) return; const el = root();
   el.className = 'show ' + (isL() ? 'lL' : 'lP');
-  el.innerHTML = (V.view === 'lobby' ? vLobby() : V.view === 'lounge' ? vLounge() : vTop()) + (V.elev ? vElev() : V.reqOv ? vReq() : V.mk ? vMk() : '');
+  el.innerHTML = (V.view === 'lobby' ? vLobby() : V.view === 'lounge' ? vLounge() : V.view === 'deck' ? vDeck() : vTop()) + (V.elev ? vElev() : V.reqOv ? vReq() : V.mk ? vMk() : V.hunt ? vHunt() : V.alb ? vAlbum() : '');
+  if(V.view === 'deck' && !V.hunt) starLoop();
+  if(V.hunt){ const m = document.getElementById('lmHuntMap'); if(m){ const fit = () => { const r = m.getBoundingClientRect(); m.style.setProperty('--r', Math.round(Math.min(r.width, r.height) * .2) + 'px'); }; fit(); requestAnimationFrame(fit); } }
   document.body.classList.add('lmOpen');
 }
 function paintMusic(){ if(!V) return; const el = document.getElementById('lm'); if(!el) return;
@@ -467,7 +633,7 @@ function open(key){
   D(); V = {view:'top', key, elev:false}; render(); try{ sound('ok'); }catch(e){}
   bgmStart();
 }
-function close(){ bgmStop(); const el = root(); el.className = ''; el.innerHTML = ''; V = null; document.body.classList.remove('lmOpen'); try{ renderCurrent(); }catch(e){} }
+function close(){ bgmStop(); clearTimeout(starT); clearInterval(huntTimer); const el = root(); el.className = ''; el.innerHTML = ''; V = null; document.body.classList.remove('lmOpen'); try{ renderCurrent(); }catch(e){} }
 
 /* ---------- できごと ---------- */
 async function giveGift(){
@@ -520,6 +686,7 @@ function floor(id){
   if(f.step > 1){ toast(`✨ ${f.n}は もうすぐ オープン！（じゅんび中）`); return; }
   if(id === 'lobby'){ try{ sound('tap'); }catch(e){} V.elev = false; go('lobby'); }
   if(id === 'lounge'){ try{ sound('tap'); }catch(e){} V.elev = false; go('lounge'); }
+  if(id === 'deck'){ try{ sound('tap'); }catch(e){} V.elev = false; go('deck'); }
 }
 function onClick(e){
   const b = e.target.closest('[data-l]'); if(!b || !V) return;
@@ -530,11 +697,18 @@ function onClick(e){
     case 'top': V.elev = false; return go('top');
     case 'floor': return floor(v);
     case 'elev': V.elev = true; try{ sound('tap'); }catch(e){} return render();
-    case 'ovx': V.elev = false; V.reqOv = false; return render();
+    case 'ovx': V.elev = false; V.reqOv = false; V.alb = false; return render();
     case 'go': V.elev = false; return floor(v);
     case 'grade': { const k = V.key; close(); try{ openBuilding(k); }catch(e){} return; }
     case 'music': { const d = D(); if(M.on){ d.mute = true; bgmStop(); } else { d.mute = false; persist(); if(save.settings && save.settings.bgm === false){ toast('せっていで BGM が オフに なっているよ'); return; } bgmStart(); } persist(); if(V && V.view === 'lounge') render(); return; }
-    case 'camera': toast('📷 夜景フォトは 展望デッキ（★2）で とれるよ。もうすぐ オープン！'); return;
+    case 'camera': if(grade() < 2){ toast('夜景フォトは 展望デッキ（★2）で とれるよ'); return; } V.elev = false; go('deck'); return shoot();
+    case 'shoot': return shoot();
+    case 'album': V.alb = true; try{ sound('tap'); }catch(e){} return render();
+    case 'hunt': return huntStart();
+    case 'hp': return huntPick(+v);
+    case 'huntx': if(V.hunt){ return huntEnd(); } return;
+    case 'wish': return wish();
+    case 'wishInfo': toast(isNight() ? '夜空を 見ていてね。流れ星が 来たら タッチ！' : '流れ星は 夜（ゆうがた〜あさ）だけ 見られるよ'); return;
     case 'gift': return giveGift();
     case 'say': { const s = document.getElementById('lmSay'); if(s){ s.textContent = sayLine(); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); } try{ sound('tap'); }catch(e){} return; }
     case 'talk': return talk(v);
@@ -561,7 +735,7 @@ window.addEventListener('click', async e => {
   open(key);
 }, true);
 /* ショップの せつめい */
-try{ const _ie = itemEffect; itemEffect = function(it){ const s = _ie.apply(this, arguments); return it && it.id === ID ? `${s}${s ? '・' : ''}🗼 タッチで タワーの 中へ（ロビー・★1 スカイラウンジ）` : s; }; }catch(e){}
+try{ const _ie = itemEffect; itemEffect = function(it){ const s = _ie.apply(this, arguments); return it && it.id === ID ? `${s}${s ? '・' : ''}🗼 タッチで タワーの 中へ（ロビー・★1 スカイラウンジ・★2 展望デッキ）` : s; }; }catch(e){}
 
-window.__lm30 = {open, close, grade, bgmStart, bgmStop, FLOORS, mkQuiz, trackOf};
+window.__lm30 = {open, close, grade, bgmStart, bgmStop, FLOORS, mkQuiz, trackOf, shoot, huntStart};
 })();

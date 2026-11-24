@@ -203,3 +203,65 @@ body.lmOpen #bnav{display:none!important}
 .lmMkRes p{margin:0;font-size:15px;font-weight:800;line-height:1.6;color:var(--gl)}.lmMkRes p small{font-size:12px;color:var(--lv)}
 .lmMkRes em{font-style:normal;font-weight:900;color:#FFE29A;display:flex;align-items:center;gap:4px}
 @media (max-width:400px){ .lmMkQ{font-size:14.5px} .lmMkO{font-size:18px!important} .lmMkPic{height:70px} }
+/* =====================================================================
+   v32.0 STEP3：展望デッキ・まちさがし・夜景フォト・流れ星
+   ===================================================================== */
+.lmStage.deck .lmDeckBird{position:absolute;left:24%;top:82%;width:19%;height:auto;transform:translate(-50%,-100%);z-index:3;cursor:pointer;filter:drop-shadow(0 5px 5px rgba(0,0,0,.4));animation:lmBob 2.8s ease-in-out infinite}
+.lmSkyFx{position:absolute;left:0;right:0;top:0;height:60%;z-index:4}
+.lmStarFall{position:absolute;width:22%;height:auto;animation:lmFall 3.2s linear forwards;filter:drop-shadow(0 0 10px rgba(255,230,140,.95))}
+.lmStarFall img{width:100%;height:auto;display:block;transform:scaleX(-1)}
+.lmStarFall::after{content:"";position:absolute;inset:-30%}
+@keyframes lmFall{0%{opacity:0;transform:translate(0,0)}10%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translate(-120%,70%)}}
+#lm.flash::after{content:"";position:fixed;inset:0;background:#fff;z-index:20;pointer-events:none;animation:lmFlash .5s ease-out forwards}
+@keyframes lmFlash{from{opacity:.95}to{opacity:0}}
+.lmDkCards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lmDkCard{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid rgba(217,178,90,.5)!important;border-radius:16px!important;padding:8px!important;background:rgba(255,255,255,.06)!important;min-width:0}
+.lmDkCard.on{background:linear-gradient(90deg,rgba(255,214,110,.22),rgba(255,255,255,.06))!important;border-color:rgba(255,214,110,.9)!important;box-shadow:0 0 12px rgba(255,214,110,.3)}
+.lmDkCard.off{opacity:.7}
+.lmDkCard img{width:44px;height:44px;object-fit:contain;flex:none}
+.lmDkCard span{flex:1;min-width:0;display:flex;flex-direction:column}
+.lmDkCard b{font-size:14px;color:var(--gl);line-height:1.3}
+.lmDkCard small{font-size:10.5px;color:var(--lv);font-weight:800;line-height:1.35}
+.lmDkCard.star.on{animation:lmGlow 2.4s ease-in-out infinite}
+.lmBody.dck .lmBtns{grid-template-columns:1fr 1fr}
+/* フォト */
+.lmPhoto{position:relative;display:inline-block;width:100%;aspect-ratio:196/222}
+.lmPolF{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35))}
+.lmPhIn{position:absolute;left:8.5%;top:7.2%;width:83%;height:68%;background-repeat:no-repeat;border-radius:2px;overflow:hidden}
+.lmPhIn.t-mor{filter:saturate(1.1) brightness(1.15) hue-rotate(-10deg)}
+.lmPhIn.t-day{filter:brightness(1.25) saturate(1.15)}
+.lmPhIn.t-eve{filter:sepia(.35) saturate(1.4) hue-rotate(-18deg)}
+.lmPhIn.t-ngt{filter:brightness(.9) saturate(1.1)}
+.lmPhStar{position:absolute;right:6%;top:6%;width:42%;height:auto;transform:scaleX(-1);filter:drop-shadow(0 0 6px rgba(255,230,140,.9))}
+.lmPhoto small{position:absolute;left:10%;right:22%;bottom:6%;text-align:left;font-size:10px;font-weight:900;color:#6B5A44}
+.lmPhoto.big{width:min(62vw,230px)}.lmPhoto.big small{font-size:13px}
+.lmShotDlg,.lmWishDlg{display:flex;flex-direction:column;align-items:center}
+.lmShotDlg .lmPhoto{animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+.lmWishDlg img{height:130px;width:auto;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+.lmWishDlg small{color:var(--sub);font-weight:800}
+.lmHuntEndI{height:120px;width:auto}
+.lmAlb{width:min(94vw,620px)}
+.lmAlbGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;max-height:min(62dvh,560px);overflow-y:auto;padding:4px}
+.lmAlbEmpty{display:flex;align-items:center;gap:10px;justify-content:center;padding:14px;color:var(--gl);font-weight:800}
+.lmAlbEmpty img{width:90px;height:auto}.lmAlbEmpty p{margin:0;line-height:1.6}
+/* まちさがし */
+.lmHuntOv{padding:8px}
+.lmHunt{width:min(96vw,560px);max-height:96dvh;overflow:auto;background:linear-gradient(180deg,#262B6A,#171B45);border:1.5px solid var(--gd);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.lmHuntHd{display:flex;align-items:center;gap:8px}
+.lmHuntQ{flex:1;min-width:0;display:flex;flex-direction:column}
+.lmHuntQ small{font-size:11px;color:var(--lv);font-weight:900}
+.lmHuntQ b{font-size:15px;color:var(--gl);line-height:1.45}.lmHuntQ em{font-style:normal;color:#FFE29A}
+.lmHuntWho{flex:none;width:54px;height:54px;border-radius:50%;background:radial-gradient(circle,#FFF7E6,#EBCF9F);border:2px solid var(--gd);display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.lmHuntWho .rpic{height:92%}
+.lmHuntTime{position:relative;height:16px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.lmHuntTime i{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#9BE07A,#F6DE97);transition:width .25s linear}
+.lmHuntTime b{position:absolute;right:8px;top:0;font-size:12px;line-height:16px;color:#1B1F4B}
+.lmHuntMap{position:relative;width:100%;aspect-ratio:2/3;max-height:62dvh;margin:0 auto;border-radius:12px;overflow:hidden;touch-action:none;cursor:crosshair;--x:50%;--y:50%}
+@supports (aspect-ratio:1){ .lmHuntMap{width:min(100%,calc(62dvh * .6667))} }
+.lmHuntMap>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.lmHuntP{position:absolute;width:9%;height:9%;transform:translate(-50%,-100%);display:flex;align-items:flex-end;justify-content:center;z-index:2}
+.lmHuntP .rpic{height:100%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+.lmLens{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(circle at var(--x) var(--y),transparent 0,transparent var(--r,60px),rgba(8,10,30,.94) calc(var(--r,60px) + 2px))}
+.lmLens::after{content:"";position:absolute;left:var(--x);top:var(--y);width:calc(2 * var(--r,60px));height:calc(2 * var(--r,60px));transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 0 4px var(--gd),inset 0 0 20px rgba(0,0,0,.45)}
+@media (max-width:400px){ .lmDkCard b{font-size:13px} .lmDkCard img{width:38px;height:38px} }
