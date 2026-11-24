@@ -17279,6 +17279,8 @@ SONGS.push(
 );
 
 window.__mu280 = {xmasIds:['xm_jingle', 'xm_silent', 'xm_wish'], rec:id => songRec(id)};
+/* v31.0：ランドマークタワーの ラウンジ（ピアノ リクエスト）用 … 音源つきの 曲（cr）は のぞく */
+window.__mu280.lounge = () => SONGS.filter(s => !s.cr && !s.au).map(s => ({id:s.id, t:s.t, bpm:s.bpm, st:songRec(s.id).st || 0, notes:parseSong(s).map(n => ({m:n.m, b:n.b, d:n.d})), beats:s.beats, ch:(typeof CHORDS !== 'undefined' && CHORDS[s.id]) || null}));
 SONGS.sort((a, b) => a.d - b.d);
 const DIFF = {1:['かんたん', 30, '#40C057'], 2:['ふつう', 50, '#339AF0'], 3:['むずかしい', 80, '#E0457B'], 4:['ちょう むずかしい', 120, '#8E44AD']};
 const SPEEDS = [0.5, 0.75, 1];
