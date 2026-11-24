@@ -1,5 +1,8 @@
 /* =====================================================================
-   まなびタウン v32.0：ランドマークタワー STEP1〜3（ロビー・スカイラウンジ・展望デッキ）
+   まなびタウン v33.0：ランドマークタワー STEP1〜4（ぜんぶ）
+   ・STEP4：ブティック（★0）… タワー限定の 家具（4しゅ）・衣装（2しゅ・住民の 着せかえ）・夜景フォト こうかん（5まい → 限定品）
+            ★3 ライトアップ … タワーが 季節の 色で 光る（タワー画面・夜の まち）／ラウンジに キツネの サックス／BGM 豪華版（サビで 半音上げ）
+   ----------------------------------------------------------------------
    ・STEP3：展望デッキ（★2）… 双眼鏡で まちさがし（60秒で 3もん・1日1かい）／夜景フォト（1日3まい・アルバム）／流れ星（夜だけ・1日3かい）
             BGM「夜空のピアノ」ほしぞら版（ハープ・ビブラフォン 多め）
    ・STEP2：スカイラウンジ（★1）… ピアノ リクエスト／住民の 来店（1日3〜4人）／モクテルの ちゅうもん（わりあい・計算の 問題 1日3かい）
@@ -18,6 +21,7 @@ const ID = 'landmark', IMG = './assets/images/landmark/';
 const im = n => IMG + n + '.webp';
 const now = () => Date.now();
 ['lm_tower','lm_tower_l','lm_lobby','lm_bird_wave','lm_bird_bow','lm_bird_gift','ic_lm_elev','ic_lm_music','ic_lm_camera','ic_lm_gift','ic_lm_lock',
+  'lm_boutique','lm_fox_clerk','lm_fox_sax','ic_lm_hanger','ic_lm_ticket','bt_moonlamp','bt_starsofa','bt_minipiano','bt_nightart','bt_snowglobe','bt_towermini','wr_tux','wr_dress',
   'lm_deck','lm_townview','lm_bird_scope','lm_bird_cam','lm_bird_wish','ic_lm_scope','ic_lm_album','lm_shootstar','lm_polaroid','lm_wishmedal',
   'lm_lounge','lm_bird_piano','lm_glass_lemon','lm_glass_orange','lm_glass_berry','lm_glass_grape','lm_fr_lemon','lm_fr_orange','lm_fr_berry','lm_fr_grape','lm_cup','ic_lm_score','ic_lm_shaker']
   .forEach(k => { try{ DEFAULT_ART[k] = im(k); }catch(e){} });
@@ -29,6 +33,7 @@ function D(){
   if(d.day !== dayKey()){ d.day = dayKey(); d.talk = {}; d.gift = false; d.talkL = {}; d.mk = 0; d.hunt = 0; d.shot = 0; d.wish = 0; }
   d.album = d.album || []; d.hunt = d.hunt || 0; d.shot = d.shot || 0; d.wish = d.wish || 0;
   d.talkL = d.talkL || {}; d.mk = d.mk || 0; d.mkOk = d.mkOk || 0;
+  d.wear = d.wear || {}; d.wInv = d.wInv || {}; d.exN = d.exN || 0;
   return d;
 }
 const cellsOf = () => save.town ? Object.entries(save.town.cells).filter(([k, v]) => v === ID).map(([k]) => k) : [];
@@ -39,7 +44,7 @@ const grade = () => cellsOf().reduce((a, k) => Math.max(a, (save.town.glv || {})
 const FLOORS = [
   {id:'deck',     n:'展望デッキ',     s:'屋上',  g:2, step:1, z:[24, 12, 52, 11], c:'#9FB8FF', d:'双眼鏡で まちさがし・夜景フォト・流れ星'},
   {id:'lounge',   n:'スカイラウンジ', s:'上層',  g:1, step:1, z:[29, 27, 42, 15], c:'#F3C76A', d:'ピアノ リクエスト・住民の 来店・モクテル'},
-  {id:'boutique', n:'ブティック',     s:'中層',  g:0, step:4, z:[29, 47, 42, 14], c:'#F0A6C0', d:'タワー限定の 家具・衣装・フォト こうかん'},
+  {id:'boutique', n:'ブティック',     s:'中層',  g:0, step:1, z:[29, 47, 42, 14], c:'#F0A6C0', d:'タワー限定の 家具・衣装・フォト こうかん'},
   {id:'lobby',    n:'ロビー',         s:'1F',    g:0, step:1, z:[30, 66, 40, 21], c:'#E9D38E', d:'コンシェルジュ・きょうの ごほうび・住民と おはなし'}
 ];
 const FL = id => FLOORS.find(f => f.id === id);
@@ -69,6 +74,62 @@ function lobbyRes(){
   const a = L.slice().sort((x, y) => Math.abs(hashN(x.id + dayKey())) - Math.abs(hashN(y.id + dayKey())));
   return a.slice(0, n);
 }
+
+/* ====================================================================
+   STEP4：ブティックの 商品
+   ・家具（わたしの家）… ポイントで 買う
+   ・衣装（住民の 着せかえ）… ポイントで 買って、住民に 着せる（1人 1つ。ぬぐと もどる）
+   ・フォト こうかん … 夜景フォト 5まい → 限定品（スノードーム＝家具／タワーの ミニチュア＝まちの かざり）
+   ==================================================================== */
+const BT_FUR = [
+  {id:'lm_moonlamp',  art:'bt_moonlamp',  n:'三日月ランプ',     p:2000, sty:8,  size:1.05, d:'金の 三日月が やさしく 光る ランプ'},
+  {id:'lm_nightart',  art:'bt_nightart',  n:'夜景アート',       p:2500, sty:9,  size:1.0,  d:'タワーから 見た 夜景の 絵'},
+  {id:'lm_starsofa',  art:'bt_starsofa',  n:'星のソファ',       p:3500, sty:12, size:1.6, foot:[2,1], d:'星の クッションが のった ベルベットの ソファ'},
+  {id:'lm_minipiano', art:'bt_minipiano', n:'ミニグランドピアノ', p:6000, sty:20, size:1.5, foot:[2,1], d:'ラウンジと おなじ 金の ふちどりの ピアノ'}
+];
+const BT_WEAR = [
+  {id:'tux',   art:'wr_tux',   n:'タキシード',     p:3000, d:'蝶ネクタイと えりで ちょっと おとなの きぶん'},
+  {id:'dress', art:'wr_dress', n:'きらきらドレス', p:3000, d:'星の ジュエルが ついた リボンの カチューシャ'}
+];
+const BT_EX = [
+  {id:'lm_snowglobe', art:'bt_snowglobe', n:'タワーのスノードーム', k:'fur',  sty:14, size:1.0, d:'夜景フォト 5まいで こうかん（わたしの家の 家具）'},
+  {id:'d_lmtower',    art:'bt_towermini', n:'タワーのミニチュア',   k:'deco', dev:30, d:'夜景フォト 5まいで こうかん（まちの かざり）'}
+];
+const EX_N = 5;
+try{
+  BT_FUR.concat(BT_EX.filter(x => x.k === 'fur')).forEach(f => {
+    if(!FURNITURE.some(x => x.id === f.id)) FURNITURE.push({id:f.id, name:f.n, art:f.art, type:'fur', price:f.p || 0, lv:1, sty:f.sty, special:true});
+    try{ SHOP_ONLY[f.id] = 'landmark'; }catch(e){}
+    try{ FUR_SIZE[f.id] = f.size || 1; if(f.foot) FOOT[f.id] = f.foot; SIDE_W[f.id] = f.foot ? f.foot[0] * 0.95 + 0.1 : 1; }catch(e){}
+  });
+  BT_EX.filter(x => x.k === 'deco').forEach(f => {
+    if(!TOWN_ITEMS.some(x => x.id === f.id)) TOWN_ITEMS.push({id:f.id, type:'bld', cat:'deco', name:f.n, art:f.art, emoji:'\uD83D\uDDFC', price:4000, lv:1, dev:f.dev, ev:'landmark'});
+    try{ SHOP_ONLY[f.id] = 'landmark'; }catch(e){}
+  });
+}catch(e){ console.warn('lm boutique items', e); }
+const furN = id => { try{ return homeCount(id); }catch(e){ return 0; } };
+const decoN = id => { const t = save.town; if(!t) return 0; return ((t.inv || {})[id] || 0) + Object.values(t.cells).filter(v => v === id).length; };
+/* 衣装：住民の 絵に かさねる（ランク専用イラストの ときも 消えない クラス名） */
+try{
+  const _rp = resPic;
+  resPic = function(r){
+    let h = _rp.apply(this, arguments);
+    try{
+      const w = r && save.lm && save.lm.wear && save.lm.wear[r.id]; if(!w) return h;
+      const s = SP(r.sp); if(s.human) return h;
+      const H = Object.assign({top:.05, hw:.7, cx:.5, dy:.10, hs:.62}, (typeof HEADS !== 'undefined' && HEADS[s.art]) || {});
+      const ov = w === 'tux'
+        ? `<img class="lmWear tux" src="${esc(im('wr_tux'))}" alt="" style="left:${H.cx * 100}%;top:${(H.medY || .6) * 100}%;width:${Math.max(30, H.hw * 46)}%">`
+        : `<img class="lmWear dress" src="${esc(im('wr_dress'))}" alt="" style="left:${H.cx * 100}%;top:${(H.top + H.dy * .4) * 100}%;width:${Math.max(36, H.hw * H.hs * 120)}%">`;
+      const i = h.lastIndexOf('</span>'); if(i > 0) h = h.slice(0, i) + ov + h.slice(i);
+    }catch(e){}
+    return h;
+  };
+}catch(e){ console.warn('lm wear', e); }
+/* ★3 ライトアップの 季節の 色 */
+const SEASON = () => { const m = new Date().getMonth() + 1; return m >= 3 && m <= 5 ? 'spr' : m >= 6 && m <= 8 ? 'sum' : m >= 9 && m <= 11 ? 'aut' : 'win'; };
+const SEASON_N = {spr:'さくら色', sum:'マリンブルー', aut:'もみじ色', win:'スノーホワイト'};
+const lit = () => grade() >= 3;
 
 /* ---------- ラウンジの 住民（日替わり 3〜4人・なかよしが 高いほど 来やすい） ---------- */
 function loungeRes(){
@@ -126,10 +187,11 @@ const OUTRO = [['o',['Abmaj7'],[[0,79,2],[2,75,2]]], ['o',['Gm7'],[[0,77,2],[2,7
 const TRACKS = {
   quiet:{t:'夜空のピアノ', sub:'しずかな バージョン', bpm:112, bars:INTRO.concat(PART_A)},
   full: {t:'夜空のピアノ', sub:'ラウンジ バージョン', bpm:112, bars:INTRO.concat(PART_A, PART_B, PART_C, OUTRO)},
-  deck: {t:'夜空のピアノ', sub:'ほしぞら バージョン', bpm:96, bars:INTRO.concat(PART_A, OUTRO), dk:1}
+  deck: {t:'夜空のピアノ', sub:'ほしぞら バージョン', bpm:96, bars:INTRO.concat(PART_A, OUTRO), dk:1},
+  full3:{t:'夜空のピアノ', sub:'ライトアップ バージョン', bpm:112, bars:INTRO.concat(PART_A, PART_B, PART_C, OUTRO), up:1}
 };
 /* 小節 → イベント */
-function barsToEv(bars, dk){
+function barsToEv(bars, dk, up){
   const ev = [], E = (b, k, m, d, v) => ev.push({b, k, m, d, v});
   bars.forEach(([sec, chs, mel], i) => {
     const b0 = i * 4, per = 4 / chs.length, big = sec === 'c', mid = sec === 'b', aa = sec === 'a' || sec === 'a2';
@@ -159,6 +221,7 @@ function barsToEv(bars, dk){
       E(b0 + b, 'pf', m, l, dk ? .2 : big ? .32 : .3); if(dk){ E(b0 + b, 'vb', m, l, .1); }
       if(big){ E(b0 + b, 'fl', m, l, .12); E(b0 + b, 'sx', m - 12, l, .14); }
       if(sec === 'a2') E(b0 + b, 'vb', m, l, .06);
+      if(up && aa) E(b0 + b, 'sx', m - 12, l, .1);   /* ★3：キツネの サックスが A から いっしょに 　ふく */
     });
     /* サビ前：サックスの 合いの手 */
     if(mid && i % 2 === 1){ [[2.5,82],[3,80],[3.5,79]].forEach(([b, m]) => E(b0 + b, 'sx', m - 12, .45, .16)); }
@@ -214,7 +277,12 @@ function trackOf(key){
     return {t:s.t, sub:'ラウンジ風 アレンジ', bpm, beats:Math.ceil(s.beats) + 4, ev:songEv(s)};
   }
   const T = TRACKS[key] || TRACKS.quiet;
-  return {t:T.t, sub:T.sub, bpm:T.bpm, beats:T.bars.length * 4, ev:barsToEv(T.bars, T.dk).sort((a, b) => a.b - b.b)};
+  let ev = barsToEv(T.bars, T.dk, T.up);
+  if(T.up){   /* ★3：サビ（PART_C）だけ 半音 上げて もりあげる */
+    const c0 = (INTRO.length + PART_A.length + PART_B.length) * 4, c1 = c0 + PART_C.length * 4;
+    ev = ev.map(e => e.k !== 'dr' && e.b >= c0 && e.b < c1 ? Object.assign({}, e, {m:e.m + 1}) : e);
+  }
+  return {t:T.t, sub:T.sub, bpm:T.bpm, beats:T.bars.length * 4, ev:ev.sort((a, b) => a.b - b.b)};
 }
 function mAC(){
   if(!M.ac){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; M.ac = new C();
@@ -273,7 +341,7 @@ function bgmStart(key){
 function bgmStop(){
   if(!M.on) return; M.on = false; clearInterval(M.timer); dropTrack(); M.key = ''; paintMusic();
 }
-function wantKey(){ if(!V) return 'quiet'; if(V.view === 'lounge') return V.req ? 'song:' + V.req : 'full'; if(V.view === 'deck') return 'deck'; return 'quiet'; }
+function wantKey(){ if(!V) return 'quiet'; if(V.view === 'lounge') return V.req ? 'song:' + V.req : (lit() ? 'full3' : 'full'); if(V.view === 'deck') return 'deck'; return 'quiet'; }
 function syncBgm(){ if(M.on && M.key !== wantKey()) bgmStart(wantKey()); }
 document.addEventListener('visibilitychange', () => { if(!V) return; if(document.hidden) bgmStop(); else bgmStart(); });
 /* まちの BGM は タワーの 中では ながさない */
@@ -306,7 +374,7 @@ function zone(f){
     <span class="lmTag">${lock ? ico('ic_lm_lock', 'lmLockI') : ''}<b>${f.n}</b>${lock ? `<small>★${f.g}</small>` : soon ? '<small>じゅんび中</small>' : ''}</span></button>`;
 }
 function stageTower(extra){
-  return `<div class="lmStage t-${tod()}"><img class="lmBg" src="${esc(im('lm_tower'))}" alt="" draggable="false"><i class="lmSky"></i>
+  return `<div class="lmStage t-${tod()} ${lit() ? 'lit s-' + SEASON() : ''}"><img class="lmBg" src="${esc(im('lm_tower'))}" alt="" draggable="false"><i class="lmSky"></i>${lit() ? '<i class="lmLit"></i><i class="lmBeam b1"></i><i class="lmBeam b2"></i>' : ''}
     ${FLOORS.map(zone).join('')}<i class="lmStar s1"></i><i class="lmStar s2"></i><i class="lmStar s3"></i>${extra || ''}</div>`;
 }
 function concierge(){
@@ -364,7 +432,7 @@ function vLounge(){
     return `<button class="lmRes ${done ? 'done' : ''}" data-l="talkL:${r.id}" style="left:${x}%;top:${y}%;height:${h}%">${resPic(r)}${done ? '' : '<i class="lmHeart"></i>'}<b class="lmNm">${esc(r.name)}</b></button>`; }).join('');
   const notes = playing ? '<i class="lmFloat n1"></i><i class="lmFloat n2"></i><i class="lmFloat n3"></i>' : '';
   const stage = `<div class="lmStage lounge ${playing ? 'play' : ''}"><img class="lmBg" src="${esc(im('lm_lounge'))}" alt="" draggable="false">
-    <img class="lmPianist" src="${esc(im('lm_bird_piano'))}" alt="" data-l="req">${notes}${ppl}</div>`;
+    <img class="lmPianist" src="${esc(im('lm_bird_piano'))}" alt="" data-l="req">${lit() ? `<img class="lmSax" src="${esc(im('lm_fox_sax'))}" alt="" data-l="req">` : ''}${notes}${ppl}</div>`;
   const now = M.tr ? M.tr.t + (V.req ? '' : '（ラウンジ版）') : trackOf(wantKey()).t;
   const left = MK_MAX - d.mk;
   const say = rs.length ? (left > 0 ? `いらっしゃいませ。${esc(rs[0].name)}さんが モクテルを まっていますよ。` : 'きょうの モクテルは おしまい。ピアノを たのしんでくださいね。')
@@ -605,9 +673,104 @@ async function huntEnd(){
     <p class="dlgP">${pt ? `<span class="coin sm">P</span> <b>+${pt}</b>` : 'また あした ちょうせん してね'}${all ? '<br>夜景フォトも アルバムに 入ったよ' : ''}<br><small>見つけた 住民と なかよし度 +1</small></p></div>`, [{label:'OK', cls:'gold', v:1}], 'gold');
   render();
 }
+/* ====================================================================
+   ブティック（★0）
+   ==================================================================== */
+function vBoutique(){
+  const L = isL(), d = D(), tab = V.btab || 'fur';
+  const stage = `<div class="lmStage bout ${lit() ? 'lit s-' + SEASON() : ''}"><img class="lmBg" src="${esc(im('lm_boutique'))}" alt="" draggable="false">
+    <img class="btDisp" src="${esc(im('bt_moonlamp'))}" style="left:13.5%;top:33.6%;height:9%" alt="">
+    <img class="btDisp" src="${esc(im('bt_nightart'))}" style="left:13.5%;top:48.2%;height:8%" alt="">
+    <img class="btDisp" src="${esc(im('bt_snowglobe'))}" style="left:86.5%;top:33.6%;height:8%" alt="">
+    <img class="btDisp" src="${esc(im('bt_towermini'))}" style="left:86.5%;top:48.2%;height:9%" alt="">
+    <img class="btDisp" src="${esc(im('bt_minipiano'))}" style="left:50%;top:84%;height:15%" alt="">
+    <img class="btDisp" src="${esc(im('bt_starsofa'))}" style="left:19%;top:80%;height:9%" alt="">
+    <img class="btClerk" src="${esc(im('lm_fox_clerk'))}" alt="" data-l="clerk"></div>`;
+  const tabs = [['fur', 'bt_starsofa', '家具'], ['wear', 'ic_lm_hanger', '衣装'], ['ex', 'ic_lm_ticket', 'こうかん']]
+    .map(([k, ic, n]) => `<button class="btTab ${tab === k ? 'on' : ''}" data-l="btab:${k}">${ico(ic)}<span>${n}</span></button>`).join('');
+  let list = '';
+  if(tab === 'fur') list = BT_FUR.map(f => { const n = furN(f.id), can = save.points.bal >= f.p;
+    return `<div class="btCard">${ico(f.art, 'btPic')}<div class="btTx"><b>${f.n}</b><small>${f.d}</small><small>もっている：${n}</small></div>
+      <button class="lmB ${can ? 'gold' : ''} btBuy" data-l="buyf:${f.id}"><span class="coin sm">P</span><span>${nf(f.p)}</span></button></div>`; }).join('')
+    + `<p class="lmNote">買った 家具は「わたしの家」の もようがえで おけるよ</p>`;
+  if(tab === 'wear') list = BT_WEAR.map(w => { const have = d.wInv[w.id] || 0, on = Object.values(d.wear).filter(x => x === w.id).length, can = save.points.bal >= w.p;
+    return `<div class="btCard">${ico(w.art, 'btPic')}<div class="btTx"><b>${w.n}</b><small>${w.d}</small><small>もっている：${have}　きている 住民：${on}</small></div>
+      <div class="btBtns"><button class="lmB ${can ? 'gold' : ''} btBuy" data-l="buyw:${w.id}"><span class="coin sm">P</span><span>${nf(w.p)}</span></button>
+      <button class="lmB pink btBuy" data-l="wearpick:${w.id}" ${have ? '' : 'disabled'}><span>着せる</span></button></div></div>`; }).join('')
+    + `<button class="lmB wide" data-l="wearpick:">${ico('ic_lm_hanger')}<span>着ている 住民を 見る・ぬがせる</span></button>`;
+  if(tab === 'ex') list = `<div class="btExHd">${ico('ic_lm_album', 'btExI')}<span><b>夜景フォト ${d.album.length}まい</b><small>${EX_N}まいで 限定品 1つと こうかん（ふるい しゃしんから つかうよ）</small></span></div>`
+    + BT_EX.map(x => { const n = x.k === 'fur' ? furN(x.id) : decoN(x.id), can = d.album.length >= EX_N;
+      return `<div class="btCard">${ico(x.art, 'btPic')}<div class="btTx"><b>${x.n}</b><small>${x.d}</small><small>もっている：${n}</small></div>
+        <button class="lmB ${can ? 'gold' : ''} btBuy" data-l="exch:${x.id}" ${can ? '' : 'disabled'}>${ico('ic_lm_ticket')}<span>${EX_N}まい</span></button></div>`; }).join('')
+    + (grade() < 2 ? '<p class="lmNote">夜景フォトは 展望デッキ（★2）で とれるよ</p>' : '');
+  const say = tab === 'ex' ? 'すてきな 夜景フォトを 5まい あつめると、ここでしか 手に はいらない 品と こうかん できますよ。'
+    : tab === 'wear' ? '住民の みなさんに 着せてあげると、まちでも その すがたで あるきますよ。' : 'いらっしゃいませ。タワーでしか 買えない 品を そろえております。';
+  const info = `<div class="lmInfo btInfo"><div class="lmInfoHd">${ico('lm_fox_clerk', 'lmInfoBird')}<p id="lmSay">${say}</p></div>
+    <div class="btTabs">${tabs}</div><div class="btList">${list}</div>
+    <div class="lmBtns"><button class="lmB" data-l="music">${ico('ic_lm_music')}<span>${M.on ? 'BGM オン' : 'BGM オフ'}</span></button>
+      <button class="lmB" data-l="elev">${ico('ic_lm_elev')}<span>エレベーター</span></button></div></div>`;
+  return bar('ブティック', true) + `<div class="lmBody ${L ? 'lobL' : 'lobP'} btq">${stage}${info}</div>`;
+}
+function vWear(){
+  const d = D(), w = V.wearOv, rs = nonHuman();
+  const W = BT_WEAR.find(x => x.id === w);
+  const rows = rs.map(r => { const cur = d.wear[r.id], cw = BT_WEAR.find(x => x.id === cur);
+    return `<div class="btWr"><span class="btWrPic">${resPic(r)}</span><span class="btWrTx"><b>${esc(r.name)}</b><small>${cw ? cw.n + 'を きているよ' : 'なにも きていないよ'}</small></span>
+      ${W && cur !== w ? `<button class="lmB gold" data-l="wearon:${r.id}" ${(d.wInv[w] || 0) ? '' : 'disabled'}><span>着せる</span></button>` : ''}
+      ${cur ? `<button class="lmB" data-l="wearoff:${r.id}"><span>ぬぐ</span></button>` : ''}</div>`; }).join('');
+  return `<div class="lmOv" data-l="ovx"><div class="lmElev btWear"><div class="lmElHd">${ico(W ? W.art : 'ic_lm_hanger', 'lmElIc')}<b>${W ? W.n + 'を 着せる' : '衣装'}</b><button class="lmX" data-l="ovx" aria-label="とじる">✕</button></div>
+    <p class="lmNote">${W ? `のこり ${d.wInv[w] || 0}着。ぬぐと もちものに もどるよ` : '着ている 衣装を ぬがせると もちものに もどるよ'}</p>
+    <div class="lmReqList">${rows || '<p class="lmNote">住民が まだ いないよ</p>'}</div></div></div>`;
+}
+function buyFur(id){
+  const f = BT_FUR.find(x => x.id === id); if(!f) return;
+  if(save.points.bal < f.p){ toast('ポイントが たりないよ'); return; }
+  givePts(-f.p, `ブティックで ${f.n}`); const H = ensureHome(); H.inv[id] = (H.inv[id] || 0) + 1; persist();
+  try{ sound('ok'); confetti(900); checkBadges(); }catch(e){}
+  toast(`${f.n}を 買ったよ！「わたしの家」の もようがえで おけるよ`); render();
+}
+function buyWear(id){
+  const w = BT_WEAR.find(x => x.id === id); if(!w) return; const d = D();
+  if(save.points.bal < w.p){ toast('ポイントが たりないよ'); return; }
+  givePts(-w.p, `ブティックで ${w.n}`); d.wInv[id] = (d.wInv[id] || 0) + 1; persist();
+  try{ sound('ok'); }catch(e){} toast(`${w.n}を 買ったよ！「着せる」で 住民に 着せてね`); render();
+}
+function wearOn(rid){
+  const d = D(), w = V.wearOv; if(!w || !(d.wInv[w] > 0)) return;
+  const old = d.wear[rid]; if(old) d.wInv[old] = (d.wInv[old] || 0) + 1;
+  d.wear[rid] = w; d.wInv[w]--; const r = save.town.res.find(x => x.id === rid); if(r) r.fr = (r.fr || 0) + 1; persist();
+  try{ sound('fan'); }catch(e){} toast(`${r ? r.name : ''}が ${BT_WEAR.find(x => x.id === w).n}を 着たよ！（なかよし +1）`); render();
+}
+function wearOff(rid){
+  const d = D(), old = d.wear[rid]; if(!old) return;
+  delete d.wear[rid]; d.wInv[old] = (d.wInv[old] || 0) + 1; persist(); try{ sound('tap'); }catch(e){} render();
+}
+async function exch(id){
+  const x = BT_EX.find(y => y.id === id), d = D(); if(!x) return;
+  if(d.album.length < EX_N){ toast(`夜景フォトが ${EX_N}まい いるよ`); return; }
+  d.album.splice(d.album.length - EX_N, EX_N); d.exN++;
+  if(x.k === 'fur'){ const H = ensureHome(); H.inv[id] = (H.inv[id] || 0) + 1; }
+  else { const t = save.town; t.inv[id] = (t.inv[id] || 0) + 1; try{ discover(id); }catch(e){} }
+  persist(); try{ sound('fan'); confetti(1600); checkBadges(); }catch(e){}
+  await dialog(`<div class="lmGiftDlg"><img src="${esc(im(x.art))}" alt=""><h2 class="dlgT">こうかん できたよ！</h2>
+    <p class="dlgP">${x.n}<br><small>${x.k === 'fur' ? '「わたしの家」の もようがえで おけるよ' : 'まちの もようがえで おけるよ'}</small></p></div>`, [{label:'やったー！', cls:'gold', v:1}], 'gold');
+  render();
+}
+/* ---------- まちの タワー：★3 の 夜は ライトアップ ---------- */
+function townGlow(){
+  try{
+    if(typeof curScreen === 'undefined' || curScreen !== 'town' || !save.town) return;
+    document.querySelectorAll('#townMap .lmTownLit').forEach(e => e.remove());
+    if(!lit() || tod() === 'day' || tod() === 'mor') return;
+    cellsOf().forEach(k => { const [x, y] = k.split(','); const c = document.querySelector(`#townMap .cell[data-x="${x}"][data-y="${y}"]`);
+      if(c) c.insertAdjacentHTML('beforeend', `<i class="lmTownLit s-${SEASON()}"></i>`); });
+  }catch(e){}
+}
+try{ const _rm = renderMap; renderMap = function(){ const o = _rm.apply(this, arguments); townGlow(); return o; }; }catch(e){}
+setInterval(() => { if(!document.hidden) townGlow(); }, 60000);
 /* ---------- エレベーター ---------- */
 function vElev(){
-  const g = grade(), cur = ['lobby', 'lounge', 'deck'].includes(V.view) ? V.view : '';
+  const g = grade(), cur = ['lobby', 'lounge', 'deck', 'boutique'].includes(V.view) ? V.view : '';
   const rows = FLOORS.map(f => { const lock = f.g > g, soon = !lock && f.step > 1;
     return `<button class="lmEl ${lock ? 'lk' : soon ? 'soon' : 'on'} ${cur === f.id ? 'cur' : ''}" data-l="go:${f.id}" ${lock || soon ? 'aria-disabled="true"' : ''}>
       <i class="lmElN">${f.s}</i><span><b>${f.n}</b><small>${lock ? `タワーを ★${f.g} に すると ひらくよ` : soon ? `STEP${f.step}で オープン予定` : esc(f.d)}</small></span>
@@ -619,7 +782,7 @@ function vElev(){
 function render(){
   if(!V) return; const el = root();
   el.className = 'show ' + (isL() ? 'lL' : 'lP');
-  el.innerHTML = (V.view === 'lobby' ? vLobby() : V.view === 'lounge' ? vLounge() : V.view === 'deck' ? vDeck() : vTop()) + (V.elev ? vElev() : V.reqOv ? vReq() : V.mk ? vMk() : V.hunt ? vHunt() : V.alb ? vAlbum() : '');
+  el.innerHTML = (V.view === 'lobby' ? vLobby() : V.view === 'lounge' ? vLounge() : V.view === 'deck' ? vDeck() : V.view === 'boutique' ? vBoutique() : vTop()) + (V.elev ? vElev() : V.reqOv ? vReq() : V.mk ? vMk() : V.hunt ? vHunt() : V.alb ? vAlbum() : V.wearOv != null ? vWear() : '');
   if(V.view === 'deck' && !V.hunt) starLoop();
   if(V.hunt){ const m = document.getElementById('lmHuntMap'); if(m){ const fit = () => { const r = m.getBoundingClientRect(); m.style.setProperty('--r', Math.round(Math.min(r.width, r.height) * .2) + 'px'); }; fit(); requestAnimationFrame(fit); } }
   document.body.classList.add('lmOpen');
@@ -687,6 +850,7 @@ function floor(id){
   if(id === 'lobby'){ try{ sound('tap'); }catch(e){} V.elev = false; go('lobby'); }
   if(id === 'lounge'){ try{ sound('tap'); }catch(e){} V.elev = false; go('lounge'); }
   if(id === 'deck'){ try{ sound('tap'); }catch(e){} V.elev = false; go('deck'); }
+  if(id === 'boutique'){ try{ sound('tap'); }catch(e){} V.elev = false; go('boutique'); }
 }
 function onClick(e){
   const b = e.target.closest('[data-l]'); if(!b || !V) return;
@@ -697,7 +861,15 @@ function onClick(e){
     case 'top': V.elev = false; return go('top');
     case 'floor': return floor(v);
     case 'elev': V.elev = true; try{ sound('tap'); }catch(e){} return render();
-    case 'ovx': V.elev = false; V.reqOv = false; V.alb = false; return render();
+    case 'ovx': V.elev = false; V.reqOv = false; V.alb = false; V.wearOv = null; return render();
+    case 'btab': V.btab = v; try{ sound('tap'); }catch(e){} return render();
+    case 'buyf': return buyFur(v);
+    case 'buyw': return buyWear(v);
+    case 'wearpick': V.wearOv = v || ''; try{ sound('tap'); }catch(e){} return render();
+    case 'wearon': return wearOn(v);
+    case 'wearoff': return wearOff(v);
+    case 'exch': return exch(v);
+    case 'clerk': { const s = document.getElementById('lmSay'); if(s){ s.textContent = pick(['いらっしゃいませ。ごゆっくり ご覧ください。','夜景フォトの こうかんも うけたまわっております。','タキシード、とても よく おにあいですよ。']); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); } try{ sound('tap'); }catch(e){} return; }
     case 'go': V.elev = false; return floor(v);
     case 'grade': { const k = V.key; close(); try{ openBuilding(k); }catch(e){} return; }
     case 'music': { const d = D(); if(M.on){ d.mute = true; bgmStop(); } else { d.mute = false; persist(); if(save.settings && save.settings.bgm === false){ toast('せっていで BGM が オフに なっているよ'); return; } bgmStart(); } persist(); if(V && V.view === 'lounge') render(); return; }
@@ -735,7 +907,7 @@ window.addEventListener('click', async e => {
   open(key);
 }, true);
 /* ショップの せつめい */
-try{ const _ie = itemEffect; itemEffect = function(it){ const s = _ie.apply(this, arguments); return it && it.id === ID ? `${s}${s ? '・' : ''}🗼 タッチで タワーの 中へ（ロビー・★1 スカイラウンジ・★2 展望デッキ）` : s; }; }catch(e){}
+try{ const _ie = itemEffect; itemEffect = function(it){ const s = _ie.apply(this, arguments); return it && it.id === ID ? `${s}${s ? '・' : ''}🗼 タッチで タワーの 中へ（ロビー・ブティック・★1 スカイラウンジ・★2 展望デッキ・★3 ライトアップ）` : s; }; }catch(e){}
 
-window.__lm30 = {open, close, grade, bgmStart, bgmStop, FLOORS, mkQuiz, trackOf, shoot, huntStart};
+window.__lm30 = {open, close, grade, bgmStart, bgmStop, FLOORS, mkQuiz, trackOf, shoot, huntStart, BT_FUR, BT_WEAR, BT_EX};
 })();
