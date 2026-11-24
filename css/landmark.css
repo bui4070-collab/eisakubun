@@ -1,0 +1,161 @@
+/* =====================================================================
+   まなびタウン v30.0：ランドマークタワー STEP1
+   ネイビー × ゴールド × ラベンダー／角丸 16px で 統一
+   スマホ縦（.lP）… タワーが メニュー＋下の ドック ／ iPad横（.lL）… 左 タワー 6：右 フロアガイド 4
+   ===================================================================== */
+#lm{display:none;position:fixed;inset:0;z-index:66;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  background:radial-gradient(ellipse at 50% 0%,#2A2F6E 0%,#151938 70%);color:#F3E9D2;--gd:#D9B25A;--gl:#F3E3B5;--nv:#1B1F4B;--lv:#B8A8E8}
+#lm.show{display:block}
+body.lmOpen #bnav{display:none!important}
+#lm *{box-sizing:border-box}
+#lm button{font:inherit;color:inherit;border:none;background:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#lm img{-webkit-user-drag:none;user-select:none}
+/* ---- ヘッダー ---- */
+.lmBar{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));
+  background:linear-gradient(180deg,rgba(21,25,56,.94),rgba(27,31,75,.86));border-bottom:1px solid rgba(217,178,90,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lmBack{flex:none;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gd)!important;display:grid;place-items:center;color:var(--gl)!important;background:rgba(255,255,255,.06)!important}
+.lmBack svg{width:22px;height:22px}
+.lmTitle{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;font-size:18px;font-weight:900;letter-spacing:.12em;color:var(--gl);white-space:nowrap}
+.lmTitle span{overflow:hidden;text-overflow:ellipsis}
+.lmTitle i{flex:0 1 46px;height:1px;background:linear-gradient(90deg,transparent,var(--gd))}
+.lmTitle i:last-child{background:linear-gradient(90deg,var(--gd),transparent)}
+.lmPt{flex:none;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.1);border:1px solid rgba(217,178,90,.5);border-radius:999px;padding:3px 10px 3px 4px;font-weight:900;font-size:14px;color:var(--gl);white-space:nowrap}
+.lmStars{color:var(--gd);letter-spacing:1px;font-size:14px}.lmStars em{font-style:normal;color:rgba(217,178,90,.28)}
+/* ---- ぶたい（絵）---- */
+.lmStage{position:relative;aspect-ratio:2/3;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(217,178,90,.45);margin:0 auto;background:#151938}
+.lmBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.lmSky{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;transition:background .6s}
+.lmStage.t-mor .lmSky{background:linear-gradient(180deg,rgba(255,210,170,.55),rgba(170,210,255,.35) 55%,transparent);mix-blend-mode:screen;opacity:.55}
+.lmStage.t-day .lmSky{background:linear-gradient(180deg,rgba(150,205,255,.6),rgba(200,230,255,.25) 60%,transparent);mix-blend-mode:screen;opacity:.5}
+.lmStage.t-eve .lmSky{background:linear-gradient(180deg,rgba(255,150,120,.55),rgba(255,190,140,.25) 60%,transparent);mix-blend-mode:screen;opacity:.5}
+.lmStage.t-ngt .lmSky{background:none}
+.lmStar{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff,0 0 14px #C9B8FF;pointer-events:none;animation:lmTw 2.6s ease-in-out infinite}
+.lmStar.s1{left:12%;top:8%}.lmStar.s2{left:86%;top:22%;animation-delay:-.9s}.lmStar.s3{left:8%;top:34%;animation-delay:-1.7s}
+@keyframes lmTw{50%{opacity:.15;transform:scale(.5)}}
+/* 階の タッチ範囲 */
+.lmZone{position:absolute;border-radius:14px;outline:2px solid transparent;transition:outline-color .2s,background .2s}
+.lmZone.on{outline-color:rgba(255,226,140,.85);box-shadow:0 0 18px 4px rgba(255,214,110,.45),inset 0 0 22px rgba(255,226,150,.35);animation:lmGlow 2.4s ease-in-out infinite}
+.lmZone.soon{outline:1.5px dashed rgba(243,227,181,.55)}
+.lmZone.lk{background:rgba(16,18,46,.42);outline:1.5px solid rgba(184,168,232,.35)}
+.lmZone:active{transform:scale(.98)}
+@keyframes lmGlow{50%{box-shadow:0 0 26px 8px rgba(255,214,110,.6),inset 0 0 26px rgba(255,226,150,.45)}}
+.lmTag{position:absolute;left:50%;bottom:-6px;transform:translate(-50%,50%);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;
+  background:linear-gradient(180deg,#232864,#171B45);border:1.5px solid var(--gd);border-radius:999px;padding:2px 10px;font-size:12px;box-shadow:0 3px 8px rgba(0,0,0,.4);z-index:2}
+.lmTag b{font-weight:900;color:var(--gl);letter-spacing:.06em}
+.lmTag small{font-size:10px;font-weight:900;color:var(--lv)}
+.lmLockI{width:14px;height:14px;object-fit:contain}
+/* コンシェルジュ */
+.lmCon{position:absolute;left:1.5%;bottom:1.5%;width:28%;display:flex;flex-direction:column-reverse;align-items:flex-start;gap:4px;z-index:3;cursor:pointer}
+.lmCon img{width:76%;height:auto;filter:drop-shadow(0 6px 6px rgba(0,0,0,.45));animation:lmBob 2.8s ease-in-out infinite;flex:none}
+.lmBub{position:relative;width:100%;font-size:11px!important;padding:6px 8px!important;background:rgba(245,240,255,.96);color:#2A2540;border-radius:16px;padding:7px 11px;font-size:12.5px;font-weight:800;line-height:1.55;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.lmBub::before{content:"";position:absolute;left:22px;bottom:-8px;border:8px solid transparent;border-top-color:rgba(245,240,255,.96);border-bottom:0}
+.lmBub.pop,.lmSideSay.pop,.lmInfoHd p.pop{animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes lmBob{50%{transform:translateY(-5px)}}
+.lmGrade{position:absolute;right:10px;top:8px;background:rgba(21,25,56,.7);border:1px solid rgba(217,178,90,.5);border-radius:999px;padding:1px 10px;z-index:3}
+/* ---- スマホ縦 ---- */
+.lmBody{padding:10px 10px 0}
+#lm.lP .lmBody.topP{position:relative;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+#lm.lP .topP .lmStage{width:min(100%,calc((100dvh - 178px) * .6667))}
+#lm.lP .topP{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - 58px)}
+.lmDock{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;gap:clamp(8px,4vw,26px);padding:8px 10px max(10px,env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(27,31,75,.86),rgba(18,21,50,.97));border-top:1px solid rgba(217,178,90,.55)}
+.lmDk{display:flex;flex-direction:column;align-items:center;gap:2px;width:68px}
+.lmDk img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));transition:transform .15s}
+.lmDk span{font-size:10.5px;font-weight:900;color:var(--gl);white-space:nowrap}
+.lmDk.on img{filter:drop-shadow(0 0 8px rgba(255,214,110,.85))}
+.lmDk:active img{transform:scale(.92)}
+/* ---- iPad横 ---- */
+#lm.lL .lmBody.topL{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,4fr);gap:14px;align-items:start;padding:12px 14px max(14px,env(safe-area-inset-bottom));max-width:1180px;margin:0 auto}
+#lm.lL .lmLeft{display:flex;justify-content:center}
+#lm.lL .topL .lmStage{width:min(100%,calc((100dvh - 92px) * .6667))}
+.lmSide{background:linear-gradient(180deg,rgba(35,40,100,.92),rgba(22,26,62,.95));border:1px solid rgba(217,178,90,.55);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;
+  min-height:calc(100dvh - 92px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.lmSideHd{display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(217,178,90,.4);padding-bottom:8px}
+.lmSideBird{width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 4px rgba(0,0,0,.4));animation:lmBob 2.8s ease-in-out infinite}
+.lmSideHd b{display:block;font-size:22px;letter-spacing:.16em;color:var(--gl)}
+.lmSideSay{background:rgba(245,240,255,.95);color:#2A2540;border-radius:16px;padding:8px 12px;font-size:13.5px;font-weight:800;line-height:1.6;cursor:pointer}
+.lmCards{display:flex;flex-direction:column;gap:8px}
+.lmCard{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(217,178,90,.35)!important;border-radius:16px!important;padding:6px 10px 6px 6px!important;min-height:64px}
+.lmCard.on{background:linear-gradient(90deg,rgba(255,214,110,.22),rgba(255,255,255,.06));border-color:rgba(255,214,110,.85)!important;box-shadow:0 0 14px rgba(255,214,110,.35)}
+.lmCard.lk{opacity:.62}
+.lmThumb{flex:none;width:96px;height:52px;border-radius:12px;background-repeat:no-repeat;box-shadow:0 0 0 1px rgba(217,178,90,.55)}
+.lmCard.lk .lmThumb{filter:grayscale(.7) brightness(.7)}
+.lmCtx{flex:1;min-width:0;display:flex;flex-direction:column}
+.lmCtx b{font-size:16px;font-weight:900;color:var(--gl);letter-spacing:.06em}
+.lmCtx small{font-size:11px;font-weight:800;color:var(--lv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lmCardLock{width:24px;height:24px;object-fit:contain;flex:none}
+.lmChev{flex:none;width:10px;height:10px;border-right:2px solid var(--gd);border-top:2px solid var(--gd);transform:rotate(45deg);margin-right:4px}
+.lmSideBtns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.lmSB{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0!important;border-radius:16px!important}
+.lmSB img{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+.lmSB span{font-size:11px;font-weight:900;color:var(--gl)}
+.lmSB.on img{filter:drop-shadow(0 0 8px rgba(255,214,110,.85))}
+.lmPlay{margin-top:auto;display:flex;align-items:center;gap:10px;border-top:1px solid rgba(217,178,90,.4);padding-top:10px}
+.lmPB{flex:none;width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFE9A8,#D9B25A 60%,#9C7428)!important;display:grid;place-items:center;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lmPB svg{width:22px;height:22px;fill:#1B1F4B}
+.lmPlay b{display:block;font-size:15px;color:var(--gl)}.lmPlay small{font-size:11px;color:var(--lv);font-weight:800}
+.lmEq{margin-left:auto;display:flex;align-items:flex-end;gap:3px;height:26px}
+.lmEq i{width:4px;height:20%;border-radius:2px;background:linear-gradient(180deg,var(--gd),var(--lv))}
+.lmEq.on i{animation:lmEq .9s ease-in-out infinite}
+.lmEq.on i:nth-child(2){animation-delay:-.2s}.lmEq.on i:nth-child(3){animation-delay:-.5s}.lmEq.on i:nth-child(4){animation-delay:-.1s}
+.lmEq.on i:nth-child(5){animation-delay:-.7s}.lmEq.on i:nth-child(6){animation-delay:-.35s}.lmEq.on i:nth-child(7){animation-delay:-.6s}
+@keyframes lmEq{0%,100%{height:20%}50%{height:100%}}
+/* ---- ロビー ---- */
+.lmStage.lobby .lmDesk{position:absolute;left:7%;top:40%;width:17%;height:auto;filter:drop-shadow(0 6px 6px rgba(0,0,0,.4));animation:lmBob 2.8s ease-in-out infinite;cursor:pointer;z-index:2}
+.lmRes{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;z-index:3}
+.lmRes .rpic{height:100%;filter:drop-shadow(0 6px 5px rgba(0,0,0,.35));animation:lmBob 3s ease-in-out infinite}
+.lmRes:nth-of-type(2) .rpic{animation-delay:-1s}.lmRes:nth-of-type(3) .rpic{animation-delay:-2s}
+.lmRes>.lmNm{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(21,25,56,.85);border:1px solid var(--gd);border-radius:999px;padding:0 8px;font-size:11px;font-weight:900;color:var(--gl)}
+.lmHeart{position:absolute;right:-8px;top:-6px;width:24px;height:24px;border-radius:50%;background:#F2557E;box-shadow:0 2px 6px rgba(0,0,0,.35);animation:bump 1.4s infinite}
+.lmHeart::after{content:"";position:absolute;inset:6px;background:#fff;clip-path:path('M6 11 1.5 6.5A2.6 2.6 0 0 1 6 2.8 2.6 2.6 0 0 1 10.5 6.5Z')}
+.lmRes.done{opacity:.95}
+.lmInfo{background:linear-gradient(180deg,rgba(35,40,100,.92),rgba(22,26,62,.95));border:1px solid rgba(217,178,90,.55);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.lmInfoHd{display:flex;align-items:center;gap:8px}
+.lmInfoBird{width:58px;height:58px;object-fit:contain;flex:none}
+.lmInfoHd p{margin:0;background:rgba(245,240,255,.95);color:#2A2540;border-radius:16px;padding:8px 12px;font-size:13.5px;font-weight:800;line-height:1.6}
+.lmRow{display:flex;flex-wrap:wrap;gap:6px}
+.lmRow span{border:1px solid rgba(217,178,90,.45);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:900;color:var(--lv)}
+.lmRow span.ok{color:#FFB3C8;border-color:#F2557E}
+.lmBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lmB{display:flex;align-items:center;justify-content:center;gap:6px;min-height:52px;white-space:nowrap;border-radius:16px!important;border:1px solid rgba(217,178,90,.6)!important;background:rgba(255,255,255,.07)!important;font-weight:900;font-size:14px;color:var(--gl)!important;padding:4px 10px!important}
+.lmB img{width:34px;height:34px;object-fit:contain;flex:none}
+.lmB.gold{background:linear-gradient(180deg,#F6DE97,#D9B25A)!important;color:#1B1F4B!important;border-color:#9C7428!important;box-shadow:0 3px 0 #9C7428}
+.lmB[disabled]{opacity:.5;cursor:default}
+.lmB.wide{width:100%;margin-top:4px}
+#lm.lP .lmBody.lobP{display:flex;flex-direction:column;gap:12px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+#lm.lP .lobP .lmStage{width:min(100%,calc((100dvh - 270px) * .6667))}
+#lm.lL .lmBody.lobL{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,4fr);gap:14px;align-items:start;padding:12px 14px max(14px,env(safe-area-inset-bottom));max-width:1180px;margin:0 auto}
+#lm.lL .lobL .lmStage{width:min(100%,calc((100dvh - 92px) * .6667))}
+#lm.lL .lobL .lmInfo{position:sticky;top:70px}
+#lm.lL .lobL .lmInfoBird{width:84px;height:84px}
+#lm.lL .lobL .lmBtns{grid-template-columns:1fr}
+/* ---- エレベーター ---- */
+.lmOv{position:fixed;inset:0;z-index:8;background:rgba(10,12,30,.62);display:flex;align-items:center;justify-content:center;padding:14px;animation:fadeIn .2s}
+.lmElev{width:min(94vw,460px);max-height:92dvh;overflow:auto;background:linear-gradient(180deg,#262B6A,#171B45);border:1.5px solid var(--gd);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 14px 40px rgba(0,0,0,.55);animation:pop .3s cubic-bezier(.2,1.5,.4,1)}
+.lmElHd{display:flex;align-items:center;gap:10px}
+.lmElHd b{flex:1;font-size:19px;letter-spacing:.14em;color:var(--gl)}
+.lmDial{position:relative;width:52px;height:28px;border-radius:52px 52px 0 0;border:2px solid var(--gd);border-bottom:none;background:#0F1230}
+.lmDial i{position:absolute;left:50%;bottom:0;width:2px;height:22px;background:var(--gd);transform-origin:50% 100%;transform:translateX(-50%) rotate(var(--r))}
+.lmX{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gd)!important;color:var(--gl)!important;font-weight:900}
+.lmEl{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid rgba(217,178,90,.4)!important;border-radius:16px!important;padding:8px 10px!important;background:rgba(255,255,255,.05)!important}
+.lmEl.on{background:linear-gradient(90deg,rgba(255,214,110,.2),rgba(255,255,255,.05))!important;border-color:rgba(255,214,110,.85)!important}
+.lmEl.cur{box-shadow:inset 0 0 0 2px rgba(255,214,110,.7)}
+.lmEl.lk,.lmEl.soon{opacity:.7}
+.lmElN{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:13px;color:#1B1F4B;background:radial-gradient(circle at 35% 30%,#FFE9A8,#D9B25A 60%,#9C7428)}
+.lmEl.lk .lmElN{filter:grayscale(.8) brightness(.8)}
+.lmEl span{flex:1;min-width:0;display:flex;flex-direction:column}
+.lmEl b{font-size:16px;color:var(--gl)}.lmEl small{font-size:11px;color:var(--lv);font-weight:800}
+.lmEl em{flex:none;font-style:normal;font-size:12px;font-weight:900;color:#1B1F4B;background:var(--gd);border-radius:999px;padding:2px 10px}
+.lmEl em.soon{background:rgba(184,168,232,.3);color:var(--lv)}
+.lmElLock{width:26px;height:26px;object-fit:contain;flex:none}
+.lmNote{margin:2px 0 0;font-size:11.5px;font-weight:800;color:var(--lv);line-height:1.6}
+/* ---- ごほうび ---- */
+.lmGiftDlg{display:flex;flex-direction:column;align-items:center}
+.lmGiftDlg img{height:130px;width:auto;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+.lmGiftDlg small{color:var(--sub);font-weight:800}
+@media (max-width:560px){ .lmTitle{font-size:16px;letter-spacing:.04em;gap:0} .lmTitle i{display:none} }
+@media (max-width:380px){ .lmB{font-size:12.5px} .lmDk{width:60px} .lmDk img{width:46px;height:46px} .lmTitle{font-size:16px;letter-spacing:.06em} .lmTitle i{display:none} }
+.lmElIc{width:42px;height:42px;object-fit:contain;flex:none}
+.lmBtns>.lmB{min-width:0}
+.lmB span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:560px){ .lmB{font-size:13px;gap:4px;padding:4px 6px!important} .lmB img{width:28px;height:28px} }
