@@ -101,6 +101,7 @@
     ・強弱：1拍目＞ほかの 拍＞ウラ／フレーズの 山で ふくらむ／メロディーは 内声より 強く／2コーラス目は 強め／強い 音ほど 明るい 音色<br>
     ・イントロ：5パターン（くり返す たびに かわる）／2コーラス目：サックスの フェイク（なめらかに つなぐ）＋ 3コーラス目への 余韻<br>
     ・かえるのうた：2コーラス目が 3パートの 輪唱<br>
+    ・ロング版（うんめい・エリーゼのために・メヌエット）：はじめの ぶぶんの あとも 曲の つづきを 入れた ジャズ用の メロディー（リズムゲームの 曲は そのまま）<br>
     ※ 共犯・lulu.（著作権のある 曲）と あの雲のように は この ページには 入れていません。カノン・トルコ行進曲 は 今のまま。
   </div>
 </div>
@@ -162,9 +163,13 @@ const JAZZ_REHARM = {
   joy:      {bpm:112, key:0, c:'Cmaj7 Fmaj7|Dm7 G7|C6 Em7|Dm7 G7|Cmaj7 Fmaj7|Dm7 G7|C6 Em7|G7sus C6|Dm7 Cmaj7|G7 Am7|Dm7 G7|Am7 G7|Cmaj7 Fmaj7|Dm7 G7|C6 Em7|G7sus C69'},
   saints:   {bpm:116, key:0, pk:3, c:'Dm7 G7|C6|C6 Dm7|C6|C6 Dm7|C6 A7|Dm7 G7|Dm7|G7|C6 C7|Fmaj7|F6 Fm6|Cmaj7 Dm7|Em7 A7|Dm7 G7|C69'},
   happy:    {bpm:100, key:0, bt:3, pk:1, c:'G7|C6|G7|Dm7 G7|C6 C7|Fmaj7|Dm7 G7|C6 G7|C6 G7|C6|G7|Dm7 G7|C6 C7|Fmaj7|Dm7 G7|C6 G7|C69'},
-  fate:     {bpm:120, key:0, mi:1, c:'Cm6|G7|Cm6|Fm7 G7|Abmaj7|Dm7b5 G7|Cm6|Dm7b5 G7|Cm6'},
-  elise:    {bpm:126, key:9, mi:1, bt:3, pk:1, c:'E7|E7|Am7|E7|Am6 E7|E7|Am7|Dm7 E7|Am6 E7|E7|Fmaj7|E7|Am6 E7|E7|Fmaj7|Dm7 E7|Am6 E7|E7|Am7|E7|Am6 E7|E7|Am7|Dm7 E7|Am6'},
-  minuet:   {bpm:120, key:7, bt:3, c:'G6|Em7|Cmaj7|G6|Am7|Gmaj7|D7|Am7 D7|G6|Gmaj7 E7|Am7 D7|G6 E7|Am7|Gmaj7|Am7 D7|G69'},
+  fate:     {bpm:120, key:0, mi:1, long:1, c:'Cm6|G7|Cm6|Fm7 G7|Cm7|G7|Fm6 G7|G7|Cm7|Bb7|Abmaj7|G7|Cm6|G7|Bb7 Ebmaj7|Fm7 Bb7|Cm6|G7|G7|Cm6',
+    n:'R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 G#4:.5 G#4:.5 G#4:.5 G4:2 R:.5 D#5:.5 D#5:.5 D#5:.5 C5:2 R:.5 G4:.5 G4:.5 G4:.5 D4:2 R:.5 G#4:.5 G#4:.5 G#4:.5 G4:2 R:.5 F5:.5 F5:.5 F5:.5 D5:2 R:.5 G5:.5 G5:.5 F5:.5 D#5:2 R:.5 F5:.5 F5:.5 D#5:.5 D5:2 R:.5 D#5:.5 D#5:.5 D5:.5 C5:2 R:.5 D5:.5 D5:.5 C5:.5 B4:2 R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 R:.5 A#4:.5 A#4:.5 A#4:.5 D#5:2 F5:2 A#4:2 R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 R:.5 G4:.5 G4:.5 G4:.5 B3:2 C4:4'},
+  elise:    {bpm:126, key:9, mi:1, bt:3, pk:1, long:1, c:'E7|E7|Am7|E7|Am6|E7|Am7|Dm7 E7|Am6 E7|E7|Am7|E7|Am6|E7|Am7|Dm7 E7|Am7 G7|Cmaj7|G7|Am7|E7|Emaj7|E7|Am7|E7|Am6|E7|Am7|Dm7 E7|Am6',
+    n:'E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:2 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:1 R:.5 B4:.5 C5:.5 D5:.5 E5:1.5 G4:.5 F5:.5 E5:.5 D5:1.5 F4:.5 E5:.5 D5:.5 C5:1.5 E4:.5 D5:.5 C5:.5 B4:.5 R:.5 E4:.5 E5:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:3'},
+
+  minuet:   {bpm:120, key:7, bt:3, long:1, c:'G6|Em7|Cmaj7|G6|Am7|Gmaj7|D7|Am7 D7|G6|Gmaj7 Em7|Am7 D7|G6 Em7|Am7|Gmaj7|Am7 D7|G6|Gmaj7|Am7 D7|Em7|A7|A7|Em7 A7|D6 A7|Dmaj7|Gmaj7|Cmaj7|Am7|D7|G6|Am7|G6 D7|G69',
+    n:'D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 F#4:1 G4:.5 A4:.5 B4:.5 G4:.5 A4:3 D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 A4:1 B4:.5 A4:.5 G4:.5 F#4:.5 G4:3 B5:1 G5:.5 A5:.5 B5:.5 G5:.5 A5:1 D5:.5 E5:.5 F#5:.5 D5:.5 G5:1 E5:.5 F#5:.5 G5:.5 D5:.5 C#5:1 B4:.5 C#5:.5 A4:1 A4:.5 B4:.5 C#5:.5 D5:.5 E5:.5 F#5:.5 G5:1 F#5:1 E5:1 F#5:1 A4:1 C#5:1 D5:3 D5:1 G4:.5 F#4:.5 G4:1 E5:1 G4:.5 F#4:.5 G4:1 D5:1 C5:1 B4:1 A4:.5 G4:.5 F#4:.5 G4:.5 A4:1 D4:.5 E4:.5 F#4:.5 G4:.5 A4:.5 B4:.5 C5:1 B4:1 A4:1 B4:.5 D5:.5 G4:1 F#4:1 G4:3'},
   xm_jingle:{bpm:116, key:7, c:'G6|Gmaj7 A7|Am7 D7|Am7 D7|G6|G6 E7|Am7 D7|D7 G6|G6 Em7|Am7 D7|C6 Bm7|Am7 D7|G6 Em7|Am7 D7|C6 E7|D7 G69'},
   xm_silent:{bpm:72, key:10, bt:3, soft:1, c:'Bb6|Gm7|Cm7 F7|Bb6|Ebmaj7|Bb6 G7|Cm7|Bb6 G7|Cm7 F7|Bb6 Gm7|Cm7 F7|Bb69'},
   xm_wish:  {bpm:116, key:9, bt:3, pk:3, c:'E7|Amaj7|Dmaj7|B7|E7|C#7|F#m7|Bm7 E7|A6|F#m7|C#m7|F#m7 B7|E7|Amaj7 F#7|Bm7 E7|Dmaj7 E7|A69'}
@@ -384,12 +389,14 @@ function jazzArrange(s, o){
   o = Object.assign({form:'full', swing:.62, intro:'auto', parts:{mel:1, comp:1, drum:1, sax:1}}, o || {});
   const R = JAZZ_REHARM[s.id]; BT = R.bt || 4;
   const pk = R.pk || 0, sh = (BT - pk % BT) % BT;   // 弱起：0小節目の おわりに くるように ずらす
-  const notes = parseSong(s).map(n => ({m:n.m, b:n.b + sh, d:n.d}));
-  const beats = Math.ceil((s.beats + sh) / BT - 1e-6) * BT;
+  /* long：参考音源に あわせて ながく した メロディー（リズムゲームの 曲は そのまま） */
+  const src = R.n ? (R._s || (R._s = {n:R.n})) : s;
+  const notes = parseSong(src).map(n => ({m:n.m, b:n.b + sh, d:n.d}));
+  const beats = Math.ceil((src.beats + sh) / BT - 1e-6) * BT;
   const key = R.key || 0, mi = !!R.mi, chart = chartOf(R.c, beats), ev = [], P = o.parts;
   let off = 0, sd = 1;
   const E = (b, k, m, d, v) => { if(k === 'dr' && !P.drum) return; ev.push({b:off + b, k, m, d, v:v * sd * (R.soft && k === 'dr' ? .7 : 1)}); };
-  const lo = Math.min(...notes.map(n => n.m)), up = lo < 70 ? 12 : 0;
+  const lo = Math.min(...notes.map(n => n.m)), hi = Math.max(...notes.map(n => n.m)), up = lo < 70 && hi + 12 <= 90 ? 12 : 0;
   const secs = []; let t = 0;
   const sec = (n, len, ch, extra) => { secs.push(Object.assign({b:t, n, len, chart:ch}, extra || {})); };
   if(o.form === 'full'){
@@ -542,7 +549,7 @@ function tagOf(s){
   const R = JAZZ_REHARM[s.id];
   if(s.id === 'kira') return '<span class="tag">PDFの コードから</span>';
   if(s.id === 'row') return '<span class="tag no">アプリの 曲から</span>';
-  return '<span class="tag">参考音源から</span>' + (R.bt === 3 ? ' <span class="tag w">ワルツ</span>' : '') + (R.mi ? ' <span class="tag no">短調</span>' : '');
+  return '<span class="tag">参考音源から</span>' + (R.long ? ' <span class="tag w">ロング版</span>' : '') + (R.bt === 3 ? ' <span class="tag w">ワルツ</span>' : '') + (R.mi ? ' <span class="tag no">短調</span>' : '');
 }
 function songCards(){
   const card = s => `<button class="song ${s === cur ? 'cur' : ''}" data-id="${s.id}"><span>${tagOf(s)}</span><b>${s.t}</b><small>${JAZZ_REHARM[s.id].c.split('|').slice(0, 4).join(' | ')} …</small></button>`;
