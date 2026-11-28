@@ -3,20 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ジャズアレンジ 試聴（ランドマークタワー リクエスト）</title>
+<title>ジャズアレンジ 試聴 v4（ランドマークタワー リクエスト）</title>
 <style>
   *{box-sizing:border-box}
   body{margin:0;font-family:"Hiragino Maru Gothic ProN","Zen Maru Gothic","Meiryo",sans-serif;background:radial-gradient(ellipse at 50% 0%,#2A2F6E,#151938 70%);color:#F3E9D2;min-height:100vh}
-  .wrap{max-width:980px;margin:0 auto;padding:14px}
+  .wrap{max-width:1000px;margin:0 auto;padding:14px}
   h1{font-size:20px;margin:4px 0 2px;color:#F3E3B5;letter-spacing:.06em}
   .sub{font-size:12px;color:#B8A8E8;margin:0 0 12px}
+  .grpT{font-size:13px;font-weight:900;color:#F3E3B5;margin:12px 2px 6px;border-left:4px solid #D9B25A;padding-left:8px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
-  .song{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:16px;border:1px solid rgba(217,178,90,.45);background:rgba(255,255,255,.06);color:inherit;font:inherit;cursor:pointer}
-  .song b{font-size:16px;color:#F3E3B5}.song small{font-size:11px;color:#B8A8E8}
+  .song{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border-radius:16px;border:1px solid rgba(217,178,90,.45);background:rgba(255,255,255,.06);color:inherit;font:inherit;cursor:pointer;min-width:0}
+  .song b{font-size:15px;color:#F3E3B5}.song small{font-size:11px;color:#B8A8E8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .song .tag{align-self:flex-start;font-size:10px;font-weight:900;border-radius:999px;padding:1px 8px;background:#D9B25A;color:#1B1F4B}
   .song .tag.no{background:rgba(184,168,232,.3);color:#E6DBFF}
+  .song .tag.w{background:#9BE37A;color:#1B3B12}
   .song.cur{border-color:#FFD66E;background:linear-gradient(90deg,rgba(255,214,110,.22),rgba(255,255,255,.06));box-shadow:0 0 14px rgba(255,214,110,.35)}
   .panel{margin:12px 0;padding:12px;border-radius:16px;border:1px solid rgba(217,178,90,.55);background:linear-gradient(180deg,rgba(35,40,100,.92),rgba(22,26,62,.95))}
+  .stick{position:sticky;top:0;z-index:5}
   .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
   .row label{font-size:13px;font-weight:800}
   .seg{display:inline-flex;border:1px solid rgba(217,178,90,.6);border-radius:999px;overflow:hidden}
@@ -25,7 +28,8 @@
   .btn{border:1px solid #9C7428;background:linear-gradient(180deg,#F6DE97,#D9B25A);color:#1B1F4B;font:inherit;font-weight:900;border-radius:14px;padding:10px 18px;cursor:pointer}
   .btn.ghost{background:rgba(255,255,255,.07);color:#F3E3B5;border-color:rgba(217,178,90,.6)}
   .chk{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid rgba(217,178,90,.35);border-radius:999px;padding:4px 10px}
-  input[type=range]{width:160px}
+  .sel{font:inherit;font-weight:800;font-size:13px;border-radius:999px;padding:5px 10px;background:#232864;color:#F3E3B5;border:1px solid rgba(217,178,90,.6)}
+  input[type=range]{width:150px}
   .now{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .now b{font-size:17px;color:#F3E3B5}
   .sec{font-size:12px;font-weight:900;color:#1B1F4B;background:#B8A8E8;border-radius:999px;padding:2px 10px}
@@ -34,7 +38,6 @@
   .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#D9B25A,#B8A8E8)}
   .note{font-size:12px;color:#B8A8E8;line-height:1.7}
   .warn{color:#FFB3C8;font-weight:800}
-  .sel{font:inherit;font-weight:800;font-size:13px;border-radius:999px;padding:5px 10px;background:#232864;color:#F3E3B5;border:1px solid rgba(217,178,90,.6)}
   .round{display:none;gap:8px;margin:8px 0;flex-wrap:wrap}
   .round.show{display:flex}
   .rv{display:flex;flex-direction:column;align-items:center;min-width:96px;padding:8px 10px;border-radius:14px;border:1px solid rgba(184,168,232,.4);background:rgba(255,255,255,.05);font-weight:900;font-size:14px;opacity:.4;transition:all .2s}
@@ -46,20 +49,34 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🎷 ジャズアレンジ 試聴ページ</h1>
-  <p class="sub">ランドマークタワー「ピアノ リクエスト」用。まなびタウンと おなじ 楽器の音（assets/audio/music/）で ならします。</p>
+  <h1>🎷 ジャズアレンジ 試聴ページ v4</h1>
+  <p class="sub">ランドマークタワー「ピアノ リクエスト」用（19きょく）。まなびタウンと おなじ 楽器の音（assets/audio/music/）で ならします。</p>
 
-  <div class="grid" id="songs"></div>
-
-  <div class="panel">
+  <div class="panel stick">
     <div class="now"><span class="sec" id="sec">ていし中</span><b id="ttl">曲を えらんでね</b><span class="chord" id="chd">—</span><div class="bar"><i id="pg"></i></div></div>
     <div class="row">
       <button class="btn" id="play">▶ さいせい</button>
       <button class="btn ghost" id="stop">■ とめる</button>
       <span class="seg" id="mode"><button data-v="jazz" class="on">ジャズ（新）</button><button data-v="lounge">ラウンジ風（いま）</button></span>
+      <label>イントロ</label>
+      <select id="intro" class="sel">
+        <option value="auto">おまかせ（毎回 かわる）</option>
+        <option value="turn">ii–V の まわし</option><option value="vamp">ゆらゆら ヴァンプ</option>
+        <option value="solo">ピアノ ソロの アルペジオ</option><option value="tail">さいごの フレーズから</option><option value="drum">ドラムから</option>
+      </select>
     </div>
+    <div class="round" id="round"><span class="rv" data-i="0">🐸 パート1<small>ピアノ</small></span><span class="rv" data-i="1">🐸 パート2<small>ビブラフォン</small></span><span class="rv" data-i="2">🐸 パート3<small>サックス</small></span></div>
+    <p class="note" id="msg"></p>
+  </div>
+
+  <div class="grpT">さいしょの 9きょく</div>
+  <div class="grid" id="songsA"></div>
+  <div class="grpT">ついかした 10きょく</div>
+  <div class="grid" id="songsB"></div>
+
+  <div class="panel">
     <div class="row">
-      <label>テンポ <span id="bpmV">−</span></label><input type="range" id="bpm" min="70" max="160" step="2">
+      <label>テンポ <span id="bpmV">−</span></label><input type="range" id="bpm" min="60" max="160" step="2">
       <label>スウィング <span id="swV">0.62</span></label><input type="range" id="sw" min="0.5" max="0.7" step="0.01" value="0.62">
       <label>音量</label><input type="range" id="vol" min="0" max="1" step="0.05" value="0.6">
     </div>
@@ -70,32 +87,21 @@
       <label class="chk"><input type="checkbox" data-p="sax" checked>2コーラス目 サックス</label>
     </div>
     <div class="row">
-      <label>イントロ</label>
-      <select id="intro" class="sel">
-        <option value="auto">おまかせ（毎回 かわる）</option>
-        <option value="turn">ii–V の まわし</option><option value="vamp">ゆらゆら ヴァンプ</option>
-        <option value="solo">ピアノ ソロの アルペジオ</option><option value="tail">さいごの フレーズから</option><option value="drum">ドラムから</option>
-      </select>
-    </div>
-    <div class="row">
       <span class="seg" id="form"><button data-v="full" class="on">フル（イントロ→3コーラス→エンディング）</button><button data-v="head">テーマだけ</button></span>
     </div>
-    <div class="round" id="round"><span class="rv" data-i="0">🐸 パート1<small>ピアノ</small></span><span class="rv" data-i="1">🐸 パート2<small>ビブラフォン</small></span><span class="rv" data-i="2">🐸 パート3<small>サックス</small></span></div>
-    <p class="note" id="msg"></p>
     <div class="prog" id="prog"></div>
   </div>
 
   <div class="panel note">
     <b>アレンジの 中身</b><br>
-    ・参考音源（8曲）を 解析：スウィングの 8分（タッ・タ）、Cmaj7／C6／A7／Dm7–G7／Fm6／dim7 などの ひびき → 曲ごとに リハーモナイズ<br>
-    ・右手：メロディーの 下に コードの 音を 2〜3こ かさねる ブロックコード（半音で ぶつかる 音は よける）<br>
-        ・左手：低い ルートを 1拍目に（ベースの かわり）＋ ジャズの 和音<br>
-    ・強弱：1拍目＞3拍目＞2・4拍目＞ウラ／フレーズの 山で ふくらむ／高い 音は すこし 強く／メロディーは 和音の 中の 音より 強く／2コーラス目は 強め／強い 音ほど 明るい 音色<br>
-    ・イントロ：5パターン（ii–V／ヴァンプ／ピアノソロ／さいごの フレーズ／ドラム）。くり返す たびに かわる<br>
-    ・かえるのうた：2コーラス目が 3パートの 輪唱（2小節ずつ おくれて 入る）<br>
-    ・構成：イントロ（4小節）→ テーマ（ピアノ）→ 2コーラス目（サックスが フェイク＋合いの手）→ テーマ → エンディング（iii–VI–ii–V → 6/9）<br>
-    ・きらきらぼし は PDF の 基本コード（C・F・G）の ながれを もとに ジャズ化<br>
-    ※ ファイルを ダブルクリックで ひらくと 音の ファイルが 読めないことが あります。まなびタウンと おなじ 場所（サーバー）で ひらいてください。読めない ときは 代わりの 電子音で ならします。
+    ・参考音源を 解析：スウィングの 8分、maj7／6／m7／7／m7♭5／dim7 などの ひびき → 曲ごとに リハーモナイズ（メロディーと 半音で ぶつからない ように チェック）<br>
+    ・3拍子の 曲（ボートを こごう・ハッピーバースデー・エリーゼ・メヌエット・きよしこの夜・ウィッシュ…）は ジャズワルツ（ライド 1・2・3／左手 1拍目＋2拍目ウラ）<br>
+    ・短調の 曲（うんめい・エリーゼのために）は m6・m7♭5→7 の 短調の ジャズの ひびき。イントロ・エンディングも 短調に<br>
+    ・右手：メロディーの 下に コードの 音を 2〜3こ かさねる ブロックコード／左手：低い ルート（ベースの かわり）＋ 3度・7度・9度<br>
+    ・強弱：1拍目＞ほかの 拍＞ウラ／フレーズの 山で ふくらむ／メロディーは 内声より 強く／2コーラス目は 強め／強い 音ほど 明るい 音色<br>
+    ・イントロ：5パターン（くり返す たびに かわる）／2コーラス目：サックスの フェイク（なめらかに つなぐ）＋ 3コーラス目への 余韻<br>
+    ・かえるのうた：2コーラス目が 3パートの 輪唱<br>
+    ※ 共犯・lulu.（著作権のある 曲）と あの雲のように は この ページには 入れていません。カノン・トルコ行進曲 は 今のまま。
   </div>
 </div>
 
@@ -105,21 +111,27 @@
    1) 曲データ（features.js の SONGS・CHORDS と おなじ）
    ===================================================================== */
 const SONGS = [
-  {id:'kira', t:'きらきらぼし', bpm:100, n:'C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2'},
-  {id:'kaeru', t:'かえるのうた', bpm:92, n:'C4:1 D4:1 E4:1 F4:1 E4:1 D4:1 C4:2 E4:1 F4:1 G4:1 A4:1 G4:1 F4:1 E4:2 C4:1 R:1 C4:1 R:1 C4:1 R:1 C4:1 R:1 C4:.5 C4:.5 D4:.5 D4:.5 E4:.5 E4:.5 F4:.5 F4:.5 E4:1 D4:1 C4:2'},
-  {id:'mary', t:'メリーさんのひつじ', bpm:104, n:'E4:1 D4:1 C4:1 D4:1 E4:1 E4:1 E4:2 D4:1 D4:1 D4:2 E4:1 G4:1 G4:2 E4:1 D4:1 C4:1 D4:1 E4:1 E4:1 E4:1 E4:1 D4:1 D4:1 E4:1 D4:1 C4:4'},
-  {id:'chou', t:'ちょうちょう', bpm:100, n:'G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 D4:1 E4:1 F4:1 G4:1 G4:1 G4:2 G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 E4:1 G4:1 G4:1 E4:4 D4:1 D4:1 D4:1 D4:1 D4:1 E4:1 F4:2 E4:1 E4:1 E4:1 E4:1 E4:1 F4:1 G4:2 G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 E4:1 G4:1 G4:1 C4:4'},
-  {id:'london', t:'ロンドンばし', bpm:100, n:'G4:1.5 A4:.5 G4:1 F4:1 E4:1 F4:1 G4:2 D4:1 E4:1 F4:2 E4:1 F4:1 G4:2 G4:1.5 A4:.5 G4:1 F4:1 E4:1 F4:1 G4:2 D4:2 G4:2 E4:1 C4:3'},
-  {id:'acha', t:'アチャパチャノチャ', bpm:112, n:'G4:1 G4:.5 G4:.5 G4:1 B4:1 A4:1 A4:.5 A4:.5 A4:1 C5:1 B4:1 B4:.5 B4:.5 A4:1 A4:.5 A4:.5 G4:1 G4:.5 G4:.5 G4:1 R:1 B4:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 D5:3 C5:1 A4:1 A4:.5 A4:.5 A4:1 A4:.5 A4:.5 C5:3 B4:1 G4:1 G4:.5 G4:.5 G4:1 B4:1 A4:1 A4:.5 A4:.5 A4:1 C5:1 B4:1 B4:.5 B4:.5 A4:1 A4:.5 A4:.5 G4:1 G4:.5 G4:.5 G4:1 R:1'},
-  {id:'hotcross', t:'ホットクロスバン', bpm:96, n:'E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 E4:1 D4:1 C4:2'},
-  {id:'frere', t:'フレール・ジャック', bpm:100, n:'C4:1 D4:1 E4:1 C4:1 C4:1 D4:1 E4:1 C4:1 E4:1 F4:1 G4:2 E4:1 F4:1 G4:2 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 C4:1 G3:1 C4:2 C4:1 G3:1 C4:2 C4:1 D4:1 E4:1 C4:1 C4:1 D4:1 E4:1 C4:1 E4:1 F4:1 G4:2 E4:1 F4:1 G4:2 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 C4:1 G3:1 C4:2 C4:1 G3:1 C4:2'},
-  {id:'oldmac', t:'ゆかいな まきば', bpm:108, n:'C4:1 C4:1 C4:1 G4:1 A4:1 A4:1 G4:2 E4:1 E4:1 D4:1 D4:1 C4:4 C4:1 C4:1 C4:1 G4:1 A4:1 A4:1 G4:2 E4:1 E4:1 D4:1 D4:1 C4:4 C4:1 C4:1 C4:1 G4:1 A4:1 A4:1 G4:2 E4:1 E4:1 D4:1 D4:1 C4:4'}
+  {"id": "kira", "t": "きらきらぼし", "bpm": 100.0, "n": "C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2", "c": "C|F C|F C|G C|C F|C G|C F|C G|C|F C|F C|G C", "bt": 4, "pk": 0},
+  {"id": "kaeru", "t": "かえるのうた", "bpm": 92.0, "n": "C4:1 D4:1 E4:1 F4:1 E4:1 D4:1 C4:2 E4:1 F4:1 G4:1 A4:1 G4:1 F4:1 E4:2 C4:1 R:1 C4:1 R:1 C4:1 R:1 C4:1 R:1 C4:.5 C4:.5 D4:.5 D4:.5 E4:.5 E4:.5 F4:.5 F4:.5 E4:1 D4:1 C4:2", "c": "C|G C|C|F C|C|C|C|G C", "bt": 4, "pk": 0},
+  {"id": "mary", "t": "メリーさんのひつじ", "bpm": 104.0, "n": "E4:1 D4:1 C4:1 D4:1 E4:1 E4:1 E4:2 D4:1 D4:1 D4:2 E4:1 G4:1 G4:2 E4:1 D4:1 C4:1 D4:1 E4:1 E4:1 E4:1 E4:1 D4:1 D4:1 E4:1 D4:1 C4:4", "c": "C|C|G|C|C|C|G|C", "bt": 4, "pk": 0},
+  {"id": "chou", "t": "ちょうちょう", "bpm": 100.0, "n": "G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 D4:1 E4:1 F4:1 G4:1 G4:1 G4:2 G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 E4:1 G4:1 G4:1 E4:4 D4:1 D4:1 D4:1 D4:1 D4:1 E4:1 F4:2 E4:1 E4:1 E4:1 E4:1 E4:1 F4:1 G4:2 G4:1 E4:1 E4:2 F4:1 D4:1 D4:2 C4:1 E4:1 G4:1 G4:1 C4:4", "c": "C|G|C|C|C|G|C|C|G|G|C|C|C|G|C|C", "bt": 4, "pk": 0},
+  {"id": "london", "t": "ロンドンばし", "bpm": 100.0, "n": "G4:1.5 A4:.5 G4:1 F4:1 E4:1 F4:1 G4:2 D4:1 E4:1 F4:2 E4:1 F4:1 G4:2 G4:1.5 A4:.5 G4:1 F4:1 E4:1 F4:1 G4:2 D4:2 G4:2 E4:1 C4:3", "c": "C|C|G|C|C|C|G|C", "bt": 4, "pk": 0},
+  {"id": "acha", "t": "アチャパチャノチャ", "bpm": 112.0, "n": "G4:1 G4:.5 G4:.5 G4:1 B4:1 A4:1 A4:.5 A4:.5 A4:1 C5:1 B4:1 B4:.5 B4:.5 A4:1 A4:.5 A4:.5 G4:1 G4:.5 G4:.5 G4:1 R:1 B4:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 D5:3 C5:1 A4:1 A4:.5 A4:.5 A4:1 A4:.5 A4:.5 C5:3 B4:1 G4:1 G4:.5 G4:.5 G4:1 B4:1 A4:1 A4:.5 A4:.5 A4:1 C5:1 B4:1 B4:.5 B4:.5 A4:1 A4:.5 A4:.5 G4:1 G4:.5 G4:.5 G4:1 R:1", "c": "G|D7|D7|G|G|G|D7|D7|G|D7|D7|G", "bt": 4, "pk": 0},
+  {"id": "hotcross", "t": "ホットクロスバン", "bpm": 96.0, "n": "E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 E4:1 D4:1 C4:2 C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 E4:1 D4:1 C4:2", "c": "C|C|C G|C|C|C|C G|C", "bt": 4, "pk": 0},
+  {"id": "frere", "t": "フレール・ジャック", "bpm": 100.0, "n": "C4:1 D4:1 E4:1 C4:1 C4:1 D4:1 E4:1 C4:1 E4:1 F4:1 G4:2 E4:1 F4:1 G4:2 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 C4:1 G3:1 C4:2 C4:1 G3:1 C4:2 C4:1 D4:1 E4:1 C4:1 C4:1 D4:1 E4:1 C4:1 E4:1 F4:1 G4:2 E4:1 F4:1 G4:2 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 G4:.5 A4:.5 G4:.5 F4:.5 E4:1 C4:1 C4:1 G3:1 C4:2 C4:1 G3:1 C4:2", "c": "C|C|C|C|C|C|G C|G C|C|C|C|C|C|C|G C|G C", "bt": 4, "pk": 0},
+  {"id": "oldmac", "t": "ゆかいな まきば", "bpm": 108.0, "n": "C4:1 C4:1 C4:1 G4:1 A4:1 A4:1 G4:2 E4:1 E4:1 D4:1 D4:1 C4:4 C4:1 C4:1 C4:1 G4:1 A4:1 A4:1 G4:2 E4:1 E4:1 D4:1 D4:1 C4:4 C4:1 C4:1 C4:1 G4:1 A4:1 A4:1 G4:2 E4:1 E4:1 D4:1 D4:1 C4:4", "c": "C|F C|C G|C|C|F C|C G|C|C|F C|C G|C", "bt": 4, "pk": 0},
+  {"id": "row", "t": "ボートを こごう", "bpm": 112.0, "n": "C4:1.5 C4:1.5 C4:1 D4:.5 E4:1.5 E4:1 D4:.5 E4:1 F4:.5 G4:3 C5:.5 C5:.5 C5:.5 G4:.5 G4:.5 G4:.5 E4:.5 E4:.5 E4:.5 C4:.5 C4:.5 C4:.5 G4:1 F4:.5 E4:1 D4:.5 C4:3 C4:1.5 C4:1.5 C4:1 D4:.5 E4:1.5 E4:1 D4:.5 E4:1 F4:.5 G4:3 C5:.5 C5:.5 C5:.5 G4:.5 G4:.5 G4:.5 E4:.5 E4:.5 E4:.5 C4:.5 C4:.5 C4:.5 G4:1 F4:.5 E4:1 D4:.5 C4:3", "c": "C|C|C|C|C|C|G|C|C|C|C|C|C|C|G|C", "bt": 3, "pk": 0},
+  {"id": "joy", "t": "よろこびのうた", "bpm": 100.0, "n": "E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 E4:1.5 D4:.5 D4:2 E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 D4:1.5 C4:.5 C4:2 D4:1 D4:1 E4:1 C4:1 D4:1 E4:.5 F4:.5 E4:1 C4:1 D4:1 E4:.5 F4:.5 E4:1 D4:1 C4:1 D4:1 G3:2 E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 D4:1.5 C4:.5 C4:2", "c": "C|G|C|G|C|G|C|G C|G|G C|G C|C G|C|G|C|G C", "bt": 4, "pk": 0},
+  {"id": "saints", "t": "せいじゃの こうしん", "bpm": 120.0, "n": "C4:1 E4:1 F4:1 G4:5 C4:1 E4:1 F4:1 G4:5 C4:1 E4:1 F4:1 G4:2 E4:2 C4:2 E4:2 D4:5 E4:1 E4:1 D4:1 C4:3 C4:1 E4:2 G4:2 G4:1 F4:5 E4:1 F4:1 G4:2 E4:2 C4:2 D4:2 C4:4", "c": "C|C|C|C|C|C|G|G|C|C7|F|F|C|C G|C", "bt": 4, "pk": 3},
+  {"id": "happy", "t": "ハッピーバースデー", "bpm": 104.0, "n": "G4:.75 G4:.25 A4:1 G4:1 C5:1 B4:2 G4:.75 G4:.25 A4:1 G4:1 D5:1 C5:2 G4:.75 G4:.25 G5:1 E5:1 C5:1 B4:1 A4:1 F5:.75 F5:.25 E5:1 C5:1 D5:1 C5:2 G4:.75 G4:.25 A4:1 G4:1 C5:1 B4:2 G4:.75 G4:.25 A4:1 G4:1 D5:1 C5:2 G4:.75 G4:.25 G5:1 E5:1 C5:1 B4:1 A4:1 F5:.75 F5:.25 E5:1 C5:1 D5:1 C5:3", "c": "C|G7|G7|C|C|F|C|C|C|G7|G7|C|C|F|C|C", "bt": 3, "pk": 1},
+  {"id": "fate", "t": "うんめい（はじめの ぶぶん）", "bpm": 108.0, "n": "R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 R:.5 G4:.5 G4:.5 G4:.5 D#4:2 R:.5 F4:.5 F4:.5 F4:.5 D4:2 C4:4", "c": "Cm|G7|Cm|G7|Cm|G7|Cm|G7|Cm", "bt": 4, "pk": 0},
+  {"id": "elise", "t": "エリーゼのために", "bpm": 120.0, "n": "E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:2 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:2 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 G#4:.5 B4:.5 C5:1 R:.5 E4:.5 E5:.5 D#5:.5 E5:.5 D#5:.5 E5:.5 B4:.5 D5:.5 C5:.5 A4:1 R:.5 C4:.5 E4:.5 A4:.5 B4:1 R:.5 E4:.5 C5:.5 B4:.5 A4:3", "c": "Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am|Am|Am|E|Am", "bt": 3, "pk": 1},
+  {"id": "minuet", "t": "メヌエット ト長調", "bpm": 104.0, "n": "D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 F#4:1 G4:.5 A4:.5 B4:.5 G4:.5 A4:3 D5:1 G4:.5 A4:.5 B4:.5 C5:.5 D5:1 G4:1 G4:1 E5:1 C5:.5 D5:.5 E5:.5 F#5:.5 G5:1 G4:1 G4:1 C5:1 D5:.5 C5:.5 B4:.5 A4:.5 B4:1 C5:.5 B4:.5 A4:.5 G4:.5 A4:1 B4:.5 A4:.5 G4:.5 F#4:.5 G4:3", "c": "G|G|C|G|Am|G|D|D|G|G|C|G|Am|G|D|G", "bt": 3, "pk": 0},
+  {"id": "xm_jingle", "t": "ジングルベル", "bpm": 96.0, "n": "D4:.5 B4:.5 A4:.5 G4:.5 D4:1.5 D4:.25 D4:.25 D4:.5 B4:.5 A4:.5 G4:.5 E4:2 E4:.5 C5:.5 B4:.5 A4:.5 F#4:2 D5:.5 D5:.5 C5:.5 A4:.5 B4:2 D4:.5 B4:.5 A4:.5 G4:.5 D4:2 D4:.5 B4:.5 A4:.5 G4:.5 E4:1.5 E4:.5 E4:.5 C5:.5 B4:.5 A4:.5 D5:.5 D5:.5 D5:.5 D5:.5 E5:.5 D5:.5 C5:.5 A4:.5 G4:.5 R:.5 D5:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 B4:1 B4:.5 D5:.5 G4:.75 A4:.25 B4:2 C5:.5 C5:.5 C5:.5 C5:.5 C5:.5 B4:.5 B4:.5 B4:.5 B4:.5 A4:.5 A4:.5 B4:.5 A4:1 D5:1 B4:.5 B4:.5 B4:1 B4:.5 B4:.5 B4:1 B4:.5 D5:.5 G4:.75 A4:.25 B4:2 C5:.5 C5:.5 C5:.5 C5:.5 C5:.5 B4:.5 B4:.5 B4:.5 D5:.5 D5:.5 C5:.5 A4:.5 G4:.5 R:.5 G4:1", "c": "G|G|C Am|D|G|G|C Am|D G|G|G|D7|G|G|G|D7|G", "bt": 4, "pk": 0},
+  {"id": "xm_silent", "t": "きよしこの夜", "bpm": 66.0, "n": "F4:.75 G4:.25 F4:.5 D4:1.5 F4:.75 G4:.25 F4:.5 D4:1.5 C5:1 C5:.5 A4:1.5 A#4:1 A#4:.5 F4:1.5 G4:1 G4:.5 A#4:.75 A4:.25 G4:.5 F4:.75 G4:.25 F4:.5 D4:1.5 G4:1 G4:.5 A#4:.75 A4:.25 G4:.5 F4:.75 G4:.25 F4:.5 D4:1.5 C5:1 C5:.5 D#5:.75 C5:.25 A4:.5 A#4:1.5 D5:1.5 A#4:.5 F4:.5 D4:.5 F4:.75 D#4:.25 C4:.5 A#3:3", "c": "A#|A#|F7|A#|D#|A#|D#|A#|F7|Gm|A# F|A#", "bt": 3, "pk": 0},
+  {"id": "xm_wish", "t": "ウィッシュ・ユー・ア・メリークリスマス", "bpm": 112.0, "n": "R:2 E4:1 A4:1 A4:.5 B4:.5 A4:.5 G#4:.5 F#4:1 F#4:1 F#4:1 B4:1 B4:.5 C#5:.5 B4:.5 A4:.5 G#4:1 E4:1 E4:1 C#5:1 C#5:.5 D5:.5 C#5:.5 B4:.5 A4:1 F#4:1 E4:.5 E4:.5 F#4:1 B4:1 G#4:1 A4:2 E4:1 A4:1 A4:1 A4:1 G#4:2 G#4:1 A4:1 G#4:1 F#4:1 E4:2 B4:1 C#5:1 B4:.5 B4:.5 A4:.5 A4:.5 E5:1 E4:1 E4:.5 E4:.5 F#4:1 B4:1 G#4:1 A4:3", "c": "A|D|B|E|C#|F#m|D|A|A|C#m|F#m|E|A|A|D|A", "bt": 3, "pk": 3}
 ];
-/* いまの ラウンジ版（比較用）で つかう コード */
-const CHORDS = {
-  kira:{c:'C|F C|F C|G C|C F|C G|C F|C G|C|F C|F C|G C'}, kaeru:{c:'C|G C|C|F C|C|C|C|G C'}, mary:{c:'C|C|G|C|C|C|G|C'},
-  chou:{c:'C|G|C|C|C|G|C|C|G|G|C|C|C|G|C|C'}, london:{c:'C|C|G|C|C|C|G|C'}, acha:{c:'G|D7|D7|G|G|G|D7|D7|G|D7|D7|G'}
-};
+const CHORDS = {}; SONGS.forEach(s => { if(s.c) CHORDS[s.id] = {c:s.c, bt:s.bt, pk:s.pk}; });
 const PCN = {C:0, D:2, E:4, F:5, G:7, A:9, B:11};
 function parseSong(s){
   if(s.notes) return s.notes; let t = 0; const a = [];
@@ -131,26 +143,39 @@ function parseSong(s){
 
 /* =====================================================================
    2) ジャズ アレンジャー（あとで landmark.js へ うつす 部分）
-   ・JAZZ_REHARM … 参考音源の 解析から 作った 曲ごとの コード（1小節 ずつ、2つなら 2拍ずつ）
-   ・参考が ない 曲は CHORDS（三和音）を 自動で 7th・6th に して、終わりの 前に ii–V を たす
+   ・JAZZ_REHARM … 参考音源の 解析から 作った 曲ごとの コード（1小節ずつ。2つなら 半分ずつ）
+     bt＝1小節の 拍、key＝主音、mi＝短調、soft＝しずかな 曲
+     弱起（pk）の 曲は、拍の 位置を ずらして 0小節目を「弱起の 小節」に する
    ===================================================================== */
 const JAZZ_REHARM = {
-  kira:    {bpm:112, key:0, c:'C6 A7|Dm7 C6|Fmaj7 Em7|G7 C6|C6 Dm7|Cmaj7 G7|Em7 Dm7|Em7 G7|C6 A7|Dm7 C6|Fmaj7 Em7|G7 C6'},
-  kaeru:   {bpm:128, key:0, c:'Cmaj7 Dm7|Em7 A7|Cmaj7 F7|Em7 A7|Fmaj7 Fm6|Cmaj7 A7|Dm7 G7|G7 C6'},
-  mary:    {bpm:124, key:0, c:'C6 Am7|Dm7 G7|Bm7b5 E7|Am7 G7|C6 Am7|Em7 A7|Dm7 G7|C69'},
-  chou:    {bpm:120, key:0, c:'C6 Am7|Dm7 G7|C6 Dm7|Em7 A7|Dm7 G7|Bm7b5 E7|Am7 G7|C6|G7|Dm7 G7|Cmaj7 Am7|Fmaj7 Fm6|Em7 A7|Dm7 G7|Dm7 G7|C69'},
-  london:  {bpm:116, key:0, c:'C6 G7|Cmaj7 A7|Dm7 G7|Em7 A7|Dm7 G7|Cmaj7 A7|Dm7 G7|C69'},
-  acha:    {bpm:136, key:7, c:'G6 Em7|Am7 D7|Bm7 D7|G6 B7|Em7 A7|Dm7 G7|Cmaj7 Cm6|Am7 D7|G6 Em7|Am7 D7|Bm7 D7|G69'},
-  hotcross:{bpm:108, key:0, c:'Cmaj7 Am7|Em7 Ebdim7|Dm7 G7|G7 C6|Cmaj7 Am7|Fmaj7 Fm6|Am7 D7|G7 C69'},
-  frere:   {bpm:112, key:0, c:'Cmaj7 Am7|Dm7 G7|Cmaj7 Em7|Fmaj7 Fm6|C6 Am7|G7 C6|Am7 D7|Dm7 G7sus|Cmaj7 Am7|Dm7 G7|Cmaj7 Em7|Fmaj7 Fm6|C6 Am7|G7 C6|Am7 D7|Dm7 G7sus'},
-  oldmac:  {bpm:120, key:0, c:'Cmaj7 A7|Dm7 G7|C6 G7|C6|C6 Am7|Fmaj7 Em7|Dm7 G7|C6|Cmaj7 C7|Fmaj7 Bb7|Dm7 G7|C69'}
+  kira:     {bpm:112, key:0, c:'C6 A7|Dm7 C6|Fmaj7 Em7|G7 C6|C6 Dm7|Cmaj7 G7|Em7 Dm7|Em7 G7|C6 A7|Dm7 C6|Fmaj7 Em7|G7 C6'},
+  kaeru:    {bpm:128, key:0, c:'Cmaj7 Dm7|Em7 A7|Cmaj7 F7|Em7 A7|Fmaj7 Fm6|Cmaj7 A7|Dm7 G7|G7 C6'},
+  mary:     {bpm:124, key:0, c:'C6 Am7|Dm7 G7|Bm7b5 E7|Am7 G7|C6 Am7|Em7 A7|Dm7 G7|C69'},
+  chou:     {bpm:120, key:0, c:'C6 Am7|Dm7 G7|C6 Dm7|Em7 A7|Dm7 G7|Bm7b5 E7|Am7 G7|C6|G7|Dm7 G7|Cmaj7 Am7|Fmaj7 Fm6|Em7 A7|Dm7 G7|Dm7 G7|C69'},
+  london:   {bpm:116, key:0, c:'C6 G7|Cmaj7 A7|Dm7 G7|Em7 A7|Dm7 G7|Cmaj7 A7|Dm7 G7|C69'},
+  acha:     {bpm:136, key:7, c:'G6 Em7|Am7 D7|Bm7 D7|G6 B7|Em7 A7|Dm7 G7|Cmaj7 Cm6|Am7 D7|G6 Em7|Am7 D7|Bm7 D7|G69'},
+  hotcross: {bpm:108, key:0, c:'Cmaj7 Am7|Em7 Ebdim7|Dm7 G7|G7 C6|Cmaj7 Am7|Fmaj7 Fm6|Am7 D7|G7 C69'},
+  frere:    {bpm:112, key:0, c:'Cmaj7 Am7|Dm7 G7|Cmaj7 Em7|Fmaj7 Fm6|C6 Am7|G7 C6|Am7 D7|Dm7 G7sus|Cmaj7 Am7|Dm7 G7|Cmaj7 Em7|Fmaj7 Fm6|C6 Am7|G7 C6|Am7 D7|Dm7 G7sus'},
+  oldmac:   {bpm:120, key:0, c:'Cmaj7 A7|Dm7 G7|C6 G7|C6|C6 Am7|Fmaj7 Em7|Dm7 G7|C6|Cmaj7 C7|Fmaj7 Bb7|Dm7 G7|C69'},
+  /* ---- ついかした 10きょく ---- */
+  row:      {bpm:120, key:0, bt:3, c:'C6|Am7|Dm7 G7|Cmaj7|C6|Am7|Dm7 G7|C6|C6|Am7|Dm7 G7|Cmaj7|C6|Am7|Dm7 G7|C69'},
+  joy:      {bpm:112, key:0, c:'Cmaj7 Fmaj7|Dm7 G7|C6 Em7|Dm7 G7|Cmaj7 Fmaj7|Dm7 G7|C6 Em7|G7sus C6|Dm7 Cmaj7|G7 Am7|Dm7 G7|Am7 G7|Cmaj7 Fmaj7|Dm7 G7|C6 Em7|G7sus C69'},
+  saints:   {bpm:116, key:0, pk:3, c:'Dm7 G7|C6|C6 Dm7|C6|C6 Dm7|C6 A7|Dm7 G7|Dm7|G7|C6 C7|Fmaj7|F6 Fm6|Cmaj7 Dm7|Em7 A7|Dm7 G7|C69'},
+  happy:    {bpm:100, key:0, bt:3, pk:1, c:'G7|C6|G7|Dm7 G7|C6 C7|Fmaj7|Dm7 G7|C6 G7|C6 G7|C6|G7|Dm7 G7|C6 C7|Fmaj7|Dm7 G7|C6 G7|C69'},
+  fate:     {bpm:120, key:0, mi:1, c:'Cm6|G7|Cm6|Fm7 G7|Abmaj7|Dm7b5 G7|Cm6|Dm7b5 G7|Cm6'},
+  elise:    {bpm:126, key:9, mi:1, bt:3, pk:1, c:'E7|E7|Am7|E7|Am6 E7|E7|Am7|Dm7 E7|Am6 E7|E7|Fmaj7|E7|Am6 E7|E7|Fmaj7|Dm7 E7|Am6 E7|E7|Am7|E7|Am6 E7|E7|Am7|Dm7 E7|Am6'},
+  minuet:   {bpm:120, key:7, bt:3, c:'G6|Em7|Cmaj7|G6|Am7|Gmaj7|D7|Am7 D7|G6|Gmaj7 E7|Am7 D7|G6 E7|Am7|Gmaj7|Am7 D7|G69'},
+  xm_jingle:{bpm:116, key:7, c:'G6|Gmaj7 A7|Am7 D7|Am7 D7|G6|G6 E7|Am7 D7|D7 G6|G6 Em7|Am7 D7|C6 Bm7|Am7 D7|G6 Em7|Am7 D7|C6 E7|D7 G69'},
+  xm_silent:{bpm:72, key:10, bt:3, soft:1, c:'Bb6|Gm7|Cm7 F7|Bb6|Ebmaj7|Bb6 G7|Cm7|Bb6 G7|Cm7 F7|Bb6 Gm7|Cm7 F7|Bb69'},
+  xm_wish:  {bpm:116, key:9, bt:3, pk:3, c:'E7|Amaj7|Dmaj7|B7|E7|C#7|F#m7|Bm7 E7|A6|F#m7|C#m7|F#m7 B7|E7|Amaj7 F#7|Bm7 E7|Dmaj7 E7|A69'}
 };
 const NOTE_PC = {C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
-/* コード名 → {r:根音, iv:[構成音（根音からの 半音）], g:[ボイシング用の ガイド音]} */
+const NN = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+/* コード名 → {r:根音, iv:[構成音], g:[左手の 根音なし ボイシング（3・7・9／13）]} */
 function chordOf(nm){
   const m = /^([A-G](?:#|b)?)(.*)$/.exec(nm); if(!m) return null;
   const r = NOTE_PC[m[1]], q = m[2];
-  let iv, g;   // g … 左手の 根音なし ボイシング（3・7・9／13）
+  let iv, g;
   if(q === 'maj7')      { iv = [0,4,7,11]; g = [4,11,14,19]; }
   else if(q === '6')    { iv = [0,4,7,9];  g = [4,9,14,19]; }
   else if(q === '69')   { iv = [0,4,7,9,14]; g = [4,9,14,19]; }
@@ -164,220 +189,246 @@ function chordOf(nm){
   else                  { iv = [0,4,7,9];  g = [4,9,14,19]; }   // 三和音 → 6th
   return {nm, r, iv, g, pcs:iv.map(x => (r + x) % 12)};
 }
-/* 参考が ない 曲：三和音を ジャズに */
-function autoJazz(chStr, beats){
-  const bars = chStr.split('|').map(x => x.trim().split(/\s+/));
-  const conv = c => { const m = /^([A-G](?:#|b)?)(.*)$/.exec(c); if(!m) return c; const r = m[1], q = m[2];
-    if(q === '' ) return r + (r === 'G' || r === 'D' || r === 'A' || r === 'E' ? '7' : '6');
-    if(q === 'm') return r + 'm7'; return c; };
-  const out = bars.map(b => b.map(conv));
-  /* 最後の 小節の 前を ii–V に */
-  const n = out.length; if(n >= 2){ const last = chordOf(out[n - 1][0]); if(last){ const ii = NN[(last.r + 2) % 12] + 'm7', V = NN[(last.r + 7) % 12] + '7'; out[n - 2] = [ii, V]; } }
-  return out.map(b => b.join(' ')).join('|');
-}
-const NN = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const nearPc = (pc, lo) => { let m = lo - (((lo % 12) + 12) % 12) + pc; if(m < lo) m += 12; return m; };
-
+let BT = 4;   // いま アレンジ中の 曲の 1小節の 拍
 /* 小節ごとの コード表（拍 → コード） */
-function chartOf(chStr, beats){
+function chartOf(chStr, beats, bt){
+  bt = bt || BT;
   const bars = chStr.split('|').map(x => x.trim().split(/\s+/).map(chordOf)), seg = [];
-  bars.forEach((cs, i) => { const per = 4 / cs.length; cs.forEach((c, j) => seg.push({b:i * 4 + j * per, d:per, c})); });
+  bars.forEach((cs, i) => { const per = bt / cs.length; cs.forEach((c, j) => seg.push({b:i * bt + j * per, d:per, c})); });
   const at = b => { let s = seg[0]; for(const x of seg){ if(x.b <= b + 1e-6) s = x; else break; } return s.c; };
   return {seg, at, bars:bars.length};
 }
-
 /* スウィング：8分の ウラ（.5）を うしろに ずらす */
 const swingB = (b, r) => { const i = Math.floor(b + 1e-6), f = b - i; return Math.abs(f - .5) < 1e-6 ? i + r : b; };
 
-/* ---------- 強弱（ダイナミクス） ---------- */
-/* 拍の 強さ：1拍目 ＞ 3拍目 ＞ 2・4拍目 ＞ ウラ拍 */
-const metric = b => { const f = b - Math.floor(b + 1e-6), bb = Math.floor(b + 1e-6) % 4;
-  if(f > .01) return .78; return bb === 0 ? 1 : bb === 2 ? .9 : .84; };
+/* ---------- 強弱 ---------- */
+/* 拍の 強さ：1拍目 ＞ （4拍子なら 3拍目）＞ ほかの 拍 ＞ ウラ */
+const metric = b => { const f = b - Math.floor(b + 1e-6), bb = ((Math.floor(b + 1e-6) % BT) + BT) % BT;
+  if(f > .01) return .78; return bb === 0 ? 1 : (BT === 4 && bb === 2) ? .9 : .84; };
 /* フレーズの 山：2小節の なかで ふくらんで しぼむ */
 const arc = (b, len) => { const p = ((b % len) + len) % len / len; return .86 + .24 * Math.sin(Math.PI * Math.min(1, p * 1.15)); };
-/* 小さな ゆらぎ（毎回 すこし ちがう） */
 let RND = Math.random;
-const jit = (a) => 1 + (RND() * 2 - 1) * a;
-function seeded(n){ let x = n * 9301 + 49297; return () => { x = (x * 9301 + 49297) % 233280; return x / 233280; }; }
+const jit = a => 1 + (RND() * 2 - 1) * a;
 
 /* ---------- パートを つくる ---------- */
-/* 右手：ブロックコード（メロディー＋下に コードの 音）
-   ・いちばん上（メロディー）を 強く、内声は よわく
-   ・高い 音ほど すこし 強く、フレーズの 山で ふくらむ */
+/* 右手：ブロックコード（メロディー＋下に コードの 音）。メロディーを 強く、内声は よわく */
 function rhBlock(E, notes, chart, off, inst, vol, opt){
   const hi = Math.max(...notes.map(n => n.m)), lo = Math.min(...notes.map(n => n.m)), rng = Math.max(1, hi - lo);
   notes.forEach(n => {
     const c = chart.at(n.b), top = n.m + opt.up;
-    const dv = vol * metric(n.b) * arc(n.b, 8) * (.9 + .2 * (n.m - lo) / rng) * jit(.07) * (n.d >= 2 ? 1.05 : 1);
-    E(off + n.b, inst, top, Math.max(.35, n.d * .92), dv, opt.vc);
+    const dv = vol * metric(n.b) * arc(n.b, 2 * BT) * (.9 + .2 * (n.m - lo) / rng) * jit(.07) * (n.d >= 2 ? 1.05 : 1);
+    E(off + n.b, inst, top, Math.max(.35, n.d * .92), dv);
     if(!c || n.d < .5 - 1e-6 || opt.single) return;
     const cand = [];
     for(let m = top - 1; m >= top - 11; m--) if(c.pcs.includes(((m % 12) + 12) % 12) && top - m >= 2) cand.push(m);
     const pick = cand.filter((m, i) => i === 0 || cand[i - 1] - m >= 2).slice(0, n.d >= 1 ? 3 : 2);
-    pick.forEach((m, k) => E(off + n.b + (k + 1) * .006, inst, m, Math.max(.3, n.d * .85), dv * (k === 0 ? .48 : .38) * jit(.08), opt.vc));
+    pick.forEach((m, k) => E(off + n.b + (k + 1) * .006, inst, m, Math.max(.3, n.d * .85), dv * (k === 0 ? .48 : .38) * jit(.08)));
   });
 }
-/* 左手：低い ルート ＋ ジャズ ボイシング（3・7・9／13）
-   ・ルートは 1拍目に やわらかく 長め（ベースの かわり）
-   ・ボイシングは チャールストン（1拍目＋2拍目ウラ）、ウラは よわく */
+/* 左手：低い ルート（ベースの かわり）＋ ジャズ ボイシング
+   4拍子＝チャールストン（1拍目＋2拍目ウラ）／3拍子＝ジャズワルツ（1拍目＋2拍目ウラ）。ウラは よわく */
 function lhComp(E, chart, off, beats, vol, alt, root){
-  chart.seg.forEach((s, i) => {
+  chart.seg.forEach(s => {
     if(s.b >= beats) return;
     const c = s.c; if(!c) return;
     let base = nearPc((c.r + c.g[0]) % 12, 52); if(base > 60) base -= 12;
     const v = c.g.map(x => base + (x - c.g[0]));
     const voi = [...new Set(v.map(m => m > 70 ? m - 12 : m))].sort((x, y) => x - y);
-    const hits = s.d >= 4 ? (alt ? [[0,1.4],[2.5,.6],[3.5,.4]] : [[0,1.3],[1.5,.5]]) : [[0, s.d > 1 ? .9 : .5], ...(s.d >= 2 ? [[1.5, .4]] : [])];
+    let hits;
+    if(s.d >= 4) hits = alt ? [[0,1.4],[2.5,.6],[3.5,.4]] : [[0,1.3],[1.5,.5]];
+    else if(s.d >= 3) hits = alt ? [[0,1.1],[1.5,.5],[2.5,.35]] : [[0,1.1],[1.5,.5]];
+    else hits = [[0, s.d > 1 ? .9 : .5], ...(s.d >= 2 ? [[1.5, .4]] : [])];
     hits.forEach(([h, d], k) => { const dv = vol * (k ? .62 : 1) * jit(.1);
       voi.forEach((m, j) => E(off + s.b + h + j * .008, 'pf', m, d, dv * (j === voi.length - 1 ? 1.08 : .92))); });
     if(root !== false){ let r = nearPc(c.r, 36); if(r > 45) r -= 12; E(off + s.b, 'pf', r, Math.min(s.d, 2) * .9, vol * 1.05 * jit(.06)); }
   });
 }
-/* ドラム：ライドの スウィング ＋ ハイハット 2・4 ＋ ブラシ風（ときどき ゴースト） */
+/* ドラム：4拍子＝ライドの スウィング＋ハイハット 2・4／3拍子＝ジャズワルツ（ライド 1・2・3、2拍目ウラ） */
 function drums(E, off, beats, vol, soft){
   for(let b = 0; b < beats; b++){
-    const bb = b % 4;
-    E(off + b, 'dr', 'ride', 0, vol * (bb % 2 ? .55 : .42) * jit(.12));
-    if(bb === 1 || bb === 3){ E(off + b + .5, 'dr', 'ride', 0, vol * .28 * jit(.15)); E(off + b, 'dr', 'hhc', 0, vol * .5 * jit(.1)); E(off + b, 'dr', 'stick', 0, vol * (soft ? .13 : .2) * jit(.15)); }
+    const bb = b % BT;
+    if(BT === 3){
+      E(off + b, 'dr', 'ride', 0, vol * (bb === 0 ? .5 : .4) * jit(.12));
+      if(bb === 1) E(off + b + .5, 'dr', 'ride', 0, vol * .26 * jit(.15));
+      if(bb !== 0){ E(off + b, 'dr', 'hhc', 0, vol * .36 * jit(.1)); E(off + b, 'dr', 'stick', 0, vol * (soft ? .08 : .13) * jit(.15)); }
+      if(bb === 0) E(off + b, 'dr', 'kick', 0, vol * .15 * jit(.1));
+    } else {
+      E(off + b, 'dr', 'ride', 0, vol * (bb % 2 ? .55 : .42) * jit(.12));
+      if(bb === 1 || bb === 3){ E(off + b + .5, 'dr', 'ride', 0, vol * .28 * jit(.15)); E(off + b, 'dr', 'hhc', 0, vol * .5 * jit(.1)); E(off + b, 'dr', 'stick', 0, vol * (soft ? .13 : .2) * jit(.15)); }
+      if(bb === 0) E(off + b, 'dr', 'kick', 0, vol * .14 * jit(.1));
+    }
     if(RND() < .12) E(off + b + .5, 'dr', 'snare', 0, vol * .06);   // ゴーストノート
-    if(bb === 0) E(off + b, 'dr', 'kick', 0, vol * .14 * jit(.1));
   }
 }
-/* 2コーラス目：サックスの フェイク */
-function saxFake(E, notes, chart, off, vol){
+/* 2コーラス目：サックスの フェイク
+   ・長い 音の あとの すきまは 音階に そって なめらかに（大きな 跳躍なし）
+   ・すこし 下へ ふくらんで、次の 音の となりから そっと つなぐ／つなぎの 音は だんだん 弱く */
+function saxFake(E, notes, chart, off, vol, key, mi){
+  const SC = (mi ? [0,2,3,5,7,8,11] : [0,2,4,5,7,9,11]).map(x => (x + (key || 0)) % 12);
+  const inSc = m => SC.includes(((m % 12) + 12) % 12);
+  const snap = (p, c, strong) => {
+    let best = null, bd = 99;
+    for(let m = Math.floor(p) - 3; m <= Math.ceil(p) + 3; m++){
+      if(!inSc(m) && !(c && c.pcs.includes(((m % 12) + 12) % 12))) continue;
+      const d = Math.abs(m - p) - (strong && c && c.pcs.includes(((m % 12) + 12) % 12) ? .6 : 0);
+      if(d < bd){ bd = d; best = m; } }
+    return best;
+  };
+  const scNb = (g, dir) => { let m = g + dir, k = 0; while(!inSc(m) && k++ < 3) m += dir; return m; };
   notes.forEach((n, i) => {
-    const nx = notes[i + 1], c = chart.at(n.b), dv = vol * metric(n.b) * arc(n.b, 8) * jit(.08);
+    const nx = notes[i + 1], c = chart.at(n.b), dv = vol * metric(n.b) * arc(n.b, 2 * BT) * jit(.06);
     if(n.d >= 2 && c){
-      E(off + n.b, 'sx', n.m, 1.1, dv * 1.08);
-      const arp = c.pcs.map(pc => nearPc(pc, n.m - 5)).sort((a, b) => a - b);
+      E(off + n.b, 'sx', n.m, 1.15, dv * 1.06);
       const steps = Math.round((n.d - 1) * 2), goal = nx ? nx.m : n.m;
+      const apr = goal > n.m + 2 ? scNb(goal, -1) : scNb(goal, +1);
+      const dip = steps >= 4 ? 3 : steps >= 2 ? 1.5 : 0;
+      let prev = n.m;
       for(let k = 0; k < steps; k++){
-        const b = n.b + 1 + k * .5, last = k === steps - 1;
-        const m = last ? goal + (goal > arp[0] ? -1 : 1) : arp[(k + 1) % arp.length] + (k % 2 ? 0 : 12 * (arp[k % arp.length] < n.m - 4 ? 1 : 0));
-        E(off + b, 'sx', m, .42, vol * (k % 2 ? .62 : .8) * (.85 + k / Math.max(1, steps) * .3) * jit(.08));   // だんだん 強く → 次の 音へ
+        const x = (k + 1) / steps, last = k === steps - 1;
+        let m = last ? apr : snap(n.m + (apr - n.m) * x - dip * Math.sin(Math.PI * x), chart.at(n.b + 1 + k * .5), k % 2 === 0);
+        if(!last && m === prev) m = snap(m + (apr < prev ? -1.2 : 1.2), null, false);
+        if(Math.abs(m - prev) > 5) m = snap(prev + Math.sign(m - prev) * 3, null, false);
+        E(off + n.b + 1 + k * .5, 'sx', m, last ? .55 : .45, vol * (k % 2 ? .58 : .7) * (1 - .35 * x) * jit(.06));
+        prev = m;
       }
-    } else if(n.d >= 1 && nx && Math.abs(nx.m - n.m) >= 3 && RND() < .5){
-      E(off + n.b, 'sx', n.m, .45, dv); E(off + n.b + .5, 'sx', n.m + (nx.m > n.m ? 2 : -1), .4, dv * .65);
+    } else if(n.d >= 1 && nx && Math.abs(nx.m - n.m) >= 3 && RND() < .4){
+      E(off + n.b, 'sx', n.m, .45, dv); E(off + n.b + .5, 'sx', scNb(nx.m, nx.m > n.m ? -1 : 1), .4, dv * .55);
     } else E(off + n.b, 'sx', n.m, Math.max(.35, n.d * .9), dv);
   });
 }
 
-/* ---------- イントロ（5パターン） ---------- */
-const INTROS = {
-  turn:{n:'ii–V の まわし'}, vamp:{n:'ゆらゆら ヴァンプ'}, solo:{n:'ピアノ ソロの アルペジオ'}, tail:{n:'さいごの フレーズから'}, drum:{n:'ドラムから'}
-};
+/* ---------- イントロ（5パターン・4小節。短調・3拍子にも 対応） ---------- */
+const INTROS = {turn:{n:'ii–V の まわし'}, vamp:{n:'ゆらゆら ヴァンプ'}, solo:{n:'ピアノ ソロの アルペジオ'}, tail:{n:'さいごの フレーズから'}, drum:{n:'ドラムから'}};
 const INTRO_ORDER = ['turn','vamp','solo','tail','drum'];
-const SONG_INTRO = {kira:'solo', kaeru:'vamp', mary:'turn', chou:'solo', london:'drum', acha:'vamp', hotcross:'tail', frere:'tail', oldmac:'drum'};
-function makeIntro(type, E, key, notes, chart, up, P){
-  const k = n => NN[(key + n) % 12];
-  if(type === 'turn'){                 // iii–VI–ii–V × 2、ピアノの 合いの手
-    const c = chartOf(`${k(4)}m7 ${k(9)}7|${k(2)}m7 ${k(7)}7|${k(4)}m7 ${k(9)}7|${k(2)}m7 ${k(7)}7`, 16);
-    if(P.comp) lhComp(E, c, 0, 16, .15, true); drums(E, 0, 16, .42, true);
-    c.seg.forEach((s, i) => { if(P.mel && i % 2 === 1){ const x = s.c; [x.g[2], x.g[3]].forEach((g, j) => E(s.b + 1.5 + j * .5, 'pf', nearPc((x.r + g) % 12, 72), .45, (.16 + i * .012) * jit(.1))); } });
-    return {len:16, chart:c};
+const SONG_INTRO = {kira:'solo', kaeru:'vamp', mary:'turn', chou:'solo', london:'drum', acha:'vamp', hotcross:'tail', frere:'tail', oldmac:'drum',
+  row:'vamp', joy:'turn', saints:'drum', happy:'solo', fate:'drum', elise:'solo', minuet:'turn', xm_jingle:'drum', xm_silent:'solo', xm_wish:'vamp'};
+function introChart(type, key, mi){
+  const k = n => NN[(key + n) % 12], I = mi ? k(0) + 'm6' : k(0) + '6', iiV = mi ? `${k(2)}m7b5 ${k(7)}7` : `${k(2)}m7 ${k(7)}7`;
+  if(type === 'turn') return mi ? `${iiV}|${I} ${k(5)}m7|${iiV}|${iiV}` : `${k(4)}m7 ${k(9)}7|${iiV}|${k(4)}m7 ${k(9)}7|${iiV}`;
+  if(type === 'vamp') return mi ? `${I}|${k(5)}m7|${I}|${iiV}` : `${I}|${k(9)}m7|${I}|${iiV}`;
+  if(type === 'solo') return mi ? `${I}|${k(8)}maj7|${iiV}|${k(2)}m7b5 ${k(7)}7sus` : `${k(0)}maj7|${k(5)}maj7|${k(4)}m7 ${k(9)}7|${k(2)}m7 ${k(7)}7sus`;
+  return `${I}|${I}|${iiV}|${iiV}`;
+}
+function makeIntro(type, E, key, mi, notes, chart, up, P, total){
+  const L = 4 * BT;
+  if(type === 'turn'){
+    const c = chartOf(introChart('turn', key, mi), L);
+    if(P.comp) lhComp(E, c, 0, L, .15, true); drums(E, 0, L, .42, true);
+    c.seg.forEach((s, i) => { if(P.mel && i % 2 === 1){ const x = s.c; [x.g[2], x.g[3]].forEach((g, j) => E(s.b + Math.min(1.5, s.d - .5) * .5 + j * .5, 'pf', nearPc((x.r + g) % 12, 72), .45, (.16 + i * .012) * jit(.1))); } });
+    return {len:L, chart:c};
   }
-  if(type === 'vamp'){                 // I6 ⇄ vi7 を ゆらす（2小節 × 2）、右手は ウラで ポロン
-    const c = chartOf(`${k(0)}6|${k(9)}m7|${k(0)}6|${k(2)}m7 ${k(7)}7`, 16);
-    if(P.comp) lhComp(E, c, 0, 16, .14, false); drums(E, 0, 16, .36, true);
-    if(P.mel) c.seg.forEach((s, i) => { const x = s.c; [2.5, 3.5].forEach((h, j) => {
+  if(type === 'vamp'){
+    const c = chartOf(introChart('vamp', key, mi), L);
+    if(P.comp) lhComp(E, c, 0, L, .14, false); drums(E, 0, L, .36, true);
+    if(P.mel) c.seg.forEach((s, i) => { const x = s.c; [s.d - 1.5, s.d - .5].forEach((h, j) => { if(h < .5) return;
       const tops = x.g.map(g => nearPc((x.r + g) % 12, 70)).sort((a, b) => a - b).slice(-3);
       tops.forEach((m, q) => E(s.b + h, 'pf', m, .35, (.11 + i * .02) * (q === 2 ? 1.1 : .8) * (j ? .8 : 1) * jit(.1))); }); });
-    return {len:16, chart:c};
+    return {len:L, chart:c};
   }
-  if(type === 'solo'){                 // ドラムなし。コードを 下から ころがして だんだん 強く
-    const c = chartOf(`${k(0)}maj7|${k(5)}maj7|${k(4)}m7 ${k(9)}7|${k(2)}m7 ${k(7)}7sus`, 16);
+  if(type === 'solo'){
+    const c = chartOf(introChart('solo', key, mi), L);
     c.seg.forEach((s, i) => { const x = s.c, r = nearPc(x.r, 36);
       const arp = [r, r + 7, ...x.g.map(g => r + 12 + g)].filter(m => m < 86);
-      const step = s.d >= 4 ? .5 : .25;
+      const step = s.d >= 3 ? .5 : .25;
       arp.forEach((m, j) => { if(j * step < s.d) E(s.b + j * step, 'pf', m, s.d - j * step + .2, (.1 + .1 * j / arp.length) * (.85 + i * .05) * jit(.08)); });
-      if(P.mel && s.d >= 4) E(s.b + 2.5, 'pf', nearPc((x.r + x.g[3]) % 12, 76), 1.4, .17 * jit(.1)); });
-    return {len:16, chart:c};
+      if(P.mel && s.d >= 3) E(s.b + s.d - 1.5, 'pf', nearPc((x.r + x.g[3]) % 12, 76), 1.4, .17 * jit(.1)); });
+    return {len:L, chart:c};
   }
-  if(type === 'tail'){                 // 曲の さいご 2小節を ピアノだけで → ii–V
-    const total = Math.ceil(Math.max(...notes.map(n => n.b + n.d)) / 4) * 4, from = total - 8;
+  if(type === 'tail'){   // 曲の さいご 2小節を ピアノだけで → ii–V
+    const from = total - 2 * BT;
     const tail = notes.filter(n => n.b >= from).map(n => ({m:n.m, b:n.b - from, d:n.d}));
-    const c = chartOf(chart.seg.filter(s => s.b >= from).length ? [0,1].map(i => chart.seg.filter(s => s.b >= from + i * 4 && s.b < from + i * 4 + 4).map(s => s.c.nm).join(' ')).join('|') + `|${k(2)}m7 ${k(7)}7|${k(2)}m7 ${k(7)}7` : `${k(0)}6|${k(0)}6|${k(2)}m7 ${k(7)}7|${k(2)}m7 ${k(7)}7`, 16);
+    const k = n => NN[(key + n) % 12], iiV = mi ? `${k(2)}m7b5 ${k(7)}7` : `${k(2)}m7 ${k(7)}7`;
+    const barStr = i => chart.seg.filter(s => s.b >= from + i * BT - 1e-6 && s.b < from + (i + 1) * BT - 1e-6).map(s => s.c.nm).join(' ') || (mi ? k(0) + 'm6' : k(0) + '6');
+    const c = chartOf(`${barStr(0)}|${barStr(1)}|${iiV}|${iiV}`, L);
     if(P.mel) rhBlock(E, tail, c, 0, 'pf', .2, {up});
-    if(P.comp) lhComp(E, c, 0, 16, .12, false);
-    drums(E, 8, 8, .36, true);
-    return {len:16, chart:c};
+    if(P.comp) lhComp(E, c, 0, L, .12, false);
+    drums(E, 2 * BT, 2 * BT, .36, true);
+    return {len:L, chart:c};
   }
   /* drum：ブラシだけ 2小節 → ii–V に ピアノが 入る */
-  const c = chartOf(`${k(0)}6|${k(0)}6|${k(2)}m7 ${k(7)}7|${k(2)}m7 ${k(7)}7`, 16);
-  drums(E, 0, 16, .46, true); E(6, 'dr', 'snare', 0, .1); E(7, 'dr', 'snare', 0, .14); E(7.5, 'dr', 'toml', 0, .16);
-  if(P.comp) lhComp(E, chartOf(`${k(2)}m7 ${k(7)}7|${k(2)}m7 ${k(7)}7`, 8), 8, 8, .15, true);
-  return {len:16, chart:c};
+  const c = chartOf(introChart('drum', key, mi), L);
+  drums(E, 0, L, .46, true); E(2 * BT - 2, 'dr', 'snare', 0, .1); E(2 * BT - 1, 'dr', 'snare', 0, .14); E(2 * BT - .5, 'dr', 'toml', 0, .16);
+  const k = n => NN[(key + n) % 12], iiV = mi ? `${k(2)}m7b5 ${k(7)}7` : `${k(2)}m7 ${k(7)}7`;
+  if(P.comp) lhComp(E, chartOf(`${iiV}|${iiV}`, 2 * BT), 2 * BT, 2 * BT, .15, true);
+  return {len:L, chart:c};
 }
 
-/* ---------- かえるのうた：輪唱 ---------- */
-/* 2小節ずつ おくれて パート2（ビブラフォン）、パート3（サックス）が 入る。
-   重なっても ぶつからない ように コードは C6 中心に */
-function roundSection(E, notes, key, up, P){
+/* ---------- かえるのうた：輪唱（2小節ずつ おくれて パート2・3） ---------- */
+function roundSection(E, notes, up, P){
   const len = Math.ceil(Math.max(...notes.map(n => n.b + n.d)) / 4) * 4, total = len + 16;
   const bars = total / 4, cs = [];
   for(let i = 0; i < bars; i++) cs.push(i === bars - 1 ? 'C69' : i % 4 === 3 ? 'Dm7 G7' : i % 2 ? 'Am7' : 'Cmaj7');
   const c = chartOf(cs.join('|'), total);
-  const VO = [{inst:'pf', d:0, v:.3, up:up, n:'パート1（ピアノ）'}, {inst:'vb', d:8, v:.2, up:up, n:'パート2（ビブラフォン）'}, {inst:'sx', d:16, v:.22, up:0, n:'パート3（サックス）'}];
+  const VO = [{inst:'pf', d:0, v:.3, up, n:'パート1（ピアノ）'}, {inst:'vb', d:8, v:.2, up, n:'パート2（ビブラフォン）'}, {inst:'sx', d:16, v:.22, up:0, n:'パート3（サックス）'}];
   VO.forEach((vo, i) => { if(!P.mel) return;
     const sh = notes.map(n => ({m:n.m, b:n.b + vo.d, d:n.d}));
-    if(i === 0) rhBlock(E, sh, c, 0, 'pf', vo.v, {up, vc:0});
-    else rhBlock(E, sh, c, 0, vo.inst, vo.v, {up:vo.up, single:true, vc:i}); });
+    rhBlock(E, sh, c, 0, vo.inst, vo.v, {up:vo.up, single:i > 0}); });
   if(P.comp) lhComp(E, c, 0, total, .12, false);
   drums(E, 0, total, .44, true);
-  return {len:total, chart:c, voices:VO.map((vo, i) => ({n:vo.n, b:vo.d, e:vo.d + len}))};
+  return {len:total, chart:c, voices:VO.map(vo => ({n:vo.n, b:vo.d, e:vo.d + len}))};
+}
+/* ---------- 2コーラス目 → 3コーラス目の 余韻 ---------- */
+function tailOver(E, notes, chart, len, P, round){
+  if(!P.mel) return;
+  const last = notes[notes.length - 1], c = chart.at(len - 1);
+  if(!round) E(last.b, 'sx', last.m, last.d + 2.5, .14);
+  if(c){ const vo = c.pcs.map(pc => nearPc(pc, 62)).sort((a, b) => a - b);
+    vo.forEach((m, j) => E(len - 2 + j * .04, 'vb', m, 4.5, .06 * (j === vo.length - 1 ? 1.2 : .9))); }
+  E(len - .5, 'dr', 'ride', 0, .1); E(len, 'dr', 'crash', 0, .08);
 }
 
 /* ---------- 曲 ぜんたい ---------- */
 let PLAYN = {};
 function jazzArrange(s, o){
   o = Object.assign({form:'full', swing:.62, intro:'auto', parts:{mel:1, comp:1, drum:1, sax:1}}, o || {});
-  const notes = parseSong(s), beats = Math.ceil(s.beats / 4) * 4;
-  const R = JAZZ_REHARM[s.id], chStr = R ? R.c : autoJazz((CHORDS[s.id] && CHORDS[s.id].c) || 'C', beats);
-  const key = R ? R.key : 0, chart = chartOf(chStr, beats), ev = [], P = o.parts;
-  let off = 0, sd = 1, vcOff = 0;
-  /* E：すべての 音を ここで 登録（セクションの 強さ sd を かける） */
-  const E = (b, k, m, d, v, vc) => { if(k === 'dr' && !P.drum) return; ev.push({b:off + b, k, m, d, v:v * sd, vc}); };
+  const R = JAZZ_REHARM[s.id]; BT = R.bt || 4;
+  const pk = R.pk || 0, sh = (BT - pk % BT) % BT;   // 弱起：0小節目の おわりに くるように ずらす
+  const notes = parseSong(s).map(n => ({m:n.m, b:n.b + sh, d:n.d}));
+  const beats = Math.ceil((s.beats + sh) / BT - 1e-6) * BT;
+  const key = R.key || 0, mi = !!R.mi, chart = chartOf(R.c, beats), ev = [], P = o.parts;
+  let off = 0, sd = 1;
+  const E = (b, k, m, d, v) => { if(k === 'dr' && !P.drum) return; ev.push({b:off + b, k, m, d, v:v * sd * (R.soft && k === 'dr' ? .7 : 1)}); };
   const lo = Math.min(...notes.map(n => n.m)), up = lo < 70 ? 12 : 0;
   const secs = []; let t = 0;
   const sec = (n, len, ch, extra) => { secs.push(Object.assign({b:t, n, len, chart:ch}, extra || {})); };
   if(o.form === 'full'){
     const n = PLAYN[s.id] = (PLAYN[s.id] || 0) + 1;
-    const type = o.intro === 'auto' ? (n === 1 ? SONG_INTRO[s.id] : INTRO_ORDER[(INTRO_ORDER.indexOf(SONG_INTRO[s.id]) + n - 1) % 5]) : o.intro;
+    const type = o.intro === 'auto' ? INTRO_ORDER[(INTRO_ORDER.indexOf(SONG_INTRO[s.id]) + n - 1) % 5] : o.intro;
     off = t; sd = .8;
-    const I = makeIntro(type, E, key, notes, chart, up, P);
+    const I = makeIntro(type, E, key, mi, notes, chart, up, P, beats);
     sec('イントロ：' + INTROS[type].n, I.len, I.chart); t += I.len;
   }
-  const choruses = o.form === 'full' ? 3 : 1;
-  const SD = [1, 1.14, .96];                  // テーマ mf → 2コーラス目 f → さいご すこし おさえる
+  const choruses = o.form === 'full' ? 3 : 1, SD = [1, 1.14, .96];
   for(let ch = 0; ch < choruses; ch++){
     off = t; sd = SD[ch];
-    if(ch === 1 && s.id === 'kaeru'){         // かえるのうた は 2コーラス目を 輪唱に
-      const Rd = roundSection(E, notes, key, up, P);
-      E(0, 'dr', 'crash', 0, .14);
+    if(ch === 1 && s.id === 'kaeru'){
+      const Rd = roundSection(E, notes, up, P);
+      E(0, 'dr', 'crash', 0, .14); tailOver(E, notes, Rd.chart, Rd.len, P, true);
       sec('輪唱（3パート）', Rd.len, Rd.chart, {voices:Rd.voices}); t += Rd.len; continue;
     }
     const sax = ch === 1 && P.sax;
     if(P.mel){
-      if(sax){ saxFake(E, notes, chart, 0, .26); rhBlock(E, notes.filter(n => n.d >= 2), chart, 0, 'vb', .07, {up}); }
+      if(sax){ saxFake(E, notes, chart, 0, .26, key, mi); rhBlock(E, notes.filter(n => n.d >= 2), chart, 0, 'vb', .07, {up}); }
       else rhBlock(E, notes, chart, 0, 'pf', .3, {up});
     }
     if(P.comp) lhComp(E, chart, 0, beats, sax ? .16 : .13, sax);
     drums(E, 0, beats, ch === 1 ? .56 : .46, ch !== 1);
-    if(ch === 1) E(0, 'dr', 'crash', 0, .16);
+    if(ch === 1){ E(0, 'dr', 'crash', 0, .16); tailOver(E, notes, chart, beats, P); }
     sec(ch === 1 ? (sax ? '2コーラス目（サックス）' : '2コーラス目') : ch === 2 ? 'テーマ（もういちど）' : 'テーマ', beats, chart);
     t += beats;
   }
   if(o.form === 'full'){
     off = t; sd = .9;
-    const tonic = chordOf(NN[key] + '69'); sec('エンディング', 8, chartOf(NN[key] + '69|' + NN[key] + '69', 8));
+    const tn = NN[key] + (mi ? 'm6' : '69'); sec('エンディング', 2 * BT, chartOf(tn + '|' + tn, 2 * BT));
     const b0 = 60 + key - (key > 5 ? 12 : 0);
     E(0, 'pf', b0 - 24, 6, .3);
-    [0,4,7,9,14,16].forEach((x, i) => E(i * .12, 'pf', b0 + x, 6, (.14 + i * .015)));
-    E(0, 'vb', b0 + 26, 6, .07); E(0, 'dr', 'crash', 0, .2);
-    E(6, 'dr', 'ride', 0, .0001); t += 8;
+    (mi ? [0,3,7,9,14] : [0,4,7,9,14,16]).forEach((x, i) => E(i * .12, 'pf', b0 + x, 6, .14 + i * .015));
+    E(0, 'vb', b0 + (mi ? 26 : 26), 6, .07); E(0, 'dr', 'crash', 0, .2);
+    E(6, 'dr', 'ride', 0, .0001); t += Math.max(8, 2 * BT + 2);
   }
   ev.forEach(e => { e.b = swingB(e.b, o.swing); });
-  return {t:s.t, bpm:R ? R.bpm : Math.round(s.bpm * 1.1), beats:t, ev:ev.sort((a, b) => a.b - b.b), secs, chStr, len:beats};
+  return {t:s.t, bpm:R.bpm, beats:t, ev:ev.sort((a, b) => a.b - b.b), secs, chStr:R.c, bt:BT};
 }
 
 /* ---------- 比較用：いまの ラウンジ版（landmark.js の songEv と おなじ） ---------- */
@@ -394,12 +445,13 @@ function loungeArrange(s){
   const lo = Math.min(...notes.map(n => n.m)), up = lo < 62 ? 12 : 0;
   notes.forEach(n => { E(n.b, 'pf', n.m + up, Math.max(.4, n.d * .95), .3); E(n.b, 'vb', n.m + up, n.d, .05); });
   const C = CHORDS[s.id];
-  if(C && C.c){ C.c.split('|').map(x => x.trim().split(/\s+/)).forEach((chs, i) => { const b0 = i * 4; if(b0 >= s.beats) return; const per = 4 / chs.length;
+  if(C && C.c){ const B = C.bt || 4, pk = C.pk || 0;
+    C.c.split('|').map(x => x.trim().split(/\s+/)).forEach((chs, i) => { const b0 = pk + i * B; if(b0 >= s.beats) return; const per = B / chs.length;
       chs.forEach((c, j) => { const p = pcsOf(c); if(!p) return; const bt = b0 + j * per, vo = p.map(pc => inR(pc, 52)).sort((a, b) => a - b);
         vo.forEach(m => E(bt, 'ep', m, per * .45, .09)); if(per >= 2) vo.forEach(m => E(bt + per / 2, 'ep', m, per * .35, .06));
         E(bt, 'cb', inR(p[0], 36), per * .8, .32); if(per >= 3) E(bt + per / 2, 'cb', inR(p[2], 36), per * .4, .2); }); }); }
   else for(let b = 0; b < s.beats; b += 4){ const n = notes.find(x => x.b >= b && x.b < b + 4); if(n) E(b, 'cb', inR(n.m % 12, 36), 3, .26); }
-  return {t:s.t, bpm:Math.max(72, Math.min(116, Math.round(s.bpm * .88))), beats:Math.ceil(s.beats) + 4, ev:ev.sort((a, b) => a.b - b.b), secs:[{b:0, n:'ラウンジ風（いま）'}], chStr:(C && C.c) || '（コードなし）', intro:0, len:s.beats};
+  return {t:s.t, bpm:Math.max(72, Math.min(116, Math.round(s.bpm * .88))), beats:Math.ceil(s.beats) + 4, ev:ev.sort((a, b) => a.b - b.b), secs:[{b:0, n:'ラウンジ風（いま）', len:s.beats}], chStr:(C && C.c) || '（コードなし）'};
 }
 
 /* =====================================================================
@@ -411,7 +463,7 @@ const SAMP = {
   ep:[29,35,40,45,50,55,59,62,65,71,76,81,86,91,96], vb:[53,56,59,62,65,68,71,74,77,80,83,86,89],
   sx:[49,52,55,58,61,64,67,70,73,76,79,81], gl:[79,84,91,96,103,108]
 };
-const REL = {pf:.9, ep:.7, vb:1.4, gl:1.6, cb:.35, sx:.25, dr:0};
+const REL = {pf:.9, ep:.7, vb:1.4, gl:1.6, cb:.35, sx:.45, dr:0};
 const M = {ac:null, out:null, buf:{}, on:false, tr:null, timer:0, miss:0};
 function mAC(){
   if(!M.ac){ const C = window.AudioContext || window.webkitAudioContext; M.ac = new C();
@@ -450,7 +502,7 @@ async function note(tr, k, m, t, dur, vol){
   if(k === 'dr'){ g.gain.value = vol; s.connect(g); g.connect(tr.g); s.start(st); return; }
   const rel = REL[k] ?? .5; g.gain.setValueAtTime(0, st); g.gain.linearRampToValueAtTime(vol, st + .008);
   g.gain.setValueAtTime(vol, st + dur); g.gain.exponentialRampToValueAtTime(.0001, st + dur + rel);
-  /* 強い 音ほど 明るく（ピアノを 強く たたいた ときの 音色） */
+  /* 強い 音ほど 明るく */
   const ref = k === 'sx' ? .26 : k === 'vb' ? .2 : .3, f = M.ac.createBiquadFilter(); f.type = 'lowpass';
   f.frequency.value = 1400 + 11000 * Math.pow(Math.min(1.3, vol / ref), 1.6); f.Q.value = .5;
   s.connect(f); f.connect(g); g.connect(tr.g); s.start(st); s.stop(st + dur + rel + .05);
@@ -477,16 +529,25 @@ function stop(){
   M.on = false; clearInterval(M.timer); const tr = M.tr; M.tr = null;
   if(tr && M.ac){ const t = M.ac.currentTime; tr.g.gain.cancelScheduledValues(t); tr.g.gain.setValueAtTime(tr.g.gain.value, t); tr.g.gain.linearRampToValueAtTime(0, t + .3); setTimeout(() => tr.g.disconnect(), 1500); }
   $('#sec').textContent = 'ていし中'; $('#chd').textContent = '—'; $('#pg').style.width = '0';
+  document.querySelectorAll('#round .rv').forEach(el => el.classList.remove('on', 'hop'));
 }
 
 /* =====================================================================
    4) 画面
    ===================================================================== */
 const $ = q => document.querySelector(q);
-const REF = new Set(['kira','kaeru','mary','chou','london','acha','hotcross','frere','oldmac']);
+const FIRST = ['kira','kaeru','mary','chou','london','acha','hotcross','frere','oldmac'];
 let cur = SONGS[0], mode = 'jazz', form = 'full', bpmUser = null;
+function tagOf(s){
+  const R = JAZZ_REHARM[s.id];
+  if(s.id === 'kira') return '<span class="tag">PDFの コードから</span>';
+  if(s.id === 'row') return '<span class="tag no">アプリの 曲から</span>';
+  return '<span class="tag">参考音源から</span>' + (R.bt === 3 ? ' <span class="tag w">ワルツ</span>' : '') + (R.mi ? ' <span class="tag no">短調</span>' : '');
+}
 function songCards(){
-  $('#songs').innerHTML = SONGS.map(s => `<button class="song ${s === cur ? 'cur' : ''}" data-id="${s.id}"><span class="tag ${REF.has(s.id) ? '' : 'no'}">${s.id === 'kira' ? 'PDFの コードから' : '参考音源から'}</span><b>${s.t}</b><small>${JAZZ_REHARM[s.id].c.split('|').slice(0, 4).join(' | ')} …</small></button>`).join('');
+  const card = s => `<button class="song ${s === cur ? 'cur' : ''}" data-id="${s.id}"><span>${tagOf(s)}</span><b>${s.t}</b><small>${JAZZ_REHARM[s.id].c.split('|').slice(0, 4).join(' | ')} …</small></button>`;
+  $('#songsA').innerHTML = SONGS.filter(s => FIRST.includes(s.id)).map(card).join('');
+  $('#songsB').innerHTML = SONGS.filter(s => !FIRST.includes(s.id)).map(card).join('');
 }
 function parts(){ const p = {}; document.querySelectorAll('#parts input').forEach(i => p[i.dataset.p] = i.checked ? 1 : 0); return p; }
 function build(quiet){
@@ -495,8 +556,8 @@ function build(quiet){
   $('#round').classList.toggle('show', mode === 'jazz' && cur.id === 'kaeru' && form === 'full');
   if(quiet) return T;
   $('#bpm').value = T.bpm; $('#bpmV').textContent = T.bpm;
-  $('#ttl').textContent = `${cur.t}（${mode === 'jazz' ? 'ジャズ' : 'ラウンジ風'}）`;
-  $('#prog').innerHTML = `コード：${T.chStr.split('|').map((x, i) => `<b>${i + 1}</b> ${x}`).join('　')}`;
+  $('#ttl').textContent = `${cur.t}（${mode === 'jazz' ? 'ジャズ' : 'ラウンジ風'}${T.bt === 3 ? '・3拍子' : ''}）`;
+  $('#prog').innerHTML = `コード：${T.chStr.split('|').map((x, i) => `<b>${i}</b> ${x}`).join('　')}`;
   return T;
 }
 function paintNow(){
@@ -506,12 +567,11 @@ function paintNow(){
   let s = tr.secs[0]; tr.secs.forEach(x => { if(x.b <= bb) s = x; }); $('#sec').textContent = s.n;
   $('#pg').style.width = (bb / tr.beats * 100) + '%';
   const c = s.chart ? s.chart.at(bb - s.b) : null; $('#chd').textContent = c ? c.nm : '—';
-  /* 輪唱：いま うたっている パートを 光らせる（拍で ぴょこっと はねる） */
   document.querySelectorAll('#round .rv').forEach((el, i) => { const v = s.voices && s.voices[i], x = bb - s.b;
     const on = !!(v && x >= v.b && x < v.e); el.classList.toggle('on', on); el.classList.toggle('hop', on && (x % 1) < .25); });
 }
 function showMiss(){ $('#msg').innerHTML = `<span class="warn">音の ファイルが 読めませんでした（${M.miss}こ）。代わりの 電子音で ならしています。まなびタウンと おなじ フォルダ（index.html の となり）に おいて、サーバー経由で ひらいてください。</span>`; }
-$('#songs').addEventListener('click', e => { const b = e.target.closest('.song'); if(!b) return; cur = SONGS.find(s => s.id === b.dataset.id); bpmUser = null; songCards(); start(build()); });
+document.querySelectorAll('.grid').forEach(g => g.addEventListener('click', e => { const b = e.target.closest('.song'); if(!b) return; cur = SONGS.find(s => s.id === b.dataset.id); bpmUser = null; songCards(); start(build()); }));
 $('#play').onclick = () => start(build());
 $('#stop').onclick = stop;
 $('#mode').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; mode = b.dataset.v; bpmUser = null; $('#mode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); if(M.on) start(build()); else build(); });
@@ -524,7 +584,7 @@ $('#parts').addEventListener('change', () => { if(M.on) start(build()); });
 $('#vol').oninput = e => { if(M.out) M.out.gain.value = +e.target.value; };
 document.addEventListener('visibilitychange', () => { if(document.hidden) stop(); });
 songCards(); build();
-window.__jazzTest = {jazzArrange, loungeArrange, JAZZ_REHARM, chordOf, autoJazz};
+window.__jazzTest = {jazzArrange, loungeArrange, JAZZ_REHARM, chordOf, SONGS};
 </script>
 </body>
 </html>
