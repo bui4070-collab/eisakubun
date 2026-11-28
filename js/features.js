@@ -17280,7 +17280,7 @@ SONGS.push(
 
 window.__mu280 = {xmasIds:['xm_jingle', 'xm_silent', 'xm_wish'], rec:id => songRec(id)};
 /* v31.0：ランドマークタワーの ラウンジ（ピアノ リクエスト）用 … 音源つきの 曲（cr）は のぞく */
-window.__mu280.lounge = () => SONGS.filter(s => !s.cr && !s.au).map(s => ({id:s.id, t:s.t, bpm:s.bpm, st:songRec(s.id).st || 0, notes:parseSong(s).map(n => ({m:n.m, b:n.b, d:n.d})), beats:s.beats, ch:(typeof CHORDS !== 'undefined' && CHORDS[s.id]) || null}));
+window.__mu280.lounge = () => SONGS.filter(s => !s.cr && !s.au).map(s => ({id:s.id, t:s.t, bpm:s.bpm, st:songRec(s.id).st || 0, all:songRec(s.id).all || 0, notes:parseSong(s).map(n => ({m:n.m, b:n.b, d:n.d})), beats:s.beats, ch:(typeof CHORDS !== 'undefined' && CHORDS[s.id]) || null}));
 SONGS.sort((a, b) => a.d - b.d);
 const DIFF = {1:['かんたん', 30, '#40C057'], 2:['ふつう', 50, '#339AF0'], 3:['むずかしい', 80, '#E0457B'], 4:['ちょう むずかしい', 120, '#8E44AD']};
 const SPEEDS = [0.5, 0.75, 1];
@@ -17296,7 +17296,8 @@ function parseSong(s){
   s.beats = t; s.hi = Math.max(...a.map(n => n.m)); return s.notes = a;
 }
 function SG(){ const m = MS(); m.songs = m.songs || {}; return m.songs; }
-const songRec = id => SG()[id] || {st:0, hi:0, n:0};
+const songRec = id => { const r = SG()[id] || {st:0, hi:0, n:0};   // v34.0：せっていの「ぜんきょく クリア あつかい」（ほんとうの きろくは かえない）
+  return (window.__allSongs && window.__allSongs() && !(r.st >= 1)) ? Object.assign({}, r, {st:1, all:1}) : r; };
 /* 本物の 音源と 音ふの ずれ ちょうせい（びょう）：＋ ＝ 音源を はやく ながす */
 const auOffGet = id => { const o = MS().auOff; return o && o[id] ? o[id] : 0; };
 function auOffHTML(s){
